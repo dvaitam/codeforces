@@ -8,18 +8,21 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
 
-// Solve should be provided by the solution file passed to `go run verifier.go your_solution.go`.
-// It must read from the given io.Reader and write the answer to the io.Writer.
+// This program verifies a solution binary for the defragmentation problem.
+// Usage: go run verifier.go /path/to/solution
 
 // fragment represents a fragment of a file on the disk.
 type fragment struct {
 	file int
 	idx  int
 }
+
+var exePath string
 
 func verify(input, output string) error {
 	in := bufio.NewReader(strings.NewReader(input))
@@ -148,12 +151,24 @@ func generateCase(rng *rand.Rand) string {
 }
 
 func runCase(tc string) error {
+	cmd := exec.Command(exePath)
+	cmd.Stdin = strings.NewReader(tc)
 	var out bytes.Buffer
-	Solve(strings.NewReader(tc), &out)
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
+	}
 	return verify(tc, out.String())
 }
 
 func main() {
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: verifier <solution_binary>")
+		os.Exit(1)
+	}
+	exePath = os.Args[1]
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	longClusters := make([]string, 199)
