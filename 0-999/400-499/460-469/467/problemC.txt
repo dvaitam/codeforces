@@ -1,0 +1,17 @@
+Description:
+The new ITone 6 has been released recently and George got really keen to buy it. Unfortunately, he didn't have enough money, so George was going to work as a programmer. Now he faced the following problem at the work.
+
+Given a sequence of n integers p1, p2, ..., pn. You are to choose k pairs of integers:
+
+[l1, r1], [l2, r2], ..., [lk, rk] (1 ≤ l1 ≤ r1 < l2 ≤ r2 < ... < lk ≤ rk ≤ n; ri - li + 1 = m),
+
+in such a way that the value of sum $$\sum_{i=1}^{k}\sum_{j=l_i}^{r_i}p_j$$ is maximal possible. Help George to cope with the task.
+
+Input Format:
+The first line contains three integers n, m and k (1 ≤ (m × k) ≤ n ≤ 5000). The second line contains n integers p1, p2, ..., pn (0 ≤ pi ≤ 109).
+
+Output Format:
+Print an integer in a single line — the maximum possible value of sum.
+
+Note:
+None

@@ -1,0 +1,17 @@
+Description:
+This is an interactive problem.
+
+Ayush devised yet another scheme to set the password of his lock. The lock has $$$n$$$ slots where each slot can hold any non-negative integer. The password $$$P$$$ is a sequence of $$$n$$$ integers, $$$i$$$-th element of which goes into the $$$i$$$-th slot of the lock.
+
+To set the password, Ayush comes up with an array $$$A$$$ of $$$n$$$ integers each in the range $$$[0, 2^{63}-1]$$$. He then sets the $$$i$$$-th element of $$$P$$$ as the bitwise OR of all integers in the array except $$$A_i$$$.
+
+You need to guess the password. To make a query, you can choose a non-empty subset of indices of the array and ask the bitwise OR all elements of the array with index in this subset. You can ask no more than 13 queries.
+
+Input Format:
+The first line of input contains one integer $$$n$$$ $$$(2 \le n \le 1000)$$$ — the number of slots in the lock.
+
+Output Format:
+None
+
+Note:
+The array $$$A$$$ in the example is $$$\{{1, 2, 4\}}$$$. The first element of the password is bitwise OR of $$$A_2$$$ and $$$A_3$$$, the second element is bitwise OR of $$$A_1$$$ and $$$A_3$$$ and the third element is bitwise OR of $$$A_1$$$ and $$$A_2$$$. Hence the password sequence is $$$\{{6, 5, 3\}}$$$.

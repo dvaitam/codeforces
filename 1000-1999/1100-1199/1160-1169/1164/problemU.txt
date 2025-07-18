@@ -1,0 +1,11 @@
+Description:
+Let $$$x$$$ and $$$y$$$ be positive real numbers such that $$$x^5+y^5=20xy$$$. Find the greatest possible value of $$$y^5$$$.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

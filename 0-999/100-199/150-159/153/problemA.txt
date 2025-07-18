@@ -1,0 +1,11 @@
+Description:
+You are given two integers A and B. Calculate their sum and output it without leading zeros.
+
+Input Format:
+Two lines of input data contain integers A and B (1 ≤ A, B ≤ 105).
+
+Output Format:
+Output A + B without leading zeros.
+
+Note:
+The code provided in the post about the round doesn't solve the task.

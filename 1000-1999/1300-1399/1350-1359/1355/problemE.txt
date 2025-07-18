@@ -1,0 +1,23 @@
+Description:
+You have to restore the wall. The wall consists of $$$N$$$ pillars of bricks, the height of the $$$i$$$-th pillar is initially equal to $$$h_{i}$$$, the height is measured in number of bricks. After the restoration all the $$$N$$$ pillars should have equal heights.
+
+You are allowed the following operations:
+
+- put a brick on top of one pillar, the cost of this operation is $$$A$$$;
+- remove a brick from the top of one non-empty pillar, the cost of this operation is $$$R$$$;
+- move a brick from the top of one non-empty pillar to the top of another pillar, the cost of this operation is $$$M$$$.
+
+You cannot create additional pillars or ignore some of pre-existing pillars even if their height becomes $$$0$$$.
+
+What is the minimal total cost of restoration, in other words, what is the minimal total cost to make all the pillars of equal height?
+
+Input Format:
+The first line of input contains four integers $$$N$$$, $$$A$$$, $$$R$$$, $$$M$$$ ($$$1 \le N \le 10^{5}$$$, $$$0 \le A, R, M \le 10^{4}$$$) — the number of pillars and the costs of operations.
+
+The second line contains $$$N$$$ integers $$$h_{i}$$$ ($$$0 \le h_{i} \le 10^{9}$$$) — initial heights of pillars.
+
+Output Format:
+Print one integer — the minimal cost of restoration.
+
+Note:
+None

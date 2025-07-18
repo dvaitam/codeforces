@@ -1,0 +1,21 @@
+Description:
+Yash has recently learnt about the Fibonacci sequence and is very excited about it. He calls a sequence Fibonacci-ish if
+
+1. the sequence consists of at least two elements
+2. f0 and f1 are arbitrary
+3. fn + 2 = fn + 1 + fn for all n ≥ 0.
+
+You are given some sequence of integers a1, a2, ..., an. Your task is rearrange elements of this sequence in such a way that its longest possible prefix is Fibonacci-ish sequence.
+
+Input Format:
+The first line of the input contains a single integer n (2 ≤ n ≤ 1000) — the length of the sequence ai.
+
+The second line contains n integers a1, a2, ..., an (|ai| ≤ 109).
+
+Output Format:
+Print the length of the longest possible Fibonacci-ish prefix of the given sequence after rearrangement.
+
+Note:
+In the first sample, if we rearrange elements of the sequence as  - 1, 2, 1, the whole sequence ai would be Fibonacci-ish.
+
+In the second sample, the optimal way to rearrange elements is $$7$$, $$14$$, $$21$$, $$35$$, 28.

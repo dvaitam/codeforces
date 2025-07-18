@@ -1,0 +1,21 @@
+Description:
+This is an interactive problem.
+
+Farmer Stanley grows corn on a rectangular field of size $$$ n \times m $$$ meters with corners in points $$$(0, 0)$$$, $$$(0, m)$$$, $$$(n, 0)$$$, $$$(n, m)$$$. This year the harvest was plentiful and corn covered the whole field.
+
+The night before harvest aliens arrived and poisoned the corn in a single $$$1 \times 1$$$ square with sides parallel to field borders. The corn inside the square must not be eaten, but you cannot distinguish it from ordinary corn by sight. Stanley can only collect a sample of corn from an arbitrary polygon and bring it to the laboratory, where it will be analyzed and Stanley will be told the amount of corn in the sample that was poisoned. Since the harvest will soon deteriorate, such a study can be carried out no more than $$$5$$$ times.
+
+More formally, it is allowed to make no more than $$$5$$$ queries, each of them calculates the area of intersection of a chosen polygon with a square of poisoned corn. It is necessary to find out the coordinates of the lower-left corner of the drawn square (the vertex of the square with the smallest $$$x$$$ and $$$y$$$ coordinates).
+
+Input Format:
+First line contains two integers $$$n$$$ and $$$m$$$ ($$$1 \le n, m \le 100$$$) — field sizes.
+
+Output Format:
+None
+
+Note:
+In the first test from the statement, the aliens poisoned a square of corn with vertices at points with coordinates $$$(1.5, 0.5)$$$, $$$(1.5, 1.5)$$$, $$$(2.5, 1.5)$$$, $$$(2.5, 0.5)$$$. In the picture, it is red, the polygon selected in the query is blue, and their intersection is green.
+
+Picture for the first query:
+
+Picture for the second query:

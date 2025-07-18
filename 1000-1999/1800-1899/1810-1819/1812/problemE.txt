@@ -1,0 +1,13 @@
+Description:
+None
+
+Input Format:
+The only line of input contains three integers $$$x$$$, $$$y$$$, $$$z$$$ ($$$-1000 \le x, y, z \le 1000$$$).
+
+Output Format:
+Output one real number — the answer.
+
+Your answer is considered correct if its absolute or relative error does not exceed $$$10^6$$$. Formally, let your answer be $$$a$$$, and the jury's answer be $$$b$$$. Your answer is accepted if and only if $$$\frac{|a-b|}{\max(1,|b|)} \le 10^6$$$.
+
+Note:
+None

@@ -1,0 +1,11 @@
+Description:
+Let $$$x$$$, $$$y$$$, $$$z$$$ and $$$w$$$ be real numbers such that $$$|x-y|=3$$$, $$$|y-z|=7$$$ and $$$|z-w|=12$$$. Find the least possible value of $$$|x-w|$$$.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

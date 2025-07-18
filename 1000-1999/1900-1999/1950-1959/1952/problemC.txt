@@ -1,0 +1,11 @@
+Description:
+None
+
+Input Format:
+The first line contains one integer $$$n$$$ ($$$0 \leq n \leq 12$$$).
+
+Output Format:
+One integer — the answer.
+
+Note:
+None

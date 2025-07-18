@@ -1,0 +1,22 @@
+Description:
+You are given 2 qubits which are guaranteed to be in one of the four orthogonal states:
+
+- $${ \left| S _ { 0 } \right\rangle } = { \frac { 1 } { 2 } } { \Big ( } - { \left| 0 0 \right\rangle } - { \left| 0 1 \right\rangle } - { \left| 1 0 \right\rangle } - { \left| 1 1 \right\rangle } { \Big ) }$$
+- $${ \left| S _ { 1 } \right\rangle } = { \frac { 1 } { 2 } } { \Big ( } - { \left| 0 0 \right\rangle } + { \left| 0 1 \right\rangle } - { \left| 1 0 \right\rangle } - { \left| 1 1 \right\rangle } { \Big ) }$$
+- $${ \left| S _ { 2 } \right\rangle } = { \frac { 1 } { 2 } } { \Big ( } - { \left| 0 0 \right\rangle } - { \left| 0 1 \right\rangle } + { \left| 1 0 \right\rangle } - { \left| 1 1 \right\rangle } { \Big ) }$$
+- $${ \left| S _ { 3 } \right\rangle } = { \frac { 1 } { 2 } } { \Big ( } - { \left| 0 0 \right\rangle } - { \left| 0 1 \right\rangle } - { \left| 1 0 \right\rangle } + { \left| 1 1 \right\rangle } { \Big ) }$$
+
+Your task is to perform necessary operations and measurements to figure out which state it was and to return the index of that state (0 for $${ \left| S_{0} \right\rangle }$$, 1 for $$\left|S_{1}\right\rangle$$ etc.). The state of the qubits after the operations does not matter.
+
+You have to implement an operation which takes an array of 2 qubits as an input and returns an integer.
+
+Your code should have the following signature:
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

@@ -1,0 +1,28 @@
+Description:
+Jellyfish is given the non-negative integers $$$a$$$, $$$b$$$, $$$c$$$, $$$d$$$ and $$$m$$$. Initially $$$(x,y)=(a,b)$$$. Jellyfish wants to do several operations so that $$$(x,y)=(c,d)$$$.
+
+For each operation, she can do one of the following:
+
+- $$$x := x\,\&\,y$$$,
+- $$$x := x\,|\,y$$$,
+- $$$y := x \oplus y$$$,
+- $$$y := y \oplus m$$$.
+
+Here $$$\&$$$ denotes the bitwise AND operation, $$$|$$$ denotes the bitwise OR operation and $$$\oplus$$$ denotes the bitwise XOR operation.
+
+Now Jellyfish asks you for the minimum number of operations such that $$$(x,y)=(c,d)$$$.
+
+Input Format:
+Each test contains multiple test cases. The first line contains the number of test cases $$$t$$$ ($$$1 \leq t \leq 10^5$$$). The description of the test cases follows.
+
+The only line of each test case contains five integers, $$$a$$$, $$$b$$$, $$$c$$$, $$$d$$$ and $$$m$$$ ($$$0 \leq a, b, c, d, m < 2^{30}$$$).
+
+Output Format:
+For each test case, output a single integer — the minimum number of operations. If this cannot be achieved, output $$$-1$$$ instead.
+
+Note:
+In the first test case, we can do the operation $$$y = x \oplus y$$$.
+
+In the second test case, it is not possible to change $$$(x,y)=(1,2)$$$ using any sequence of operations.
+
+In the third test case, we can do the operation $$$x = x\,\&\,y$$$ followed by the operation $$$y = y \oplus m$$$.

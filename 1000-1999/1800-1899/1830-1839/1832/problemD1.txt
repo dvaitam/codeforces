@@ -1,0 +1,30 @@
+Description:
+The only difference between easy and hard versions is the maximum values of $$$n$$$ and $$$q$$$.
+
+You are given an array, consisting of $$$n$$$ integers. Initially, all elements are red.
+
+You can apply the following operation to the array multiple times. During the $$$i$$$-th operation, you select an element of the array; then:
+
+- if the element is red, it increases by $$$i$$$ and becomes blue;
+- if the element is blue, it decreases by $$$i$$$ and becomes red.
+
+The operations are numbered from $$$1$$$, i. e. during the first operation some element is changed by $$$1$$$ and so on.
+
+You are asked $$$q$$$ queries of the following form:
+
+- given an integer $$$k$$$, what can the largest minimum in the array be if you apply exactly $$$k$$$ operations to it?
+
+Note that the operations don't affect the array between queries, all queries are asked on the initial array $$$a$$$.
+
+Input Format:
+The first line contains two integers $$$n$$$ and $$$q$$$ ($$$1 \le n, q \le 1000$$$) — the number of elements in the array and the number of queries.
+
+The second line contains $$$n$$$ integers $$$a_1, a_2, \dots, a_n$$$ ($$$1 \le a_i \le 10^9$$$).
+
+The third line contains $$$q$$$ integers $$$k_1, k_2, \dots, k_q$$$ ($$$1 \le k_j \le 10^9$$$).
+
+Output Format:
+For each query, print a single integer — the largest minimum that the array can have after you apply exactly $$$k$$$ operations to it.
+
+Note:
+None

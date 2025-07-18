@@ -1,0 +1,25 @@
+Description:
+You are given an array s of n non-negative integers.
+
+A 5-tuple of integers (a, b, c, d, e) is said to be valid if it satisfies the following conditions:
+
+- 1 ≤ a, b, c, d, e ≤ n
+- (sa | sb) & sc & (sd ^ se) = 2i for some integer i
+- sa & sb = 0
+
+Here, '|' is the bitwise OR, '&' is the bitwise AND and '^' is the bitwise XOR operation.
+
+Find the sum of f(sa|sb) * f(sc) * f(sd^se) over all valid 5-tuples (a, b, c, d, e), where f(i) is the i-th Fibonnaci number (f(0) = 0, f(1) = 1, f(i) = f(i - 1) + f(i - 2)).
+
+Since answer can be is huge output it modulo 109 + 7.
+
+Input Format:
+The first line of input contains an integer n (1 ≤ n ≤ 106).
+
+The second line of input contains n integers si (0 ≤ si < 217).
+
+Output Format:
+Output the sum as described above, modulo 109 + 7
+
+Note:
+None

@@ -1,0 +1,32 @@
+Description:
+There is a set $$$S$$$ of $$$n$$$ points on a coordinate plane.
+
+Kanno starts from a point $$$P$$$ that can be chosen on the plane. $$$P$$$ is not added to $$$S$$$ if it doesn't belong to $$$S$$$. Then the following sequence of operations (altogether called a move) is repeated several times, in the given order:
+
+1. Choose a line $$$l$$$ such that it passes through at least two elements in $$$S$$$ and passes through Kanno's current position. If there are multiple such lines, one is chosen equiprobably.
+2. Move to one of the points that belong to $$$S$$$ and lie on $$$l$$$. The destination is chosen equiprobably among all possible ones, including Kanno's current position (if it does belong to $$$S$$$).
+
+There are $$$q$$$ queries each consisting of two integers $$$(t_i, m_i)$$$. For each query, you're to help Kanno maximize the probability of the stopping position being the $$$t_i$$$-th element in $$$S$$$ after $$$m_i$$$ moves with a proper selection of $$$P$$$, and output this maximum probability. Note that according to rule 1, $$$P$$$ should belong to at least one line that passes through at least two points from $$$S$$$.
+
+Input Format:
+The first line contains a positive integer $$$n$$$ ($$$2 \leq n \leq 200$$$) — the number of points in $$$S$$$.
+
+The $$$i$$$-th of the following $$$n$$$ lines contains two space-separated integers $$$x_i$$$ and $$$y_i$$$ ($$$-10^4 \leq x_i, y_i \leq 10^4$$$) — the coordinates of the $$$i$$$-th point in $$$S$$$. The input guarantees that for all $$$1 \leq i \lt j \leq n$$$, $$$(x_i, y_i) \neq (x_j, y_j)$$$ holds.
+
+The next line contains a positive integer $$$q$$$ ($$$1 \leq q \leq 200$$$) — the number of queries.
+
+Each of the following $$$q$$$ lines contains two space-separated integers $$$t$$$ and $$$m$$$ ($$$1 \leq t_i \leq n$$$, $$$1 \leq m_i \leq 10^4$$$) — the index of the target point and the number of moves, respectively.
+
+Output Format:
+Output $$$q$$$ lines each containing a decimal number — the $$$i$$$-th among them denotes the maximum probability of staying on the $$$t_i$$$-th point after $$$m_i$$$ steps, with a proper choice of starting position $$$P$$$.
+
+Your answer will be considered correct if each number in your output differs from the corresponding one in jury's answer by at most $$$10^{-6}$$$.
+
+Formally, let your answer be $$$a$$$, and the jury's answer be $$$b$$$. Your answer is considered correct if $$$|a - b| \le 10^{-6}$$$.
+
+Note:
+The points in $$$S$$$ and possible candidates for line $$$l$$$ are depicted in the following figure.
+
+For the first query, when $$$P = (-1, -3)$$$, $$$l$$$ is uniquely determined to be $$$3x = y$$$, and thus Kanno will move to $$$(0, 0)$$$ with a probability of $$$\frac 1 2$$$.
+
+For the third query, when $$$P = (2, 2)$$$, $$$l$$$ is chosen equiprobably between $$$x + y = 4$$$ and $$$x = y$$$. Kanno will then move to the other four points with a probability of $$$\frac 1 2 \cdot \frac 1 3 = \frac 1 6$$$ each, or stay at $$$(2, 2)$$$ with a probability of $$$\frac 1 3$$$.

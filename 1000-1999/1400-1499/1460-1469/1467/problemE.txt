@@ -1,0 +1,21 @@
+Description:
+You are given a tree with $$$n$$$ vertices. Each vertex $$$i$$$ has a value $$$a_i$$$ associated with it.
+
+Let us root the tree at some vertex $$$v$$$. The vertex $$$v$$$ is called a distinctive root if the following holds: in all paths that start at $$$v$$$ and end at some other node, all the values encountered are distinct. Two different paths may have values in common but a single path must have all distinct values.
+
+Find the number of distinctive roots in the tree.
+
+Input Format:
+The first line of the input contains a single integer $$$n$$$ ($$$1 \le n \le 2\cdot10^5$$$) — the number of vertices in the tree.
+
+The next line contains $$$n$$$ space-separated integers $$$a_1, a_2, \dots, a_n$$$ ($$$1 \le a_i \le 10^9$$$).
+
+The following $$$n-1$$$ lines each contain two space-separated integers $$$u$$$ and $$$v$$$ ($$$1 \le u$$$, $$$v \le n$$$), denoting an edge from $$$u$$$ to $$$v$$$.
+
+It is guaranteed that the edges form a tree.
+
+Output Format:
+Print a single integer — the number of distinctive roots in the tree.
+
+Note:
+In the first example, $$$1$$$, $$$2$$$ and $$$5$$$ are distinctive roots.

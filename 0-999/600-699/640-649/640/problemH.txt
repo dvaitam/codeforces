@@ -1,0 +1,11 @@
+Description:
+You are given a square matrix of integer numbers. Rotate it 90 degrees clockwise (see examples for clarification of rotation).
+
+Input Format:
+The input consists of n lines (1 ≤ n ≤ 10, n is not given explicitly). Each of the lines contains n space-separated integers; j-th integer in i-th line corresponds to matrix element mij (1 ≤ mij ≤ 100).
+
+Output Format:
+Output the rotated matrix in the same format as the input.
+
+Note:
+None

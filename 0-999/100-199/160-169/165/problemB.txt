@@ -1,0 +1,19 @@
+Description:
+One day a highly important task was commissioned to Vasya — writing a program in a night. The program consists of n lines of code. Vasya is already exhausted, so he works like that: first he writes v lines of code, drinks a cup of tea, then he writes as much as $$\left[\frac{v}{k}\right]$$ lines, drinks another cup of tea, then he writes $$\left[\frac{v}{k^{2}}\right]$$ lines and so on: $$\left[\frac{v}{k^{3}}\right]$$, $$\left[\frac{v}{k^{4}}\right]$$, $$\left[\frac{v}{k^{5}}\right]$$, ...
+
+The expression $$\left[\frac{a}{b}\right]$$ is regarded as the integral part from dividing number a by number b.
+
+The moment the current value $$\left[\frac{v}{k\cdot p}\right]$$ equals 0, Vasya immediately falls asleep and he wakes up only in the morning, when the program should already be finished.
+
+Vasya is wondering, what minimum allowable value v can take to let him write not less than n lines of code before he falls asleep.
+
+Input Format:
+The input consists of two integers n and k, separated by spaces — the size of the program in lines and the productivity reduction coefficient, 1 ≤ n ≤ 109, 2 ≤ k ≤ 10.
+
+Output Format:
+Print the only integer — the minimum value of v that lets Vasya write the program in one night.
+
+Note:
+In the first sample the answer is v = 4. Vasya writes the code in the following portions: first 4 lines, then 2, then 1, and then Vasya falls asleep. Thus, he manages to write 4 + 2 + 1 = 7 lines in a night and complete the task.
+
+In the second sample the answer is v = 54. Vasya writes the code in the following portions: 54, 6. The total sum is 54 + 6 = 60, that's even more than n = 59.

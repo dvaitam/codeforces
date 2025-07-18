@@ -1,0 +1,24 @@
+Description:
+Consider integer sequence a1, a2, ..., an. You should run queries of two types:
+
+- The query format is "0 i val". In reply to this query you should make the following assignment: ai = val.
+- The query format is "1 l r k". In reply to this query you should print the maximum sum of at most k non-intersecting subsegments of sequence al, al + 1, ..., ar. Formally, you should choose at most k pairs of integers (x1, y1), (x2, y2), ..., (xt, yt) (l ≤ x1 ≤ y1 < x2 ≤ y2 < ... < xt ≤ yt ≤ r; t ≤ k) such that the sum ax1 + ax1 + 1 + ... + ay1 + ax2 + ax2 + 1 + ... + ay2 + ... + axt + axt + 1 + ... + ayt is as large as possible. Note that you should choose at most k subsegments. Particularly, you can choose 0 subsegments. In this case the described sum considered equal to zero.
+
+Input Format:
+The first line contains integer n (1 ≤ n ≤ 105), showing how many numbers the sequence has. The next line contains n integers a1, a2, ..., an (|ai| ≤ 500).
+
+The third line contains integer m (1 ≤ m ≤ 105) — the number of queries. The next m lines contain the queries in the format, given in the statement.
+
+All changing queries fit into limits: 1 ≤ i ≤ n, |val| ≤ 500.
+
+All queries to count the maximum sum of at most k non-intersecting subsegments fit into limits: 1 ≤ l ≤ r ≤ n, 1 ≤ k ≤ 20. It is guaranteed that the number of the queries to count the maximum sum of at most k non-intersecting subsegments doesn't exceed 10000.
+
+Output Format:
+For each query to count the maximum sum of at most k non-intersecting subsegments print the reply — the maximum sum. Print the answers to the queries in the order, in which the queries follow in the input.
+
+Note:
+In the first query of the first example you can select a single pair (1, 9). So the described sum will be 17.
+
+Look at the second query of the first example. How to choose two subsegments? (1, 3) and (7, 9)? Definitely not, the sum we could get from (1, 3) and (7, 9) is 20, against the optimal configuration (1, 7) and (9, 9) with 25.
+
+The answer to the third query is 0, we prefer select nothing if all of the numbers in the given interval are negative.

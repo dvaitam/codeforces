@@ -1,0 +1,23 @@
+Description:
+This is an interactive problem.
+
+Omkar has just come across a duck! The duck is walking on a grid with $$$n$$$ rows and $$$n$$$ columns ($$$2 \leq n \leq 25$$$) so that the grid contains a total of $$$n^2$$$ cells. Let's denote by $$$(x, y)$$$ the cell in the $$$x$$$-th row from the top and the $$$y$$$-th column from the left. Right now, the duck is at the cell $$$(1, 1)$$$ (the cell in the top left corner) and would like to reach the cell $$$(n, n)$$$ (the cell in the bottom right corner) by moving either down $$$1$$$ cell or to the right $$$1$$$ cell each second.
+
+Since Omkar thinks ducks are fun, he wants to play a game with you based on the movement of the duck. First, for each cell $$$(x, y)$$$ in the grid, you will tell Omkar a nonnegative integer $$$a_{x,y}$$$ not exceeding $$$10^{16}$$$, and Omkar will then put $$$a_{x,y}$$$ uninteresting problems in the cell $$$(x, y)$$$. After that, the duck will start their journey from $$$(1, 1)$$$ to $$$(n, n)$$$. For each cell $$$(x, y)$$$ that the duck crosses during their journey (including the cells $$$(1, 1)$$$ and $$$(n, n)$$$), the duck will eat the $$$a_{x,y}$$$ uninteresting problems in that cell. Once the duck has completed their journey, Omkar will measure their mass to determine the total number $$$k$$$ of uninteresting problems that the duck ate on their journey, and then tell you $$$k$$$.
+
+Your challenge, given $$$k$$$, is to exactly reproduce the duck's path, i. e. to tell Omkar precisely which cells the duck crossed on their journey. To be sure of your mastery of this game, Omkar will have the duck complete $$$q$$$ different journeys ($$$1 \leq q \leq 10^3$$$). Note that all journeys are independent: at the beginning of each journey, the cell $$$(x, y)$$$ will still contain $$$a_{x,y}$$$ uninteresting tasks.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+The duck's three journeys are illustrated below.
+
+$$$1 + 2 + 3 + 2 + 10 + 3 + 2 = 23$$$
+
+$$$1 + 4 + 9 + 0 + 7 + 3 + 2 = 26$$$
+
+$$$1 + 2 + 3 + 6 + 10 + 3 + 2 = 27$$$

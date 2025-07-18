@@ -1,0 +1,23 @@
+Description:
+The following problem is well-known: given integers n and m, calculate
+
+$$2^n \bmod m$$,
+
+where 2n = 2·2·...·2 (n factors), and $$x \bmod y$$ denotes the remainder of division of x by y.
+
+You are asked to solve the "reverse" problem. Given integers n and m, calculate
+
+$$m \mod 2^n$$.
+
+Input Format:
+The first line contains a single integer n (1 ≤ n ≤ 108).
+
+The second line contains a single integer m (1 ≤ m ≤ 108).
+
+Output Format:
+Output a single integer — the value of $$m \mod 2^n$$.
+
+Note:
+In the first example, the remainder of division of 42 by 24 = 16 is equal to 10.
+
+In the second example, 58 is divisible by 21 = 2 without remainder, and the answer is 0.

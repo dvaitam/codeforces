@@ -1,0 +1,33 @@
+Description:
+This is an interactive problem.
+
+Theofanis and his sister are playing the following game.
+
+They have $$$n$$$ points in a 2D plane and a starting point $$$(s_x,s_y)$$$. Each player (starting from the first player) chooses one of the $$$n$$$ points that wasn't chosen before and adds to the sum (which is initially $$$0$$$) the square of the Euclidean distance from the previous point (which is either the starting point or it was chosen by the other person) to the new point (that the current player selected).
+
+The game ends after exactly $$$n$$$ moves (after all the points are chosen). The first player wins if the sum is even in the end. Otherwise, the second player wins.
+
+Theofanis is a very competitive person and he hates losing. Thus, he wants to choose whether he should play first or second. Can you show him, which player to choose, and how he should play to beat his sister?
+
+Input Format:
+The first line contains a single integer $$$t$$$ ($$$1 \le t \le 2000$$$) — the number of test cases.
+
+The data for each test case is only available after the end of the interaction (the end of the game) for all previous test cases.
+
+The first line of each test case contains a single integer $$$n$$$ ($$$1 \le n \le 10^{5}$$$) — the number of points.
+
+The second line of each test case contains two integers $$$s_x$$$, $$$s_y$$$ ($$$0 \le s_x, s_y \le 10^{9}$$$) — the coordinates of the starting point.
+
+Two or more points may have the same coordinates.
+
+The $$$i$$$-th of the following $$$n$$$ lines contains two integers $$$x_i$$$ and $$$y_i$$$ ($$$0 \le x_i, y_i \le 10^{9}$$$) — the coordinates of the $$$i$$$-th point.
+
+It is guaranteed that the sum of $$$n$$$ over all test cases does not exceed $$$10^{5}$$$.
+
+Output Format:
+None
+
+Note:
+The examples above do not necessarily showcase optimal strategies or the correct player to choose.
+
+In the picture below, you can see the moves that each player made in the first example. The first player is red, and the second player is black.

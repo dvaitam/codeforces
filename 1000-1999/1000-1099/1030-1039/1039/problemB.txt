@@ -1,0 +1,23 @@
+Description:
+This is an interactive problem.
+
+In the Wonderful Metropolis of the Future, there is no need in subway train drivers. Due to the technological progress, they were replaced by the Artificial Intelligence (AI). Unfortunately, one day the predictions of sci-fi writers came true: the AI rebelled and now there is an uncontrollable train in the subway. It can be dangerous! Your task is to find the train and stop the AI.
+
+The subway of the Metropolis is one line (regular straight line with no self-intersections) with $$$n$$$ stations, indexed consecutively from $$$1$$$ to $$$n$$$. At each moment the train is at some station. You need to determine the index of this station, so that the train would be secured.
+
+To find the train, dispatcher Sarah gave you a gadget that allows you to select arbitrary numbers $$$l$$$ and $$$r$$$ ($$$l \le r$$$), and then check, whether the train is located on a station with index between $$$l$$$ and $$$r$$$, inclusive. Unfortunately, recharging of the gadget takes some time (and every time you use it as soon as possible), so between two applications of the gadget the train can move to any station that is at most $$$k$$$ stations away. Formally, if the train was at the station $$$x$$$ when the gadget was applied, then at the next application of the gadget the train can appear at any station $$$y$$$ such that $$$\max(1, x - k) \leq y \leq \min(n, x + k)$$$.
+
+Note that AI is not aware that you are trying to catch the train, so it makes all moves according to its predefined plan.
+
+After an examination of the gadget you found that it is very old and can hold no more than $$$4500$$$ applications, after which it will break and your mission will be considered a failure.
+
+Can you find the station with the train using no more than $$$4500$$$ applications of the gadgets?
+
+Input Format:
+The first line contains two integers $$$n$$$ and $$$k$$$ ($$$1 \leq n \leq 10^{18}$$$, $$$0 \leq k \leq 10$$$) — the number of stations and the maximum number of stations the train can move between two applications of the gadget.
+
+Output Format:
+None
+
+Note:
+In the first sample, the train was initially at the station $$$5$$$, after the first application of the gadget it did not move, after the second application it moved to the station $$$3$$$, and after the third application moved again to the station $$$5$$$.

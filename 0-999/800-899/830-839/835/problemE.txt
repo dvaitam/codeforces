@@ -1,0 +1,19 @@
+Description:
+Pay attention: this problem is interactive.
+
+Penguin Xoriy came up with a new game recently. He has n icicles numbered from 1 to n. Each icicle has a temperature — an integer from 1 to 109. Exactly two of these icicles are special: their temperature is y, while a temperature of all the others is x ≠ y. You have to find those special icicles. You can choose a non-empty subset of icicles and ask the penguin what is the bitwise exclusive OR (XOR) of the temperatures of the icicles in this subset. Note that you can't ask more than 19 questions.
+
+You are to find the special icicles.
+
+Input Format:
+The first line contains three integers n, x, y (2 ≤ n ≤ 1000, 1 ≤ x, y ≤ 109, x ≠ y) — the number of icicles, the temperature of non-special icicles and the temperature of the special icicles.
+
+Output Format:
+To give your answer to the penguin you have to print character "!" (without quotes), then print two integers p1, p2 (p1 < p2) — the indexes of the special icicles in ascending order. Note that "!" and p1 should be separated by a space; the indexes should be separated by a space too. After you gave the answer your program should terminate immediately.
+
+Note:
+The answer for the first question is $$1 \oplus 2 \oplus 1 = 2$$.
+
+The answer for the second and the third questions is 1, therefore, special icicles are indexes 1 and 3.
+
+You can read more about bitwise XOR operation here: https://en.wikipedia.org/wiki/Bitwise_operation#XOR.

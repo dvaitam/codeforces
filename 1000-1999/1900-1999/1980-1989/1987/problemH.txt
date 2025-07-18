@@ -1,0 +1,32 @@
+Description:
+This is an interactive problem.
+
+You are given two positive integers $$$n$$$ and $$$m$$$ ($$$\bf{n \le m}$$$).
+
+The jury has hidden from you a rectangular matrix $$$a$$$ with $$$n$$$ rows and $$$m$$$ columns, where $$$a_{i,j} \in \{ -1, 0, 1 \}$$$ for all $$$1 \le i \le n$$$ and $$$1 \le j \le m$$$. The jury has also selected a cell $$$(i_0, j_0)$$$. Your goal is to find $$$(i_0,j_0)$$$.
+
+In one query, you give a cell $$$(i, j)$$$, then the jury will reply with an integer.
+
+- If $$$(i, j) = (i_0, j_0)$$$, the jury will reply with $$$0$$$.
+- Else, let $$$S$$$ be the sum of $$$a_{x,y}$$$ over all $$$x$$$ and $$$y$$$ such that $$$\min(i, i_0) \le x \le \max(i, i_0)$$$ and $$$\min(j, j_0) \le y \le \max(j, j_0)$$$. Then, the jury will reply with $$$|i - i_0| + |j - j_0| + |S|$$$.
+
+Find $$$(i_0, j_0)$$$ by making at most $$$n + 225$$$ queries.
+
+Note: the grader is not adaptive: $$$a$$$ and $$$(i_0,j_0)$$$ are fixed before any queries are made.
+
+Input Format:
+Each test contains multiple test cases. The first line of input contains a single integer $$$t$$$ ($$$1 \le t \le 50$$$) — the number of test cases. The description of the test cases follows.
+
+The only line of each test case contains two integers $$$n$$$ and $$$m$$$ ($$$1 \le n \le m \le 5000$$$) — the numbers of rows and the number of columns of the hidden matrix $$$a$$$ respectively.
+
+It is guaranteed that the sum of $$$n \cdot m$$$ over all test cases does not exceed $$$25 \cdot 10^6$$$.
+
+Output Format:
+None
+
+Note:
+The hidden matrix in the first test case: $$$1$$$$$$0$$$$$$1$$$$$$\color{red}{\textbf{0}}$$$$$$1$$$$$$0$$$$$$0$$$$$$1$$$$$$0$$$$$$-1$$$$$$-1$$$$$$-1$$$
+
+The hidden matrix in the second test case: $$$\color{red}{\textbf{0}}$$$
+
+Note that the line breaks in the example input and output are for the sake of clarity, and do not occur in the real interaction.

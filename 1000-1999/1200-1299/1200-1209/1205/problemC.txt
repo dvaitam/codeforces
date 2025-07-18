@@ -1,0 +1,25 @@
+Description:
+This is an interactive problem
+
+You are given a grid $$$n\times n$$$, where $$$n$$$ is odd. Rows are enumerated from $$$1$$$ to $$$n$$$ from up to down, columns are enumerated from $$$1$$$ to $$$n$$$ from left to right. Cell, standing on the intersection of row $$$x$$$ and column $$$y$$$, is denoted by $$$(x, y)$$$.
+
+Every cell contains $$$0$$$ or $$$1$$$. It is known that the top-left cell contains $$$1$$$, and the bottom-right cell contains $$$0$$$.
+
+We want to know numbers in all cells of the grid. To do so we can ask the following questions:
+
+"$$$?$$$ $$$x_1$$$ $$$y_1$$$ $$$x_2$$$ $$$y_2$$$", where $$$1 \le x_1 \le x_2 \le n$$$, $$$1 \le y_1 \le y_2 \le n$$$, and $$$x_1 + y_1 + 2 \le x_2 + y_2$$$. In other words, we output two different cells $$$(x_1, y_1)$$$, $$$(x_2, y_2)$$$ of the grid such that we can get from the first to the second by moving only to the right and down, and they aren't adjacent.
+
+As a response to such question you will be told if there exists a path between $$$(x_1, y_1)$$$ and $$$(x_2, y_2)$$$, going only to the right or down, numbers in cells of which form a palindrome.
+
+For example, paths, shown in green, are palindromic, so answer for "$$$?$$$ $$$1$$$ $$$1$$$ $$$2$$$ $$$3$$$" and "$$$?$$$ $$$1$$$ $$$2$$$ $$$3$$$ $$$3$$$" would be that there exists such path. However, there is no palindromic path between $$$(1, 1)$$$ and $$$(3, 1)$$$.
+
+Determine all cells of the grid by asking not more than $$$n^2$$$ questions. It can be shown that the answer always exists.
+
+Input Format:
+The first line contains odd integer ($$$3 \le n < 50$$$) — the side of the grid.
+
+Output Format:
+None
+
+Note:
+None

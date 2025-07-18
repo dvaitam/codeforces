@@ -1,0 +1,20 @@
+Description:
+As Valeric and Valerko were watching one of the last Euro Championship games in a sports bar, they broke a mug. Of course, the guys paid for it but the barman said that he will let them watch football in his bar only if they help his son complete a programming task. The task goes like that.
+
+Let's consider a set of functions of the following form:
+
+$$y_i(x) = \begin{cases} 
+k_i \cdot x + b_i, & \text{if } k_i \cdot x + b_i \geq 0; \\
+0, & \text{if } k_i \cdot x + b_i < 0.
+\end{cases}$$
+
+Valeric and Valerko really want to watch the next Euro Championship game, so they asked you to help them.
+
+Input Format:
+The first line contains integer n (1 ≤ n ≤ 105) — the number of functions. Each of the following n lines contains two space-separated integer numbers ki, bi ( - 109 ≤ ki, bi ≤ 109) that determine the i-th function.
+
+Output Format:
+Print a single number — the number of angles that do not equal 180 degrees in the graph of the polyline that equals the sum of the given functions.
+
+Note:
+None

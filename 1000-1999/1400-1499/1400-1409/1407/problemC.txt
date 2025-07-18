@@ -1,0 +1,17 @@
+Description:
+This is an interactive problem.
+
+We hid from you a permutation $$$p$$$ of length $$$n$$$, consisting of the elements from $$$1$$$ to $$$n$$$. You want to guess it. To do that, you can give us 2 different indices $$$i$$$ and $$$j$$$, and we will reply with $$$p_{i} \bmod p_{j}$$$ (remainder of division $$$p_{i}$$$ by $$$p_{j}$$$).
+
+We have enough patience to answer at most $$$2 \cdot n$$$ queries, so you should fit in this constraint. Can you do it?
+
+As a reminder, a permutation of length $$$n$$$ is an array consisting of $$$n$$$ distinct integers from $$$1$$$ to $$$n$$$ in arbitrary order. For example, $$$[2,3,1,5,4]$$$ is a permutation, but $$$[1,2,2]$$$ is not a permutation ($$$2$$$ appears twice in the array) and $$$[1,3,4]$$$ is also not a permutation ($$$n=3$$$ but there is $$$4$$$ in the array).
+
+Input Format:
+The only line of the input contains a single integer $$$n$$$ ($$$1 \le n \le 10^4$$$) — length of the permutation.
+
+Output Format:
+None
+
+Note:
+None

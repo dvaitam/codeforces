@@ -1,0 +1,19 @@
+Description:
+If you have gone that far, you'll probably skip unnecessary legends anyway...
+
+You are given a binary string $$s = s_0 \ldots s_{m-1}$$ and an integer $$N = p_{1}^{\alpha_{1}} \ldots p_{n}^{\alpha_{n}}$$. Find the number of integers k, 0 ≤ k < N, such that for all i = 0, 1, ..., m - 1
+
+$$\gcd(k+i,N)=1 \text{ if and only if } s_i=1$$
+
+Input Format:
+In the first line of input there is a string s consisting of 0's and 1's (1 ≤ |s| ≤ 40).
+
+In the next line of input there is an integer n (1 ≤ n ≤ 5·105).
+
+Each of the next n lines contains two space-separated integers pi, αi (1 ≤ pi, αi ≤ 109, pi is prime). All pi are distinct.
+
+Output Format:
+A single integer — the answer to the problem.
+
+Note:
+None

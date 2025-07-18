@@ -1,0 +1,31 @@
+Description:
+Fox Ciel is participating in a party in Prime Kingdom. There are n foxes there (include Fox Ciel). The i-th fox is ai years old.
+
+They will have dinner around some round tables. You want to distribute foxes such that:
+
+1. Each fox is sitting at some table.
+2. Each table has at least 3 foxes sitting around it.
+3. The sum of ages of any two adjacent foxes around each table should be a prime number.
+
+If k foxes f1, f2, ..., fk are sitting around table in clockwise order, then for 1 ≤ i ≤ k - 1: fi and fi + 1 are adjacent, and f1 and fk are also adjacent.
+
+If it is possible to distribute the foxes in the desired manner, find out a way to do that.
+
+Input Format:
+The first line contains single integer n (3 ≤ n ≤ 200): the number of foxes in this party.
+
+The second line contains n integers ai (2 ≤ ai ≤ 104).
+
+Output Format:
+If it is impossible to do this, output "Impossible".
+
+Otherwise, in the first line output an integer m ($$1 \leq m \leq \frac{n}{3}$$): the number of tables.
+
+Then output m lines, each line should start with an integer k -=– the number of foxes around that table, and then k numbers — indices of fox sitting around that table in clockwise order.
+
+If there are several possible arrangements, output any of them.
+
+Note:
+In example 1, they can sit around one table, their ages are: 3-8-9-4, adjacent sums are: 11, 17, 13 and 7, all those integers are primes.
+
+In example 2, it is not possible: the sum of 2+2 = 4 is not a prime number.

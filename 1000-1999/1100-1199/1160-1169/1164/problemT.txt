@@ -1,0 +1,11 @@
+Description:
+Let $$$a, b, c, d$$$ be real numbers such that $$$a=\sqrt{7-\sqrt{6-a}}$$$, $$$b=\sqrt{7-\sqrt{6+b}}$$$, $$$c=\sqrt{7+\sqrt{6-c}}$$$ and $$$d=\sqrt{7+\sqrt{6+d}}$$$. Compute the product $$$abcd$$$.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

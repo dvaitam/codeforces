@@ -1,0 +1,21 @@
+Description:
+There is a clock labeled with the numbers $$$1$$$ through $$$12$$$ in clockwise order, as shown below.
+
+In this example, $$$(a,b,c,d)=(2,9,10,6)$$$, and the strings intersect.
+
+Alice and Bob have four distinct integers $$$a$$$, $$$b$$$, $$$c$$$, $$$d$$$ not more than $$$12$$$. Alice ties a red string connecting $$$a$$$ and $$$b$$$, and Bob ties a blue string connecting $$$c$$$ and $$$d$$$. Do the strings intersect? (The strings are straight line segments.)
+
+Input Format:
+The first line contains a single integer $$$t$$$ ($$$1 \leq t \leq 5940$$$) — the number of test cases.
+
+The only line of each test case contains four distinct integers $$$a$$$, $$$b$$$, $$$c$$$, $$$d$$$ ($$$1 \leq a, b, c, d \leq 12$$$).
+
+Output Format:
+For each test case, output "YES" (without quotes) if the strings intersect, and "NO" (without quotes) otherwise.
+
+You can output "YES" and "NO" in any case (for example, strings "yEs", "yes", and "Yes" will be recognized as a positive response).
+
+Note:
+The first test case is pictured in the statement.
+
+In the second test case, the strings do not intersect, as shown below.

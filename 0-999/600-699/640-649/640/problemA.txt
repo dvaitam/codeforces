@@ -1,0 +1,11 @@
+Description:
+Lazy caterer sequence is defined as the maximum number of pieces formed when slicing a convex pancake with n cuts (each cut is a straight line). The formula is Cn = n·(n + 1) / 2 + 1. You are given n; calculate n-th element of the sequence.
+
+Input Format:
+The only line of the input contains an integer n (0 ≤ n ≤ 100).
+
+Output Format:
+Output the n-th element of lazy caterer sequence.
+
+Note:
+None

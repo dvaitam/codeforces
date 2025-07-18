@@ -1,0 +1,21 @@
+Description:
+Kiwon's favorite video game is now holding a new year event to motivate the users! The game is about building and defending a castle, which led Kiwon to think about the following puzzle.
+
+In a 2-dimension plane, you have a set $$$s = \{(x_1, y_1), (x_2, y_2), \ldots, (x_n, y_n)\}$$$ consisting of $$$n$$$ distinct points. In the set $$$s$$$, no three distinct points lie on a single line. For a point $$$p \in s$$$, we can protect this point by building a castle. A castle is a simple quadrilateral (polygon with $$$4$$$ vertices) that strictly encloses the point $$$p$$$ (i.e. the point $$$p$$$ is strictly inside a quadrilateral).
+
+Kiwon is interested in the number of $$$4$$$-point subsets of $$$s$$$ that can be used to build a castle protecting $$$p$$$. Note that, if a single subset can be connected in more than one way to enclose a point, it is counted only once.
+
+Let $$$f(p)$$$ be the number of $$$4$$$-point subsets that can enclose the point $$$p$$$. Please compute the sum of $$$f(p)$$$ for all points $$$p \in s$$$.
+
+Input Format:
+The first line contains a single integer $$$n$$$ ($$$5 \le n \le 2\,500$$$).
+
+In the next $$$n$$$ lines, two integers $$$x_i$$$ and $$$y_i$$$ ($$$-10^9 \le x_i, y_i \le 10^9$$$) denoting the position of points are given.
+
+It is guaranteed that all points are distinct, and there are no three collinear points.
+
+Output Format:
+Print the sum of $$$f(p)$$$ for all points $$$p \in s$$$.
+
+Note:
+None

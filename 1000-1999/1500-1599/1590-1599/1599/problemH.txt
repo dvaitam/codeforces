@@ -1,0 +1,19 @@
+Description:
+This is an interactive problem!
+
+As part of your contribution in the Great Bubble War, you have been tasked with finding the newly built enemy fortress. The world you live in is a giant $$$10^9 \times 10^9$$$ grid, with squares having both coordinates between $$$1$$$ and $$$10^9$$$.
+
+You know that the enemy base has the shape of a rectangle, with the sides parallel to the sides of the grid. The people of your world are extremely scared of being at the edge of the world, so you know that the base doesn't contain any of the squares on the edges of the grid (the $$$x$$$ or $$$y$$$ coordinate being $$$1$$$ or $$$10^9$$$).
+
+To help you locate the base, you have been given a device that you can place in any square of the grid, and it will tell you the manhattan distance to the closest square of the base. The manhattan distance from square $$$(a, b)$$$ to square $$$(p, q)$$$ is calculated as $$$|a−p|+|b−q|$$$. If you try to place the device inside the enemy base, you will be captured by the enemy. Because of this, you need to make sure to never place the device inside the enemy base.
+
+Unfortunately, the device is powered by a battery and you can't recharge it. This means that you can use the device at most $$$40$$$ times.
+
+Input Format:
+The input contains the answers to your queries.
+
+Output Format:
+None
+
+Note:
+None

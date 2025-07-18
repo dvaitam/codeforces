@@ -1,0 +1,15 @@
+Description:
+Manao is solving a problem with the following statement:
+
+He came up with a solution that produces the correct answers but is too slow. You are given the pseudocode of his solution, where the function getAnswer calculates the answer to the problem:
+
+Your task is to help Manao optimize his algorithm.
+
+Input Format:
+The first line contains space-separated integers n, len and h (1 ≤ len ≤ n ≤ 150000; 1 ≤ h ≤ 109). The second line contains len space-separated integers b1, b2, ..., blen (1 ≤ bi ≤ 109). The third line contains n space-separated integers a1, a2, ..., an (1 ≤ ai ≤ 109).
+
+Output Format:
+Print a single number — the answer to Manao's problem.
+
+Note:
+None

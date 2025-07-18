@@ -1,0 +1,11 @@
+Description:
+In every generation there is a Chosen One. She alone will stand against the vampires, the demons, and the forces of darkness. She is the Slayer. — Joss Whedon
+
+Input Format:
+A string $$$s$$$ ($$$3 \le |s| \le 7$$$) consisting of lowercase English letters.
+
+Output Format:
+A single string. If there is no answer, print "none" (without the quotes).
+
+Note:
+None

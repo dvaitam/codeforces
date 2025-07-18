@@ -1,0 +1,11 @@
+Description:
+None
+
+Input Format:
+The input contains a single integer $$$a$$$ ($$$1 \le a \le 99$$$).
+
+Output Format:
+Output "YES" or "NO".
+
+Note:
+None

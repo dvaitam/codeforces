@@ -1,0 +1,11 @@
+Description:
+None
+
+Input Format:
+The only line of the input contains a string of digits. The length of the string is between 1 and 10, inclusive.
+
+Output Format:
+Output "Yes" or "No".
+
+Note:
+None

@@ -1,0 +1,11 @@
+Description:
+You are given two positive integers $$$d$$$ and $$$s$$$. Find minimal positive integer $$$n$$$ which is divisible by $$$d$$$ and has sum of digits equal to $$$s$$$.
+
+Input Format:
+The first line contains two positive integers $$$d$$$ and $$$s$$$ ($$$1 \le d \le 500, 1 \le s \le 5000$$$) separated by space.
+
+Output Format:
+Print the required number or -1 if it doesn't exist.
+
+Note:
+None

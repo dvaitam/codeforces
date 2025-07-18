@@ -1,0 +1,19 @@
+Description:
+Little X has solved the #P-complete problem in polynomial time recently. So he gives this task to you.
+
+There is a special n × n matrix A, you should calculate its permanent modulo 1000000007 (109 + 7). The special property of matrix A is almost all its elements equal to 1. Only k elements have specified value.
+
+You can find the definition of permanent at the link: https://en.wikipedia.org/wiki/Permanent
+
+Input Format:
+The first line contains two space-separated integers n, k (1 ≤ n ≤ 105; 1 ≤ k ≤ 50).
+
+The next k lines contain the description of the matrix. The i-th line contains three space-separated integers xi, yi, wi (1 ≤ xi,  yi ≤  n; 0  ≤  wi  ≤ 109). These numbers denote that Axi, yi = wi. All the elements of the matrix except of the given elements are equal to 1.
+
+It's guaranteed that all the positions (xi, yi) are distinct.
+
+Output Format:
+Print the permanent of the matrix modulo 1000000007 (109  +  7).
+
+Note:
+None

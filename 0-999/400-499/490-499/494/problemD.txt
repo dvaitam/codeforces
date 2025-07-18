@@ -1,0 +1,25 @@
+Description:
+Ali is Hamed's little brother and tomorrow is his birthday. Hamed wants his brother to earn his gift so he gave him a hard programming problem and told him if he can successfully solve it, he'll get him a brand new laptop. Ali is not yet a very talented programmer like Hamed and although he usually doesn't cheat but this time is an exception. It's about a brand new laptop. So he decided to secretly seek help from you. Please solve this problem for Ali.
+
+An n-vertex weighted rooted tree is given. Vertex number 1 is a root of the tree. We define d(u, v) as the sum of edges weights on the shortest path between vertices u and v. Specifically we define d(u, u) = 0. Also let's define S(v) for each vertex v as a set containing all vertices u such that d(1, u) = d(1, v) + d(v, u). Function f(u, v) is then defined using the following formula:
+
+$$f(u,v) = \sum_{x \in S(v)} d(u,x)^2 - \sum_{x \notin S(v)} d(u,x)^2$$
+
+The goal is to calculate f(u, v) for each of the q given pair of vertices. As the answer can be rather large it's enough to print it modulo 109 + 7.
+
+Input Format:
+In the first line of input an integer n (1 ≤ n ≤ 105), number of vertices of the tree is given.
+
+In each of the next n - 1 lines three space-separated integers ai, bi, ci (1 ≤ ai, bi ≤ n, 1 ≤ ci ≤ 109) are given indicating an edge between ai and bi with weight equal to ci.
+
+In the next line an integer q (1 ≤ q ≤ 105), number of vertex pairs, is given.
+
+In each of the next q lines two space-separated integers ui, vi (1 ≤ ui, vi ≤ n) are given meaning that you must calculate f(ui, vi).
+
+It is guaranteed that the given edges form a tree.
+
+Output Format:
+Output q lines. In the i-th line print the value of f(ui, vi) modulo 109 + 7.
+
+Note:
+None

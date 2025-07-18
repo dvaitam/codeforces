@@ -1,0 +1,21 @@
+Description:
+You are given an array of integers $$$a$$$ of size $$$n$$$. This array is non-decreasing, i. e. $$$a_1 \le a_2 \le \dots \le a_n$$$.
+
+You have to find arrays of integers $$$b$$$ of size $$$2n - 1$$$, such that:
+
+- $$$b_{2i-1} = a_i$$$ ($$$1 \le i \le n$$$);
+- array $$$b$$$ is non-decreasing;
+- $$$b_1 \oplus b_2 \oplus \dots \oplus b_{2n-1} = 0$$$ ($$$\oplus$$$ denotes bitwise XOR operation: https://en.wikipedia.org/wiki/Exclusive_or. In Kotlin, it is xor function).
+
+Calculate the number of arrays that meet all the above conditions, modulo $$$998244353$$$.
+
+Input Format:
+The first line contains a single integer $$$n$$$ ($$$2 \le n \le 17$$$) — the size of the array $$$a$$$.
+
+The second line contains $$$n$$$ integers ($$$0 \le a_i \le 2^{60} - 1; a_i \le a_{i+1}$$$) — elements of the array $$$a$$$.
+
+Output Format:
+Print a single integer — the number of arrays that meet all the above conditions, modulo $$$998244353$$$.
+
+Note:
+None

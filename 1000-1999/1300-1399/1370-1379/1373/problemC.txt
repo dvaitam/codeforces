@@ -1,0 +1,19 @@
+Description:
+You are given a string $$$s$$$ consisting only of characters + and -. You perform some process with this string. This process can be described by the following pseudocode:
+
+Note that the $$$inf$$$ denotes infinity, and the characters of the string are numbered from $$$1$$$ to $$$|s|$$$.
+
+You have to calculate the value of the $$$res$$$ after the process ends.
+
+Input Format:
+The first line contains one integer $$$t$$$ ($$$1 \le t \le 1000$$$) — the number of test cases.
+
+The only lines of each test case contains string $$$s$$$ ($$$1 \le |s| \le 10^6$$$) consisting only of characters + and -.
+
+It's guaranteed that sum of $$$|s|$$$ over all test cases doesn't exceed $$$10^6$$$.
+
+Output Format:
+For each test case print one integer — the value of the $$$res$$$ after the process ends.
+
+Note:
+None

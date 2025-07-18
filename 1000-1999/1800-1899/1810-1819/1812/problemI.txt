@@ -1,0 +1,13 @@
+Description:
+None
+
+Input Format:
+The first line of input contains $$$t$$$ ($$$1 \leq t \leq 25$$$) — the number of test cases.
+
+The only line of each test case contains a single string $$$s$$$ ($$$1 \leq |s| \leq 100$$$) consisting only of lowercase English letters.
+
+Output Format:
+For each test case, print YES or NO.
+
+Note:
+None

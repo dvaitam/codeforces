@@ -1,0 +1,15 @@
+Description:
+Jzzhu has two integers, n and m. He calls an integer point (x, y) of a plane special if 0 ≤ x ≤ n and 0 ≤ y ≤ m. Jzzhu defines a unit square as a square with corners at points (x, y), (x + 1, y), (x + 1, y + 1), (x, y + 1), where x and y are some integers.
+
+Let's look at all the squares (their sides not necessarily parallel to the coordinate axes) with corners at the special points. For each such square Jzzhu paints a dot in every unit square that is fully inside it. After that some unit squares can contain several dots. Now Jzzhu wonders, how many dots he has painted on the plane. Find this number modulo 1000000007 (109 + 7).
+
+Input Format:
+The first line contains a single integer t (1 ≤ t ≤ 105) — the number of tests.
+
+Each of the next t lines contains the description of the test: two integers n and m (1 ≤ n, m ≤ 106) — the value of variables for the current test.
+
+Output Format:
+For each test output the total number of dots modulo 1000000007 (109 + 7).
+
+Note:
+None

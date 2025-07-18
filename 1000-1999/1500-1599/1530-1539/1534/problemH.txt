@@ -1,0 +1,46 @@
+Description:
+This is an interactive problem.
+
+As he qualified for IOI this year, Little Ericyi was given a gift from all his friends: a tree of $$$n$$$ nodes!
+
+On the flight to IOI Little Ericyi was very bored, so he decided to play a game with Little Yvonne with his new tree. First, Little Yvonne selects two (not necessarily different) nodes $$$a$$$ and $$$b$$$ on the tree (without telling Ericyi), and then gives him a hint $$$f$$$ (which is some node on the path from $$$a$$$ to $$$b$$$).
+
+Then, Little Ericyi is able to ask the following question repeatedly:
+
+- If I rooted the tree at node $$$r$$$ (Ericyi gets to choose $$$r$$$), what would be the Lowest Common Ancestor of $$$a$$$ and $$$b$$$?
+
+Little Ericyi's goal is to find the nodes $$$a$$$ and $$$b$$$, and report them to Little Yvonne.
+
+However, Little Yvonne thought this game was too easy, so before he gives the hint $$$f$$$ to Little Ericyi, he also wants him to first find the maximum number of queries required to determine $$$a$$$ and $$$b$$$ over all possibilities of $$$a$$$, $$$b$$$, and $$$f$$$ assuming Little Ericyi plays optimally. Little Ericyi defines an optimal strategy as one that makes the minimum number of queries. Of course, once Little Ericyi replies with the maximum number of queries, Little Yvonne will only let him use that many queries in the game.
+
+The tree, $$$a$$$, $$$b$$$, and $$$f$$$ are all fixed before the start of the game and do not change as queries are made.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+Here is the the tree from the first sample interaction. Nodes $$$a$$$ and $$$b$$$ are highlighted.
+
+Notice that $$$a$$$ and $$$b$$$ can be output in any order.
+
+Additionally, here are the answers to querying every single node $$$1,2,\ldots,n$$$ for your convenience:
+
+- $$$1$$$: $$$1$$$
+- $$$2$$$: $$$2$$$
+- $$$3$$$: $$$2$$$
+- $$$4$$$: $$$4$$$
+
+__________________________________________
+
+Here is the the tree from the second sample interaction. Again, nodes $$$a$$$ and $$$b$$$ are highlighted.
+
+Lastly, here are the answers to querying every single node $$$1,2,\ldots,n$$$ (in example $$$2$$$) for your convenience:
+
+- $$$1$$$: $$$1$$$
+- $$$2$$$: $$$4$$$
+- $$$3$$$: $$$1$$$
+- $$$4$$$: $$$4$$$
+- $$$5$$$: $$$4$$$

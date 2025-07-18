@@ -1,0 +1,11 @@
+Description:
+Find an n × n matrix with different numbers from 1 to n2, so the sum in each row, column and both main diagonals are odd.
+
+Input Format:
+The only line contains odd integer n (1 ≤ n ≤ 49).
+
+Output Format:
+Print n lines with n integers. All the integers should be different and from 1 to n2. The sum in each row, column and both main diagonals should be odd.
+
+Note:
+None

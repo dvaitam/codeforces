@@ -1,0 +1,11 @@
+Description:
+Pentagonal numbers are figurate numbers which can be calculated using the formula pn = (3n2 - n) / 2 (always integer). You are given n; calculate n-th pentagonal number.
+
+Input Format:
+The only line of input contains an integer n (1 ≤ n ≤ 100).
+
+Output Format:
+Output the n-th pentagonal number.
+
+Note:
+None

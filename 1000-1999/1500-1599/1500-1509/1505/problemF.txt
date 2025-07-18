@@ -1,0 +1,11 @@
+Description:
+*The two images are equivalent, feel free to use either one.
+
+Input Format:
+The input contains a single integer $$$a$$$ ($$$-100 \le a \le 100$$$).
+
+Output Format:
+Output the result – an integer number.
+
+Note:
+None

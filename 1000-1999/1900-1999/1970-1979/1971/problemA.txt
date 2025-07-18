@@ -1,0 +1,15 @@
+Description:
+You are given two integers $$$x$$$ and $$$y$$$.
+
+Output two integers: the minimum of $$$x$$$ and $$$y$$$, followed by the maximum of $$$x$$$ and $$$y$$$.
+
+Input Format:
+The first line contains a single integer $$$t$$$ ($$$1 \leq t \leq 100$$$) — the number of test cases.
+
+The only line of each test case contains two space-separated integers $$$x$$$ and $$$y$$$ ($$$0 \leq x, y \leq 9$$$).
+
+Output Format:
+For each test case, output two integers: the minimum of $$$x$$$ and $$$y$$$, followed by the maximum of $$$x$$$ and $$$y$$$.
+
+Note:
+None

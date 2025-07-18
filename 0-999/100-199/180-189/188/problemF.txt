@@ -1,0 +1,11 @@
+Description:
+You are given a positive integer n. Output its binary notation.
+
+Input Format:
+The only line of input data contains an integer n (1 ≤ n ≤ 106).
+
+Output Format:
+Output the binary notation of n (without any leading zeros).
+
+Note:
+In the first example 5 = 1 * 22 + 0 * 21 + 1 * 20.

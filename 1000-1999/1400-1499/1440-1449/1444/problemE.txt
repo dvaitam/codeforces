@@ -1,0 +1,17 @@
+Description:
+This is an interactive problem.
+
+You are given a tree — connected undirected graph without cycles. One vertex of the tree is special, and you have to find which one. You can ask questions in the following form: given an edge of the tree, which endpoint is closer to the special vertex, meaning which endpoint's shortest path to the special vertex contains fewer edges. You have to find the special vertex by asking the minimum number of questions in the worst case for a given tree.
+
+Please note that the special vertex might not be fixed by the interactor in advance: it might change the vertex to any other one, with the requirement of being consistent with the previously given answers.
+
+Input Format:
+You are given an integer $$$n$$$ ($$$2 \le n \le 100$$$) — the number of vertices in a tree.
+
+The folloiwing $$$n-1$$$ lines contain two integers each, $$$u$$$ and $$$v$$$ ($$$1 \le u, v \le n$$$), that denote an edge in the tree connecting $$$u$$$ and $$$v$$$. It is guaranteed that the given edges form a tree.
+
+Output Format:
+None
+
+Note:
+Hacks are forbidden in this task.

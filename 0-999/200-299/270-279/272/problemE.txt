@@ -1,0 +1,21 @@
+Description:
+Dima came to the horse land. There are n horses living in the land. Each horse in the horse land has several enemies (enmity is a symmetric relationship). The horse land isn't very hostile, so the number of enemies of each horse is at most 3.
+
+Right now the horse land is going through an election campaign. So the horses trusted Dima to split them into two parts. At that the horses want the following condition to hold: a horse shouldn't have more than one enemy in its party.
+
+Help Dima split the horses into parties. Note that one of the parties can turn out to be empty.
+
+Input Format:
+The first line contains two integers n, m $$( 1 \leq n \leq 3 \cdot 10^{5} ; 0 \leq m \leq \min ( 3 \cdot 10^{5}, \frac { n ( n - 1 ) } { 2 } ) )$$ — the number of horses in the horse land and the number of enemy pairs.
+
+Next m lines define the enemy pairs. The i-th line contains integers ai, bi (1 ≤ ai, bi ≤ n; ai ≠ bi), which mean that horse ai is the enemy of horse bi.
+
+Consider the horses indexed in some way from 1 to n. It is guaranteed that each horse has at most three enemies. No pair of enemies occurs more than once in the input.
+
+Output Format:
+Print a line, consisting of n characters: the i-th character of the line must equal "0", if the horse number i needs to go to the first party, otherwise this character should equal "1".
+
+If there isn't a way to divide the horses as required, print -1.
+
+Note:
+None

@@ -1,0 +1,44 @@
+Description:
+Given a directed acyclic graph with $$$n$$$ nodes and $$$m$$$ edges ($$$2 \le n \le 5000, 1 \le m \le 5000$$$). The graph has exactly one entry node $$$s$$$ with no incoming edges and exactly one exit node $$$t$$$ with no outgoing edges. Let full path be a path from $$$s$$$ to $$$t$$$. Each node $$$i$$$ is on a full path and has positive integer weight $$$w_i$$$. In addition, a subset of nodes is marked.
+
+Let region be a subset of nodes such that:
+
+1. a region has at least one marked node;
+2. if a full path contains a node of a region, then the path contains all marked nodes of the region;
+3. any two different regions do not intersect.
+
+Consider region $$$r$$$ and full path $$$p$$$. Let $$$w(r,p)$$$ denote the weight of region $$$r$$$ in full path $$$p$$$ defined as the total sum of the weights of all the nodes of the region in the path or zero, if there are no such nodes. Formally, $$$$$$w(r, p)=\sum_{i \in r \cap p}{w_i}$$$$$$ Balance of a region or $$$b(r)$$$ is the ratio of minimum non-zero weight to maximum weight of the region in all full paths. Formally, $$$$$$b(r)=\frac{\min_{w(r,p)>0} w(r,p)}{\max_{p} w(r,p)}$$$$$$ Divide all nodes into regions so that the balance of each region is greater or equal than $$$0.9$$$. It is allowed to additionally mark nodes, if necessary.
+
+Minimize the total number of regions. Secondly, maximize the sum of all balances over all regions.
+
+Example
+
+Consider the graph given in Fig. 1. Node weights are numbers in circles, node $$$3$$$ is marked and there are two full paths: $$$1 \rightarrow 2 \rightarrow 4$$$ and $$$1 \rightarrow 3 \rightarrow 4$$$. As the first full path has no marked nodes in it, one cannot divide all nodes into valid regions without violation of rule $$$1$$$ and/or rule $$$2$$$ from the definition of a region – let us mark node $$$1$$$ to fix it (see Fig. 2). Now the graph has two valid regions: $$$\{1, 2, 4\}$$$ and $$$\{3\}$$$. However, in the full path $$$1 \rightarrow 3 \rightarrow 4$$$, the weight of the first region is equal to $$$3$$$ and in the full path $$$1 \rightarrow 2 \rightarrow 4$$$, it is equal to $$$6$$$ so the balance of the region is $$$0.5$$$ which is less than $$$0.9$$$. Let us mark node $$$2$$$ too (see Fig. 3): now there are three valid regions $$$\{1, 4\}$$$, $$$\{2\}$$$, $$$\{3\}$$$ and the balance of each of them is equal to $$$1$$$.
+
+Input Format:
+The first line of the input contains integer $$$g$$$ ($$$1 \le g \le 20$$$) — the number of test cases. Each test case is a graph to be processed. The test cases are preceded by an empty line.
+
+All nodes of each graph are indexed from $$$1$$$ to $$$n$$$: index $$$1$$$ is for the entry node $$$s$$$, index $$$n$$$ is for the exit node $$$t$$$.
+
+The first line of each test case contains integer $$$n$$$ and a sequence of integers $$$w_1, w_2, \dots, w_n$$$ ($$$2 \le n \le 5000; 1 \le w_i \le 5000$$$) — the number of the graph nodes followed by their weights in the order of node indices.
+
+The second line of each test case contains integer $$$k$$$ and a sequence of integers $$$u_1, u_2, \dots, u_k$$$ ($$$0 \le k \le n; 1 \le u_i \le n$$$) — the number of marked nodes followed by their indices. All values $$$u_i$$$ are distinct.
+
+The third line contains integer $$$m$$$ ($$$1 \le m \le 5000$$$) — the number of edges. All edges are directed. Next $$$m$$$ lines contain descriptions of edges, one on a line. A pair of integers $$$x_i$$$, $$$y_i$$$ ($$$1 \le x_i, y_i \le n$$$) stands for the edge from node $$$x_i$$$ to node $$$y_i$$$.
+
+The given graph is well-formed: acyclic, for each node $$$u$$$ there is a path from node $$$1$$$ to node $$$n$$$ containing $$$u$$$. There is at most one edge between a pair of nodes.
+
+Output Format:
+Print the required output for each test case of the input.
+
+The first line of the output contains integer $$$q$$$ and integer sequence $$$v_1, v_2, \dots, v_q$$$ — the number of additionally marked nodes (it is possible that $$$q=0$$$) and indices of additionally marked nodes.
+
+The second line of the output contains integer $$$c$$$ — the number of regions your solution found. Then descriptions of $$$c$$$ regions follow. Each description is a line containing the number of nodes of the region followed by indices of the nodes.
+
+Note:
+Scoring:
+There are only two tests for this problem, each includes a set of graphs. The first test does not bring any points, it is only for preliminary testing of the correctness of your solution. The second test contains large graphs and solutions will be run on it only if the first test passed. If your solution fails for any test case, it does not receive any points.
+
+Your score result is equal to the total number of regions over all graphs in the second test (the lower, the better). If several solutions have the same score, the one with the larger sum of balances over all regions in all graphs of the second test is ranked higher. In case of a tie, the earlier submitted solution prevails.
+
+This output example corresponds to the solution described above and depicted in Fig. 3.

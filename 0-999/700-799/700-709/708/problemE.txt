@@ -1,0 +1,23 @@
+Description:
+Alex studied well and won the trip to student camp Alushta, located on the seashore.
+
+Unfortunately, it's the period of the strong winds now and there is a chance the camp will be destroyed! Camp building can be represented as the rectangle of n + 2 concrete blocks height and m blocks width.
+
+Every day there is a breeze blowing from the sea. Each block, except for the blocks of the upper and lower levers, such that there is no block to the left of it is destroyed with the probability $$p = \frac{a}{b}$$. Similarly, each night the breeze blows in the direction to the sea. Thus, each block (again, except for the blocks of the upper and lower levers) such that there is no block to the right of it is destroyed with the same probability p. Note, that blocks of the upper and lower level are indestructible, so there are only n·m blocks that can be destroyed.
+
+The period of the strong winds will last for k days and k nights. If during this period the building will split in at least two connected components, it will collapse and Alex will have to find another place to spend summer.
+
+Find the probability that Alex won't have to look for other opportunities and will be able to spend the summer in this camp.
+
+Input Format:
+The first line of the input contains two integers n and m (1 ≤ n, m ≤ 1500) that define the size of the destructible part of building.
+
+The second line of the input contains two integers a and b (1 ≤ a ≤ b ≤ 109) that define the probability p. It's guaranteed that integers a and b are coprime.
+
+The third line contains a single integer k (0 ≤ k ≤ 100 000) — the number of days and nights strong wind will blow for.
+
+Output Format:
+Consider the answer as an irreducible fraction is equal to $$\frac{c}{d}$$. Print one integer equal to $$c \cdot d^{-1} \mod 10^{9} + 7$$. It's guaranteed that within the given constraints $$d \neq 0 \pmod{10^9 + 7}$$.
+
+Note:
+In the first sample, each of the four blocks is destroyed with the probability $$\frac{1}{2}$$. There are 7 scenarios that result in building not collapsing, and the probability we are looking for is equal to $$\frac{7}{16}$$, so you should print $$7 \cdot 16^{-1} = 7 \cdot 562500004 = 937500007 \pmod {10^9 + 7}$$

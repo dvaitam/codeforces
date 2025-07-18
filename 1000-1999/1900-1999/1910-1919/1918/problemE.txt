@@ -1,0 +1,25 @@
+Description:
+This is an interactive problem!
+
+In the new round, there were $$$n$$$ tasks with difficulties from $$$1$$$ to $$$n$$$. The coordinator, who decided to have the first round with tasks in unsorted order of difficulty, rearranged the tasks, resulting in a permutation of difficulties from $$$1$$$ to $$$n$$$. After that, the coordinator challenged ace5 to guess the permutation in the following way.
+
+Initially, the coordinator chooses a number $$$x$$$ from $$$1$$$ to $$$n$$$.
+
+ace5 can make queries of the form: $$$?\ i$$$. The answer will be:
+
+- $$$>$$$, if $$$a_i > x$$$, after which $$$x$$$ increases by $$$1$$$.
+- $$$<$$$, if $$$a_i < x$$$, after which $$$x$$$ decreases by $$$1$$$.
+- $$$=$$$, if $$$a_i = x$$$, after which $$$x$$$ remains unchanged.
+
+The task for ace5 is to guess the permutation in no more than $$$40n$$$ queries. Since ace5 is too busy writing the announcement, he has entrusted this task to you.
+
+Input Format:
+The first line contains a single integer $$$t$$$ ($$$1 \leq t \leq 1000$$$) — the number of test cases.
+
+Output Format:
+None
+
+Note:
+In the first test, the hidden permutation is $$$a$$$ = [$$$2,4,1,5,3$$$], and the initial value of $$$x$$$ is $$$3$$$.
+
+In the second test, the hidden permutation is $$$a$$$ = [$$$2,1$$$], and the initial value of $$$x$$$ is $$$1$$$.

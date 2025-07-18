@@ -1,0 +1,49 @@
+Description:
+Unfortunately, a mistake was found in the proof of the author's solution to this problem. Currently, we don't know the absolutely correct solution. However, you can solve this task, but if your solution passes all the tests, it is not guaranteed to be correct. If your solution has passed all the tests and you are sure that it is correct, you can write to one of the contest authors about it.
+
+Surely you all read the book "Alice in Wonderland". In this task, Nastya got to the country of Three strange Bees. The bees are strange because their honeycombs are pentagonal. Nastya got there illegally, so she wants bees not to catch her. Help the bees punish the intruder!
+
+This is an interactive problem.
+
+A beehive is a connected undirected graph where bees and Nastya can move along the edges. A graph satisfies two properties:
+
+- The degree of any of its vertex is no more than $$$3$$$.
+- For each edge, there exists a cycle of length not greater than $$$5$$$ passing through this edge.
+
+1. For each of your bees, you can either move each one along some edge from the vertex they are currently staying or leave it in place.
+2. Then Nastya will necessarily move along some edge of the graph from the vertex she is currently staying/.
+
+You win if at least one of the bees and Nastya are in the same vertex at any time of the game.
+
+If this situation does not occur after $$$n$$$ moves, then you lose.
+
+Several bees can be in the same vertex.
+
+Input Format:
+The first line contains two integers $$$n$$$ $$$(4 \leq n \leq 5000)$$$ and $$$m$$$ $$$(n \leq m \leq 3n)$$$  — the number of vertices and edges in the graph.
+
+Each of the next $$$m$$$ lines contains two integers $$$v$$$ and $$$u$$$ $$$(1 \leq v, u \leq n)$$$, which mean that there is an edge between the vertices $$$v$$$ and $$$u$$$. It is guaranteed that the graph is connected, does not contain loops that the degree of any vertex does not exceed $$$3$$$ and a cycle of length no more than $$$5$$$ passes through each edge. Note that the graph may contain multiple edges.
+
+Output Format:
+None
+
+Note:
+Let Nastya be a green chip, and three numbered red ones are three bees.
+
+In the first test, the movement of the heroes looks like this.
+
+After selecting the starting vertices.
+
+The first move after the bees move.
+
+The first move after the Nastya's move. The first bee caught Nastya.
+
+In the second test, the movement of the heroes looks like this.
+
+After selecting the starting vertices.
+
+The first move after the bees move.
+
+The first move after the Nastya's move.
+
+The second move after the bees move. The first bee caught Nastya.

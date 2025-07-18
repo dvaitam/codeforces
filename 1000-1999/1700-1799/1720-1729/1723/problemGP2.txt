@@ -1,0 +1,89 @@
+Description:
+In computer networks, the Internet Protocol (IP) uses path routing. With path routing, the packet contains only the destination address; routers decide which "next hop" to forward each packet on to get it closer to its destination. Each router makes this decision locally, based only on the destination address and its local configuration. One way to store this configuration is to use routing tables, which means for each router, we store the "next hop" for every possible destination. However, as the scale of the network grows larger, the size of the router table grows as well. It is a big issue since routers only have limited computing resources. One way to address this issue is to divide the graph into several partitions.
+
+We can further merge $$$R31, R32, R33, R34$$$ into a single node $$$R3$$$. Then for $$$R1$$$, we need to store only $$$6$$$ entries in its routing table. For routers in $$$R3$$$ or $$$R2$$$, it only needs to store $$$9$$$ entries. Your task is to find an optimal partition of the initial graph to minimize the maximum size of the routing table for all routers in the network.
+
+A computer network under consideration is an undirected connected graph $$$G = (V,E)$$$, where $$$|V| = N\ (2\leq N\leq 10^5)$$$, $$$|E| = M\ (N-1\leq M\leq 2\times 10^5)$$$, $$$V=\{1,2,\ldots ,N\}$$$, $$$E=\{e=(u,v,w) \mid \text{There is an edge between nodes } u \text{ and } v \text{ with weight } w\}.$$$
+
+A partition $$$P$$$ of the network $$$G$$$ is a set of non-empty subsets of $$$V$$$ such that every node $$$v\in V$$$ belongs to exactly one of these subsets, and the induced sub-graph for each subset in $$$P$$$ is connected. Here, one subset corresponds to one abstract node mentioned above.
+
+Formally, $$$P$$$ is a valid partition if and only if $$$P$$$ is a family of sets that satisfies:
+
+- $$$\emptyset\not\in P$$$
+- $$$\bigcup\limits_{A\in P} A = V$$$
+- $$$\forall A,B\in P: A\not=B \implies A\cap B = \emptyset$$$
+- $$$\forall A \in P$$$, the induced subgraph $$$G[A]$$$ is connected
+
+The routing table size of any node $$$v$$$ for the corresponding partition $$$P$$$ is defined by the following equation: $$$$$$RTsize(v,P)=|P|+|Q|-1,$$$$$$ where $$$|P|$$$ is the number of subsets in $$$P$$$, $$$Q$$$ is the subset in $$$P$$$ such that $$$v\in Q$$$. $$$|Q|$$$ is the size of $$$Q$$$.
+
+The "next hop" is defined by the shortest path tree. For each node pair $$$(u,v),u\in V,v\in V$$$, the "next hop" is a node $$$z\in V$$$, such that there is an edge $$$e\in E$$$ connected from $$$u$$$ to $$$z$$$ directly, and $$$dist(u,v)=w(e)+dist(z,v)$$$, here $$$dist(u,v)$$$ denotes the length of the shortest path from $$$u$$$ to $$$v$$$, and $$$w(e)$$$ denotes the weight of the edge connecting $$$u$$$ and $$$z$$$. The valid "next hop" may not be unique. After the graph partitioning, the "next hop" for nodes in the same subset $$$A \in P$$$ is calculated via the shortest path in the induced sub-graph $$$G[A]$$$ using the same method above. We compute the "next hop" for two nodes from different subsets of $$$P$$$ by calculating the shortest path in the "compressed" graph (we compress all nodes in the same subset into a single node). The new graph only contains edges between nodes from different subsets. And then find the shortest path from the subset containing $$$u$$$ to the subset containing $$$v$$$. Suppose the first edge in this path is between $$$(x,y)$$$. From the definition, $$$x$$$, $$$y$$$ are in different subsets of $$$P$$$, and $$$u$$$ is in the same subset of $$$x$$$. If $$$x=u$$$, then the "next hop" of $$$(u,v)$$$ is $$$y$$$, otherwise the "next hop" of $$$(u,v)$$$ is the "next hop" of $$$(u,x)$$$.
+
+The path from $$$u$$$ to $$$v$$$ may differ from the path in the graph before partition.
+
+For example:
+
+Originally, the packet transmission path from $$$1$$$ to $$$2$$$ is the shortest in the whole graph, so it is $$$1\to 3\to 2$$$, and the total length is 3.
+
+If our partition $$$P = \{\{1,2\},\{3\},\{4\}\}$$$, then the packet transmission path from $$$1$$$ to $$$2$$$ is the shortest path in the subgraph, so it is $$$1\to 2$$$. The total length is $$$10$$$, which gets much greater after partition.
+
+Define $$$dist(u,v)$$$ as the length of the shortest path from $$$u$$$ to $$$v$$$ in graph $$$G$$$.
+
+Let $$$cost(u,v,P)$$$ be the length of the optimal transmission path after dividing graph $$$G$$$ by partition $$$P$$$. The way to determine $$$cost(u,v,P)$$$ is specified later.
+
+For node $$$u$$$, we define $$$B(u,P)=Q$$$, where $$$Q$$$ is the unique subset in $$$P$$$ such that $$$u\in Q$$$.
+
+Define two new edge sets:
+
+$$$$$$EdgeZero(P)=\{(u,v,w)\mid (u,v,w)\in E\land B(u,P)\not =B(v,P)\}\cup \{(u,v,0)\mid (u,v,w)\in E\land B(u,P)=B(v,P)\}$$$$$$
+
+$$$$$$EdgeInf(P)=\{ (u,v,\infty)\mid (u,v,w)\in E\land B(u,P)\not =B(v,P)\}\cup\{(u,v,w)\mid(u,v,w) \in E\land B(u,P)=B(v,P)\}$$$$$$
+
+Define two undirected weighted graphs: $$$GraphZero(P)=(V,EdgeZero(P))$$$, $$$GraphInf(P)=(V,EdgeInf(P))$$$.
+
+In other words, $$$GraphZero(P)=(V, EdgeZero(P))$$$ is almost a copy of the original graph, except for all edges that have both endpoints in the same subset of $$$P$$$ (their weights are set to $$$0$$$). $$$GraphInf(P)=(V, EdgeInf(P))$$$ is also almost a copy of the original graph, except for all edges that connect different subsets of $$$P$$$ (their weights are set to infinity).
+
+Let $$$disZero(u,v,P)$$$ be the length of the shortest path from $$$u$$$ to $$$v$$$ in $$$GraphZero(P)$$$.
+
+Let $$$disInf(u,v,P)$$$ be the length of the shortest path from $$$u$$$ to $$$v$$$ in $$$GraphInf(P)$$$.
+
+For nodes $$$u,v:\ (B(u,P)\neq B(v,P))$$$, we define that $$$middle(u,v,P)$$$ be the edge $$$e=(x,y,w)\in EdgeZero(P)$$$ with the smallest edge index which makes the following equation holds:
+
+$$$$$$disZero(u,v,P)=disZero(u,x,P)+w+disZero(y,v,P),\ w>0$$$$$$
+
+We can prove such an edge always exists.
+
+Then $$$cost(u,v,P)$$$ can be calculated recursively:
+
+- For nodes $$$u,v:\ (B(u,P)=B(v,P))$$$, $$$cost(u,v,P)=disInf(u,v,P)$$$.
+- For nodes $$$u,v:\ (B(u,P)\neq B(v,P))$$$, let $$$e=(x,y,w)=middle(u,v,P)$$$, then $$$cost(u,v,P)=cost(u,x,P)+w+cost(y,v,P)$$$.
+
+Given a real number $$$k\geq 0$$$, and a vertex set $$$S\subseteq V,\ 1\leq |S|\leq \min(50,N)$$$, find an optimal partition $$$P$$$, which maximizes $$$Score2(P)$$$.
+
+The score for SubTask2 for the $$$i^{th}$$$ graph is calculated by the formula: $$$$$$ Score2_i = Score2(P=P(G_i)) = \max\left\{0, N-\left[\max_{v\in V} RTsize(v,P) \right]-k \max_{u\in S,v\in V, u\not=v} \frac{ cost(u,v,P)-dist(u,v)}{dist(u,v)}\right\}. $$$$$$
+
+The final score for SubTask2 is calculated according to the following formula: $$$$$$ Score2 = \sum 0.7\times Score2_i $$$$$$
+
+Input Format:
+The first line contains two integers $$$N$$$ and $$$M$$$ $$$(2\leq N\leq 10^5; N-1\leq M\leq 2\times 10^5)$$$ — the number of nodes and edges, respectively.
+
+Each of the next $$$M$$$ lines contains three integers $$$u_i, v_i$$$ and $$$w_i$$$ ($$$0\leq u_i,\ v_i\leq N-1,\ u_i\neq v_i,\ 1\leq w_i\leq 10^5$$$), denoting an edge between the node $$$u_i$$$ and $$$v_i$$$ with weight $$$w_i$$$. $$$e_i=(u_i,v_i,w_i)$$$ is the edge with index $$$i$$$ in the edge set $$$E$$$. It is guaranteed that the input graph is connected and there are no multiple edges. That is, any pair (in any order) of nodes appear in this list no more than once.
+
+The next line contains two numbers: one integer $$$SetSize$$$ ($$$1\leq SetSize \leq \min(50,N)$$$), the size of node set $$$S$$$ and one real number $$$k$$$, given with at most six digits after the decimal point $$$(0\leq k \leq 10^6)$$$.
+
+Each of the next $$$SetSize$$$ lines contains one integer $$$NodeID$$$ ($$$0\leq NodeID \leq N-1$$$), the node in $$$S$$$.
+
+Output Format:
+In the first line, output the number of subsets in your partition $$$P$$$.
+
+The $$$(i+1)$$$-th line should begin with a single number $$$cnt_i$$$ — the size of the $$$i$$$-th subset, followed by $$$cnt_i$$$ numbers, denoting the node IDs in the $$$i$$$-th subset.
+
+Note:
+Scoring:
+During the coding phase, your solutions are tested against pre-tests only. The first $$$6$$$ of them are open and available for download at the link problem-gp2-open-testset.zip in the "contest materials" section in a sidebar.
+
+After the end of the coding phase, the last submission that scored a positive number of points on the pre-tests will be selected. It will be retested in the final tests. The rest of your submissions will be ignored. The final tests are secret and not available to the participants, they are mostly realistic. The result obtained on the final tests is your final official result for this problem.
+
+1. According to the formula, the solution with a larger score wins.
+2. If two solutions have the same score, the solution submitted first wins.
+3. For multiple test cases, the ranking is performed based on the following formula: $$$$$$ Score2 = \sum 0.7 \times Score2_i. $$$$$$
+4. Final formula for the "ICPC 2022 Online Challenge powered by HUAWEI - Problem 1": $$$$$$ FinalScore=Score1+Score2. $$$$$$

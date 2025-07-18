@@ -1,0 +1,11 @@
+Description:
+You are given integers a, b and c. Calculate ab modulo c.
+
+Input Format:
+Input data contains numbers a, b and c, one number per line. Each number is an integer between 1 and 100, inclusive.
+
+Output Format:
+Output ab mod c.
+
+Note:
+None

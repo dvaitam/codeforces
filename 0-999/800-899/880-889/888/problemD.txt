@@ -1,0 +1,15 @@
+Description:
+A permutation p of size n is an array such that every integer from 1 to n occurs exactly once in this array.
+
+Let's call a permutation an almost identity permutation iff there exist at least n - k indices i (1 ≤ i ≤ n) such that pi = i.
+
+Your task is to count the number of almost identity permutations for given numbers n and k.
+
+Input Format:
+The first line contains two integers n and k (4 ≤ n ≤ 1000, 1 ≤ k ≤ 4).
+
+Output Format:
+Print the number of almost identity permutations for given n and k.
+
+Note:
+None

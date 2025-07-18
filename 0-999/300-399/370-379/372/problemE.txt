@@ -1,0 +1,21 @@
+Description:
+There are a set of points S on the plane. This set doesn't contain the origin O(0, 0), and for each two distinct points in the set A and B, the triangle OAB has strictly positive area.
+
+Consider a set of pairs of points (P1, P2), (P3, P4), ..., (P2k - 1, P2k). We'll call the set good if and only if:
+
+- k ≥ 2.
+- All Pi are distinct, and each Pi is an element of S.
+- For any two pairs (P2i - 1, P2i) and (P2j - 1, P2j), the circumcircles of triangles OP2i - 1P2j - 1 and OP2iP2j have a single common point, and the circumcircle of triangles OP2i - 1P2j and OP2iP2j - 1 have a single common point.
+
+Calculate the number of good sets of pairs modulo 1000000007 (109 + 7).
+
+Input Format:
+The first line contains a single integer n (1 ≤ n ≤ 1000) — the number of points in S. Each of the next n lines contains four integers ai, bi, ci, di (0 ≤ |ai|, |ci| ≤ 50; 1 ≤ bi, di ≤ 50; (ai, ci) ≠ (0, 0)). These integers represent a point $$(\frac{a_i}{b_i}, \frac{c_i}{d_i})$$.
+
+No two points coincide.
+
+Output Format:
+Print a single integer — the answer to the problem modulo 1000000007 (109 + 7).
+
+Note:
+None

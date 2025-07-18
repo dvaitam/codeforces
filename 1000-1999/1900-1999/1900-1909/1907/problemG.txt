@@ -1,0 +1,23 @@
+Description:
+In the end of the day, Anna needs to turn off the lights in the office. There are $$$n$$$ lights and $$$n$$$ light switches, but their operation scheme is really strange. The switch $$$i$$$ changes the state of light $$$i$$$, but it also changes the state of some other light $$$a_i$$$ (change the state means that if the light was on, it goes off and vice versa).
+
+Help Anna to turn all the lights off using minimal number of switches, or say it is impossible.
+
+Input Format:
+The first line of input contains a single integer $$$t$$$ ($$$1 \le t \le 10^4$$$) — the number of test cases. Descriptions of test cases follow.
+
+The first line of each test case contains the integer $$$n$$$ ($$$2 \le n \le 10^5$$$) — the number of lights.
+
+The second line of each test case contains the string of $$$n$$$ characters, the initial state of the lights. Character "0" means that the corresponding light is off, and "1" means that it is on.
+
+The third line of each test case contains $$$n$$$ integers $$$a_i$$$ ($$$1 \le a_i \le n$$$, $$$a_i \neq i$$$) — the switch $$$i$$$ changes the states of light $$$i$$$ and light $$$a_i$$$.
+
+It is guaranteed that sum of $$$n$$$ over all test cases does not exceed $$$2 \cdot 10^5$$$
+
+Output Format:
+For each test case output the integer $$$k$$$, the minimal number of switches to use, then in the separate line output the list of $$$k$$$ switches.
+
+If it is impossible to turn off all the lights, output single integer $$$-1$$$.
+
+Note:
+None

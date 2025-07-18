@@ -1,0 +1,18 @@
+Description:
+Kuriyama Mirai has killed many monsters and got many (namely n) stones. She numbers the stones from 1 to n. The cost of the i-th stone is vi. Kuriyama Mirai wants to know something about these stones so she will ask you two kinds of questions:
+
+1. She will tell you two numbers, l and r (1 ≤ l ≤ r ≤ n), and you should tell her $$\sum_{i=l}^{r} v_i$$.
+2. Let ui be the cost of the i-th cheapest stone (the cost that will be on the i-th place if we arrange all the stone costs in non-decreasing order). This time she will tell you two numbers, l and r (1 ≤ l ≤ r ≤ n), and you should tell her $$\sum_{i=l}^{r} u_i$$.
+
+For every question you should give the correct answer, or Kuriyama Mirai will say "fuyukai desu" and then become unhappy.
+
+Input Format:
+The first line contains an integer n (1 ≤ n ≤ 105). The second line contains n integers: v1, v2, ..., vn (1 ≤ vi ≤ 109) — costs of the stones.
+
+The third line contains an integer m (1 ≤ m ≤ 105) — the number of Kuriyama Mirai's questions. Then follow m lines, each line contains three integers type, l and r (1 ≤ l ≤ r ≤ n; 1 ≤ type ≤ 2), describing a question. If type equal to 1, then you should output the answer for the first question, else you should output the answer for the second one.
+
+Output Format:
+Print m lines. Each line must contain an integer — the answer to Kuriyama Mirai's question. Print the answers to the questions in the order of input.
+
+Note:
+Please note that the answers to the questions may overflow 32-bit integer type.

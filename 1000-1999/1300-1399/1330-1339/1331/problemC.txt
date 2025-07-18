@@ -1,0 +1,11 @@
+Description:
+None
+
+Input Format:
+The input contains a single integer $$$a$$$ ($$$0 \le a \le 63$$$).
+
+Output Format:
+Output a single number.
+
+Note:
+None

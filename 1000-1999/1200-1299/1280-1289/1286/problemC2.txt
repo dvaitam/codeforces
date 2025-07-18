@@ -1,0 +1,28 @@
+Description:
+This problem is different with easy version only by constraints on total answers length
+
+It is an interactive problem
+
+Venya joined a tour to the madhouse, in which orderlies play with patients the following game. Orderlies pick a string $$$s$$$ of length $$$n$$$, consisting only of lowercase English letters. The player can ask two types of queries:
+
+- ? l r – ask to list all substrings of $$$s[l..r]$$$. Substrings will be returned in random order, and in every substring, all characters will be randomly shuffled.
+- ! s – guess the string picked by the orderlies. This query can be asked exactly once, after that the game will finish. If the string is guessed correctly, the player wins, otherwise he loses.
+
+The player can ask no more than $$$3$$$ queries of the first type.
+
+To make it easier for the orderlies, there is an additional limitation: the total number of returned substrings in all queries of the first type must not exceed $$$\left\lceil 0.777(n+1)^2 \right\rceil$$$ ($$$\lceil x \rceil$$$ is $$$x$$$ rounded up).
+
+Venya asked you to write a program, which will guess the string by interacting with the orderlies' program and acting by the game's rules.
+
+Your program should immediately terminate after guessing the string using a query of the second type. In case your program guessed the string incorrectly, or it violated the game rules, it will receive verdict Wrong answer.
+
+Note that in every test case the string is fixed beforehand and will not change during the game, which means that the interactor is not adaptive.
+
+Input Format:
+First line contains number $$$n$$$ ($$$1 \le n \le 100$$$) — the length of the picked string.
+
+Output Format:
+None
+
+Note:
+None

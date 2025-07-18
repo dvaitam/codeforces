@@ -1,0 +1,19 @@
+Description:
+Fedya studies in a gymnasium. Fedya's maths hometask is to calculate the following expression:
+
+(1n + 2n + 3n + 4n) mod 5
+
+for given value of n. Fedya managed to complete the task. Can you? Note that given number n can be extremely large (e.g. it can exceed any integer type of your programming language).
+
+Input Format:
+The single line contains a single integer n (0 ≤ n ≤ 10105). The number doesn't contain any leading zeroes.
+
+Output Format:
+Print the value of the expression without leading zeros.
+
+Note:
+Operation x mod y means taking remainder after division x by y.
+
+Note to the first sample:
+
+$$( 1 ^ { 4 } + 2 ^ { 4 } + 3 ^ { 4 } + 4 ^ { 4 } ) \bmod 5 = ( 1 + 1 6 + 8 1 + 2 5 6 ) \bmod 5 = 4$$

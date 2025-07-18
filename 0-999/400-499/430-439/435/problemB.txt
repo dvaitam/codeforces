@@ -1,0 +1,13 @@
+Description:
+Pasha has a positive integer a without leading zeroes. Today he decided that the number is too small and he should make it larger. Unfortunately, the only operation Pasha can do is to swap two adjacent decimal digits of the integer.
+
+Help Pasha count the maximum number he can get if he has the time to make at most k swaps.
+
+Input Format:
+The single line contains two integers a and k (1 ≤ a ≤ 1018; 0 ≤ k ≤ 100).
+
+Output Format:
+Print the maximum number that Pasha can get if he makes at most k swaps.
+
+Note:
+None

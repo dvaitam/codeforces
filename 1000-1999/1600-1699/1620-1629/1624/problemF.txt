@@ -1,0 +1,21 @@
+Description:
+This problem is interactive.
+
+We decided to play a game with you and guess the number $$$x$$$ ($$$1 \le x < n$$$), where you know the number $$$n$$$.
+
+You can make queries like this:
+
+- + c: this command assigns $$$x = x + c$$$ ($$$1 \le c < n$$$) and then returns you the value $$$\lfloor\frac{x}{n}\rfloor$$$ ($$$x$$$ divide by $$$n$$$ and round down).
+
+You win if you guess the current number with no more than $$$10$$$ queries.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+In the first sample initially $$$x = 2$$$. After the first query $$$x = 3$$$, $$$\lfloor\frac{x}{n}\rfloor = 1$$$.
+
+In the second sample also initially $$$x = 2$$$. After the first query $$$x = 3$$$, $$$\lfloor\frac{x}{n}\rfloor = 0$$$. After the second query $$$x = 4$$$, $$$\lfloor\frac{x}{n}\rfloor = 0$$$. After the third query $$$x=5$$$, $$$\lfloor\frac{x}{n}\rfloor = 1$$$.

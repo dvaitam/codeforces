@@ -1,0 +1,30 @@
+Description:
+A function $$f : \mathbb{R} \to \mathbb{R}$$ is called Lipschitz continuous if there is a real constant K such that the inequality |f(x) - f(y)| ≤ K·|x - y| holds for all $$x,y \in \mathbb{R}$$. We'll deal with a more... discrete version of this term.
+
+For an array $$h[1..n]$$, we define it's Lipschitz constant $${\cal L}({\bf h})$$ as follows:
+
+- if n < 2, $$L(\mathbf{h}) = 0$$
+- if n ≥ 2, $${\displaystyle L(h)=\max \left\{{\frac {|h[j]-h[i]|}{j-i}}\right\}}$$ over all 1 ≤ i < j ≤ n
+
+In other words, $$L = L(h)$$ is the smallest non-negative integer such that |h[i] - h[j]| ≤ L·|i - j| holds for all 1 ≤ i, j ≤ n.
+
+You are given an array $$\alpha$$ of size n and q queries of the form [l, r]. For each query, consider the subarray $$s = a[l..r]$$; determine the sum of Lipschitz constants of all subarrays of ?.
+
+Input Format:
+The first line of the input contains two space-separated integers n and q (2 ≤ n ≤ 100 000 and 1 ≤ q ≤ 100) — the number of elements in array $$\alpha$$ and the number of queries respectively.
+
+The second line contains n space-separated integers $${\mathbf{a}}^{[1..n]}$$ ($$0 \leq a[i] \leq 10^8$$).
+
+The following q lines describe queries. The i-th of those lines contains two space-separated integers li and ri (1 ≤ li < ri ≤ n).
+
+Output Format:
+Print the answers to all queries in the order in which they are given in the input. For the i-th query, print one line containing a single integer — the sum of Lipschitz constants of all subarrays of $$a[l_i..r_i]$$.
+
+Note:
+In the first query of the first sample, the Lipschitz constants of subarrays of $$[5,2,9]$$ with length at least 2 are:
+
+- $${\cal L}([5,2])=3$$
+- $$L([2,9])=7$$
+- $$L([5,2,9])=7$$
+
+The answer to the query is their sum.

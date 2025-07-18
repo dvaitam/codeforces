@@ -1,0 +1,20 @@
+Description:
+You are given a 0-1 rectangular matrix. What is the number of squares in it? A square is a solid square frame (border) with linewidth equal to 1. A square should be at least 2 × 2. We are only interested in two types of squares:
+
+1. squares with each side parallel to a side of the matrix;
+2. squares with each side parallel to a diagonal of the matrix.
+
+Regardless of type, a square must contain at least one 1 and can't touch (by side or corner) any foreign 1. Of course, the lengths of the sides of each square should be equal.
+
+How many squares are in the given matrix?
+
+Input Format:
+The first line contains integer t (1 ≤ t ≤ 10000), where t is the number of test cases in the input. Then test cases follow. Each case starts with a line containing integers n and m (2 ≤ n, m ≤ 250), where n is the number of rows and m is the number of columns. The following n lines contain m characters each (0 or 1).
+
+The total number of characters in all test cases doesn't exceed 106 for any input file.
+
+Output Format:
+You should output exactly t lines, with the answer to the i-th test case on the i-th line.
+
+Note:
+None

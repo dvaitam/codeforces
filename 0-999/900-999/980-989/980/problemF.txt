@@ -1,0 +1,21 @@
+Description:
+You are given a special connected undirected graph where each vertex belongs to at most one simple cycle.
+
+Your task is to remove as many edges as needed to convert this graph into a tree (connected graph with no cycles).
+
+For each node, independently, output the maximum distance between it and a leaf in the resulting tree, assuming you were to remove the edges in a way that minimizes this distance.
+
+Input Format:
+The first line of input contains two integers $$$n$$$ and $$$m$$$ ($$$1 \leq n \leq 5\cdot 10^5$$$), the number of nodes and the number of edges, respectively.
+
+Each of the following $$$m$$$ lines contains two integers $$$u$$$ and $$$v$$$ ($$$1 \leq u,v \leq n$$$, $$$u \ne v$$$), and represents an edge connecting the two nodes $$$u$$$ and $$$v$$$. Each pair of nodes is connected by at most one edge.
+
+It is guaranteed that the given graph is connected and each vertex belongs to at most one simple cycle.
+
+Output Format:
+Print $$$n$$$ space-separated integers, the $$$i$$$-th integer represents the maximum distance between node $$$i$$$ and a leaf if the removed edges were chosen in a way that minimizes this distance.
+
+Note:
+In the first sample, a possible way to minimize the maximum distance from vertex $$$1$$$ is by removing the marked edges in the following image:
+
+Note that to minimize the answer for different nodes, you can remove different edges.

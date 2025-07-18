@@ -1,0 +1,23 @@
+Description:
+This is an interactive task.
+
+Dasha and NN like playing chess. While playing a match they decided that normal chess isn't interesting enough for them, so they invented a game described below.
+
+There are $$$666$$$ black rooks and $$$1$$$ white king on the chess board of size $$$999 \times 999$$$. The white king wins if he gets checked by rook, or, in other words, if he moves onto the square which shares either a row or column with a black rook.
+
+The sides take turns, starting with white. NN plays as a white king and on each of his turns he moves a king to one of the squares that are adjacent to his current position either by side or diagonally, or, formally, if the king was on the square $$$(x, y)$$$, it can move to the square $$$(nx, ny)$$$ if and only $$$\max (|nx - x|, |ny - y|) = 1$$$ , $$$1 \leq nx, ny \leq 999$$$. NN is also forbidden from moving onto the squares occupied with black rooks, however, he can move onto the same row or column as a black rook.
+
+Dasha, however, neglects playing by the chess rules, and instead of moving rooks normally she moves one of her rooks on any space devoid of other chess pieces. It is also possible that the rook would move onto the same square it was before and the position wouldn't change. However, she can't move the rook on the same row or column with the king.
+
+Each player makes $$$2000$$$ turns, if the white king wasn't checked by a black rook during those turns, black wins.
+
+NN doesn't like losing, but thinks the task is too difficult for him, so he asks you to write a program that will always win playing for the white king. Note that Dasha can see your king and play depending on its position.
+
+Input Format:
+In the beginning your program will receive $$$667$$$ lines from input. Each line contains two integers $$$x$$$ and $$$y$$$ ($$$1 \leq x, y \leq 999$$$) — the piece's coordinates. The first line contains the coordinates of the king and the next $$$666$$$ contain the coordinates of the rooks. The first coordinate denotes the number of the row where the piece is located, the second denotes the column. It is guaranteed that initially the king isn't in check and that all pieces occupy different squares.
+
+Output Format:
+After getting king checked, you program should terminate immediately without printing anything extra.
+
+Note:
+The example is trimmed. The full initial positions of the rooks in the first test are available at https://pastebin.com/qQCTXgKP. It is not guaranteed that they will behave as in the example.

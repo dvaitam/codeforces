@@ -1,0 +1,17 @@
+Description:
+n athletes take part in the hammer throw. Each of them has his own unique identifier — the integer from 1 to n (all athletes have distinct identifiers). After the draw, the order in which the athletes will throw the hammer has been determined (they will do it one by one).
+
+Unfortunately, a not very attentive judge lost the list with the order of athletes, but each of the athletes has remembered how many competitors with identifiers larger than his own will throw the hammer before him.
+
+Your task is to help the organizers as quickly as possible to restore the order of the athletes.
+
+Input Format:
+The first line contains the positive integer n (1 ≤ n ≤ 1000) — the number of athletes.
+
+The next line contains the sequence of integers a1, a2, ..., an (0 ≤ ai < n), where ai is equal to the number of the athletes with identifiers larger than i, who should throw the hammer before the athlete with identifier i.
+
+Output Format:
+Print n distinct numbers — the sequence of athletes' identifiers in the order in which they will throw the hammer. If there are several answers it is allowed to print any of them.
+
+Note:
+None

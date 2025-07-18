@@ -1,0 +1,19 @@
+Description:
+A false witness that speaketh lies!
+
+You are given a sequence containing n integers. There is a variable res that is equal to 0 initially. The following process repeats k times.
+
+Choose an index from 1 to n uniformly at random. Name it x. Add to res the multiply of all ai's such that 1 ≤ i ≤ n, but i ≠ x. Then, subtract ax by 1.
+
+You have to find expected value of res at the end of the process. It can be proved that the expected value of res can be represented as an irreducible fraction $$\frac{p}{q}$$. You have to find $$P \cdot Q^{-1} \bmod 1000000007$$.
+
+Input Format:
+The first line contains two integers n and k (1 ≤ n ≤ 5000, 1 ≤ k ≤ 109) — the number of elements and parameter k that is specified in the statement.
+
+The second line contains n space separated integers a1, a2, ..., an (0 ≤ ai ≤ 109).
+
+Output Format:
+Output a single integer — the value $$P \cdot Q^{-1} \bmod 1000000007$$.
+
+Note:
+None

@@ -1,0 +1,78 @@
+Description:
+Imagine an infinite colored stripe with a beginning but without end. The stripe is separated into squares, and its width is equal to the size of a square. Each square is painted in one of $$$C = 10$$$ colors. The colors are denoted by the first $$$10$$$ capital English letters.
+
+There are $$$U = 10$$$ chameleons living on the stripe. The chameleons are numbered by integers starting from zero. Initially, the chameleons occupy the first $$$10$$$ squares according to their order: chameleon $$$0$$$ is in the very first square, chameleon $$$1$$$ is in the square after the first one, and so on.
+
+Kurt is the shepherd of the chameleons. He can freely move around the colored stripe. Kurt wants the chameleons to move as far as possible from the beginning of the stripe before the night comes. Kurt holds $$$H = 10$$$ bottles of paint in his hands, and his backpack contains $$$S = 10\,000$$$ additional bottles. Each bottle also has one of the $$$C$$$ colors.
+
+Kurt can compel a chameleon to move. For that, he has to throw one of the bottles in his hands at one of the chameleons, painting it in the color of the bottle (let it be color $$$x$$$). After that, the chameleon which was hit by the bottle goes forward along the stripe until it finds the next free square painted in color $$$x$$$, and then stops at this square. As the chameleon moves because of the throw, other chameleons stand still, and Kurt just manages to blindly take the next bottle from his backpack, so that he again has exactly $$$10$$$ of them in his hands.
+
+Note that a chameleon starts to search for his color from the next square, so it can not stay in place even if the color of the thrown bottle was the same as the color of the square where it stood. Also note that two chameleons never appear at the same square simultaneously: if chameleon $$$h$$$ sees a square of the appropriate color, but the square is occupied by another chameleon, then $$$h$$$ will move further searching for a free square of the required color.
+
+The night comes when Kurt takes the last bottle from the backpack. (Kurt can also put chameleons at rest at any moment and wait for the night to come.) At this moment, consider chameleon $$$s$$$ which is closest to the beginning of the stripe. The result is an integer: the number of squares from the beginning of the stripe to this chameleon $$$s$$$. Come up with how Kurt should act to make this number as large as possible.
+
+Input
+
+The input consists of three lines.
+
+The first line contains integers $$$N$$$, $$$S$$$, $$$C$$$, $$$H$$$, and $$$U$$$: the length of the stripe pattern, the number of bottles of paint in the backpack, the number of colors, the number of bottles Kurt simultaneously holds in his hands, and the number of chameleons. These are given just in case: in all tests for this problem, $$$N = 100\,000$$$, $$$S = 10\,000$$$, $$$C = 10$$$, $$$H = 10$$$, and $$$U = 10$$$.
+
+The second line contains $$$N$$$ characters each of which is one of the first $$$10$$$ capital English letters. This is the stripe pattern: if we concatenate it with itself for infinity, and then read from left to right, the result will denote the colors of the squares on the stripe starting from the beginning.
+
+The third line contains $$$H + S$$$ characters each of which is also one of the first $$$10$$$ capital English letters. The first $$$H$$$ characters correspond to the bottles which Kurt initially holds in his hands. The next $$$S$$$ characters denote the colors of the bottles Kurt takes from his backpack, in the order in which it happens. As Kurt takes them blindly, the order in which they appear from the backpack can not be changed.
+
+Output
+
+Print from $$$0$$$ to $$$S$$$ actions for Kurt in chronological order, one per line. Each action is denoted as "$$$u$$$ $$$c$$$", where the integer $$$u$$$ is the number of the chameleon at which the bottle is thrown, and the character $$$c$$$ is the capital English letter denoting the color of the bottle.
+
+In case $$$u$$$ or $$$c$$$ are outside the required limits, or Kurt no bottle of the requested color in his hands, the output is judged as "Wrong Answer".
+
+Testing
+
+Your solution will be checked on sets of tests generated in advance. Each test is created using a pseudo-random number generator. You can consider that the colors of the squares in the stripe pattern, the bottles in Kurt's hands, and the bottles in the backpack are uniformly distributed (the probabilities of all $$$C$$$ colors are the same) and mutually independent (the probabilities of all $$$C^{N + H + S}$$$ possible tests are the same).
+
+A solution's score is the average of its results on all the tests. If a solution did not output a valid answer on a certain test, the result for this test is zero.
+
+During the main phase of the contest, there are two ways to send a solution for checking.
+
+- The first one is to check on examples (problem A1 in the contest). There are $$$10$$$ example tests which are also available for local testing. As soon as the solution is checked, you can see reports for all examples by clicking on the submission result. The example tests can be downloaded from here: https://assets.codeforces.com/rounds/1014/examples.zip (Windows line endings), https://assets.codeforces.com/rounds/1014/examples.tar.gz (Linux line endings).
+- The second way is to check on preliminary tests (problem A2 in the contest). There are $$$100$$$ preliminary tests which are generated in advance but kept secret. The score for preliminary tests (but not for example tests) is used in the preliminary scoreboard. This score does not affect the final results, but nevertheless allows to roughly compare a solution with others.
+
+After the main phase ends, for each participant, the system chooses the final solution:
+
+- consider all solutions sent for preliminary testing;
+- choose the ones which got a total score strictly greater than zero;
+- define the final solution as the one of chosen solutions which has the latest submission time.
+
+Note that the solutions sent only to be checked on examples are not considered when choosing the final solution.
+
+During the final testing, all final solutions will be checked on the same large set of a large number ($$$\approx 1000$$$) of final tests. The score for final tests determines the final scoreboard. The winner is the contestant whose solution gets the highest total score. In case two or more participants have equal total score, the contestants with such score tie for the same place.
+
+Example
+
+To have an example which fits into the problem statement, let $$$N = 40$$$ and $$$S = 5$$$ (recall that in all the real tests for this problem, $$$N = 100\,000$$$ and $$$S = 10\,000$$$).
+
+Consider an output which lists three actions.
+
+The initial state:
+
+The state after the first action (0 D):
+
+The state after the second action (8 H):
+
+The state after the third action (1 D):
+
+The chameleon closest to the beginning of the stripe is the chameleon number $$$2$$$. The result, which is the number of squares from the beginning of the stripe to this chameleon, is equal to 2.
+
+Note
+
+The rules of chameleon movement are similar to the game mechanic used in the children's board games "Hoot Owl Hoot!" and "Cartagena".
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

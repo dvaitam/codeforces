@@ -1,0 +1,41 @@
+Description:
+This is an interactive problem.
+
+Given a simple undirected graph with $$$n$$$ vertices numbered from $$$1$$$ to $$$n$$$, your task is to color all the vertices such that for every color $$$c$$$, the following conditions hold:
+
+1. The set of vertices with color $$$c$$$ is connected;
+2. $$$s_c \leq n_c^2$$$, where $$$n_c$$$ is the number of vertices with color $$$c$$$, and $$$s_c$$$ is the sum of degrees of vertices with color $$$c$$$.
+
+Initially, you are only given the number $$$n$$$ of vertices and the degree of each vertex.
+
+In each query, you can choose a vertex $$$u$$$. As a response, you will be given the $$$k$$$-th edge incident to $$$u$$$, if this is the $$$k$$$-th query on vertex $$$u$$$.
+
+You are allowed to make at most $$$n$$$ queries.
+
+An undirected graph is simple if it does not contain multiple edges or self-loops.
+
+The degree of a vertex is the number of edges incident to it.
+
+A set $$$S$$$ of vertices is connected if for every two different vertices $$$u, v \in S$$$, there is a path, which only passes through vertices in $$$S$$$, that connects $$$u$$$ and $$$v$$$. That is, there is a sequence of edges $$$(u_1, v_1), (u_2, v_2), \dots, (u_k, v_k)$$$ with $$$k \geq 1$$$ such that
+
+1. $$$u_1 = u$$$, $$$v_k = v$$$, and $$$v_i = u_{i+1}$$$ for every $$$1 \leq i < k$$$; and
+2. $$$u_k \in S$$$ and $$$v_k \in S$$$ for every $$$1 \leq i \leq k$$$.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+In the example, there is only one test case.
+
+In the test case, there are $$$n = 5$$$ vertices with vertices $$$1, 2, 3, 4$$$ of degree $$$2$$$ and vertex $$$5$$$ of degree $$$0$$$. It is obvious that vertex $$$5$$$ is isolated, i.e., it does not connect to any other vertices.
+
+A possible interaction is shown in the sample input and output, where $$$4$$$ "?" queries are made on vertex $$$1$$$ twice and vertex $$$3$$$ twice. According to the responses to these queries, we know that each of vertex $$$1$$$ and vertex $$$3$$$ connects to two vertices $$$2$$$ and $$$4$$$.
+
+A possible solution is shown in the sample output, where vertex $$$1$$$ and vertex $$$2$$$ are colored by $$$1$$$, vertex $$$3$$$ and vertex $$$4$$$ are colored by $$$2$$$, and vertex $$$5$$$ is colored by $$$3$$$. It can be seen that this solution satisfies the required conditions as follows.
+
+- For color $$$c = 1$$$, vertex $$$1$$$ and vertex $$$2$$$ are connected. Moreover, $$$n_1 = 2$$$ and $$$s_1 = d_1 + d_2 = 2 + 2 = 4 \leq n_1^2 = 2^2 = 4$$$;
+- For color $$$c = 2$$$, vertex $$$3$$$ and vertex $$$4$$$ are connected. Moreover, $$$n_2 = 2$$$ and $$$s_2 = d_3 + d_4 = 2 + 2 = 4 \leq n_2^2 = 2^2 = 4$$$;
+- For color $$$c = 3$$$, there is only one vertex (vertex $$$5$$$) colored by $$$3$$$. Moreover, $$$n_3 = 1$$$ and $$$s_3 = d_5 = 0 \leq n_3^2 = 1^2 = 1$$$.

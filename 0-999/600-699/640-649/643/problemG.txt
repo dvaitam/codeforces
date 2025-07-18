@@ -1,0 +1,26 @@
+Description:
+One social network developer recently suggested a new algorithm of choosing ads for users.
+
+There are n slots which advertisers can buy. It is possible to buy a segment of consecutive slots at once. The more slots you own, the bigger are the chances your ad will be shown to users.
+
+Every time it is needed to choose ads to show, some segment of slots is picked by a secret algorithm. Then some advertisers are chosen. The only restriction is that it should be guaranteed for advertisers which own at least p% of slots composing this segment that their ad will be shown.
+
+From the other side, users don't like ads. So it was decided to show no more than $$\left\lfloor \frac{100}{p} \right\rfloor$$ ads at once. You are asked to develop a system to sell segments of slots and choose ads in accordance with the rules described above.
+
+Input Format:
+The first line of the input contains three integers n, m and p (1 ≤ n, m ≤ 150 000, 20 ≤ p ≤ 100) — the number of slots, the number of queries to your system and threshold for which display of the ad is guaranteed.
+
+Next line contains n integers ai (1 ≤ ai ≤ 150 000), where the i-th number means id of advertiser who currently owns the i-th slot.
+
+Next m lines contain queries descriptions. Each description is of one of the following forms:
+
+- 1 l r id (1 ≤ l ≤ r ≤ n, 1 ≤ id ≤ 150 000) — advertiser id bought all slots in a range from l to r inclusive;
+- 2 l r (1 ≤ l ≤ r) — you need to choose advertisers for segment [l, r].
+
+Output Format:
+For each query of the second type answer should be printed in a separate line. First integer of the answer should be the number of advertisements that will be shown $$(0 \leq cnt \leq \lfloor \frac{100}{p} \rfloor)$$. Next cnt integers should be advertisers' ids.
+
+It is allowed to print one advertiser more than once, but each advertiser that owns at least $$\left\lceil \frac{p \cdot (r - l + 1)}{100} \right\rceil$$ slots of the segment from l to r should be in your answer.
+
+Note:
+Samples demonstrate that you actually have quite a lot of freedom in choosing advertisers.

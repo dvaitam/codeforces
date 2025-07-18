@@ -1,0 +1,25 @@
+Description:
+You are given three positive integers $$$a$$$, $$$b$$$, $$$c$$$ ($$$a < b < c$$$). You have to find three positive integers $$$x$$$, $$$y$$$, $$$z$$$ such that:
+
+$$$$$$x \bmod y = a,$$$$$$ $$$$$$y \bmod z = b,$$$$$$ $$$$$$z \bmod x = c.$$$$$$
+
+Here $$$p \bmod q$$$ denotes the remainder from dividing $$$p$$$ by $$$q$$$. It is possible to show that for such constraints the answer always exists.
+
+Input Format:
+The input consists of multiple test cases. The first line contains a single integer $$$t$$$ ($$$1 \le t \le 10\,000$$$) — the number of test cases. Description of the test cases follows.
+
+Each test case contains a single line with three integers $$$a$$$, $$$b$$$, $$$c$$$ ($$$1 \le a < b < c \le 10^8$$$).
+
+Output Format:
+For each test case output three positive integers $$$x$$$, $$$y$$$, $$$z$$$ ($$$1 \le x, y, z \le 10^{18}$$$) such that $$$x \bmod y = a$$$, $$$y \bmod z = b$$$, $$$z \bmod x = c$$$.
+
+You can output any correct answer.
+
+Note:
+In the first test case:
+
+$$$$$$x \bmod y = 12 \bmod 11 = 1;$$$$$$
+
+$$$$$$y \bmod z = 11 \bmod 4 = 3;$$$$$$
+
+$$$$$$z \bmod x = 4 \bmod 12 = 4.$$$$$$

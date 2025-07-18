@@ -1,0 +1,62 @@
+Description:
+A database is a warehouse where data is organized, stored, and managed by its underlying data structures. Everyone uses some kind of a database.
+
+Some cloud service providers decide to build single instances of database management systems which are shared by multiple customers and isolated among different users. This is the concept of database multi-tenancy. A single database instance is divided into multiple virtual sub-databases, serving different tenants. With the database multi-tenant technology, cloud service providers can efficiently integrate resources and greatly reduce service costs.
+
+To speed up data access, data is split into pages, and some pages are loaded from slow storage, like a hard disk, into a faster memory buffer. This is the concept of a database buffer. When the amount of data in the buffer reaches the capacity, some data pages get evicted by the replacement algorithm so that new ones can be loaded from the disk. This challenge is to implement sharing and isolation mechanisms for database buffers in a multi-tenant environment.
+
+The database can be abstracted as a set of pages with a fixed length, where a page is defined as the basic unit for reading data into the buffer. The access to the database is abstracted as a sequence of $$$M$$$ operations: $$$S={A_{1}, A_{2}, \ldots, A_{M}}$$$ where $$$M$$$ is a given integer. Each access $$$A_{i}$$$ in the sequence is called an operation. In multi-tenant environment, operations may come from different tenants. Therefore, an operation $$$A_{i}$$$ consists of a tenant ID (subject) $$$U_{i}$$$ and a page (object) $$$P_{i}$$$. The tenants are numbered by integers from $$$1$$$ to a given integer $$$N$$$. Pages for different tenants are local to these tenants. In other words, page $$$1$$$ of tenant $$$x$$$ is not relevant to page $$$1$$$ of tenant $$$y$$$.
+
+The core of buffer sharing is the replacement algorithm (also called the cache eviction algorithm). For an operation sequence $$$S$$$, if the requested page $$$P_{i}$$$ already exists in the buffer, it is called a page hit. Otherwise, it is called a page fault. When a page fault occurs, the cache eviction algorithm is used to select a memory page $$$C$$$ in the buffer, evict it and then store the new page $$$P_{i}$$$ in its slot. Typical cache eviction algorithms include Least Recently Used (LRU), Least Frequently Used (LFU), and Segmented LRU (SLRU).
+
+In single-tenant environment, each tenant $$$t$$$ independently uses a memory block of a fixed size $$$Q_{t}$$$. While in multi-tenant environment, all tenants share a large memory space with total size $$$Q$$$. The memory size used by each tenant is dynamically adjusted to perform page swap-in and swap-out. During a cache eviction, please ensure that the memory size being used by each tenant is within the specified range, that is, $$$Q^{\min}_{t} \leq Q_{t} \leq Q^{\max}_{t}$$$. Specifically, when tenant $$$x$$$ has $$$Q^{\min}_{x}$$$ or less pages in memory, the pages of other tenants cannot replace pages of tenant $$$x$$$. Conversely, when tenant $$$y$$$ has $$$Q^{\max}_{y}$$$ in memory, the pages of tenant $$$y$$$ cannot replace pages of other tenants. For tenant $$$z$$$, the algorithm can evict an existing page of that tenant and replace it with a new page of the same tenant, but only when that tenant has between $$$Q^{\min}_{z}$$$ and $$$Q^{\max}_{z}$$$ pages in memory, inclusive. Contestants need to maximize the overall tenants' access experience with limited memory space.
+
+Initially, each page in the buffer does not belong to any of the tenants. Note that evicting these initial pages still counts as evicting some other tenant.
+
+Design a replacement algorithm that is applicable to a multi-tenant environment. For each operation $$$A_{i}$$$, output a buffer location $$$C_{i}$$$ that is either the existing or the newly assigned caching location for page $$$P_{i}$$$ of tenant $$$U_{i}$$$.
+
+Input Format:
+The first line contains three integers $$$N$$$, $$$Q$$$, and $$$M$$$. They respectively represent the number of tenants in the system ($$$1 \leq N \leq 10$$$), the total buffer size ($$$1 \leq Q \leq 1\,000\,000$$$), and the length of the operation sequence $$$S$$$ ($$$1 \leq M \leq 1\,000\,000$$$).
+
+The second line contains $$$N$$$ integers $$$L_{1}, L_{2}, \ldots, L_{N}$$$, where $$$L_{t}$$$ represents the priority level of tenant $$$t$$$ ($$$1 \leq L_{t} \leq 10$$$).
+
+The third line contains $$$N$$$ integers $$$D_{1}, D_{2}, \ldots, D_{N}$$$, where $$$D_{t}$$$ represents the database size of tenant $$$t$$$ ($$$1 \leq D_{t} \leq 100\,000$$$).
+
+The fourth line contains $$$3 \cdot N$$$ integers, which are $$$N$$$ triplets $$$(Q^{\min}_{t}, Q^{\mathrm{base}}_{t}, Q^{\max}_{t})$$$. They respectively represent the minimum buffer size, the base buffer size, and the maximum buffer size of tenant $$$t$$$ ($$$1 \leq Q^{\min}_{t} \leq Q^{\max}_{t} \leq 100\,000$$$). The values $$$Q^{\mathrm{base}}_{t}$$$ are used to calculate the score ($$$1 \leq Q^{base}_{t} \leq 100\,000$$$). It is guaranteed that $$$\sum_{j = 1}^{N} Q^{\min}_{j}$$$ is less than or equal to $$$Q$$$.
+
+Output Format:
+None
+
+Note:
+Scoring:
+There are $$$T$$$ tests in this problem.
+
+For each of them, the online judge checks whether a page fault occurs in each operation $$$A_{i}$$$ based on the sequence $$$C_{i}$$$ provided by the contestant. To ensure that the experiences of tenants with different database sizes are balanced, the concept of $$$\mathit{SLA}^{\mathrm{rate}}$$$ is introduced. Here, SLA stands for Service Level Agreement which is the quality of service expected by the tenants. For tenant $$$t$$$, the $$$\mathit{SLA}^{\mathrm{rate}}_{t}$$$ can be expressed as follows: $$$$$$ \mathit{SLA}^{\mathrm{rate}}_{t} = \frac{\max(\mathit{SLA}^{\mathrm{actual}}_{t}, \mathit{SLA}^{\mathrm{base}}_{t}) - \mathit{SLA}^{\mathrm{base}}_{t}} {\mathit{SLA}^{\mathrm{base}}_{t}} $$$$$$
+
+The value $$$\mathit{SLA}^{\mathrm{actual}}_{t}$$$ indicates the actual number of page faults for tenant $$$t$$$ in this test based on the contestant's replacement algorithm. The value $$$\mathit{SLA}^{\mathrm{base}}_{t}$$$ indicates the number of page faults obtained by using the LRU algorithm when the buffer size of tenant $$$t$$$ is $$$Q^{\mathrm{base}}_{t}$$$. It is guaranteed that $$$\mathit{SLA}^{\mathrm{base}}_{t}$$$ is a positive integer.
+
+The contestant's intermediate score $$$\mathit{Cost}_{j}$$$ in test $$$j$$$ can be expressed as follows:
+
+$$$$$$ \mathit{Cost}_{j} = \sum\limits_{i = 1}^{N} f_{1} \left( \mathit{SLA}^{\mathrm{rate}}_{i} \right) \cdot L_{i} $$$$$$
+
+and $$$f_{1}$$$ is expressed as follows:
+
+$$$$$$ f_1(x) = 3 x^{2} $$$$$$
+
+The total score of a contestant can be expressed as follows: $$$$$$\mathit{Score} = \sum_{j = 1}^{T} f_2 \left(\frac {\mathit{Cost}_{j}}{\mathit{Cost}^{\mathrm{base}}_{j}} \right) $$$$$$
+
+and $$$f_{2}$$$ is expressed as follows:
+
+$$$$$$ f_2(x) = 100 \cdot \max \left(0, \,\, 5 - x \right) $$$$$$
+
+In order to balance the players' results on different test data, we calculate $$$\mathit{Cost}^{\mathrm{base}}$$$ of each data set in advance, and then score the contestant's cost according to $$$\mathit{Cost}^{\mathrm{base}}$$$ and get the $$$\mathit{Score}$$$. We have implemented several baseline algorithms and, among them, calculated the minimum non-zero value $$$\mathit{Cost}^{\mathrm{base}}$$$ for each test $$$j$$$.
+
+There are two sets of tests in this problem. For the duration of the competition, each submission is tested on the preliminary set of tests. When the competition is finished, for each contestant:
+
+- the jury takes the latest submission with non-zero score on preliminary tests;
+- this submission is tested on the final set of tests;
+- the score on final tests is the final score for the contestant.
+
+The contestants are then ranked according to their final score.
+
+The final tests are similar, but not identical, to the preliminary tests. The number of final tests may be larger, but their distribution is similar to the distribution of preliminary tests.

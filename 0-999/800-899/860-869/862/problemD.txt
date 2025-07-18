@@ -1,0 +1,27 @@
+Description:
+Mahmoud and Ehab are in the fourth stage now.
+
+Dr. Evil has a hidden binary string of length n. He guarantees that there is at least one '0' symbol and at least one '1' symbol in it. Now he wants Mahmoud and Ehab to find a position of any '0' symbol and any '1' symbol. In order to do this, Mahmoud and Ehab can ask Dr. Evil up to 15 questions. They tell Dr. Evil some binary string of length n, and Dr. Evil tells the Hamming distance between these two strings. Hamming distance between 2 binary strings of the same length is the number of positions in which they have different symbols. You can find the definition of Hamming distance in the notes section below.
+
+Help Mahmoud and Ehab find these two positions.
+
+You will get Wrong Answer verdict if
+
+- Your queries doesn't satisfy interaction protocol described below.
+- You ask strictly more than 15 questions and your program terminated after exceeding queries limit. Please note, that you can do up to 15 ask queries and one answer query.
+- Your final answer is not correct.
+
+If you exceed the maximum number of queries, You should terminate with 0, In this case you'll get Wrong Answer, If you don't terminate you may receive any verdict because you'll be reading from a closed stream .
+
+Input Format:
+The first line of input will contain a single integer n (2 ≤ n ≤ 1000) — the length of the hidden binary string.
+
+Output Format:
+To print the final answer, print "! pos0 pos1" (without quotes), where pos0 and pos1 are positions of some '0' and some '1' in the string (the string is 1-indexed). Don't forget to flush the output after printing the answer!
+
+Note:
+Hamming distance definition: https://en.wikipedia.org/wiki/Hamming_distance
+
+In the first test case the hidden binary string is 101, The first query is 000, so the Hamming distance is 2. In the second query the hidden string is still 101 and query is 001, so the Hamming distance is 1.
+
+After some queries you find that symbol at position 2 is '0' and symbol at position 1 is '1', so you print "! 2 1".

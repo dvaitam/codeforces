@@ -1,0 +1,23 @@
+Description:
+This is an interactive problem.
+
+Li Ming and Li Hua are playing a game. Li Hua has a chessboard of size $$$n\times m$$$. Denote $$$(r, c)$$$ ($$$1\le r\le n, 1\le c\le m$$$) as the cell on the $$$r$$$-th row from the top and on the $$$c$$$-th column from the left. Li Ming put a king on the chessboard and Li Hua needs to guess its position.
+
+Li Hua can ask Li Ming no more than $$$3$$$ questions. In each question, he can choose a cell and ask the minimum steps needed to move the king to the chosen cell. Each question is independent, which means the king doesn't actually move.
+
+A king can move from $$$(x,y)$$$ to $$$(x',y')$$$ if and only if $$$\max\{|x-x'|,|y-y'|\}=1$$$ (shown in the following picture).
+
+The position of the king is chosen before the interaction.
+
+Suppose you were Li Hua, please solve this problem.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+In test case 1, the king is at $$$(2,2)$$$. It takes $$$1$$$ step to move to $$$(2,3)$$$ and $$$2$$$ steps to move to $$$(2,4)$$$.
+
+Note that the questions may not seem sensible. They are just a sample of questions you may ask.

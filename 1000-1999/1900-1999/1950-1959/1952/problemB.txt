@@ -1,0 +1,13 @@
+Description:
+None
+
+Input Format:
+The first line contains an integer $$$t$$$ ($$$1 \leq t \leq 100$$$) — the number of testcases.
+
+The following $$$t$$$ lines each contain a string of length at most $$$100$$$ consisting of lowercase English letters.
+
+Output Format:
+For each test case, output "YES" or "NO", denoting the answer.
+
+Note:
+None

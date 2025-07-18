@@ -1,0 +1,29 @@
+Description:
+Senor Vorpal Kickass'o invented an innovative method to encrypt integer sequences of length n. To encrypt a sequence, one has to choose a secret sequence $${ \{ b _ { i } \} } _ { i = 0 } ^ { n - 1 }$$, that acts as a key.
+
+Vorpal is very selective, so the key should be such a sequence bi, that its cyclic shifts are linearly independent, that is, there is no non-zero set of coefficients x0, x1, ..., xn - 1, such that $$\sum_{i=0}^{n-1} x_i b_{k-i \bmod n} = 0$$ for all k at the same time.
+
+After that for a sequence $$\{a_i\}_{i=0}^{n-1}$$ you should build the following cipher:
+
+$$c_i = \sum_{k=0}^{n-1} (b_{k-i \mod n} - a_k)^2$$
+
+In other words, you are to compute the quadratic deviation between each cyclic shift of bi and the sequence ai. The resulting sequence is the Kickass's cipher. The cipher is in development right now and Vorpal wants to decipher a sequence after it has been encrypted. You are to solve this problem for him. You are given sequences ci and bi. You are to find all suitable sequences ai.
+
+Input Format:
+The first line contains a single integer n ($$1 \leq n \leq 10^5$$).
+
+The second line contains n integers b0, b1, ..., bn - 1 ($$0 \leq b_i \leq 10^3$$).
+
+The third line contains n integers c0, c1, ..., cn - 1 ($$0 \leq c_i \leq 5 \cdot 10^6$$).
+
+It is guaranteed that all cyclic shifts of sequence bi are linearly independent.
+
+Output Format:
+In the first line print a single integer k — the number of sequences ai, such that after encrypting them with key bi you get the sequence ci.
+
+After that in each of k next lines print n integers a0, a1, ..., an - 1. Print the sequences in lexicographical order.
+
+Note that k could be equal to 0.
+
+Note:
+None

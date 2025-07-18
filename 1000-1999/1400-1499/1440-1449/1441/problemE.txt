@@ -1,0 +1,27 @@
+Description:
+This is an interactive problem
+
+Ginny is taking an exam on game theory. The professor is tired of hearing the same answers over and over again, so he offered Ginny to play a game instead of a standard exam.
+
+As known from the course, a combinatorial game on a graph with multiple starting positions is a game with a directed graph and multiple starting vertices holding a token each. Two players take turns moving one of the tokens along the graph edges on each turn. The player who can't make a move loses the game. If both players can play an infinitely long game without losing, a draw is called.
+
+For the exam, the professor drew an acyclic directed graph and chose one of its vertices. Ginny needs to guess the vertex the professor chose. To do so, Ginny can choose a multiset of vertices $$$S$$$ several times and ask the professor: "If I put one token in each vertex of the given graph for each occurrence of the vertex in the multiset $$$S$$$, and then one more in the selected vertex, what would be the result of the combinatorial game?".
+
+Having given the task, the professor left the room to give Ginny some time to prepare for the game. Ginny thinks that she's being tricked because the problem is impossible to solve. Therefore, while the professor is away, she wants to add or remove several edges from the graph. Even though the original graph was acyclic, edges could be added to the graph to make cycles appear.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+In the sample test, the empty lines represent waiting for the input by the other side of the interaction. The real interactor will not print empty lines, and the solution should not print them either.
+
+The image above illustrates the sample test. Added edges are coloured in red, and the removed edges are drawn with a dotted line. Three guessing phases denote different ways of getting the answer.
+
+- If the solution will query just the chosen vertex, the interactor will return the result of the game in that vertex. The first player loses only if the chosen vertex has the number $$$1$$$.
+- If we add a single vertex $$$2$$$ to the chosen vertex, then if the chosen vertex is either $$$1$$$ or $$$2$$$, the game should end in a draw. If vertex number $$$3$$$ is chosen, then the first player wins.
+- If we place three tokens in vertex $$$1$$$ and two tokens in vertex $$$3$$$, then the game will end in a draw only if vertex $$$2$$$ is chosen. If the professor chose vertex $$$3$$$, the first player will win, if the professor chose vertex $$$1$$$, then the second player will win.
+
+In the first test, the interactor will behave as if the chosen vertices are the same as those in the example above. However, if you will try to guess the answer before it limits the options to one single vertex, the solution will get "Wrong Answer", even if you print the same answers. That's because the interactor is allowed to change the chosen vertex if it's consistent with the previous query answers.

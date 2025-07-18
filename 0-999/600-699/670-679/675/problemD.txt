@@ -1,0 +1,18 @@
+Description:
+During the programming classes Vasya was assigned a difficult problem. However, he doesn't know how to code and was unable to find the solution in the Internet, so he asks you to help.
+
+You are given a sequence $$$a$$$, consisting of $$$n$$$ distinct integers, that is used to construct the binary search tree. Below is the formal description of the construction process.
+
+1. First element $$$a_1$$$ becomes the root of the tree.
+2. Elements $$$a_2, a_3, \ldots, a_n$$$ are added one by one. To add element $$$a_i$$$ one needs to traverse the tree starting from the root and using the following rules:   The pointer to the current node is set to the root.  If $$$a_i$$$ is greater than the value in the current node, then its right child becomes the current node. Otherwise, the left child of the current node becomes the new current node.  If at some point there is no required child, the new node is created, it is assigned value $$$a_i$$$ and becomes the corresponding child of the current node.
+
+Input Format:
+The first line of the input contains a single integer $$$n$$$ ($$$2 \leq n \leq 100\,000$$$) — the length of the sequence $$$a$$$.
+
+The second line contains $$$n$$$ distinct integers $$$a_i$$$ ($$$1 \leq a_i \leq 10^9$$$) — the sequence $$$a$$$ itself.
+
+Output Format:
+Output $$$n - 1$$$ integers. For all $$$i > 1$$$ print the value written in the node that is the parent of the node with value $$$a_i$$$ in it.
+
+Note:
+None

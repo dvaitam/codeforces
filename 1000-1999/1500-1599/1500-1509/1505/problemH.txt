@@ -1,0 +1,11 @@
+Description:
+Hack the program and get the password hidden in it.
+
+Input Format:
+This program has only one test, and it's empty (it doesn't give your program anything to read).
+
+Output Format:
+Output the password recovered from the program. The password is case sensitive.
+
+Note:
+None

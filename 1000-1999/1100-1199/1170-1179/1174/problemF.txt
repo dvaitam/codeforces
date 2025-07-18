@@ -1,0 +1,26 @@
+Description:
+This is an interactive problem.
+
+You're given a tree consisting of $$$n$$$ nodes, rooted at node $$$1$$$. A tree is a connected graph with no cycles.
+
+We chose a hidden node $$$x$$$. In order to find this node, you can ask queries of two types:
+
+- d $$$u$$$ ($$$1 \le u \le n$$$). We will answer with the distance between nodes $$$u$$$ and $$$x$$$. The distance between two nodes is the number of edges in the shortest path between them.
+- s $$$u$$$ ($$$1 \le u \le n$$$). We will answer with the second node on the path from $$$u$$$ to $$$x$$$. However, there's a plot twist. If $$$u$$$ is not an ancestor of $$$x$$$, you'll receive "Wrong answer" verdict!
+
+Node $$$a$$$ is called an ancestor of node $$$b$$$ if $$$a \ne b$$$ and the shortest path from node $$$1$$$ to node $$$b$$$ passes through node $$$a$$$. Note that in this problem a node is not an ancestor of itself.
+
+Can you find $$$x$$$ in no more than $$$36$$$ queries? The hidden node is fixed in each test beforehand and does not depend on your queries.
+
+Input Format:
+The first line contains the integer $$$n$$$ ($$$2 \le n \le 2 \cdot 10^5$$$) — the number of nodes in the tree.
+
+Each of the next $$$n-1$$$ lines contains two space-separated integers $$$u$$$ and $$$v$$$ ($$$1 \le u,v \le n$$$) that mean there's an edge between nodes $$$u$$$ and $$$v$$$. It's guaranteed that the given graph is a tree.
+
+Output Format:
+To print the answer, print "! x" (without quotes).
+
+Note:
+In the first example, the hidden node is node $$$5$$$.
+
+We first ask about the distance between node $$$x$$$ and node $$$2$$$. The answer is $$$3$$$, so node $$$x$$$ is either $$$4$$$ or $$$5$$$. We then ask about the second node in the path from node $$$3$$$ to node $$$x$$$. Note here that node $$$3$$$ is an ancestor of node $$$5$$$. We receive node $$$5$$$ as the answer. Finally, we report that the hidden node is node $$$5$$$.

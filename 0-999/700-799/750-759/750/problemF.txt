@@ -1,0 +1,23 @@
+Description:
+This is an interactive problem. In the interaction section below you will find the information about flushing the output.
+
+The New Year tree of height h is a perfect binary tree with vertices numbered 1 through 2h - 1 in some order. In this problem we assume that h is at least 2. The drawing below shows one example New Year tree of height 3:
+
+Polar bears love decorating the New Year tree and Limak is no exception. To decorate the tree, he must first find its root, i.e. a vertex with exactly two neighbours (assuming that h ≥ 2). It won't be easy because Limak is a little bear and he doesn't even see the whole tree. Can you help him?
+
+There are t testcases. In each testcase, you should first read h from the input. Then you can ask at most 16 questions of format "? x" (without quotes), where x is an integer between 1 and 2h - 1, inclusive. As a reply you will get the list of neighbours of vertex x (more details in the "Interaction" section below). For example, for a tree on the drawing above after asking "? 1" you would get a response with 3 neighbours: 4, 5 and 7. Your goal is to find the index of the root y and print it in the format "! y". You will be able to read h for a next testcase only after printing the answer in a previous testcase and flushing the output.
+
+Each tree is fixed from the beginning and it doesn't change during your questions.
+
+Input Format:
+The first line of the input contains a single integer t (1 ≤ t ≤ 500) — the number of testcases.
+
+At the beginning of each testcase you should read from the input a single integer h (2 ≤ h ≤ 7) — the height of the tree. You can't read the value of h in a next testcase until you answer a previous testcase.
+
+Output Format:
+None
+
+Note:
+In the first sample, a tree corresponds to the drawing from the statement.
+
+In the second sample, there are two two testcases. A tree in the first testcase has height 2 and thus 3 vertices. A tree in the second testcase has height 4 and thus 15 vertices. You can see both trees on the drawing below.

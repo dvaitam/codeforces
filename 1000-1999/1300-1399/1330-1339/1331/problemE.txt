@@ -1,0 +1,11 @@
+Description:
+None
+
+Input Format:
+The input contains two integers $$$row$$$, $$$col$$$ ($$$0 \le row, col \le 63$$$), separated by a single space.
+
+Output Format:
+Output "IN" or "OUT".
+
+Note:
+None

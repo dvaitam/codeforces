@@ -1,0 +1,11 @@
+Description:
+Two teams meet in The Game World Championship. Some scientists consider this game to be the most intellectually challenging game in the world. You are given two strings describing the teams' actions in the final battle. Figure out who became the champion.
+
+Input Format:
+The input contains two strings of equal length (between 2 and 20 characters, inclusive). Each line describes the actions of one team.
+
+Output Format:
+Output "TEAM 1 WINS" if the first team won, "TEAM 2 WINS" if the second team won, and "TIE" if there was a tie.
+
+Note:
+None

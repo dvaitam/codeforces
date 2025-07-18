@@ -1,0 +1,51 @@
+Description:
+An incident occurred in Capygrad, the capital of Tyagoland, where all the capybaras in the city went crazy and started throwing mandarins. Andrey was forced to escape from the city as far as possible, using portals.
+
+Tyagoland is represented by a number line, and the city of Capygrad is located at point $$$0$$$. There are $$$n$$$ portals all over Tyagoland, each of which is characterised by four integers $$$l_i$$$, $$$r_i$$$, $$$a_i$$$ and $$$b_i$$$ ($$$1 \le l_i \le a_i \le b_i \le r_i \le 10^9$$$). Note that the segment $$$[a_i, b_i]$$$ is contained in the segment $$$[l_i, r_i]$$$.
+
+If Andrey is on the segment $$$[l_i, r_i]$$$, then the portal can teleport him to any point on the segment $$$[a_i, b_i]$$$. Andrey has a pass that allows him to use the portals an unlimited number of times.
+
+Andrey thinks that the point $$$x$$$ is on the segment $$$[l, r]$$$ if the inequality $$$l \le x \le r$$$ is satisfied.
+
+Andrey has $$$q$$$ options for where to start his escape, each option is characterized by a single integer $$$x_i$$$ — the starting position of the escape. He wants to escape from Capygrad as far as possible (to the point with the maximum possible coordinate). Help Andrey determine how far he could escape from Capygrad, starting at each of the $$$q$$$ positions.
+
+Input Format:
+Each test consists of multiple test cases. The first line contains a single integer $$$t$$$ ($$$1 \le t \le 10^4$$$) — the number of sets of test cases. The description of test cases follows.
+
+The first line of each test case contains a single integer $$$n$$$ ($$$1 \le n \le 2 \cdot 10^5$$$) — the number of portals.
+
+Each of the next $$$n$$$ lines contains four integers $$$l_i$$$, $$$r_i$$$, $$$a_i$$$, and $$$b_i$$$ $$$(1 \le l_i \le a_i \le b_i \le r_i \le 10^9)$$$ — the characteristics of the portals.
+
+The next line contains a single integer $$$q$$$ ($$$1 \le q \le 2 \cdot 10^5$$$) — the number of positions.
+
+The following line contains $$$q$$$ integers $$$x_1, x_2, \ldots, x_q$$$ ($$$1 \le x_i \le 10^9$$$) — the position from which Andrey will start his escape in the $$$i$$$-th options.
+
+It is guaranteed that the sum of $$$n$$$ and the sum of $$$q$$$ over all test cases does not exceed $$$2 \cdot 10^5$$$.
+
+Output Format:
+For each test case, output a single line of $$$q$$$ integers, containing the answers to Andrey's questions.
+
+Note:
+In the first test case:
+
+Optimal actions when starting from each position:
+
+1. Use portal $$$1$$$ and teleport to point $$$b_1 = 14$$$.
+2. Use portal $$$2$$$ first and teleport to point $$$6$$$, which is on the segment $$$[l_1, r_1] = [6, 17]$$$, then use portal $$$1$$$ and teleport to point $$$b_1 = 14$$$.
+3. Stay at point $$$x_3=23$$$ without using any portals.
+4. Stay at point $$$x_4=15$$$ without using any portals.
+5. Point $$$x_5=28$$$ is not on any segment, so Andrey won't be able to teleport anywhere.
+6. Point $$$x_6=18$$$ is only on the segment $$$[l_3, r_3] = [16, 24]$$$, use portal $$$3$$$ and teleport to point $$$b_3 = 22$$$.
+
+In the fifth test case:
+
+Optimal actions when starting from each position:
+
+1. Use portal $$$1$$$ first and teleport to point $$$15$$$ on the segment $$$[a_1, b_1] = [14, 20]$$$, then use portal $$$2$$$ and teleport to point $$$21$$$, which is on the segment $$$[l_4, r_4] = [21, 33]$$$ and on the segment $$$[a_2, b_2] = [13, 24]$$$, then teleport to point $$$b_4 = 32$$$.
+2. Use portal $$$6$$$ first and teleport to point $$$20$$$ on the segment $$$[a_6, b_6] = [20, 21]$$$, then use portal $$$2$$$ and teleport to point $$$22$$$, which is simultaneously on the segment $$$[l_4, r_4] = [21, 33]$$$ and on the segment $$$[a_2, b_2] = [13, 24]$$$, then teleport to point $$$b_4 = 32$$$.
+3. Perform the same actions as from the first position.
+4. Stay at point $$$x_4=5$$$ without using any portals.
+5. Point $$$8$$$ is not on any segment, so Andrey won't be able to teleport anywhere.
+6. Stay at point $$$x_6=33$$$ without using any portals.
+7. Use portal $$$5$$$ and teleport to point $$$b_5 = 4$$$.
+8. Perform the same actions as from the first position.

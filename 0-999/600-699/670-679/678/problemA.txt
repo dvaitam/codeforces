@@ -1,0 +1,11 @@
+Description:
+Johny likes numbers n and k very much. Now Johny wants to find the smallest integer x greater than n, so it is divisible by the number k.
+
+Input Format:
+The only line contains two integers n and k (1 ≤ n, k ≤ 109).
+
+Output Format:
+Print the smallest integer x > n, so it is divisible by the number k.
+
+Note:
+None

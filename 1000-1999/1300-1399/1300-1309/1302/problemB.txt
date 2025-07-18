@@ -1,0 +1,17 @@
+Description:
+This is an unusual problem in an unusual contest, here is the announcement: http://codeforces.com/blog/entry/73543
+
+You are given a directed acyclic graph $$$G$$$ with $$$n$$$ vertices and $$$m$$$ edges. Denote by $$$R(v)$$$ the set of all vertices $$$u$$$ reachable from $$$v$$$ by moving along the edges of $$$G$$$. Find $$$\sum\limits_{v=1}^n |R(v)|^2$$$.
+
+Input Format:
+The first line contains two integers $$$n, m$$$ ($$$1 \leq n, m \leq 5 \cdot 10^4$$$) denoting the number of vertices and the number of edges of $$$G$$$.
+
+Each of the next $$$m$$$ lines contains two integers $$$u, v$$$ ($$$1 \leq u \neq v \leq n$$$), denoting the edge from $$$u$$$ to $$$v$$$.
+
+It's guaranteed that the given graph does not contain any cycles.
+
+Output Format:
+Print one integer — the answer to the problem.
+
+Note:
+None

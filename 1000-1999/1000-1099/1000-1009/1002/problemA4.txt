@@ -1,0 +1,19 @@
+Description:
+You are given N = 2k qubits (0 ≤ k ≤ 4) in zero state $${\left|0\dots0\right\rangle}$$. Your task is to create a generalized W state on them. Generalized W state is an equal superposition of all basis states on N qubits that have Hamming weight equal to 1:
+
+$${ \left| W _ { N } \right\rangle } = { \frac { 1 } { \sqrt { N } } } ( { \left| 1 0 0... 0 \right\rangle } + { \left| 0 1 0... 0 \right\rangle } + \ldots + { \left| 0 0... 0 1 \right\rangle } )$$
+
+For example, for N = 1, $$| W_{1} \rangle = | 1 \rangle$$.
+
+You have to implement an operation which takes an array of N qubits as an input and has no output. The "output" of the operation is the state in which it leaves the qubits.
+
+Your code should have the following signature:
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

@@ -1,0 +1,26 @@
+Description:
+You are given N qubits (1 ≤ N ≤ 8) in zero state $${\left|0\dots0\right\rangle}$$. You are also given a bitstring bits which describes a non-zero basis state on N qubits $${\left|{\psi}\right\rangle}$$.
+
+Your task is to generate a state which is an equal superposition of $${\left|0\dots0\right\rangle}$$ and the given basis state:
+
+$${ \left| S \right\rangle } = { \frac { 1 } { \sqrt { 2 } } } ( { \left| 0... 0 \right\rangle } + { \left| \psi \right\rangle } )$$
+
+You have to implement an operation which takes the following inputs:
+
+- an array of qubits qs,
+- an arrays of boolean values bits representing the basis state $${\left|{\psi}\right\rangle}$$. This array will have the same length as the array of qubits. The first element of this array bits[0] will be true.
+
+The operation doesn't have an output; its "output" is the state in which it leaves the qubits.
+
+An array of boolean values represents a basis state as follows: the i-th element of the array is true if the i-th qubit is in state $$\left|1\right\rangle$$, and false if it is in state $$| 0 \rangle$$. For example, array [true; false] describes 2-qubit state $$|\psi\rangle = |10\rangle$$, and in this case the resulting state should be $${ \frac { 1 } { \sqrt { 2 } } } ( | 0 0 \rangle + | 1 0 \rangle ) = | + \rangle \otimes | 0 \rangle$$.
+
+Your code should have the following signature:
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

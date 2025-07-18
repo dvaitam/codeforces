@@ -1,0 +1,20 @@
+Description:
+You are given $$$n$$$ segments $$$[l_1, r_1], [l_2, r_2], \dots, [l_n, r_n]$$$. Each segment has one of two colors: the $$$i$$$-th segment's color is $$$t_i$$$.
+
+Let's call a pair of segments $$$i$$$ and $$$j$$$ bad if the following two conditions are met:
+
+- $$$t_i \ne t_j$$$;
+- the segments $$$[l_i, r_i]$$$ and $$$[l_j, r_j]$$$ intersect, embed or touch, i. e. there exists an integer $$$x$$$ such that $$$x \in [l_i, r_i]$$$ and $$$x \in [l_j, r_j]$$$.
+
+Calculate the maximum number of segments that can be selected from the given ones, so that there is no bad pair among the selected ones.
+
+Input Format:
+The first line contains a single integer $$$n$$$ ($$$1 \le n \le 2 \cdot 10^5$$$) — number of segments.
+
+The next $$$n$$$ lines contains three integers $$$l_i, r_i, t_i$$$ ($$$1 \le l_i \le r_i \le 10^9; t_i \in \{1, 2\}$$$) — description of the $$$i$$$-th segment.
+
+Output Format:
+Print the maximum number of segments that can be selected, so that there is no bad pair among the selected segments.
+
+Note:
+None

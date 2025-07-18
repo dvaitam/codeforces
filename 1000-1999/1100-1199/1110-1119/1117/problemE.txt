@@ -1,0 +1,39 @@
+Description:
+This is an interactive problem. Remember to flush your output while communicating with the testing program. You may use fflush(stdout) in C++, system.out.flush() in Java, stdout.flush() in Python or flush(output) in Pascal to flush the output. If you use some other programming language, consult its documentation. You may also refer to the guide on interactive problems: https://codeforces.com/blog/entry/45307.
+
+You are given a string $$$t$$$ consisting of $$$n$$$ lowercase Latin letters. This string was cyphered as follows: initially, the jury had a string $$$s$$$ consisting of $$$n$$$ lowercase Latin letters. Then they applied a sequence of no more than $$$n$$$ (possibly zero) operations. $$$i$$$-th operation is denoted by two integers $$$a_i$$$ and $$$b_i$$$ ($$$1 \le a_i, b_i \le n$$$), and means swapping two elements of the string with indices $$$a_i$$$ and $$$b_i$$$. All operations were done in the order they were placed in the sequence. For example, if $$$s$$$ is xyz and $$$2$$$ following operations are performed: $$$a_1 = 1, b_1 = 2$$$; $$$a_2 = 2, b_2 = 3$$$, then after the first operation the current string is yxz, and after the second operation the current string is yzx, so $$$t$$$ is yzx.
+
+You are asked to restore the original string $$$s$$$. Unfortunately, you have no information about the operations used in the algorithm (you don't even know if there were any operations in the sequence). But you may run the same sequence of operations on any string you want, provided that it contains only lowercase Latin letters and its length is $$$n$$$, and get the resulting string after those operations.
+
+Can you guess the original string $$$s$$$ asking the testing system to run the sequence of swaps no more than $$$3$$$ times?
+
+The string $$$s$$$ and the sequence of swaps are fixed in each test; the interactor doesn't try to adapt the test to your solution.
+
+Input Format:
+Initially the testing system sends one string $$$t$$$, consisting of lowercase Latin letters ($$$1 \le |t| = n \le 10^4$$$).
+
+Output Format:
+To give the answer, your program should print one line $$$!$$$ $$$s$$$ with a line break in the end. After that, it should flush the output and terminate gracefully.
+
+Note:
+In the sample, the testcase described in the statement is used. The participant asks the first query with string baa, which is transformed to aab. The second query contains string aba, which is transformed to baa. The third query contains string aab, which is transformed to aba. The participant can deduce that the initial string $$$s$$$ was xyz.
+
+Note for hacking phase:
+
+To submit a test in hacking phase, you should provide it in the following format:
+
+The first line should contain the string $$$s$$$ you guess, consisting of $$$n \in [1, 10000]$$$ lowercase Latin letters.
+
+The second line should contain $$$k$$$ ($$$0 \le k \le n$$$) — the number of swap operations in the sequence.
+
+Then $$$k$$$ lines should follow, $$$i$$$-th of them should denote $$$i$$$-th operation with two integers $$$a_i$$$ and $$$b_i$$$ ($$$1 \le a_i, b_i \le n$$$).
+
+For example, the sample test would look like that:
+
+xyz
+
+2
+
+1 2
+
+2 3

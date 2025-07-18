@@ -1,0 +1,31 @@
+Description:
+Alice suggested Bob to play a game. Bob didn't like this idea, but he couldn't refuse Alice, so he asked you to write a program that would play instead of him.
+
+The game starts with Alice taking out a grid sheet of size $$$n \times n$$$, the cells of which are initially not colored. After that she colors some $$$2n$$$ cells with colors $$$1,2,\ldots, 2n$$$, respectively, and informs Bob about these cells.
+
+In one move, Bob can point to a cell that has not been colored yet and ask Alice to color that cell. Alice colors that cell with one of the $$$2n$$$ colors of her choice, informing Bob of the chosen color. Bob can make no more than $$$10$$$ moves, after which he needs to find a good set of four cells.
+
+A set of four cells is considered good if the following conditions are met:
+
+- All the cells in the set are colored;
+- No two cells in the set are colored with the same color;
+- The centers of the cells form a rectangle with sides parallel to the grid lines.
+
+Input Format:
+Each test consists of multiple test cases. The first line contains a single integer $$$t$$$ ($$$1 \le t \le 200$$$) — the number of test cases. The description of the test cases follows.
+
+The first line of each test case contains a single integer $$$n$$$ ($$$3 \le n \le 1000$$$) — the size of the grid.
+
+The $$$i$$$-th of the following $$$2n$$$ lines contains two integers $$$x_i$$$ and $$$y_i$$$ ($$$1 \le x_i, y_i \le n$$$) — the coordinates of the cell colored with the $$$i$$$-th color.
+
+It is guaranteed that all coordinates $$$(x_i, y_i)$$$ are pairwise distinct for the same test case.
+
+After reading the input data for each test case, continue the interaction as described below.
+
+Output Format:
+None
+
+Note:
+In the first test case:
+
+In the second test case, cells with coordinates $$$(1, 1), (1, 2), (2, 1), (2, 2)$$$ are initially colored by Alice in different colors.

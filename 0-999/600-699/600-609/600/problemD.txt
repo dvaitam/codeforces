@@ -1,0 +1,13 @@
+Description:
+You are given two circles. Find the area of their intersection.
+
+Input Format:
+The first line contains three integers x1, y1, r1 ( - 109 ≤ x1, y1 ≤ 109, 1 ≤ r1 ≤ 109) — the position of the center and the radius of the first circle.
+
+The second line contains three integers x2, y2, r2 ( - 109 ≤ x2, y2 ≤ 109, 1 ≤ r2 ≤ 109) — the position of the center and the radius of the second circle.
+
+Output Format:
+Print the area of the intersection of the circles. The answer will be considered correct if the absolute or relative error doesn't exceed 10 - 6.
+
+Note:
+None

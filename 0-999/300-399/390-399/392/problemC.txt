@@ -1,0 +1,19 @@
+Description:
+Everyone knows what the Fibonacci sequence is. This sequence can be defined by the recurrence relation:
+
+F1 = 1, F2 = 2, Fi = Fi - 1 + Fi - 2 (i > 2).
+
+We'll define a new number sequence Ai(k) by the formula:
+
+Ai(k) = Fi × ik (i ≥ 1).
+
+In this problem, your task is to calculate the following sum: A1(k) + A2(k) + ... + An(k). The answer can be very large, so print it modulo 1000000007 (109 + 7).
+
+Input Format:
+The first line contains two space-separated integers n, k (1 ≤ n ≤ 1017; 1 ≤ k ≤ 40).
+
+Output Format:
+Print a single integer — the sum of the first n elements of the sequence Ai(k) modulo 1000000007 (109 + 7).
+
+Note:
+None

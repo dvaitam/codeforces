@@ -1,0 +1,11 @@
+Description:
+A triangle $$$ABC$$$ of area 16 is given. Let $$$M$$$, $$$N$$$, $$$P$$$ be points on the sides $$$AB$$$, $$$BC$$$ and $$$CA$$$ respectively such that $$$AM:MB = BN:NC = CP:PA = 1:3$$$ . Find the area of the triangle $$$MNP$$$.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

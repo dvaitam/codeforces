@@ -1,0 +1,17 @@
+Description:
+Tribonacci numbers are a sequence of numbers, defined as follows:
+
+- t0 = t1 = 0,
+- t2 = 1,
+- ti = ti - 1 + ti - 2 + ti - 3.
+
+You are given n; calculate n-th tribonacci number modulo 26.
+
+Input Format:
+The only line of input contains an integer n (1 ≤ n ≤ 1000).
+
+Output Format:
+Output n-th tribonacci number modulo 26.
+
+Note:
+None

@@ -1,0 +1,11 @@
+Description:
+Find the least natural number that has exactly $$$20$$$ natural divisors, exactly $$$4$$$ of which are odd.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

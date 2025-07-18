@@ -1,0 +1,13 @@
+Description:
+You are given a positive integer n. Output the number of trailing zeros in n! (n! denotes a product of integers between 1 and n, inclusive).
+
+Input Format:
+The only line of input contains an integer n (1 ≤ n ≤ 1000000).
+
+Output Format:
+Output the number of trailing zeros in n!.
+
+Note:
+In the first sample 6! = 720.
+
+In the second sample 24! = 620448401733239439360000.

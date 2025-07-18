@@ -1,0 +1,27 @@
+Description:
+This is an interactive problem!
+
+On a normal day at the hidden office in A.R.C. Markland-N, Rin received an artifact, given to her by the exploration captain Sagar.
+
+After much analysis, she now realizes that this artifact contains data about a strange flower, which has existed way before the New Age. However, the information about its chemical structure has been encrypted heavily.
+
+The chemical structure of this flower can be represented as a string $$$p$$$. From the unencrypted papers included, Rin already knows the length $$$n$$$ of that string, and she can also conclude that the string contains at most three distinct letters: "C" (as in Carbon), "H" (as in Hydrogen), and "O" (as in Oxygen).
+
+At each moment, Rin can input a string $$$s$$$ of an arbitrary length into the artifact's terminal, and it will return every starting position of $$$s$$$ as a substring of $$$p$$$.
+
+However, the artifact has limited energy and cannot be recharged in any way, since the technology is way too ancient and is incompatible with any current A.R.C.'s devices. To be specific:
+
+- The artifact only contains $$$\frac{7}{5}$$$ units of energy.
+- For each time Rin inputs a string $$$s$$$ of length $$$t$$$, the artifact consumes $$$\frac{1}{t^2}$$$ units of energy.
+- If the amount of energy reaches below zero, the task will be considered failed immediately, as the artifact will go black forever.
+
+Since the artifact is so precious yet fragile, Rin is very nervous to attempt to crack the final data. Can you give her a helping hand?
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+Note that the example interaction contains extra empty lines so that it's easier to read. The real interaction doesn't contain any empty lines and you shouldn't print any extra empty lines as well.

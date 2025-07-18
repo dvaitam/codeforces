@@ -1,0 +1,11 @@
+Description:
+None
+
+Input Format:
+The input contains a single integer a (1 ≤ a ≤ 30).
+
+Output Format:
+Output a single integer.
+
+Note:
+None

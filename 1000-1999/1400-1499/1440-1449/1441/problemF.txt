@@ -1,0 +1,25 @@
+Description:
+You are given a connected planar graph and the coordinates of all its vertices. Check if it has exactly one perfect matching.
+
+Input Format:
+Each test contains multiple test cases. The first line contains an integer $$$t$$$ ($$$1 \le t \le 100\,000$$$), denoting the number of test cases, followed by a description of the test cases.
+
+The first line of each test case contains two integers $$$n, m$$$ ($$$2 \le n \le 200\,000; n-1 \le m \le 3n$$$): the number of vertices and edges in the graph.
+
+Each of the next $$$n$$$ lines contains pairs of integers $$$x_i, y_i$$$ ($$$-10^6 \le x_i, y_i \le 10^6$$$): coordinates of vertices. All vertices are guaranteed to be distinct. Next $$$m$$$ lines of each test case contains two integers $$$u_j, v_j$$$ ($$$1 \le u_j, v_j \le n$$$): graph edges.
+
+The graph is guaranteed to be connected and has no loops or multi-edges.
+
+The sum of all $$$n$$$ among all test cases is guaranteed to not exceed $$$200\,000$$$.
+
+Output Format:
+For each test case, print $$$1$$$ if the graph has exactly one perfect matching, or $$$0$$$ if it does not.
+
+Note:
+An illustration for the first test case:
+
+An illustration for the second test case:
+
+An illustration for the third test case:
+
+An illustration for the fourth test case:

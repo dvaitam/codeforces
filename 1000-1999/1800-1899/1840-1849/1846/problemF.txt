@@ -1,0 +1,31 @@
+Description:
+This is an interactive task.
+
+Rudolph is a scientist who studies alien life forms. There is a room in front of Rudolph with $$$n$$$ different objects scattered around. Among the objects there is exactly one amazing creature — a mimic that can turn into any object. He has already disguised himself in this room and Rudolph needs to find him by experiment.
+
+The experiment takes place in several stages. At each stage, the following happens:
+
+- Rudolf looks at all the objects in the room and writes down their types. The type of each object is indicated by a number; there can be several objects of the same type.
+- After inspecting, Rudolph can point to an object that he thinks is a mimic. After that, the experiment ends. Rudolph only has one try, so if he is unsure of the mimic's position, he does the next step instead.
+- Rudolf can remove any number of objects from the room (possibly zero). Then Rudolf leaves the room and at this time all objects, including the mimic, are mixed with each other, their order is changed, and the mimic can transform into any other object (even one that is not in the room).
+- After this, Rudolf returns to the room and repeats the stage. The mimic may not change appearance, but it can not remain a same object for more than two stages in a row.
+
+Rudolf's task is to detect mimic in no more than five stages.
+
+Input Format:
+The first line contains one integer $$$t$$$ $$$(1 \le t \le 1000)$$$ — the number of test cases.
+
+The first line of each test case contains one integer $$$n$$$ $$$(2 \le n \le 200)$$$ — the number of objects in the room.
+
+The second line of each test case contains $$$n$$$ integers $$$a_1$$$,$$$a_2$$$,...,$$$a_n$$$ $$$(1 \le a_i \le 9)$$$ — object types.
+
+Output Format:
+None
+
+Note:
+Explanation for the first test: initial array is $$$x_1$$$, $$$x_2$$$, $$$x_3$$$, $$$x_4$$$, $$$x_5$$$. Mimic is in first position.
+
+- Delete the fifth object. After that, the positions are shuffled, and the mimic chose not to change his appearance. Object positions become $$$x_4$$$, $$$x_1$$$, $$$x_2$$$, $$$x_3$$$.
+- Delete the third objects. The mimic is forced to turn into another object, because it has already been in the form $$$1$$$ for two stages. The mimic chose to transform into $$$2$$$, the objects are shuffled and become $$$x_3$$$, $$$x_4$$$, $$$x_1$$$.
+- Delete the first and second objects. The objects positions become $$$x_1$$$. Only the mimic remains, and it remains an object $$$2$$$.
+- Point to the first element.

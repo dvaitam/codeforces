@@ -1,0 +1,11 @@
+Description:
+Let $$$ABCD$$$ be a square of side length $$$6$$$. Let $$$BEC$$$ be an equilateral triangle such that $$$E$$$ is outside the square. Find the radius of the circle that passes through the points $$$A$$$, $$$E$$$ and $$$D$$$.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

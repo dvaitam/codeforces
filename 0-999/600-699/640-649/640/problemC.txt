@@ -1,0 +1,11 @@
+Description:
+You are given an array of integers. Calculate the sum of its elements.
+
+Input Format:
+The i-th line of the input contains an integer ai (0 ≤ a ≤ 1000) — the i-th element of the array. The size of the array is between 1 and 10, inclusive. Note that the size of the array is not given explicitly!
+
+Output Format:
+Output a single integer — the sum of the elements of the array.
+
+Note:
+None

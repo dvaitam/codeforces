@@ -1,0 +1,19 @@
+Description:
+You are given an integer $$$x$$$ and an array of integers $$$a_1, a_2, \ldots, a_n$$$. You have to determine if the number $$$a_1! + a_2! + \ldots + a_n!$$$ is divisible by $$$x!$$$.
+
+Here $$$k!$$$ is a factorial of $$$k$$$ — the product of all positive integers less than or equal to $$$k$$$. For example, $$$3! = 1 \cdot 2 \cdot 3 = 6$$$, and $$$5! = 1 \cdot 2 \cdot 3 \cdot 4 \cdot 5 = 120$$$.
+
+Input Format:
+The first line contains two integers $$$n$$$ and $$$x$$$ ($$$1 \le n \le 500\,000$$$, $$$1 \le x \le 500\,000$$$).
+
+The second line contains $$$n$$$ integers $$$a_1, a_2, \ldots, a_n$$$ ($$$1 \le a_i \le x$$$) — elements of given array.
+
+Output Format:
+In the only line print "Yes" (without quotes) if $$$a_1! + a_2! + \ldots + a_n!$$$ is divisible by $$$x!$$$, and "No" (without quotes) otherwise.
+
+Note:
+In the first example $$$3! + 2! + 2! + 2! + 3! + 3! = 6 + 2 + 2 + 2 + 6 + 6 = 24$$$. Number $$$24$$$ is divisible by $$$4! = 24$$$.
+
+In the second example $$$3! + 2! + 2! + 2! + 2! + 2! + 1! + 1! = 18$$$, is divisible by $$$3! = 6$$$.
+
+In the third example $$$7! + 7! + 7! + 7! + 7! + 7! + 7! = 7 \cdot 7!$$$. It is easy to prove that this number is not divisible by $$$8!$$$.

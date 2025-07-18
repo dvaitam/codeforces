@@ -1,0 +1,19 @@
+Description:
+This is an interactive problem. Remember to flush your output while communicating with the testing program. You may use fflush(stdout) in C++, system.out.flush() in Java, stdout.flush() in Python or flush(output) in Pascal to flush the output. If you use some other programming language, consult its documentation. You may also refer to the guide on interactive problems: https://codeforces.com/blog/entry/45307.
+
+The jury guessed some array $$$a$$$ consisting of $$$6$$$ integers. There are $$$6$$$ special numbers — $$$4$$$, $$$8$$$, $$$15$$$, $$$16$$$, $$$23$$$, $$$42$$$ — and each of these numbers occurs in $$$a$$$ exactly once (so, $$$a$$$ is some permutation of these numbers).
+
+You don't know anything about their order, but you are allowed to ask up to $$$4$$$ queries. In each query, you may choose two indices $$$i$$$ and $$$j$$$ ($$$1 \le i, j \le 6$$$, $$$i$$$ and $$$j$$$ are not necessarily distinct), and you will get the value of $$$a_i \cdot a_j$$$ in return.
+
+Can you guess the array $$$a$$$?
+
+The array $$$a$$$ is fixed beforehand in each test, the interaction program doesn't try to adapt to your queries.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+If you want to submit a hack for this problem, your test should contain exactly six space-separated integers $$$a_1$$$, $$$a_2$$$, ..., $$$a_6$$$. Each of $$$6$$$ special numbers should occur exactly once in the test. The test should be ended with a line break character.

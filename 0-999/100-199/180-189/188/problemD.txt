@@ -1,0 +1,11 @@
+Description:
+You are given a number n. Print n lines, i-th line should consist of i characters "*". Lines' indices are 1-based.
+
+Input Format:
+The only line of input contains an integer n (1 ≤ n ≤ 50).
+
+Output Format:
+Output the described pattern.
+
+Note:
+None

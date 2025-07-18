@@ -1,0 +1,23 @@
+Description:
+You are given an undirected tree, consisting of $$$n$$$ vertices.
+
+The vertex is called a leaf if it has exactly one vertex adjacent to it.
+
+The distance between some pair of vertices is the number of edges in the shortest path between them.
+
+Let's call some set of leaves beautiful if the maximum distance between any pair of leaves in it is less or equal to $$$k$$$.
+
+You want to split all leaves into non-intersecting beautiful sets. What is the minimal number of sets in such a split?
+
+Input Format:
+The first line contains two integers $$$n$$$ and $$$k$$$ ($$$3 \le n \le 10^6$$$, $$$1 \le k \le 10^6$$$) — the number of vertices in the tree and the maximum distance between any pair of leaves in each beautiful set.
+
+Each of the next $$$n - 1$$$ lines contains two integers $$$v_i$$$ and $$$u_i$$$ ($$$1 \le v_i, u_i \le n$$$) — the description of the $$$i$$$-th edge.
+
+It is guaranteed that the given edges form a tree.
+
+Output Format:
+Print a single integer — the minimal number of beautiful sets the split can have.
+
+Note:
+Here is the graph for the first example:

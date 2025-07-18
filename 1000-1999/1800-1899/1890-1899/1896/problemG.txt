@@ -1,0 +1,25 @@
+Description:
+This is an interactive problem.
+
+There are $$$n^2$$$ pepes labeled $$$1, 2, \ldots, n^2$$$ with pairwise distinct speeds. You would like to set up some races to find out the relative speed of these pepes.
+
+In one race, you can choose exactly $$$n$$$ distinct pepes and make them race against each other. After each race, you will only know the fastest pepe of these $$$n$$$ pepes.
+
+Can you order the $$$n^2-n+1$$$ fastest pepes in at most $$$2n^2 - 2n + 1$$$ races? Note that the slowest $$$n - 1$$$ pepes are indistinguishable from each other.
+
+Note that the interactor is adaptive. That is, the relative speeds of the pepes are not fixed in the beginning and may depend on your queries. But it is guaranteed that at any moment there is at least one initial configuration of pepes such that all the answers to the queries are consistent.
+
+Input Format:
+Each test contains multiple test cases. The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 10^4$$$). The description of the test cases follows.
+
+The only line of each test case contains a single integer $$$n$$$ ($$$2 \le n \le 20$$$) — the number of pepes in one race.
+
+After reading the integer $$$n$$$ for each test case, you should begin the interaction.
+
+It is guaranteed that the sum of $$$n^3$$$ over all test cases does not exceed $$$3 \cdot 10^5$$$.
+
+Output Format:
+None
+
+Note:
+None

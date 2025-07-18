@@ -1,0 +1,11 @@
+Description:
+John wants to compose a 7-digit number by using each of the digits $$$1, 2, 3, 4, 5, 6, 7$$$ exactly once, so that the digits 1 and 2 are not neighbouring. In how many ways can he compose such a number?
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

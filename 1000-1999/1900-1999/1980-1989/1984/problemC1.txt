@@ -1,0 +1,28 @@
+Description:
+The two versions of the problem are different. You may want to read both versions. You can make hacks only if both versions are solved.
+
+You are given an array $$$a$$$ of length $$$n$$$. Start with $$$c = 0$$$. Then, for each $$$i$$$ from $$$1$$$ to $$$n$$$ (in increasing order) do exactly one of the following:
+
+- Option $$$1$$$: set $$$c$$$ to $$$c + a_i$$$.
+- Option $$$2$$$: set $$$c$$$ to $$$|c + a_i|$$$, where $$$|x|$$$ is the absolute value of $$$x$$$.
+
+Let the maximum final value of $$$c$$$ after the procedure described above be equal to $$$k$$$. Find $$$k$$$.
+
+Input Format:
+The first line contains a single integer $$$t$$$ ($$$1 \leq t \leq 10^4$$$) — the number of test cases.
+
+The first line of each test case contains a single integer $$$n$$$ ($$$2 \leq n \leq 2 \cdot 10^5$$$).
+
+The second line of each case contains $$$n$$$ integers $$$a_1$$$, $$$a_2$$$, $$$a_3$$$, $$$\ldots$$$, $$$a_n$$$ ($$$-10^9 \leq a_i \leq 10^9$$$).
+
+The sum of $$$n$$$ over all test cases does not exceed $$$3 \cdot 10^5$$$.
+
+Output Format:
+For each test case, output a single integer — the value of $$$k$$$.
+
+Note:
+In the first test case, if we set $$$c$$$ to its absolute value every time we add to it, we end up with $$$6$$$. It can be shown that this is the maximum result.
+
+In the second test case, taking the absolute value will never change anything, so we can just sum the array without doing anything to get $$$24$$$.
+
+In the third test case, it is optimal to wait until the end to set $$$c$$$ to its absolute value, resulting in an answer of $$$6$$$.

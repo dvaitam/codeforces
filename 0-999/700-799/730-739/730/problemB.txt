@@ -1,0 +1,21 @@
+Description:
+This is an interactive problem. You have to use flush operation right after printing each line. For example, in C++ you should use function fflush(stdout), in Java — System.out.flush(), in Pascal — flush(output) and in Python — sys.stdout.flush().
+
+In this problem, you need to find maximal and minimal elements of an array. What could be simpler?
+
+You can imagine that the jury has an array, and initially you know the only number n — array's length.
+
+Array's elements are numbered from 1 to n. You are allowed to compare two elements of the array by using their indices i and j. There are three possible responses to this query: '<' (if ai is less than aj), '=' (if ai is equal to aj) and finally '>' (if ai is greater than aj).
+
+It's known that it's always possible to find both maximal and minimal elements of the array by using no more than $$f(n) = \left\lceil \frac{3 \cdot n}{2} \right\rceil - 2$$ comparisons, where ⌈ x⌉ is the result of rounding x up.
+
+Write the program that will find positions of the minimum and the maximum in the jury's array of length n, by using no more than f(n) comparisons.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

@@ -1,0 +1,23 @@
+Description:
+This is an interactive problem.
+
+This is an easy version of the problem. The difference from the hard version is that in the easy version $$$t=1$$$ and the number of queries is limited to $$$20$$$.
+
+Polycarp is playing a computer game. In this game, an array consisting of zeros and ones is hidden. Polycarp wins if he guesses the position of the $$$k$$$-th zero from the left $$$t$$$ times.
+
+Polycarp can make no more than $$$20$$$ requests of the following type:
+
+- ? $$$l$$$ $$$r$$$ — find out the sum of all elements in positions from $$$l$$$ to $$$r$$$ ($$$1 \le l \le r \le n$$$) inclusive.
+
+In this (easy version) of the problem, this paragraph doesn't really make sense since $$$t=1$$$ always. To make the game more interesting, each guessed zero turns into one and the game continues on the changed array. More formally, if the position of the $$$k$$$-th zero was $$$x$$$, then after Polycarp guesses this position, the $$$x$$$-th element of the array will be replaced from $$$0$$$ to $$$1$$$. Of course, this feature affects something only for $$$t>1$$$.
+
+Help Polycarp win the game.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+In the first test, the $$$[1, 0, 1, 1, 0, 1]$$$ array is hidden. In this test $$$k=2$$$.

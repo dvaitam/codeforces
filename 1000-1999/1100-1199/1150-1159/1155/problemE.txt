@@ -1,0 +1,19 @@
+Description:
+Jury picked a polynomial $$$f(x) = a_0 + a_1 \cdot x + a_2 \cdot x^2 + \dots + a_k \cdot x^k$$$. $$$k \le 10$$$ and all $$$a_i$$$ are integer numbers and $$$0 \le a_i < 10^6 + 3$$$. It's guaranteed that there is at least one $$$i$$$ such that $$$a_i > 0$$$.
+
+Now jury wants you to find such an integer $$$x_0$$$ that $$$f(x_0) \equiv 0 \mod (10^6 + 3)$$$ or report that there is not such $$$x_0$$$.
+
+You can ask no more than $$$50$$$ queries: you ask value $$$x_q$$$ and jury tells you value $$$f(x_q) \mod (10^6 + 3)$$$.
+
+Note that printing the answer doesn't count as a query.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+The polynomial in the first sample is $$$1000002 + x^2$$$.
+
+The polynomial in the second sample is $$$1 + x^2$$$.

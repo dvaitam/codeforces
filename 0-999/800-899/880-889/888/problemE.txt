@@ -1,0 +1,17 @@
+Description:
+You are given an array a consisting of n integers, and additionally an integer m. You have to choose some sequence of indices b1, b2, ..., bk (1 ≤ b1 < b2 < ... < bk ≤ n) in such a way that the value of $$\sum_{i=1}^{k} a_{b_i} \bmod m$$ is maximized. Chosen sequence can be empty.
+
+Print the maximum possible value of $$\sum_{i=1}^{k} a_{b_i} \bmod m$$.
+
+Input Format:
+The first line contains two integers n and m (1 ≤ n ≤ 35, 1 ≤ m ≤ 109).
+
+The second line contains n integers a1, a2, ..., an (1 ≤ ai ≤ 109).
+
+Output Format:
+Print the maximum possible value of $$\sum_{i=1}^{k} a_{b_i} \bmod m$$.
+
+Note:
+In the first example you can choose a sequence b = {1, 2}, so the sum $$\sum_{i=1}^{k}a_{bi}$$ is equal to 7 (and that's 3 after taking it modulo 4).
+
+In the second example you can choose a sequence b = {3}.

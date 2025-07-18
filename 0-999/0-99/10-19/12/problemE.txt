@@ -1,0 +1,11 @@
+Description:
+Before the start of the football season in Berland a strange magic ritual is held. The most experienced magicians have to find a magic matrix of the size n × n (n is even number). Gods will never allow to start the championship without it. Matrix should contain integers from 0 to n - 1, main diagonal should contain only zeroes and matrix should be symmetric. Moreover, all numbers in each row should be different. Magicians are very tired of the thinking process, so they ask you to write a program to find such matrix.
+
+Input Format:
+The first line contains one integer n (2 ≤ n ≤ 1000), n is even.
+
+Output Format:
+Output n lines with n numbers each — the required matrix. Separate numbers with spaces. If there are several solutions, output any.
+
+Note:
+None

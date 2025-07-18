@@ -1,0 +1,37 @@
+Description:
+Linda likes to change her hair color from time to time, and would be pleased if her boyfriend Archie would notice the difference between the previous and the new color. Archie always comments on Linda's hair color if and only if he notices a difference — so Linda always knows whether Archie has spotted the difference or not.
+
+There is a new hair dye series in the market where all available colors are numbered by integers from $$$1$$$ to $$$N$$$ such that a smaller difference of the numerical values also means less visual difference.
+
+Linda assumes that for these series there should be some critical color difference $$$C$$$ ($$$1 \le C \le N$$$) for which Archie will notice color difference between the current color $$$\mathrm{color}_{\mathrm{new}}$$$ and the previous color $$$\mathrm{color}_{\mathrm{prev}}$$$ if $$$\left|\mathrm{color}_{\mathrm{new}} - \mathrm{color}_{\mathrm{prev}}\right| \ge C$$$ and will not if $$$\left|\mathrm{color}_{\mathrm{new}} - \mathrm{color}_{\mathrm{prev}}\right| < C$$$.
+
+Now she has bought $$$N$$$ sets of hair dye from the new series — one for each of the colors from $$$1$$$ to $$$N$$$, and is ready to set up an experiment. Linda will change her hair color on a regular basis and will observe Archie's reaction — whether he will notice the color change or not. Since for the proper dye each set should be used completely, each hair color can be obtained no more than once.
+
+Before the experiment, Linda was using a dye from a different series which is not compatible with the new one, so for the clearness of the experiment Archie's reaction to the first used color is meaningless.
+
+Her aim is to find the precise value of $$$C$$$ in a limited number of dyes. Write a program which finds the value of $$$C$$$ by experimenting with the given $$$N$$$ colors and observing Archie's reactions to color changes.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+Scoring:
+Subtasks:
+
+1. (9 points) $$$N \le 64$$$
+2. (13 points) $$$N \le 125$$$
+3. (21 points) $$$N \le 1000$$$
+4. (24 points) $$$N \le 10^9$$$
+5. (33 points) No further constraints.
+
+Comments to the example input line by line:
+
+1. $$$N = 7$$$.
+2. Answer to the first query is meaningless (can also be $$$0$$$).
+3. $$$C \leq 5$$$.
+4. $$$3 < C \leq 5$$$. It would be wise to check difference $$$4$$$. However, this can not be done in the next query since $$$4 + 4 = 8$$$ and $$$4 - 4 = 0$$$ both are outside the allowed interval $$$1 \le P \le 7$$$.
+5. $$$3 < C \leq 5$$$.
+6. $$$3 < C \leq 4$$$. Therefore, $$$C = 4$$$.

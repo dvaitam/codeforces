@@ -1,0 +1,11 @@
+Description:
+Consider the recurrent sequence given by $$$x_0 = 0$$$, $$$x_1 = 4$$$ and $$$x_{n+1} = 4 \cdot x_n - 3 \cdot x_{n-1}$$$ for all natural $$$n$$$. Find the minimum natural $$$n$$$ such that $$$x_n$$$ is divisible by $$$83$$$.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

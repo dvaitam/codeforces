@@ -1,0 +1,29 @@
+Description:
+This is an interactive problem.
+
+There is a positive integer $$$1 \le x \le 10^9$$$ that you have to guess.
+
+In one query you can choose two positive integers $$$a \neq b$$$. As an answer to this query you will get $$$\gcd(x + a, x + b)$$$, where $$$\gcd(n, m)$$$ is the greatest common divisor of the numbers $$$n$$$ and $$$m$$$.
+
+To guess one hidden number $$$x$$$ you are allowed to make no more than $$$30$$$ queries.
+
+Input Format:
+The first line of input contains a single integer $$$t$$$ ($$$1 \le t \le 1000$$$) denoting the number of test cases.
+
+The integer $$$x$$$ that you have to guess satisfies the constraints: ($$$1 \le x \le 10^9$$$).
+
+Output Format:
+None
+
+Note:
+The first hidden number is $$$4$$$, that's why the answers for the queries are:
+
+"? 1 2" — $$$\gcd(4 + 1, 4 + 2) = \gcd(5, 6) = 1$$$.
+
+"? 12 4" — $$$\gcd(4 + 12, 4 + 4) = \gcd(16, 8) = 8$$$.
+
+The second hidden number is $$$10^9$$$, that's why the answer for the query is:
+
+"? 2000000000 1999999999" — $$$\gcd(3 \cdot 10^9, 3 \cdot 10^9 - 1) = 1$$$.
+
+These queries are made only for understanding the interaction and are not enough for finding the true $$$x$$$.

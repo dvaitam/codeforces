@@ -1,0 +1,13 @@
+Description:
+Let $$$M=\{1,2,3,4,5,6,7\}$$$ be a set with $$$7$$$ elements. Find the number of surjective functions $$$f:M\to M$$$ such that $$$f(f(a))\neq a$$$ and $$$f(f(f(a)))\neq a$$$ for all $$$a\in M$$$.
+
+Note: A function $$$f:A \to B$$$ is called surjective if for each $$$b \in B$$$ there exists $$$a\in A$$$ such that $$$f(a)=b$$$.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

@@ -1,0 +1,13 @@
+Description:
+You are given a simple arithmetic expression of the form a?b, where a and b are integer constants, and ? can be one of the following operations: '+' (addition), '-' (subtraction), '*' (multiplication), '/' (integer division) or '%' (modulo operation).
+
+Output the result of evaluation of this expression.
+
+Input Format:
+The input is a single line containing an expression a?b. Here a and b are integers between 1 and 999, inclusive; ? is an operation character: '+', '-' (ASCII code 45), '*', '/' or '%'.
+
+Output Format:
+Output a single integer — the result of evaluation of this expression.
+
+Note:
+None

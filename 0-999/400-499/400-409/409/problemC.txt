@@ -1,0 +1,33 @@
+Description:
+Salve, mi amice.
+
+Et tu quidem de lapis philosophorum. Barba non facit philosophum. Labor omnia vincit. Non potest creatio ex nihilo. Necesse est partibus.
+
+Rp:
+
+I Aqua Fortis
+
+I Aqua Regia
+
+II Amalgama
+
+VII Minium
+
+IV Vitriol
+
+Misce in vitro et æstus, et nil admirari. Festina lente, et nulla tenaci invia est via.
+
+Fac et spera,
+
+Vale,
+
+Nicolas Flamel
+
+Input Format:
+The first line of input contains several space-separated integers ai (0 ≤ ai ≤ 100).
+
+Output Format:
+Print a single integer.
+
+Note:
+None

@@ -1,0 +1,25 @@
+Description:
+This is an interactive problem.
+
+Misha likes to play cooperative games with incomplete information. Today he suggested ten his friends to play a cooperative game "Lake".
+
+Misha has already come up with a field for the upcoming game. The field for this game is a directed graph consisting of two parts. The first part is a road along the coast of the lake which is a cycle of $$$c$$$ vertices. The second part is a path from home to the lake which is a chain of $$$t$$$ vertices, and there is an edge from the last vertex of this chain to the vertex of the road along the coast which has the most beautiful view of the lake, also known as the finish vertex. Misha decided to keep the field secret, so nobody knows neither $$$t$$$ nor $$$c$$$.
+
+Note that each vertex of the field has exactly one outgoing edge and all the vertices except the home vertex and the finish vertex have exactly one ingoing edge. The home vertex has no incoming edges, the finish vertex has two incoming edges.
+
+At the beginning of the game pieces of all the ten players, indexed with consecutive integers from $$$0$$$ to $$$9$$$, are at the home vertex. After that on each turn some of the players can ask Misha to simultaneously move their pieces along the corresponding edges. Misha will not answer more than $$$q$$$ such queries. After each move Misha will tell players whose pieces are at the same vertices and whose pieces are at different vertices.
+
+The goal of the game is to move all the pieces to the finish vertex. Misha's friends have no idea how to win in such a game without knowledge of $$$c$$$, $$$t$$$ and $$$q$$$, but luckily they are your friends. Help them: coordinate their actions to win the game.
+
+Misha has drawn such a field that $$$1 \le t, c$$$, $$$(t+c) \leq 1000$$$ and $$$q = 3 \cdot (t+c)$$$.
+
+Input Format:
+There is no input — go to the interaction part straight away.
+
+Output Format:
+After all friends gather at the finish vertex, print "done" and terminate your program.
+
+Note:
+In the sample input and output values are aligned only for simplicity of interpreting them chronologically. In real interaction no "extra" line breaks should appear.
+
+In the example, the friends move as follows:

@@ -1,0 +1,34 @@
+Description:
+This problem only differs from the next problem in constraints.
+
+This is an interactive problem.
+
+Alice and Bob are playing a game on the chessboard of size $$$n \times m$$$ where $$$n$$$ and $$$m$$$ are even. The rows are numbered from $$$1$$$ to $$$n$$$ and the columns are numbered from $$$1$$$ to $$$m$$$. There are two knights on the chessboard. A white one initially is on the position $$$(x_1, y_1)$$$, while the black one is on the position $$$(x_2, y_2)$$$. Alice will choose one of the knights to play with, and Bob will use the other one.
+
+The Alice and Bob will play in turns and whoever controls the white knight starts the game. During a turn, the player must move their knight adhering the chess rules. That is, if the knight is currently on the position $$$(x, y)$$$, it can be moved to any of those positions (as long as they are inside the chessboard):
+
+$$$(x+1, y+2)$$$, $$$(x+1, y-2)$$$, $$$(x-1, y+2)$$$, $$$(x-1, y-2)$$$,$$$(x+2, y+1)$$$, $$$(x+2, y-1)$$$, $$$(x-2, y+1)$$$, $$$(x-2, y-1)$$$.
+
+We all know that knights are strongest in the middle of the board. Both knight have a single position they want to reach:
+
+- the owner of the white knight wins if it captures the black knight or if the white knight is at $$$(n/2, m/2)$$$ and this position is not under attack of the black knight at this moment;
+- The owner of the black knight wins if it captures the white knight or if the black knight is at $$$(n/2+1, m/2)$$$ and this position is not under attack of the white knight at this moment.
+
+Formally, the player who captures the other knight wins. The player who is at its target square ($$$(n/2, m/2)$$$ for white, $$$(n/2+1, m/2)$$$ for black) and this position is not under opponent's attack, also wins.
+
+A position is under attack of a knight if it can move into this position. Capturing a knight means that a player moves their knight to the cell where the opponent's knight is.
+
+If Alice made $$$350$$$ moves and nobody won, the game is a draw.
+
+Alice is unsure in her chess skills, so she asks you for a help. Choose a knight and win the game for her. It can be shown, that Alice always has a winning strategy.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+In the first example, the white knight can reach it's target square in one move.
+
+In the second example black knight wins, no matter what white knight moves.

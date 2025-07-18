@@ -1,0 +1,29 @@
+Description:
+This is the easy version of the problem. The only difference is that in this version, $$$a_i \le 10^6$$$.
+
+For a given sequence of $$$n$$$ integers $$$a$$$, a triple $$$(i, j, k)$$$ is called magic if:
+
+- $$$1 \le i, j, k \le n$$$.
+- $$$i$$$, $$$j$$$, $$$k$$$ are pairwise distinct.
+- there exists a positive integer $$$b$$$ such that $$$a_i \cdot b = a_j$$$ and $$$a_j \cdot b = a_k$$$.
+
+Kolya received a sequence of integers $$$a$$$ as a gift and now wants to count the number of magic triples for it. Help him with this task!
+
+Note that there are no constraints on the order of integers $$$i$$$, $$$j$$$ and $$$k$$$.
+
+Input Format:
+The first line contains a single integer $$$t$$$ ($$$1 \le t \le 10^4$$$) — the number of test cases. The description of the test cases follows.
+
+The first line of the test case contains a single integer $$$n$$$ ($$$3 \le n \le 2 \cdot 10^5$$$) — the length of the sequence.
+
+The second line of the test contains $$$n$$$ integers $$$a_1, a_2, a_3, \dots, a_n$$$ ($$$1 \le a_i \le 10^6$$$) — the elements of the sequence $$$a$$$.
+
+The sum of $$$n$$$ over all test cases does not exceed $$$2 \cdot 10^5$$$.
+
+Output Format:
+For each test case, output a single integer — the number of magic triples for the sequence $$$a$$$.
+
+Note:
+In the first example, there are $$$6$$$ magic triples for the sequence $$$a$$$ — $$$(2, 3, 5)$$$, $$$(2, 5, 3)$$$, $$$(3, 2, 5)$$$, $$$(3, 5, 2)$$$, $$$(5, 2, 3)$$$, $$$(5, 3, 2)$$$.
+
+In the second example, there is a single magic triple for the sequence $$$a$$$ — $$$(2, 1, 3)$$$.

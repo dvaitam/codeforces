@@ -1,0 +1,11 @@
+Description:
+None
+
+Input Format:
+The input contains $$$21$$$ lines, each containing $$$21$$$ characters $$$\texttt{0}$$$ or $$$\texttt{1}$$$.
+
+Output Format:
+None
+
+Note:
+None

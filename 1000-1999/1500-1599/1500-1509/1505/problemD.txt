@@ -1,0 +1,11 @@
+Description:
+None
+
+Input Format:
+The input contains two integers $$$N$$$, $$$M$$$ ($$$1 \le N \le 1024, 2 \le M \le 16$$$), separated by a single space.
+
+Output Format:
+Output "YES" or "NO".
+
+Note:
+None

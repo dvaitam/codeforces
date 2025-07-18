@@ -1,0 +1,24 @@
+Description:
+You are given N qubits (1 ≤ N ≤ 8) in zero state $${\left|0\dots0\right\rangle}$$.
+
+Your task is to generate an equal superposition of all 2N basis vectors on N qubits:
+
+$${ \left| S \right\rangle } = { \frac { 1 } { \sqrt { 2 ^ { N } } } } ( { \left| 0 \ldots 0 \right\rangle } + \ldots + { \left| 1 \ldots 1 \right\rangle } )$$
+
+For example,
+
+- for N = 1, the required state is simply $${ \left| + \right\rangle } = { \frac { 1 } { \sqrt { 2 } } } ( { \left| 0 \right\rangle } + { \left| 1 \right\rangle } )$$,
+- for N = 2, the required state is $${ \frac { 1 } { 2 } } ( | 0 0 \rangle + | 0 1 \rangle + | 1 0 \rangle + | 1 1 \rangle )$$.
+
+You have to implement an operation which takes an array of N qubits as an input and has no output. The "output" of the operation is the state in which it leaves the qubits.
+
+Your code should have the following signature:
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

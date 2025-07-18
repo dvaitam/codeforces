@@ -1,0 +1,27 @@
+Description:
+Abendsen assigned a mission to Juliana. In this mission, Juliana has a rooted tree with $$$n$$$ vertices. Vertex number $$$1$$$ is the root of this tree. Each vertex can be either black or white. At first, all vertices are white. Juliana is asked to process $$$q$$$ queries. Each query is one of three types:
+
+1. If vertex $$$v$$$ is white, mark it as black; otherwise, perform this operation on all direct sons of $$$v$$$ instead.
+2. Mark all vertices in the subtree of $$$v$$$ (including $$$v$$$) as white.
+3. Find the color of the $$$i$$$-th vertex.
+
+An example of operation "1 1" (corresponds to the first example test). The vertices $$$1$$$ and $$$2$$$ are already black, so the operation goes to their sons instead.
+
+Can you help Juliana to process all these queries?
+
+Input Format:
+The first line contains two integers $$$n$$$ and $$$q$$$ ($$$2\leq n\leq 10^5$$$, $$$1\leq q\leq 10^5$$$) — the number of vertices and the number of queries.
+
+The second line contains $$$n-1$$$ integers $$$p_2, p_3, \ldots, p_n$$$ ($$$1\leq p_i<i$$$), where $$$p_i$$$ means that there is an edge between vertices $$$i$$$ and $$$p_i$$$.
+
+Each of the next $$$q$$$ lines contains two integers $$$t_i$$$ and $$$v_i$$$ ($$$1\leq t_i\leq 3$$$, $$$1\leq v_i\leq n$$$) — the type of the $$$i$$$-th query and the vertex of the $$$i$$$-th query.
+
+It is guaranteed that the given graph is a tree.
+
+Output Format:
+For each query of type $$$3$$$, print "black" if the vertex is black; otherwise, print "white".
+
+Note:
+The first example is shown on the picture below.
+
+The second example is shown on the picture below.

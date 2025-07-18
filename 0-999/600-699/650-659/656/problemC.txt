@@ -1,0 +1,11 @@
+Description:
+You can preview the image in better quality by the link: http://assets.codeforces.com/files/656/without-text.png
+
+Input Format:
+The only line of the input is a string (between 1 and 50 characters long, inclusive). Each character will be an alphanumeric character or a full stop ".".
+
+Output Format:
+Output the required answer.
+
+Note:
+None

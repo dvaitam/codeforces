@@ -1,0 +1,11 @@
+Description:
+One has $$$11$$$ segments of integer lengths, the smallest length being $$$1$$$. There are no three segments such that one can build a non-degenerate triangle with them. What is the minimum possible length of the largest of the $$$11$$$ segments?
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

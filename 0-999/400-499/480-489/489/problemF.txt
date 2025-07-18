@@ -1,0 +1,20 @@
+Description:
+An n × n square matrix is special, if:
+
+- it is binary, that is, each cell contains either a 0, or a 1;
+- the number of ones in each row and column equals 2.
+
+You are given n and the first m rows of the matrix. Print the number of special n × n matrices, such that the first m rows coincide with the given ones.
+
+As the required value can be rather large, print the remainder after dividing the value by the given number mod.
+
+Input Format:
+The first line of the input contains three integers n, m, mod (2 ≤ n ≤ 500, 0 ≤ m ≤ n, 2 ≤ mod ≤ 109). Then m lines follow, each of them contains n characters — the first rows of the required special matrices. Each of these lines contains exactly two characters '1', the rest characters are '0'. Each column of the given m × n table contains at most two numbers one.
+
+Output Format:
+Print the remainder after dividing the required value by number mod.
+
+Note:
+For the first test the required matrices are:
+
+In the second test the required matrix is already fully given, so the answer is 1.

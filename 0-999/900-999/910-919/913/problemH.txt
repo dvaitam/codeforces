@@ -1,0 +1,24 @@
+Description:
+You generate real numbers s1, s2, ..., sn as follows:
+
+- s0 = 0;
+- si = si - 1 + ti, where ti is a real number chosen independently uniformly at random between 0 and 1, inclusive.
+
+You are given real numbers x1, x2, ..., xn. You are interested in the probability that si ≤ xi is true for all i simultaneously.
+
+It can be shown that this can be represented as $$\frac{p}{q}$$, where P and Q are coprime integers, and $$Q \not\equiv 0 \pmod{998244353}$$. Print the value of P·Q - 1 modulo 998244353.
+
+Input Format:
+The first line contains integer n (1 ≤ n ≤ 30).
+
+The next n lines contain real numbers x1, x2, ..., xn, given with at most six digits after the decimal point (0 < xi ≤ n).
+
+Output Format:
+Print a single integer, the answer to the problem.
+
+Note:
+In the first example, the sought probability is 1 since the sum of i real numbers which don't exceed 1 doesn't exceed i.
+
+In the second example, the probability is x1 itself.
+
+In the third example, the sought probability is 3 / 8.

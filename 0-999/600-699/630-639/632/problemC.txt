@@ -1,0 +1,15 @@
+Description:
+You're given a list of n strings a1, a2, ..., an. You'd like to concatenate them together in some order such that the resulting string would be lexicographically smallest.
+
+Given the list of strings, output the lexicographically smallest concatenation.
+
+Input Format:
+The first line contains integer n — the number of strings (1 ≤ n ≤ 5·104).
+
+Each of the next n lines contains one string ai (1 ≤ |ai| ≤ 50) consisting of only lowercase English letters. The sum of string lengths will not exceed 5·104.
+
+Output Format:
+Print the only string a — the lexicographically smallest string concatenation.
+
+Note:
+None

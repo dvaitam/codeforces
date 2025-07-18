@@ -1,0 +1,19 @@
+Description:
+You are given an integer $$$n$$$.
+
+Find any pair of integers $$$(x,y)$$$ ($$$1\leq x,y\leq n$$$) such that $$$x^y\cdot y+y^x\cdot x = n$$$.
+
+Input Format:
+The first line contains a single integer $$$t$$$ ($$$1\leq t\leq 10^4$$$) — the number of test cases.
+
+Each test case contains one line with a single integer $$$n$$$ ($$$1\leq n\leq 10^9$$$).
+
+Output Format:
+For each test case, if possible, print two integers $$$x$$$ and $$$y$$$ ($$$1\leq x,y\leq n$$$). If there are multiple answers, print any.
+
+Otherwise, print $$$-1$$$.
+
+Note:
+In the third test case, $$$2^3 \cdot 3+3^2 \cdot 2 = 42$$$, so $$$(2,3),(3,2)$$$ will be considered as legal solutions.
+
+In the fourth test case, $$$5^5 \cdot 5+5^5 \cdot 5 = 31250$$$, so $$$(5,5)$$$ is a legal solution.

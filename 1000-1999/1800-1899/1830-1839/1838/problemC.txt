@@ -1,0 +1,21 @@
+Description:
+You are given integers $$$n$$$ and $$$m$$$. Fill an $$$n$$$ by $$$m$$$ grid with the integers $$$1$$$ through $$$n\cdot m$$$, in such a way that for any two adjacent cells in the grid, the absolute difference of the values in those cells is not a prime number. Two cells in the grid are considered adjacent if they share a side.
+
+It can be shown that under the given constraints, there is always a solution.
+
+Input Format:
+The first line of the input contains a single integer $$$t$$$ ($$$1 \le t \le 1000$$$) — the number of test cases. The description of the test cases follows.
+
+The first and only line of each test case contains two integers $$$n$$$ and $$$m$$$ ($$$4 \le n, m \le 1000$$$) — the dimensions of the grid.
+
+It is guaranteed that the sum of $$$n\cdot m$$$ over all test cases does not exceed $$$10^6$$$.
+
+Output Format:
+For each test case, output $$$n$$$ lines of $$$m$$$ integers each, representing the final grid. Every number from $$$1$$$ to $$$n\cdot m$$$ should appear exactly once in the grid.
+
+The extra spaces and blank lines in the sample output below are only present to make the output easier to read, and are not required.
+
+If there are multiple solutions, print any of them.
+
+Note:
+The first sample case corresponds to the picture above. The only absolute differences between adjacent elements in this grid are $$$1$$$, $$$4$$$, $$$6$$$, $$$8$$$, and $$$9$$$, none of which are prime.

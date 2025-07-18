@@ -1,0 +1,11 @@
+Description:
+None
+
+Input Format:
+The input contains between 1 and 10 lines, i-th line contains an integer number xi (0 ≤ xi ≤ 9).
+
+Output Format:
+Output a single real number. The answer is considered to be correct if its absolute or relative error does not exceed 10 - 4.
+
+Note:
+None

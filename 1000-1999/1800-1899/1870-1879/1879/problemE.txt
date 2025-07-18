@@ -1,0 +1,25 @@
+Description:
+This is an interactive problem. Remember to flush your output while communicating with the testing program. You may use fflush(stdout) in C++, system.out.flush() in Java, stdout.flush() in Python or flush(output) in Pascal to flush the output. If you use some other programming language, consult its documentation. You may also refer to the guide on interactive problems: https://codeforces.com/blog/entry/45307.
+
+You are given a tree on $$$n$$$ vertices; vertex $$$1$$$ is the root of the tree. For every $$$i \in [2, n]$$$, the parent of the $$$i$$$-th vertex is $$$p_i$$$, and $$$p_i < i$$$.
+
+You have to color all edges of the tree using the minimum possible number of colors such that you can win the game on that tree (every edge should be painted into exactly one color).
+
+The game we're going to play will be conducted as follows. After you paint the edges and print their colors, the jury will place a chip into one of the vertices of the tree (except for the root). Your goal is to move this chip to the root in exactly $$$d$$$ moves, where $$$d$$$ is the distance from the root to that vertex (the distance is equal to the number of edges on the path). If the chip reaches the root in $$$d$$$ moves, you win. Otherwise, you lose.
+
+The jury won't tell you where the chip is located. You won't even know the value of $$$d$$$ in advance. However, at the start of each move, you will be told how many edges of each color are incident to the current vertex (this includes both the edge leading up the tree and the edges leading away from the root). You have to choose one of these colors, and the chip will be moved along the edge of the chosen color (if there are multiple edges with that color incident to the current vertex, the jury gets to choose one of them). After the chip is moved, you will be told the same information about the current vertex again, and the game continues, until you either reach the root, or you make $$$d$$$ moves without reaching the root.
+
+The interactor for this problem is adaptive. It means that both the starting vertex and the current vertex are not fixed and may change "on the run" depending on the output of your program. However, the state of the game will always be consistent with the information you are given: there will always be at least one starting vertex and at least one path of your chip from that vertex consistent with both the information about the colors you receive and the colors you've chosen during the moves.
+
+Input Format:
+The first line contains one integer $$$n$$$ ($$$3 \le n \le 100$$$) — the number of vertices in the tree.
+
+The second line contains $$$n-1$$$ integers $$$p_2, p_3, \dots, p_n$$$ ($$$1 \le p_i < i$$$), where $$$p_i$$$ is the parent of the $$$i$$$-th vertex in the tree.
+
+Output Format:
+None
+
+Note:
+In the first example, every vertex from $$$2$$$ to $$$n$$$ is connected to the root. So, we can paint all edges into the same color $$$1$$$, and when the game starts, there will be only one edge incident to the current vertex (and it will lead to the root).
+
+In the second example, the tree is a path of $$$4$$$ vertices. We have to paint its edges into different colors, because it can be shown that we don't have a winning strategy with just two colors.

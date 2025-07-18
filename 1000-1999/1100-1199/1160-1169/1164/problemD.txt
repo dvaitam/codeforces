@@ -1,0 +1,11 @@
+Description:
+What is the smallest multiple of $$$29$$$ whose last two digits are $$$29$$$ and whose sum of digits is $$$29$$$?
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

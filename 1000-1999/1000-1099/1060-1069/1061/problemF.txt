@@ -1,0 +1,31 @@
+Description:
+The graph is called tree if it is connected and has no cycles. Suppose the tree is rooted at some vertex. Then tree is called to be perfect $$$k$$$-ary tree if each vertex is either a leaf (has no children) or has exactly $$$k$$$ children. Also, in perfect $$$k$$$-ary tree all leafs must have same depth.
+
+For example, the picture below illustrates perfect binary tree with $$$15$$$ vertices:
+
+There is a perfect $$$k$$$-ary tree with $$$n$$$ nodes. The nodes are labeled with distinct integers from $$$1$$$ to $$$n$$$, however you don't know how nodes are labelled. Still, you want to find the label of the root of the tree.
+
+You are allowed to make at most $$$60 \cdot n$$$ queries of the following type:
+
+- "? $$$a$$$ $$$b$$$ $$$c$$$", the query returns "Yes" if node with label $$$b$$$ lies on the path from $$$a$$$ to $$$c$$$ and "No" otherwise.
+
+Both $$$a$$$ and $$$c$$$ are considered to be lying on the path from $$$a$$$ to $$$c$$$.
+
+When you are ready to report the root of the tree, print
+
+- "! $$$s$$$", where $$$s$$$ is the label of the root of the tree.
+
+It is possible to report the root only once and this query is not counted towards limit of $$$60 \cdot n$$$ queries.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+The tree in the example is as follows:
+
+The input and output for example illustrate possible interaction on that test (empty lines are inserted only for clarity).
+
+The hack corresponding to the example would look like:

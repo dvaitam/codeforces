@@ -1,0 +1,52 @@
+Description:
+Jellyfish loves playing a game called "Inscryption" which is played on a directed acyclic graph with $$$n$$$ vertices and $$$m$$$ edges. All edges $$$a \to b$$$ satisfy $$$a < b$$$.
+
+You need to move from vertex $$$1$$$ to vertex $$$n$$$ along the directed edges, and then fight with the final boss.
+
+You will collect cards and props in the process.
+
+Each card has two attributes: HP and damage. If a card's HP is $$$a$$$ and its damage is $$$b$$$, then the power of the card is $$$a \times b$$$.
+
+Each prop has only one attribute: power.
+
+In addition to vertex $$$1$$$ and vertex $$$n$$$, there are some vertices that trigger special events. The special events are:
+
+1. You will get a card with $$$a$$$ HP, and $$$b$$$ damage.
+2. If you have at least one card, choose one of your cards and increase its HP by $$$x$$$.
+3. If you have at least one card, choose one of your cards and increase its damage by $$$y$$$.
+4. You will get a prop with $$$w$$$ power.
+
+When you get to vertex $$$n$$$, you can choose at most one of your cards and multiply its damage by $$$10^9$$$.
+
+The final boss is very strong, so you want to maximize the sum of the power of all your cards and props. Find the maximum possible sum of power of all your cards and props if you play the game optimally.
+
+Input Format:
+The first line contains two integers $$$n$$$ and $$$m$$$ ($$$2 \leq n \leq 200$$$, $$$n - 1\leq m \leq \min(\frac{n(n-1)}2, 2000)$$$) — the number of the vertices and the number of the edges.
+
+In the following $$$n$$$ lines, the $$$i$$$-th $$$(1 \leq i \leq n)$$$ line describes the special event that will trigger on vertex $$$i$$$:
+
+- 0 — no special events.
+- 1 a b ($$$1 \leq a, b \leq 200$$$) — you will get a card with $$$a$$$ HP, and $$$b$$$ damage.
+- 2 x ($$$1 \leq x \leq 200$$$) — if you have at least one card, choose one of your cards and increase its HP by $$$x$$$.
+- 3 y ($$$1 \leq y \leq 200$$$) — if you have at least one card, choose one of your cards and increase its damage by $$$y$$$.
+- 4 w ($$$1 \leq w \leq 10^6$$$) — you will get a prop with $$$w$$$ power.
+
+In the following $$$m$$$ lines, each line contains two integers $$$u$$$ and $$$v$$$ ($$$1 \leq u < v \leq n$$$) representing a directed edge from vertex $$$u$$$ to vertex $$$v$$$.
+
+It is guaranteed that every edge $$$(u,v)$$$ appears at most once.
+
+It is guaranteed that there are no special events on vertex $$$1$$$ and vertex $$$n$$$.
+
+It is guaranteed that for all $$$i$$$, there exists a path from vertex $$$1$$$ to vertex $$$n$$$ that passes through vertex $$$i$$$.
+
+Output Format:
+Output a single integer — the maximum sum of the power of all your cards and props.
+
+Note:
+In the first example, we will play the game in the following order:
+
+- move from vertex $$$1$$$ to vertex $$$2$$$, get a card with $$$2$$$ HP, and $$$10$$$ damage.
+- move from vertex $$$2$$$ to vertex $$$4$$$, choose the card we get from vertex $$$2$$$ and increase its HP by $$$8$$$.
+- move from vertex $$$4$$$ to vertex $$$6$$$, choose the card we get from vertex $$$2$$$ and multiply its damage by $$$10^9$$$.
+
+In the end, we will have a card with $$$(2+8)=10$$$ HP and $$$10 \times 10^9=10^{10}$$$ damage, It's power is $$$10 \times 10^{10}=10^{11}$$$. Because we only have the card we get from vertex $$$2$$$, so the sum of power of all your cards and props is $$$10^{11}$$$.

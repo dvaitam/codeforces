@@ -1,0 +1,31 @@
+Description:
+This is an interactive problem.
+
+Chouti was tired of studying, so he opened the computer and started playing a puzzle game.
+
+Long long ago, the boy found a sequence $$$s_1, s_2, \ldots, s_n$$$ of length $$$n$$$, kept by a tricky interactor. It consisted of $$$0$$$s and $$$1$$$s only and the number of $$$1$$$s is $$$t$$$. The boy knows nothing about this sequence except $$$n$$$ and $$$t$$$, but he can try to find it out with some queries with the interactor.
+
+We define an operation called flipping. Flipping $$$[l,r]$$$ ($$$1 \leq l \leq r \leq n$$$) means for each $$$x \in [l,r]$$$, changing $$$s_x$$$ to $$$1-s_x$$$.
+
+In each query, the boy can give the interactor two integers $$$l,r$$$ satisfying $$$1 \leq l \leq r \leq n$$$ and the interactor will either flip $$$[1,r]$$$ or $$$[l,n]$$$ (both outcomes have the same probability and all decisions made by interactor are independent from each other, see Notes section for more details). The interactor will tell the current number of $$$1$$$s after each operation. Note, that the sequence won't be restored after each operation.
+
+Help the boy to find the original sequence in no more than $$$10000$$$ interactions.
+
+"Weird legend, dumb game." he thought. However, after several tries, he is still stuck with it. Can you help him beat this game?
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+For first query $$$1,1$$$, the interactor should flip $$$[1,1]$$$ or $$$[1,4]$$$. It chose to flip $$$[1,4]$$$, so the sequence became 1100.
+
+For second query $$$1,1$$$, the interactor should flip $$$[1,1]$$$ or $$$[1,4]$$$. It again chose to flip $$$[1,4]$$$, so the sequence became 0011.
+
+For third query $$$3,4$$$, the interactor should flip $$$[1,4]$$$ or $$$[3,4]$$$. It chose to flip $$$[3,4]$$$, so the sequence became 0000.
+
+Q: How does interactor choose between $$$[1,r]$$$ and $$$[l,n]$$$? Is it really random?
+
+A: The interactor will use a secret pseudorandom number generator. Only $$$s$$$ and your queries will be hashed and used as the seed. So if you give the same sequence of queries twice for the same secret string, you will get the same results. Except this, you can consider the choices fully random, like flipping a fair coin. You needn't (and shouldn't) exploit the exact generator to pass this problem.

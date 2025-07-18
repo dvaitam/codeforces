@@ -1,0 +1,28 @@
+Description:
+Let us call a point of the plane admissible if its coordinates are positive integers less than or equal to $$$200$$$.
+
+There is an invisible rectangle such that:
+
+- its vertices are all admissible;
+- its sides are parallel to the coordinate axes;
+- its area is strictly positive.
+
+In order to guess it, you may ask at most $$$4$$$ queries.
+
+In each query, you choose a nonempty subset of the admissible points and you are told how many of the chosen points are inside or on the boundary of the invisible rectangle.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+The following is an example of interaction for the first sample intended to show the format of the queries. $$$$$$ \begin{array}{l|l|l} \text{Query (contestant program)} & \text{Answer (interactor)} & \text{Explanation} \\ \hline \mathtt{?\ 4} & & \text{We choose the $4$ vertices of} \\ \mathtt{13\ 5\ 13\ 80\ 123\ 5\ 123\ 80} & \mathtt{4} &\text{the hidden rectangle.}\\ \hline \mathtt{?\ 5} & & \text{We choose $4$ points just outside the hidden}\\ \mathtt{100\ 4\ 100\ 81\ 12\ 40\ 124\ 40\ 50\ 50} & \mathtt{1}& \text{rectangle and also the point $(50,50)$.}\\ \hline \mathtt{?\ 2} & & \text{We choose the points $(1, 1)$} \\ \mathtt{200\ 200\ 1\ 1} & \mathtt{0} & \text{and $(200,200)$.}\\ \hline \mathtt{!\ 370} & & \text{This is the correct perimeter.} \end{array} $$$$$$
+
+For the second sample, a possible interaction is the following. $$$$$$ \begin{array}{l|l|l} \text{Query (contestant program)} & \text{Answer (interactor)} & \text{Explanation} \\ \hline \mathtt{?\ 4} & & \text{We choose the points $(3, 2)$, $(4, 1)$,} \\ \mathtt{3\ 2\ 4\ 1\ 5\ 2\ 4\ 3} & 2 & \text{$(5, 2)$ and $(4, 3)$.} \\ \hline \mathtt{?\ 7} & & \text{We choose the points $(1, 4)$, $(2, 4)$,} \\ \mathtt{1\ 4\ 2\ 4\ 1\ 5\ 2\ 5\ 5\ 5\ 5\ 6\ 6\ 5} & 1 & \text{$(1, 5)$, $(2, 5)$, $(5, 5)$, $(5, 6)$ and $(6, 5)$.} \\ \hline \mathtt{!\ 8} & & \text{This is the correct perimeter.} \end{array} $$$$$$ The situation is shown in the following picture:
+
+The green points are the ones belonging to the first query, while the orange points are the ones belonging to the second query. One can see that there are exactly two rectangles consistent with the interactor's answers:
+
+- the rectangle of vertices $$$(2, 2)$$$ and $$$(4, 4)$$$, shown in red;
+- the rectangle of vertices $$$(4, 2)$$$ and $$$(5, 5)$$$, shown in blue.

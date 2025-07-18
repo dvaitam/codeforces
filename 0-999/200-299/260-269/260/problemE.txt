@@ -1,0 +1,23 @@
+Description:
+A country called Flatland is an infinite two-dimensional plane. Flatland has n cities, each of them is a point on the plane.
+
+Flatland is ruled by king Circle IV. Circle IV has 9 sons. He wants to give each of his sons part of Flatland to rule. For that, he wants to draw four distinct straight lines, such that two of them are parallel to the Ox axis, and two others are parallel to the Oy axis. At that, no straight line can go through any city. Thus, Flatland will be divided into 9 parts, and each son will be given exactly one of these parts. Circle IV thought a little, evaluated his sons' obedience and decided that the i-th son should get the part of Flatland that has exactly ai cities.
+
+Help Circle find such four straight lines that if we divide Flatland into 9 parts by these lines, the resulting parts can be given to the sons so that son number i got the part of Flatland which contains ai cities.
+
+Input Format:
+The first line contains integer n (9 ≤ n ≤ 105) — the number of cities in Flatland. Next n lines each contain two space-separated integers: xi, yi ( - 109 ≤ xi, yi ≤ 109) — the coordinates of the i-th city. No two cities are located at the same point. The last line contains nine space-separated integers: $$a_{1},a_{2},\cdots,a_{9}\ (1\leq a_{i}\leq 10^{5}),\sum_{i=1}^{9}a_{i}=n$$.
+
+Output Format:
+If there is no solution, print a single integer -1.
+
+Otherwise, print in the first line two distinct real space-separated numbers: x1, x2 — the abscissas of the straight lines that are parallel to the Oy axis. And in the second line print two distinct real space-separated numbers: y1, y2 — the ordinates of the straight lines, parallel to the Ox. If there are multiple solutions, print any of them.
+
+When the answer is being checked, a city is considered to lie on a straight line, if the distance between the city and the line doesn't exceed 10 - 6. Two straight lines are considered the same if the distance between them doesn't exceed 10 - 6.
+
+Note:
+The solution for the first sample test is shown below:
+
+The solution for the second sample test is shown below:
+
+There is no solution for the third sample test.

@@ -1,0 +1,13 @@
+Description:
+Aenar has an array $$$a$$$ consisting of $$$n$$$ integers.
+
+Input Format:
+The first line is the integer $$$n$$$ ($$$1 \le n \le 100$$$).
+
+The second line contains $$$n$$$ integers $$$a_i$$$ ($$$0 \le a_i \le 3979$$$) — the contents of the array.
+
+Output Format:
+Output a single number.
+
+Note:
+None

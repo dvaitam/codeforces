@@ -1,0 +1,11 @@
+Description:
+Programmers' kids solve this riddle in 5-10 minutes. How fast can you do it?
+
+Input Format:
+The input contains a single integer n (0 ≤ n ≤ 2000000000).
+
+Output Format:
+Output a single integer.
+
+Note:
+None

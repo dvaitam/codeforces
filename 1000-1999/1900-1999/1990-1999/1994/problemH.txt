@@ -1,0 +1,21 @@
+Description:
+This is an interactive problem!
+
+Timofey is writing a competition called Capture the Flag (or CTF for short). He has one task left, which involves hacking a security system. The entire system is based on polynomial hashes$$$^{\text{∗}}$$$.
+
+Timofey can input a string consisting of lowercase Latin letters into the system, and the system will return its polynomial hash. To hack the system, Timofey needs to find the polynomial hash parameters ($$$p$$$ and $$$m$$$) that the system uses.
+
+Timofey doesn't have much time left, so he will only be able to make $$$3$$$ queries. Help him solve the task.
+
+Input Format:
+Each test consists of multiple test cases. The first line contains an integer $$$t$$$ ($$$1 \leq t \leq 10^3$$$) — the number of test cases.
+
+It is guaranteed that the $$$p$$$ and $$$m$$$ used by the system satisfy the conditions: $$$26 < p \leq 50$$$ and $$$p + 1 < m \leq 2 \cdot 10^9$$$.
+
+Output Format:
+None
+
+Note:
+Answer for the first query is $$$(ord(a) \cdot 31^0 + ord(a) \cdot 31^1) \mod 59 = (1 + 1 \cdot 31) \mod 59 = 32$$$.
+
+Answer for the second query is $$$(ord(y) \cdot 31^0 + ord(b) \cdot 31^1) \mod 59 = (25 + 2 \cdot 31) \mod 59 = 28$$$.

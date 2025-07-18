@@ -1,0 +1,19 @@
+Description:
+Limak is a little bear who loves to play. Today he is playing by destroying block towers. He built n towers in a row. The i-th tower is made of hi identical blocks. For clarification see picture for the first sample.
+
+Limak will repeat the following operation till everything is destroyed.
+
+Block is called internal if it has all four neighbors, i.e. it has each side (top, left, down and right) adjacent to other block or to the floor. Otherwise, block is boundary. In one operation Limak destroys all boundary blocks. His paws are very fast and he destroys all those blocks at the same time.
+
+Limak is ready to start. You task is to count how many operations will it take him to destroy all towers.
+
+Input Format:
+The first line contains single integer n (1 ≤ n ≤ 105).
+
+The second line contains n space-separated integers h1, h2, ..., hn (1 ≤ hi ≤ 109) — sizes of towers.
+
+Output Format:
+Print the number of operations needed to destroy all towers.
+
+Note:
+The picture below shows all three operations for the first sample test. Each time boundary blocks are marked with red color.

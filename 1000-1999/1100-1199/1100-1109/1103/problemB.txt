@@ -1,0 +1,28 @@
+Description:
+This is an interactive problem.
+
+Vasya and Petya are going to play the following game: Petya has some positive integer number $$$a$$$. After that Vasya should guess this number using the following questions. He can say a pair of non-negative integer numbers $$$(x, y)$$$. Petya will answer him:
+
+- "x", if $$$(x \bmod a) \geq (y \bmod a)$$$.
+- "y", if $$$(x \bmod a) < (y \bmod a)$$$.
+
+We define $$$(x \bmod a)$$$ as a remainder of division $$$x$$$ by $$$a$$$.
+
+Vasya should guess the number $$$a$$$ using no more, than 60 questions.
+
+It's guaranteed that Petya has a number, that satisfies the inequality $$$1 \leq a \leq 10^9$$$.
+
+Help Vasya playing this game and write a program, that will guess the number $$$a$$$.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+In the first test, you should play $$$3$$$ games with Petya's numbers $$$1$$$, $$$2$$$ and $$$3$$$.
+
+In the first game, Petya will answer "x" (without quotes) to any question, because $$$(x \bmod 1) = 0$$$ for any integer $$$x$$$.
+
+In the second game, if you will ask pair $$$(0, 0)$$$, the answer will be "x" (without quotes), because $$$(0 \bmod 2) \geq (0 \bmod 2)$$$. But if you will ask pair $$$(2, 5)$$$, the answer will be "y" (without quotes), because $$$(2 \bmod 2) < (5 \bmod 2)$$$, because $$$(2 \bmod 2) = 0$$$ and $$$(5 \bmod 2) = 1$$$.

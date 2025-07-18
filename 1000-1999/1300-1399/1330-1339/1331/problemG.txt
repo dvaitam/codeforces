@@ -1,0 +1,11 @@
+Description:
+None
+
+Input Format:
+The input consists of several integers, one per line. Each integer is between -50 and 50, inclusive.
+
+Output Format:
+As described in the problem statement.
+
+Note:
+None

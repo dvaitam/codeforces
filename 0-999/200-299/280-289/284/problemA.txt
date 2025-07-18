@@ -1,0 +1,15 @@
+Description:
+The cows have just learned what a primitive root is! Given a prime p, a primitive root $$\bmod p$$ is an integer x (1 ≤ x < p) such that none of integers x - 1, x2 - 1, ..., xp - 2 - 1 are divisible by p, but xp - 1 - 1 is.
+
+Unfortunately, computing primitive roots can be time consuming, so the cows need your help. Given a prime p, help the cows find the number of primitive roots $$\bmod p$$.
+
+Input Format:
+The input contains a single line containing an integer p (2 ≤ p < 2000). It is guaranteed that p is a prime.
+
+Output Format:
+Output on a single line the number of primitive roots $$\bmod p$$.
+
+Note:
+The only primitive root $$\bmod 3$$ is 2.
+
+The primitive roots $$\bmod 5$$ are 2 and 3.

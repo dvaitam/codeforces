@@ -1,0 +1,19 @@
+Description:
+Alice has an empty grid with $$$n$$$ rows and $$$m$$$ columns. Some of the cells are marked, and no marked cells are adjacent to the edge of the grid. (Two squares are adjacent if they share a side.)
+
+Alice wants to fill each cell with a number such that the following statements are true:
+
+- every unmarked cell contains either the number $$$1$$$ or $$$4$$$;
+- every marked cell contains the sum of the numbers in all unmarked cells adjacent to it (if a marked cell is not adjacent to any unmarked cell, this sum is $$$0$$$);
+- every marked cell contains a multiple of $$$5$$$.
+
+Input Format:
+The first line of input contains two integers $$$n$$$ and $$$m$$$ ($$$1 \leq n, m \leq 500$$$) — the number of rows and the number of columns in the grid, respectively.
+
+Then $$$n$$$ lines follow, each containing $$$m$$$ characters. Each of these characters is either '.' or 'X' — an unmarked and a marked cell, respectively. No marked cells are adjacent to the edge of the grid.
+
+Output Format:
+Output "'NO" if no suitable grid exists. Otherwise, output "'YES"'. Then output $$$n$$$ lines of $$$m$$$ space-separated integers — the integers in the grid.
+
+Note:
+It can be shown that no such grid exists for the second test.

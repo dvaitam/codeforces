@@ -1,0 +1,11 @@
+Description:
+Consider the number $$$S = 1 \cdot 1! + 2 \cdot 2! + 3 \cdot 3! + \cdots + 100 \cdot 100!$$$. What is the greatest prime divisor of the number $$$S+1$$$?
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

@@ -1,0 +1,17 @@
+Description:
+You are given N qubits (1 ≤ N ≤ 8) in zero state $${\left|0\dots0\right\rangle}$$. Your task is to create Greenberger–Horne–Zeilinger (GHZ) state on them:
+
+$${ \left| GHZ \right\rangle } = { \frac { 1 } { \sqrt { 2 } } } ( { \left| 0 \dots 0 \right\rangle } + { \left| 1 \dots 1 \right\rangle } )$$
+
+Note that for N = 1 and N = 2 GHZ state becomes states $$|+\rangle$$ and $$| B_{0} \rangle$$ from the previous tasks, respectively.
+
+Input Format:
+You have to implement an operation which takes an array of N qubits as an input and has no output. The "output" of your solution is the state in which it left the input qubits.
+
+Your code should have the following signature:
+
+Output Format:
+None
+
+Note:
+None

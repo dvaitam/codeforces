@@ -1,0 +1,15 @@
+Description:
+If you have ever interacted with a cat, you have probably noticed that they are quite particular about how to pet them. Here is an approximate map of a normal cat.
+
+However, some cats won't tolerate this nonsense from the humans. Here is a map of a grumpy cat.
+
+You have met a cat. Can you figure out whether it's normal or grumpy?
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+Please make sure to use the stream flushing operation after each query in order not to leave part of your output in some buffer.

@@ -1,0 +1,11 @@
+Description:
+A tourist wants to walk through all the streets in the city and end his journey at the same point where he started. What minimum distance will the tourist have to walk? The map of the city is given in the figure; the numbers near the streets are their lengths.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

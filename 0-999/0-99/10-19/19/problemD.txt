@@ -1,0 +1,17 @@
+Description:
+Pete and Bob invented a new interesting game. Bob takes a sheet of paper and locates a Cartesian coordinate system on it as follows: point (0, 0) is located in the bottom-left corner, Ox axis is directed right, Oy axis is directed up. Pete gives Bob requests of three types:
+
+- add x y — on the sheet of paper Bob marks a point with coordinates (x, y). For each request of this type it's guaranteed that point (x, y) is not yet marked on Bob's sheet at the time of the request.
+- remove x y — on the sheet of paper Bob erases the previously marked point with coordinates (x, y). For each request of this type it's guaranteed that point (x, y) is already marked on Bob's sheet at the time of the request.
+- find x y — on the sheet of paper Bob finds all the marked points, lying strictly above and strictly to the right of point (x, y). Among these points Bob chooses the leftmost one, if it is not unique, he chooses the bottommost one, and gives its coordinates to Pete.
+
+Bob managed to answer the requests, when they were 10, 100 or 1000, but when their amount grew up to 2·105, Bob failed to cope. Now he needs a program that will answer all Pete's requests. Help Bob, please!
+
+Input Format:
+The first input line contains number n (1 ≤ n ≤ 2·105) — amount of requests. Then there follow n lines — descriptions of the requests. add x y describes the request to add a point, remove x y — the request to erase a point, find x y — the request to find the bottom-left point. All the coordinates in the input file are non-negative and don't exceed 109.
+
+Output Format:
+For each request of type find x y output in a separate line the answer to it — coordinates of the bottommost among the leftmost marked points, lying strictly above and to the right of point (x, y). If there are no points strictly above and to the right of point (x, y), output -1.
+
+Note:
+None

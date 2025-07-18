@@ -1,0 +1,13 @@
+Description:
+The marmots have prepared a very easy problem for this year's HC2 – this one. It involves numbers n, k and a sequence of n positive integers a1, a2, ..., an. They also came up with a beautiful and riveting story for the problem statement. It explains what the input means, what the program should output, and it also reads like a good criminal.
+
+However I, Heidi, will have none of that. As my joke for today, I am removing the story from the statement and replacing it with these two unhelpful paragraphs. Now solve the problem, fools!
+
+Input Format:
+The first line of the input contains two space-separated integers n and k (1 ≤ k ≤ n ≤ 2200). The second line contains n space-separated integers a1, ..., an (1 ≤ ai ≤ 104).
+
+Output Format:
+Output one number.
+
+Note:
+None

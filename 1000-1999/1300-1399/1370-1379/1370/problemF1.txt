@@ -1,0 +1,27 @@
+Description:
+Note that the only difference between the easy and hard version is the constraint on the number of queries. You can make hacks only if all versions of the problem are solved.
+
+This is an interactive problem.
+
+You are given a tree consisting of $$$n$$$ nodes numbered with integers from $$$1$$$ to $$$n$$$. Ayush and Ashish chose two secret distinct nodes in the tree. You need to find out both the nodes. You can make the following query:
+
+- Provide a list of nodes and you will receive a node from that list whose sum of distances to both the hidden nodes is minimal (if there are multiple such nodes in the list, you will receive any one of them). You will also get the sum of distances of that node to the hidden nodes.
+
+Recall that a tree is a connected graph without cycles. The distance between two nodes is defined as the number of edges in the simple path between them.
+
+More formally, let's define two hidden nodes as $$$s$$$ and $$$f$$$. In one query you can provide the set of nodes $$$\{a_1, a_2, \ldots, a_c\}$$$ of the tree. As a result, you will get two numbers $$$a_i$$$ and $$$dist(a_i, s) + dist(a_i, f)$$$. The node $$$a_i$$$ is any node from the provided set, for which the number $$$dist(a_i, s) + dist(a_i, f)$$$ is minimal.
+
+You can ask no more than $$$14$$$ queries.
+
+Input Format:
+The first line contains a single integer $$$t$$$ $$$(1 \leq t \leq 10)$$$ — the number of test cases. Please note, how the interaction process is organized.
+
+The first line of each test case consists of a single integer $$$n$$$ $$$(2 \le n \le 1000)$$$ — the number of nodes in the tree.
+
+The next $$$n - 1$$$ lines consist of two integers $$$u$$$, $$$v$$$ $$$(1 \le u, v \le n, u \ne v)$$$ — the edges of the tree.
+
+Output Format:
+None
+
+Note:
+The tree from the first test is shown below, and the hidden nodes are $$$1$$$ and $$$3$$$.

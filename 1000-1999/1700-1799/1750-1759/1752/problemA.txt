@@ -1,0 +1,78 @@
+Description:
+Benchmarks are popular for estimating and comparing the performance of computer systems which has always been a challenging task faced by computer architects and researchers. However, as emerging applications evolve, benchmark characteristics are known to drift with time making an optimal design using benchmarks of today not optimal for applications of tomorrow. This problem has been aptly described as, "Designing tomorrow's microprocessors using today's benchmarks built from yesterday's programs.". One of the ways to address these challenges is to supplement application benchmark suites with synthetic benchmarks.
+
+Some researchers show that with a suitable choice of a few Microarchitecture-Independent-Characteristics (MIC) related to the instruction mix, instruction-level parallelism, control flow behavior, and memory access patterns, it is possible to generate a synthetic benchmark whose performance directly relates to that of a real-world application. The parameterized nature of this framework enables the construction of synthetic benchmarks that allow researchers to explore a wider range of the application behavior space, even when no benchmarks yet exist.
+
+Creating a program control flow generation algorithm is one of the most difficult challenges for synthetic benchmarks. Hence, this problem focuses on generating a program control flow for synthetic benchmarks based on MICs related to the behavior of conditional branch instructions.
+
+To describe the control flow of a program, two components are used:
+
+- Control Flow Graph
+- Route
+
+The control flow graph is a directed graph that consists of $$$n$$$ internal nodes and 2 special nodes (the start node and end node). Internal nodes are indexed from $$$1$$$ to $$$n$$$, while the index of end node is $$$0$$$. The start node has no input edges and a single output edge. The end node has no output edges and can have multiple input edges. Each of the internal nodes has exactly 2 output edges and can have multiple input edges. To distinguish between these 2 output edges, they are referred to as left and right edges. Self-loops are possible in the control flow graph. An example of the control flow graph with 3 internal nodes is shown in figure 1.
+
+Figure 1. Example of the control flow graph with 3 internal nodes
+
+The route in the control flow graph begins at the start node and exits on the end node passing all of the internal nodes in the control flow graph at least once. All of the internal nodes can be passed multiple times on the route. If the route goes through left or right edge from an internal node, we say that the route follows to the left or right on that internal node. The length of the route is denoted as $$$k$$$ and does not include the edge from the start node. For each of the internal nodes through which the route goes a vector of the directions (left or right) that the route took on that node can be constructed. For example, if the vector is [0, 0, 1, 1, 0] for one of the internal nodes with $$$0$$$ and $$$1$$$ denoting left and right, respectively, the route passes that node 5 times and goes left, left, right, right, and left on that node.
+
+There are 3 microarchitecture-independent-characteristics that are used to describe program behavior and generate a program control flow with a given number of internal nodes $$$n$$$ and a length of the route $$$k$$$:
+
+- Mean and standard deviation of the right output direction ratio of all internal nodes:  On the route, a node is passed by multiple times and the output direction of each passing can be either left or right. Each node has a different taking right output direction ratio on the route equaling the number of times the route went right direction on that node divided by the total number of times the node was passed on the route. The mean values and population standard deviation values of the right output direction ratio of all internal nodes can therefore be calculated.
+- Mean and standard deviation of the node output direction transition ratio of all internal nodes:  The transition number of a node is defined as the number of times the output direction changes between two consecutive passes. If a node always takes the same output direction every time it passes a node on the route, the transition number of the node is $$$0$$$. If a node changes output direction every time it is passed, the transition number is $$$N-1$$$, with $$$N$$$ equaling the total number of times the node was passed on the route. If a node is passed only 1 time, the transition ratio is $$$0$$$, otherwise, the transition ratio equals the transition number divided by $$$N-1$$$. Mean values and population standard deviation values of the output direction transition ratio of all internal nodes can therefore be calculated.
+- Mean and standard deviation of the node correlation coefficient of all internal nodes:  The output direction of a particular node is highly correlated with the output directions of previously passed nodes. The node correlation coefficient reflects the predictability of a node output direction based on the output directions of previously passed nodes. The correlation coefficient of a node is calculated by: first, using an array C[P] to keep the correlative value of a node with $$$P$$$ nodes previously passed on the route in a sliding correlation window; second, every time a node is encountered if its output direction is the same with the $$$i_\text{th}$$$ node in the correlation window, C[i] is increased by $$$1$$$, otherwise, C[i] is decreased by $$$1$$$; third, C[i] is normalized to a range [0, 1] by dividing the absolute value of C[i] by the total number of times the node was passed on the route. At the beginning of the route, if a node has less previous nodes than correlation window size $$$P$$$, then C[i] is updated only to the index $$$i$$$ which is not greater than the exact number of previous nodes. Finally, max(abs(C[i])) over $$$i$$$ is calculated as the node correlation coefficient. The mean values and population standard deviation values of the node correlation coefficient of all internal nodes can therefore be calculated.
+
+Input Format:
+The first input line contains a number of the internal nodes in the control flow directed graph $$$n$$$ $$$(1 \le n \le 10^5)$$$.
+
+The second input line contains the length $$$k$$$ $$$(n \le k \le 10^7)$$$ of the route in the control flow graph.
+
+The third input line contains the mean and population standard deviation of the right output direction of all internal nodes as 2 floating point numbers rounded to 2 decimal places.
+
+The fourth input line contains the mean and population standard deviation of the node output direction transition ratio of all internal nodes as 2 floating point numbers rounded to 2 decimal places.
+
+The fifth input line contains 3 values: first, the mean and population standard deviation of the node correlation coefficient of all internal nodes as 2 floating point numbers rounded to 2 decimal places, followed by the correlation window size $$$P$$$ $$$(1 \le P \le 2^{10})$$$.
+
+Output Format:
+The first output line should have the internal node index to show which internal node the start node is connected to. The next $$$n$$$ lines (one for each internal node) should have the following format:
+
+- First, an integer with a value from $$$0$$$ to $$$N$$$ that shows which node (other internal node or the end node) the current internal node is connected to on the left edge.
+- Second, an integer with a value from $$$0$$$ to $$$N$$$ that shows which node (other internal node or the end node) the current internal node is connected to on the right edge.
+- Finally, a sequence of $$$0$$$s and $$$1$$$s representing a vector of output directions that the route takes on this internal node on each passing with $$$0$$$ and $$$1$$$ denoting left and right, respectively.
+
+Note:
+Scoring:
+- Solution will be considered incorrect if the output program control flow does not describe the control flow graph with the provided number of internal nodes $$$n$$$ and a route with a length $$$k$$$.
+- Solutions that time out or exceed the memory limit will be considered invalid.
+- If the solution is correct, its score is calculated: first, by calculating the microarchitecture-independent-characteristics for the output program control flow generated by the solution, represented as floating point numbers rounded to 2 decimal places before score formula calculations; and second, how closely the output MIC is compared to the input (original) MIC, using the following formula: $$$$$$ \begin{equation*} \begin{split} \text{score} = 100 &- 15 \cdot \delta_\text{mean of right output direction ratios} - 15 \cdot \delta_\text{std of right output direction ratios} \\ &- 15 \cdot \delta_\text{mean of output direction transition ratios} - 15 \cdot \delta_\text{std of output direction transition ratios} \\ &- 20 \cdot \delta_\text{mean of correlation coefficients} - 20 \cdot \delta_\text{std of correlation coefficients}, \end{split} \end{equation*} $$$$$$ where $$$\delta$$$ is the relative error for input value $$$I$$$ and output value $$$O$$$ $$$$$$ \delta = \left|\frac{O - I}{I}\right| \quad (I > 0) $$$$$$ If $$$\delta \ge 1$$$, then $$$\delta = 1$$$. If $$$I = 0$$$, then $$$\delta = 1$$$ when $$$I \ne O$$$, and $$$\delta = 0$$$ otherwise.
+- For multiple test cases, the final score is calculated as the sum of scores of individual tests.
+- If two solutions have the same score, the solution submitted first wins.
+- Third-party libraries and multi-thread parallel implementation are not allowed.
+
+In the first example, a program control flow with 3 internal nodes and a route with a length of 17 is generated. The generated control flow graph is the one shown in figure 1. Nodes 1, 2, and 3 are passed $$$3$$$, $$$8$$$, and $$$6$$$ times, respectively, on the generated route. Let us calculate MIC values for the produced output.
+
+First, nodes 1, 2, and 3 have $$$\frac{1}{3}$$$, $$$\frac{2}{8}$$$, and $$$\frac{4}{6}$$$ right output direction ratios, respectively. Hence, the mean of right output directions ratios is $$$0.42$$$. The corresponding population standard deviation is $$$0.18$$$.
+
+Second, nodes 1, 2, and 3 have $$$\frac{1}{3 - 1}$$$, $$$\frac{3}{8 - 1}$$$, and $$$\frac{4}{6 - 1}$$$ output direction transition ratios, respectively. As the result, the mean of output direction transition ratios is $$$0.58$$$ and the std of output direction transition ratios is $$$0.16$$$.
+
+In order to calculate correlation coefficients, generated route can be described as a table shown in figure 2. The table shows which node is passed on each step and what direction the route goes. Let us calculate correlation coefficients for each node using the table and provided correlation window size.
+
+Figure 2. Generated route in the control flow graph
+
+Node 1 is passed on steps 1, 9, and 17 as shown in figure 3. The correlation array $$$C[3]$$$ is initialized to {0, 0, 0}. On step 1, there are no previous nodes, so the correlation array is not updated. On step 9, the route goes left on the node and values in a sliding correlation window are {1, 1, 0} denoting directions in which the route went on previous nodes. As the result, the values in the correlation array will be updated to {-1, -1, 1} on step 9, since $$$C[i]$$$ is increased if directions are the same, and decreased otherwise. On step 17, values in the sliding correlation window are the same, however, the route goes right. Hence, the correlation array will be updated to {0, 0, 0}. Consequently, the correlation array values will be normalized {abs(0) / 3, abs(0) / 3, abs(0) / 3}. Finally, the correlation coefficient for node 1 will be calculated as a maximum value in the correlation array (0 in this case).
+
+Figure 3. Calculation of the correlation coefficient for node 1
+
+Node 2 is passed on steps 2, 4, 6, 8, 10, 12, 14, and 16 as shown in figure 4. Values in the correlation array $$$C[3]$$$ and correlation window are shown for each step in figure 5. Thus the final state of the correlation array is {4, 1, -3}. After the normalization, the values in the correlation array will be {4 / 8, 1 / 8, 3 / 8}. Hence, the correlation coefficient for node 2 is equal to $$$0.50$$$
+
+Figure 4. Calculation of the correlation coefficient for node 2
+
+Figure 5. Correlation array and correlation window values for node 2
+
+Node 3 is passed on steps 3, 5, 7, 11, 13, and 15 as shown in figure 6. Values in the correlation array $$$C[3]$$$ and correlation window are shown for each step in figure 7. Thus the final state of the correlation array is {-2, -6, 1}. After the normalization, the values in the correlation array will be {2 / 6, 6 / 6, 1 / 6} . Hence, the correlation coefficient for node 3 is equal to $$$1.00$$$.
+
+Figure 6. Calculation of the correlation coefficient for node 3
+
+Figure 7. Correlation array and correlation window values for node 3
+
+The mean and std values of the correlation coefficients are $$$0.50$$$ and $$$0.41$$$, respectively.

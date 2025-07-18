@@ -1,0 +1,23 @@
+Description:
+Bogdan has a birthday today and mom gave him a tree consisting of n vertecies. For every edge of the tree i, some number xi was written on it. In case you forget, a tree is a connected non-directed graph without cycles. After the present was granted, m guests consecutively come to Bogdan's party. When the i-th guest comes, he performs exactly one of the two possible operations:
+
+1. Chooses some number yi, and two vertecies ai and bi. After that, he moves along the edges of the tree from vertex ai to vertex bi using the shortest path (of course, such a path is unique in the tree). Every time he moves along some edge j, he replaces his current number yi by $$y_i = \left\lfloor \frac{y_i}{x_j} \right\rfloor$$, that is, by the result of integer division yi div xj.
+2. Chooses some edge pi and replaces the value written in it xpi by some positive integer ci < xpi.
+
+As Bogdan cares about his guests, he decided to ease the process. Write a program that performs all the operations requested by guests and outputs the resulting value yi for each i of the first type.
+
+Input Format:
+The first line of the input contains integers, n and m (2 ≤ n ≤ 200 000, 1 ≤ m ≤ 200 000) — the number of vertecies in the tree granted to Bogdan by his mom and the number of guests that came to the party respectively.
+
+Next n - 1 lines contain the description of the edges. The i-th of these lines contains three integers ui, vi and xi (1 ≤ ui, vi ≤ n, ui ≠ vi, 1 ≤ xi ≤ 1018), denoting an edge that connects vertecies ui and vi, with the number xi initially written on it.
+
+The following m lines describe operations, requested by Bogdan's guests. Each description contains three or four integers and has one of the two possible forms:
+
+- 1 ai bi yi corresponds to a guest, who chooses the operation of the first type.
+- 2 pi ci corresponds to a guests, who chooses the operation of the second type.
+
+Output Format:
+For each guest who chooses the operation of the first type, print the result of processing the value yi through the path from ai to bi.
+
+Note:
+Initially the tree looks like this:   The response to the first query is: $$\left\lfloor \frac{\left\lfloor \frac{17}{4} \right\rfloor}{2} \right\rfloor$$ = 2After the third edge is changed, the tree looks like this:   The response to the second query is: $$\left\lfloor \frac{\left\lfloor \frac{17}{2} \right\rfloor}{2} \right\rfloor$$ = 4In the third query the initial and final vertex coincide, that is, the answer will be the initial number 20.After the change in the fourth edge the tree looks like this:   In the last query the answer will be: $$\left\lfloor \frac { 3 } { 1 } \right\rfloor$$ = 3

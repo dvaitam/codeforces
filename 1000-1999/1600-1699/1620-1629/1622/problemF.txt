@@ -1,0 +1,15 @@
+Description:
+Let's call a set of positive integers $$$a_1, a_2, \dots, a_k$$$ quadratic if the product of the factorials of its elements is a square of an integer, i. e. $$$\prod\limits_{i=1}^{k} a_i! = m^2$$$, for some integer $$$m$$$.
+
+You are given a positive integer $$$n$$$.
+
+Your task is to find a quadratic subset of a set $$$1, 2, \dots, n$$$ of maximum size. If there are multiple answers, print any of them.
+
+Input Format:
+A single line contains a single integer $$$n$$$ ($$$1 \le n \le 10^6$$$).
+
+Output Format:
+In the first line, print a single integer — the size of the maximum subset. In the second line, print the subset itself in an arbitrary order.
+
+Note:
+None

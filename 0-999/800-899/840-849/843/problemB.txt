@@ -1,0 +1,26 @@
+Description:
+This is an interactive problem.
+
+You are given a sorted in increasing order singly linked list. You should find the minimum integer in the list which is greater than or equal to x.
+
+More formally, there is a singly liked list built on an array of n elements. Element with index i contains two integers: valuei is the integer value in this element, and nexti that is the index of the next element of the singly linked list (or -1, if the current element is the last). The list is sorted, i.e. if nexti ≠  - 1, then valuenexti > valuei.
+
+You are given the number of elements in the list n, the index of the first element start, and the integer x.
+
+You can make up to 2000 queries of the following two types:
+
+- ? i (1 ≤ i ≤ n) — ask the values valuei and nexti,
+- ! ans — give the answer for the problem: the minimum integer, greater than or equal to x, or ! -1, if there are no such integers. Your program should terminate after this query.
+
+Write a program that solves this problem.
+
+Input Format:
+The first line contains three integers n, start, x (1 ≤ n ≤ 50000, 1 ≤ start ≤ n, 0 ≤ x ≤ 109) — the number of elements in the list, the index of the first element and the integer x.
+
+Output Format:
+To print the answer for the problem, print ! ans, where ans is the minimum integer in the list greater than or equal to x, or -1, if there is no such integer.
+
+Note:
+You can read more about singly linked list by the following link: https://en.wikipedia.org/wiki/Linked_list#Singly_linked_list
+
+The illustration for the first sample case. Start and finish elements are marked dark.

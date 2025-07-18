@@ -1,0 +1,17 @@
+Description:
+Due to the recent popularity of the Deep learning new countries are starting to look like Neural Networks. That is, the countries are being built deep with many layers, each layer possibly having many cities. They also have one entry, and one exit point.
+
+There are exactly L layers, each having N cities. Let us look at the two adjacent layers L1 and L2. Each city from the layer L1 is connected to each city from the layer L2 with the traveling cost cij for $$i,j\in\{1,2,\ldots,N\}$$, and each pair of adjacent layers has the same cost in between their cities as any other pair (they just stacked the same layers, as usual). Also, the traveling costs to each city from the layer L2 are same for all cities in the L1, that is cij is the same for $$i \in \{1, 2, \ldots, N\}$$, and fixed j.
+
+Doctor G. needs to speed up his computations for this country so he asks you to find the number of paths he can take from entry to exit point such that his traveling cost is divisible by given number M.
+
+Input Format:
+The first line of input contains N (1 ≤ N ≤ 106), L (2 ≤ L ≤ 105) and M (2 ≤ M ≤ 100), the number of cities in each layer, the number of layers and the number that travelling cost should be divisible by, respectively.
+
+Second, third and fourth line contain N integers each denoting costs 0 ≤ cost ≤ M from entry point to the first layer, costs between adjacent layers as described above, and costs from the last layer to the exit point.
+
+Output Format:
+Output a single integer, the number of paths Doctor G. can take which have total cost divisible by M, modulo 109 + 7.
+
+Note:
+This is a country with 3 layers, each layer having 2 cities. Paths $$6 \rightarrow 2 \rightarrow 2 \rightarrow 3$$, and $$6 \rightarrow 2 \rightarrow 1 \rightarrow 4$$ are the only paths having total cost divisible by 13. Notice that input edges for layer cities have the same cost, and that they are same for all layers.

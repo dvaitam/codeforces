@@ -1,0 +1,36 @@
+Description:
+You are given a tree with $$$n$$$ vertices.
+
+A hero $$$k$$$ times do the following operation:
+
+- Choose some edge.
+- Remove it.
+- Take one of the two remaining parts and delete it.
+- Write the number of vertices in the remaining part.
+
+You are given an initial tree and the a sequence of written numbers. Find the number of ways to make operations such that the written numbers are equal to the given numbers. Due to the answer can be big, find it by modulo $$$998\,244\,353$$$. Two ways are considered different, if on some operation edge or remaining part are selected differently.
+
+Input Format:
+The first line contains a single integer $$$n$$$ ($$$2 \leq n \leq 5000$$$) — the number of vertices.
+
+Each of the next $$$n-1$$$ lines contains two integers $$$s$$$, $$$f$$$ ($$$1 \leq s, f \leq n$$$, $$$s \neq f$$$) — description of edge $$$(s, f)$$$.
+
+Next line contains a single integer $$$k$$$ ($$$1 \leq k \leq \min{(6, n - 1)}$$$) — the number of operations.
+
+Next line contains $$$k$$$ integers $$$s_1, s_2, \ldots, s_k$$$ ($$$n > s_1 > s_2 > \ldots > s_k \geq 1$$$) — written numbers.
+
+Output Format:
+Print a single integer — the answer to the problem by modulo $$$998\,244\,353$$$.
+
+Note:
+In the first test there are four possible ways to make operations:
+
+- Remove the edge $$$(1, 2)$$$ and delete vertex $$$1$$$. Remove the edge $$$(2, 3)$$$ and delete vertex $$$2$$$.
+- Remove the edge $$$(1, 2)$$$ and delete vertex $$$1$$$. Remove the edge $$$(3, 2)$$$ and delete vertex $$$3$$$.
+- Remove the edge $$$(3, 2)$$$ and delete vertex $$$3$$$. Remove the edge $$$(1, 2)$$$ and delete vertex $$$1$$$.
+- Remove the edge $$$(3, 2)$$$ and delete vertex $$$3$$$. Remove the edge $$$(2, 1)$$$ and delete vertex $$$2$$$.
+
+In the second test there are two possible ways to make operations:
+
+- Remove the edge $$$(4, 1)$$$ and delete the part with vertex $$$4$$$. Remove the edge $$$(2, 3)$$$ and delete the part with vertex $$$2$$$.
+- Remove the edge $$$(4, 1)$$$ and delete the part with vertex $$$4$$$. Remove the edge $$$(3, 2)$$$ and delete the part with vertex $$$3$$$.

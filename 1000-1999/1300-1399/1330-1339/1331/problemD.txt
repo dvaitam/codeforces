@@ -1,0 +1,11 @@
+Description:
+None
+
+Input Format:
+The only line of the input contains a 7-digit hexadecimal number. The first "digit" of the number is letter A, the rest of the "digits" are decimal digits 0-9.
+
+Output Format:
+Output a single integer.
+
+Note:
+None

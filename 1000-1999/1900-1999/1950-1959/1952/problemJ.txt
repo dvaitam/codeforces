@@ -1,0 +1,17 @@
+Description:
+None
+
+Input Format:
+Sup, gimme a single integer $$$x$$$ ($$$1 \le x \le 4$$$) homie uwu :3
+
+Output Format:
+If $$$x = 1$$$, spit out some based code that, like when ya feed it two integers $$$a$$$ and $$$b$$$, it hands over their sum.
+
+If $$$x = 2$$$, slap some based code that takes an integer $$$a$$$ and returns its absolute value like magic, no cap.
+
+If $$$x = 3$$$, check this out: blaze some based code that grabs an integer $$$n$$$ ($$$1 \le n \le 50$$$) and an array $$$a$$$ of $$$n$$$ distinct integers, then flexes the maximum value real quick.
+
+If $$$x = 4$$$, toss me some based code that snatches an integer $$$n$$$ ($$$1 \le n \le 50$$$), an array $$$a$$$ of $$$n$$$ distinct integers and an integer $$$k$$$ ($$$1 \le k \le n$$$), then nails down that $$$k$$$-th largest value in the array. Get it, fam!
+
+Note:
+Slide into the "My Submissions" page and vibe check ur code by clicking on its ID. You'll see just how based or cringe it is.

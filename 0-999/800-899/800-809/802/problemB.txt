@@ -1,0 +1,11 @@
+Description:
+Whereas humans nowadays read fewer and fewer books on paper, book readership among marmots has surged. Heidi has expanded the library and is now serving longer request sequences.
+
+Input Format:
+Same as the easy version, but the limits have changed: 1 ≤ n, k ≤ 400 000.
+
+Output Format:
+Same as the easy version.
+
+Note:
+None

@@ -1,0 +1,19 @@
+Description:
+You are given a permutation $$$p$$$ of length $$$n$$$ — an array, consisting of integers from $$$1$$$ to $$$n$$$, all distinct.
+
+Let $$$p_{l,r}$$$ denote a subarray — an array formed by writing down elements from index $$$l$$$ to index $$$r$$$, inclusive.
+
+Let $$$\mathit{maxpos}_{l,r}$$$ denote the index of the maximum element on $$$p_{l,r}$$$. Similarly, let $$$\mathit{minpos}_{l,r}$$$ denote the index of the minimum element on it.
+
+Calculate the number of subarrays $$$p_{l,r}$$$ such that $$$\mathit{maxpos}_{l,r} > \mathit{minpos}_{l,r}$$$.
+
+Input Format:
+The first line contains a single integer $$$n$$$ ($$$1 \le n \le 10^6$$$) — the number of elements in the permutation.
+
+The second line contains $$$n$$$ integers $$$p_1, p_2, \dots, p_n$$$ ($$$1 \le p_i \le n$$$). All $$$p_i$$$ are distinct.
+
+Output Format:
+Print a single integer — the number of subarrays $$$p_{l,r}$$$ such that $$$\mathit{maxpos}_{l,r} > \mathit{minpos}_{l,r}$$$.
+
+Note:
+None

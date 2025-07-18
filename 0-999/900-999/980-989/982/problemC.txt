@@ -1,0 +1,19 @@
+Description:
+You're given a tree with $$$n$$$ vertices.
+
+Your task is to determine the maximum possible number of edges that can be removed in such a way that all the remaining connected components will have even size.
+
+Input Format:
+The first line contains an integer $$$n$$$ ($$$1 \le n \le 10^5$$$) denoting the size of the tree.
+
+The next $$$n - 1$$$ lines contain two integers $$$u$$$, $$$v$$$ ($$$1 \le u, v \le n$$$) each, describing the vertices connected by the $$$i$$$-th edge.
+
+It's guaranteed that the given edges form a tree.
+
+Output Format:
+Output a single integer $$$k$$$ — the maximum number of edges that can be removed to leave all connected components with even size, or $$$-1$$$ if it is impossible to remove edges in order to satisfy this property.
+
+Note:
+In the first example you can remove the edge between vertices $$$1$$$ and $$$4$$$. The graph after that will have two connected components with two vertices in each.
+
+In the second example you can't remove edges in such a way that all components have even number of vertices, so the answer is $$$-1$$$.

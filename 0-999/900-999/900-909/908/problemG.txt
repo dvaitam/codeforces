@@ -1,0 +1,13 @@
+Description:
+Let S(n) denote the number that represents the digits of n in sorted order. For example, S(1) = 1, S(5) = 5, S(50394) = 3459, S(353535) = 333555.
+
+Given a number X, compute $$\sum_{1 \leq k \leq X} S(k)$$ modulo 109 + 7.
+
+Input Format:
+The first line of input will contain the integer X (1 ≤ X ≤ 10700).
+
+Output Format:
+Print a single integer, the answer to the question.
+
+Note:
+The first few values of S are 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 11, 12, 13, 14, 15, 16, 17, 18, 19, 2, 12. The sum of these values is 195.

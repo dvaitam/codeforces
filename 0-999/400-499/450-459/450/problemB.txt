@@ -1,0 +1,17 @@
+Description:
+Jzzhu has invented a kind of sequences, they meet the following property:
+
+$$f_{1} = x; \ f_{2} = y; \ \forall i (i \geq 2), f_{i} = f_{i-1} + f_{i+1}.$$
+
+You are given x and y, please calculate fn modulo 1000000007 (109 + 7).
+
+Input Format:
+The first line contains two integers x and y (|x|, |y| ≤ 109). The second line contains a single integer n (1 ≤ n ≤ 2·109).
+
+Output Format:
+Output a single integer representing fn modulo 1000000007 (109 + 7).
+
+Note:
+In the first sample, f2 = f1 + f3, 3 = 2 + f3, f3 = 1.
+
+In the second sample, f2 =  - 1;  - 1 modulo (109 + 7) equals (109 + 6).

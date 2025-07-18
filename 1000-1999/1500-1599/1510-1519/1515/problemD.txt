@@ -1,0 +1,36 @@
+Description:
+To satisfy his love of matching socks, Phoenix has brought his $$$n$$$ socks ($$$n$$$ is even) to the sock store. Each of his socks has a color $$$c_i$$$ and is either a left sock or right sock.
+
+Phoenix can pay one dollar to the sock store to either:
+
+- recolor a sock to any color $$$c'$$$ $$$(1 \le c' \le n)$$$
+- turn a left sock into a right sock
+- turn a right sock into a left sock
+
+The sock store may perform each of these changes any number of times. Note that the color of a left sock doesn't change when it turns into a right sock, and vice versa.
+
+A matching pair of socks is a left and right sock with the same color. What is the minimum cost for Phoenix to make $$$n/2$$$ matching pairs? Each sock must be included in exactly one matching pair.
+
+Input Format:
+The input consists of multiple test cases. The first line contains an integer $$$t$$$ ($$$1 \le t \le 1000$$$) — the number of test cases.
+
+The first line of each test case contains three integers $$$n$$$, $$$l$$$, and $$$r$$$ ($$$2 \le n \le 2 \cdot 10^5$$$; $$$n$$$ is even; $$$0 \le l, r \le n$$$; $$$l+r=n$$$) — the total number of socks, and the number of left and right socks, respectively.
+
+The next line contains $$$n$$$ integers $$$c_i$$$ ($$$1 \le c_i \le n$$$) — the colors of the socks. The first $$$l$$$ socks are left socks, while the next $$$r$$$ socks are right socks.
+
+It is guaranteed that the sum of $$$n$$$ across all the test cases will not exceed $$$2 \cdot 10^5$$$.
+
+Output Format:
+For each test case, print one integer — the minimum cost for Phoenix to make $$$n/2$$$ matching pairs. Each sock must be included in exactly one matching pair.
+
+Note:
+In the first test case, Phoenix can pay $$$2$$$ dollars to:
+
+- recolor sock $$$1$$$ to color $$$2$$$
+- recolor sock $$$3$$$ to color $$$2$$$
+
+In the second test case, Phoenix can pay $$$3$$$ dollars to:
+
+- turn sock $$$6$$$ from a right sock to a left sock
+- recolor sock $$$3$$$ to color $$$1$$$
+- recolor sock $$$4$$$ to color $$$1$$$

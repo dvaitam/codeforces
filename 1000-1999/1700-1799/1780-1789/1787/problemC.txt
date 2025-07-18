@@ -1,0 +1,23 @@
+Description:
+RSJ has a sequence $$$a$$$ of $$$n$$$ integers $$$a_1,a_2, \ldots, a_n$$$ and an integer $$$s$$$. For each of $$$a_2,a_3, \ldots, a_{n-1}$$$, he chose a pair of non-negative integers $$$x_i$$$ and $$$y_i$$$ such that $$$x_i+y_i=a_i$$$ and $$$(x_i-s) \cdot (y_i-s) \geq 0$$$.
+
+Now he is interested in the value $$$$$$F = a_1 \cdot x_2+y_2 \cdot x_3+y_3 \cdot x_4 + \ldots + y_{n - 2} \cdot x_{n-1}+y_{n-1} \cdot a_n.$$$$$$
+
+Please help him find the minimum possible value $$$F$$$ he can get by choosing $$$x_i$$$ and $$$y_i$$$ optimally. It can be shown that there is always at least one valid way to choose them.
+
+Input Format:
+Each test contains multiple test cases. The first line contains an integer $$$t$$$ ($$$1 \le t \le 10^4$$$) — the number of test cases.
+
+The first line of each test case contains two integers $$$n$$$, $$$s$$$ ($$$3 \le n \le 2 \cdot 10^5$$$; $$$0 \le s \le 2 \cdot 10^5$$$).
+
+The second line contains $$$n$$$ integers $$$a_1,a_2,\ldots,a_n$$$ ($$$0 \le a_i \le 2 \cdot 10^5$$$).
+
+It is guaranteed that the sum of $$$n$$$ does not exceed $$$2 \cdot 10^5$$$.
+
+Output Format:
+For each test case, print the minimum possible value of $$$F$$$.
+
+Note:
+In the first test case, $$$2\cdot 0+0\cdot 1+0\cdot 3+0\cdot 4 = 0$$$.
+
+In the second test case, $$$5\cdot 1+2\cdot 2+2\cdot 2+1\cdot 5 = 18$$$.

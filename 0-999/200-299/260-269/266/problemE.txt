@@ -1,0 +1,21 @@
+Description:
+You've got an array, consisting of n integers: a1, a2, ..., an. Your task is to quickly run the queries of two types:
+
+1. Assign value x to all elements from l to r inclusive. After such query the values of the elements of array al, al + 1, ..., ar become equal to x.
+2. Calculate and print sum $$\sum_{i=l}^{r} a_i \cdot (i-l+1)^k$$, where k doesn't exceed 5. As the value of the sum can be rather large, you should print it modulo 1000000007 (109 + 7).
+
+Input Format:
+The first line contains two integers n and m (1 ≤ n, m ≤ 105), showing, how many numbers are in the array and the number of queries, correspondingly. The second line contains n integers: a1, a2, ..., an (0 ≤ ai ≤ 109) — the initial values of the array elements.
+
+Then m queries follow, one per line:
+
+1. The assign query has the following format: "$$l r x$$", (1 ≤ l ≤ r ≤ n; 0 ≤ x ≤ 109).
+2. The query to calculate the sum has the following format: "$$? l r k$$", (1 ≤ l ≤ r ≤ n; 0 ≤ k ≤ 5).
+
+All numbers in the input are integers.
+
+Output Format:
+For each query to calculate the sum print an integer — the required sum modulo 1000000007 (109 + 7).
+
+Note:
+None

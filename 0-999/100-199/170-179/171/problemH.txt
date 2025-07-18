@@ -1,0 +1,11 @@
+Description:
+None
+
+Input Format:
+The input contains two integers a, b (1 ≤ a ≤ 10, 0 ≤ b ≤ 22·a - 1) separated by a single space.
+
+Output Format:
+Output two integers separated by a single space.
+
+Note:
+None

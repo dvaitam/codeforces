@@ -1,0 +1,114 @@
+Description:
+Cloud computing has now formed a large-scale ecosystem of technologies, products and services. An Infrastructure as a Service (IaaS) provider offers on-demand access to computing resources in the form of virtual machines, disks and networks on a pay-per-usage basis. The global IaaS market grew 41.4% in 2021, to total $90.9 billion, up from $64.3 billion in 2020, according to Gartner, Inc. With the further expansion of the cloud computing market, the competition among major cloud service providers is also becoming increasingly fierce. In this context, the reduction of cloud computing costs has become the key to leading.
+
+To win the competition, major cloud service providers are focusing on improving the utilization of cloud resources, as this will allow them to reduce the cost of cloud services. It is estimated that even a 1% increase in cloud service resource utilization can save millions of dollars in costs. The optimization of resource utilization, in turn, requires the development of advanced algorithms and technologies for cloud resource management. The virtual machine placement algorithm considered in this contest is one of these critical algorithms, which is used to select a physical machine (PM or host) for running a user's virtual machine (VM). Since VM requests arrive dynamically, this algorithm works in an online fashion.
+
+The increase of the scale and complexity of cloud services and deployed applications also lead to new user requirements. In particular, users often need to deploy a set of VMs with specific requirements on the quality of their VM placement. For example, to ensure high availability each VM must be placed in a separate fault domain, a set of PMs that share a single point of failure. In other situations, it may be preferable to place VMs "close" to each other in terms of network topology to reduce the communication latency. Basic algorithms that place each VM independently cannot adapt to such complex requirements. Your goal will be to devise an algorithm that can both satisfy new user requirements and ensure efficient resource utilization.
+
+Resource Pool
+
+In this contest, we consider the placement of VMs inside a single resource pool consisting of PMs from one or multiple datacenters. The resource pool size is fixed, and no PMs are added or removed during the tests. Initially, all PMs are empty.
+
+Each PM is characterized by its resource capacity in terms of CPUs and memory. Since all current mainstream servers use the Non-Uniform Memory Access (NUMA) architecture, each PM is split into multiple (2 or 4) NUMA nodes. Each node holds some, not necessarily equal, part of CPUs and memory resources of PM. In this contest, it is assumed that all PMs in the resource pool have identical configurations.
+
+The resource pool is organized in the following hierarchical topology (Figure 1).
+
+Figure 1. Resource pool organization.
+
+PMs are mounted in racks, each of which can hold around a dozen of PMs. Each rack forms a separate fault domain because the failure of the rack network switch or power supply leads to the failure of all PMs from the rack.
+
+Finally, racks are grouped into network domains. Each rack and recursively its PMs belong to exactly one network domain. The network communication between PMs from the same network domain is much faster than between PMs from different network domains.
+
+VM Requests and Placement Groups
+
+A cloud user can create a VM from the predefined set of VM types. Each VM type is characterized by NUMA count and CPU and memory usage per NUMA node. NUMA count, which can be 1 or 2, defines the number of NUMA nodes required by VM.
+
+A user can request the creation of multiple VMs of the same type at once. A user can request the deletion of any previously created VM at any time. The deletion time is unknown during the VM creation.
+
+Each VM is created in the context of some placement group (PG). The main role of PG is to define the requirements for the placement of VMs belonging to this group, the so called placement constraints. The constraints can be hard (must be satisfied) or soft (can be violated, but the algorithm will be rewarded for fulfilling them). Each constraint is expressed as affinity (put all VMs in a single topology domain) or anti-affinity (spread VMs across different domains) relation on the particular topology level (PM, rack, network).
+
+The following placement constraints can be used:
+
+- Hard rack anti-affinity with partitions: VMs are distributed into $$$k$$$ partitions, a rack cannot contain VMs from different partitions of this PG (see Figure 2).
+- Soft PM anti-affinity: Each PM should contain at most $$$a$$$ VMs from this PG.
+- Soft (hard) network affinity: All VMs should (must) be placed in the same network domain.
+- Soft (hard) rack affinity: All VMs should (must) be placed in the same rack.
+
+Figure 2. Rack anti-affinity with partitions.
+
+PGs are created by users according to their requirements and, therefore, can use different combinations of constraints and parameters (e.g. partition count). PG must be created by the user before creating any VMs in this PG.
+
+According to the above description, the algorithm processes a sequence of user requests of the following types:
+
+- PG creation,
+- VM creation in the specified PG,
+- VM deletion.
+
+There is also a special termination request which designates the end of the request sequence.
+
+VM Placement Algorithm
+
+The algorithm takes as an input resource pool configuration and VM types. After that, it starts to process user requests. The requests are provided one by one, in online fashion. That means that the algorithm must output its decision regarding the current request without knowledge about the next requests. This is exactly how such an algorithm runs in a real cloud.
+
+Among the described requests, only the VM creation request needs an explicit output from the algorithm. The output should contain the placement decision for each VM — a particular PM and its NUMA nodes where the VM is placed. Each placement decision should not violate the following constraints:
+
+- For each NUMA node the sum of resource requirements of all VMs placed on it must not exceed the capacity of the node;
+- VM with NUMA count = 2 must be placed on two different NUMA nodes belonging to the same PM (using nodes from different PMs is not allowed);
+- Hard constraints from the corresponding PG.
+
+If the algorithm cannot place all VMs from the request so that all these constraints are met, it must terminate as described in the Interaction section.
+
+PG creation requests should be processed by the algorithm by creating an internal representation of the PG to process future requests referring to it. No output is expected.
+
+VM deletion requests should be processed by the algorithm by releasing the PM resources used by the corresponding VMs. No output is expected.
+
+Optimization Goals
+
+The main goal is to maximize the number of successfully placed VMs. As the algorithm runs on a resource pool of fixed size the more requests are allocated, the less resources are wasted and the more resource efficient is the algorithm.
+
+A secondary goal is to maximize the number of VMs placed without violation of soft constraints, as it improves the cloud user experience.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+Scoring:
+Your solution will be judged based on multiple tests. The test set is fixed during the whole contest, no retesting of solutions on extra tests will be made.
+
+For each test $$$t$$$ two scores are collected:
+
+- $$$PC_t$$$: total number of VMs for all successfully processed VM creation requests (the placement score),
+- $$$SC_t$$$: total number of VMs placed without violation of soft constraints (the soft score).
+
+The soft score is awarded for each VM creation request $$$X$$$ with soft constraints as follows. After $$$X$$$ is processed, the constraints are checked. If there is soft affinity constraint and it is violated, then the score is 0. Otherwise the score is set to the number of VMs in $$$X$$$. However, if there is soft PM anti-affinity constraint and it is violated on some PMs, the VMs from $$$X$$$ placed on such PMs are excluded from the score. The detailed example of soft score calculation is included in the Note section.
+
+If on some test the solution tries to make an impossible action (for example, makes some NUMA node exceed its capacity or violates some hard constraint) or runs longer than the time limit, then both scores for this test case are set to 0.
+
+The overall score for test is computed as $$$S_t = 1000 * (w_t * (0.8 * (PC_t / PC^*_t) + 0.2 * (SC_t / SC^*_t)))$$$ where $$$PC^*_t$$$ and $$$SC^*_t$$$ are the scores achieved by the baseline solution, $$$w_t$$$ is the weight of this test.
+
+The total solution score is computed as $$$S= \sum_t{S_t}$$$.
+
+We provide the following example to help you understand the soft score calculation.
+
+The cluster consists of 1 network domain with 2 racks, each rack consists of 2 PMs.
+
+There are three placement groups with following constraints:
+
+- Placement group $$$PG_1$$$ has soft rack affinity and soft PM anti-affinity with $$$a = 5$$$.
+- Placement group $$$PG_2$$$ has soft rack affinity and soft PM anti-affinity with $$$a = 9$$$.
+- Placement group $$$PG_3$$$ has hard network affinity.
+
+There are five VM creation requests:
+
+1. The first request has 1 VM from $$$PG_1$$$ and we place it on (rack 1, PM 1). For this request we get soft score 1.
+2. The second request has 10 VMs from $$$PG_1$$$ and we divide it into two halves, 5 VMs each. The first half is placed on (rack 1, PM 1) and the second half is placed on (rack 1, PM 2). For this request we get soft score 5 because after processing it only 5 VMs on (rack 1, PM 2) are placed without violating the soft constraints. The other 5 VMs placed on (rack 1, PM 1) violate the soft PM anti-affinity (there are 6 VMs from $$$PG_1$$$ on this PM in total).
+3. The third request has 10 VMs from $$$PG_2$$$ and we place 9 VMs on (rack 2, PM 1), but the last VM is placed on (rack 1, PM 2). For this request we do not get any soft score because the soft rack affinity is violated.
+4. The fourth request has 1 VM from $$$PG_2$$$ and we place it on (rack 1, PM 2). For this request we do not get any soft score because the soft rack affinity is still violated.
+5. The last request has 1 VM from $$$PG_3$$$ and we place it on (rack 2, PM 2). For this request we do not get any soft score because the corresponding PG has no soft constraints.
+
+The total soft score we get in this example is 6.
+
+Note that the soft constraints are checked only at the moment after request processing. It does not matter if some constraints were broken before if they are satisfied now. For example, if later all VMs from $$$PG_2$$$ placed on rack 2 will be deleted and the following create request will place 1 VM on rack 1, it will get soft score 1.

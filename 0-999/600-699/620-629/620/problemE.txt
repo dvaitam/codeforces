@@ -1,0 +1,26 @@
+Description:
+The New Year holidays are over, but Resha doesn't want to throw away the New Year tree. He invited his best friends Kerim and Gural to help him to redecorate the New Year tree.
+
+The New Year tree is an undirected tree with n vertices and root in the vertex 1.
+
+You should process the queries of the two types:
+
+1. Change the colours of all vertices in the subtree of the vertex v to the colour c.
+2. Find the number of different colours in the subtree of the vertex v.
+
+Input Format:
+The first line contains two integers n, m (1 ≤ n, m ≤ 4·105) — the number of vertices in the tree and the number of the queries.
+
+The second line contains n integers ci (1 ≤ ci ≤ 60) — the colour of the i-th vertex.
+
+Each of the next n - 1 lines contains two integers xj, yj (1 ≤ xj, yj ≤ n) — the vertices of the j-th edge. It is guaranteed that you are given correct undirected tree.
+
+The last m lines contains the description of the queries. Each description starts with the integer tk (1 ≤ tk ≤ 2) — the type of the k-th query. For the queries of the first type then follows two integers vk, ck (1 ≤ vk ≤ n, 1 ≤ ck ≤ 60) — the number of the vertex whose subtree will be recoloured with the colour ck. For the queries of the second type then follows integer vk (1 ≤ vk ≤ n) — the number of the vertex for which subtree you should find the number of different colours.
+
+Output Format:
+For each query of the second type print the integer a — the number of different colours in the subtree of the vertex given in the query.
+
+Each of the numbers should be printed on a separate line in order of query appearing in the input.
+
+Note:
+None

@@ -1,0 +1,11 @@
+Description:
+None
+
+Input Format:
+The first line of the input contains a single integer $$$N$$$ ($$$1 \le N \le 24$$$). The next $$$N$$$ lines contain $$$5$$$ space-separated integers each. The first three integers will be between 0 and 2, inclusive. The last two integers will be between 0 and 3, inclusive. The sum of the first three integers will be equal to the sum of the last two integers.
+
+Output Format:
+Output the result – a string of lowercase English letters.
+
+Note:
+None

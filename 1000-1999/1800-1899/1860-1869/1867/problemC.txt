@@ -1,0 +1,34 @@
+Description:
+This is an interactive problem!
+
+salyg1n gave Alice a set $$$S$$$ of $$$n$$$ distinct integers $$$s_1, s_2, \ldots, s_n$$$ ($$$0 \leq s_i \leq 10^9$$$). Alice decided to play a game with this set against Bob. The rules of the game are as follows:
+
+- Players take turns, with Alice going first.
+- In one move, Alice adds one number $$$x$$$ ($$$0 \leq x \leq 10^9$$$) to the set $$$S$$$. The set $$$S$$$ must not contain the number $$$x$$$ at the time of the move.
+- In one move, Bob removes one number $$$y$$$ from the set $$$S$$$. The set $$$S$$$ must contain the number $$$y$$$ at the time of the move. Additionally, the number $$$y$$$ must be strictly smaller than the last number added by Alice.
+- The game ends when Bob cannot make a move or after $$$2 \cdot n + 1$$$ moves (in which case Alice's move will be the last one).
+- The result of the game is $$$\operatorname{MEX}\dagger(S)$$$ ($$$S$$$ at the end of the game).
+- Alice aims to maximize the result, while Bob aims to minimize it.
+
+Let $$$R$$$ be the result when both players play optimally. In this problem, you play as Alice against the jury program playing as Bob. Your task is to implement a strategy for Alice such that the result of the game is always at least $$$R$$$.
+
+$$$\dagger$$$ $$$\operatorname{MEX}$$$ of a set of integers $$$c_1, c_2, \ldots, c_k$$$ is defined as the smallest non-negative integer $$$x$$$ which does not occur in the set $$$c$$$. For example, $$$\operatorname{MEX}(\{0, 1, 2, 4\})$$$ $$$=$$$ $$$3$$$.
+
+Input Format:
+The first line contains an integer $$$t$$$ ($$$1 \leq t \leq 10^5$$$) - the number of test cases.
+
+Output Format:
+None
+
+Note:
+In the first test case, the set $$$S$$$ changed as follows:
+
+{$$$1, 2, 3, 5, 7$$$} $$$\to$$$ {$$$1, 2, 3, 5, 7, 8$$$} $$$\to$$$ {$$$1, 2, 3, 5, 8$$$} $$$\to$$$ {$$$1, 2, 3, 5, 8, 57$$$} $$$\to$$$ {$$$1, 2, 3, 8, 57$$$} $$$\to$$$ {$$$0, 1, 2, 3, 8, 57$$$}. In the end of the game, $$$\operatorname{MEX}(S) = 4$$$, $$$R = 4$$$.
+
+In the second test case, the set $$$S$$$ changed as follows:
+
+{$$$0, 1, 2$$$} $$$\to$$$ {$$$0, 1, 2, 3$$$} $$$\to$$$ {$$$1, 2, 3$$$} $$$\to$$$ {$$$0, 1, 2, 3$$$}. In the end of the game, $$$\operatorname{MEX}(S) = 4$$$, $$$R = 4$$$.
+
+In the third test case, the set $$$S$$$ changed as follows:
+
+{$$$5, 7, 57$$$} $$$\to$$$ {$$$0, 5, 7, 57$$$}. In the end of the game, $$$\operatorname{MEX}(S) = 1$$$, $$$R = 1$$$.

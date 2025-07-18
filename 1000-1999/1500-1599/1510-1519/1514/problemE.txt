@@ -1,0 +1,36 @@
+Description:
+This is an interactive problem.
+
+Baby Ehab loves crawling around his apartment. It has $$$n$$$ rooms numbered from $$$0$$$ to $$$n-1$$$. For every pair of rooms, $$$a$$$ and $$$b$$$, there's either a direct passage from room $$$a$$$ to room $$$b$$$, or from room $$$b$$$ to room $$$a$$$, but never both.
+
+Baby Ehab wants to go play with Baby Badawy. He wants to know if he could get to him. However, he doesn't know anything about his apartment except the number of rooms. He can ask the baby sitter two types of questions:
+
+- is the passage between room $$$a$$$ and room $$$b$$$ directed from $$$a$$$ to $$$b$$$ or the other way around?
+- does room $$$x$$$ have a passage towards any of the rooms $$$s_1$$$, $$$s_2$$$, ..., $$$s_k$$$?
+
+He can ask at most $$$9n$$$ queries of the first type and at most $$$2n$$$ queries of the second type.
+
+After asking some questions, he wants to know for every pair of rooms $$$a$$$ and $$$b$$$ whether there's a path from $$$a$$$ to $$$b$$$ or not. A path from $$$a$$$ to $$$b$$$ is a sequence of passages that starts from room $$$a$$$ and ends at room $$$b$$$.
+
+Input Format:
+The first line contains an integer $$$t$$$ ($$$1 \le t \le 30$$$) — the number of test cases you need to solve.
+
+Then each test case starts with an integer $$$n$$$ ($$$4 \le n \le 100$$$) — the number of rooms.
+
+The sum of $$$n$$$ across the test cases doesn't exceed $$$500$$$.
+
+Output Format:
+To print the answer for a test case, print a line containing "3", followed by $$$n$$$ lines, each containing a binary string of length $$$n$$$. The $$$j$$$-th character of the $$$i$$$-th string should be $$$1$$$ if there's a path from room $$$i$$$ to room $$$j$$$, and $$$0$$$ if there isn't. The $$$i$$$-th character of the $$$i$$$-th string should be $$$1$$$ for each valid $$$i$$$.
+
+After printing the answer, we will respond with a single integer. If it's $$$1$$$, you printed a correct answer and should keep solving the test cases (or exit if it is the last one). If it's $$$-1$$$, you printed a wrong answer and should terminate to get Wrong answer verdict. Otherwise, you can get an arbitrary verdict because your solution will continue to read from a closed stream.
+
+Note:
+In the given example:
+
+The first query asks whether there's a passage from room $$$3$$$ to any of the other rooms.
+
+The second query asks about the direction of the passage between rooms $$$0$$$ and $$$1$$$.
+
+After a couple other queries, we concluded that you can go from any room to any other room except if you start at room $$$3$$$, and you can't get out of this room, so we printed the matrix:
+
+The interactor answered with $$$1$$$, telling us the answer is correct.

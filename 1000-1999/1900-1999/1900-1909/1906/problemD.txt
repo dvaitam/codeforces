@@ -1,0 +1,37 @@
+Description:
+In The ICPC Galaxy, there exists a zone filled with asteroids that is unsafe to enter. The map of the galaxy is represented in a 2D Cartesian coordinate system. The zone is in the shape of an $$$N$$$-sided convex polygon. Each corner is numbered from $$$1$$$ to $$$N$$$; corner $$$i$$$ is located at $$$(X_i, Y_i)$$$. At any moment, you should not be inside this polygon; however, it is safe to touch the side of the polygon.
+
+There are $$$Q$$$ scenarios (numbered from $$$1$$$ to $$$Q$$$). In scenario $$$j$$$, you want to go from a starting point at $$$(A_j, B_j)$$$ to an ending point at $$$(C_j, D_j)$$$. You will be riding on a special spaceship that can only travel in a straight line. First, you set the direction of the spaceship, then the spaceship will start traveling in that direction. During the travel, you are only allowed to change direction at most once. Changing direction means you stop the spaceship, set a new direction, and then start traveling again in the new direction.
+
+For each scenario, determine the minimum distance required to travel without being inside of the zone at any moment, or report if it is impossible to reach the ending point.
+
+Input Format:
+The first line consists of an integer $$$N$$$ ($$$3 \leq N \leq 100\,000$$$).
+
+Each of the next $$$N$$$ lines consists of two integers $$$X_i$$$ $$$Y_i$$$ ($$$-10^9 \leq X_i, Y_i \leq 10^9$$$). The points form a convex polygon in counterclockwise order. There are no three points which are collinear.
+
+The following line consists of an integer $$$Q$$$ ($$$1 \leq Q \leq 100\,000$$$).
+
+Each of the next $$$Q$$$ lines consists of four integers $$$A_j$$$ $$$B_j$$$ $$$C_j$$$ $$$D_j$$$ ($$$-10^9 \leq A_j, B_j, C_j, D_j \leq 10^9$$$). There are no starting points and ending points inside the zone. However, it is possible for the starting point and the ending point to be at the side of the zone.
+
+All the coordinates in the input are integers.
+
+Output Format:
+For each scenario, output the answer in a single line.
+
+If it is possible to reach the ending point without being inside the zone at any moment, then output the minimum distance required to travel. Otherwise, output -1.
+
+Your answer is considered correct if its absolute error or relative error does not exceed $$$10^{-6}$$$. Namely, if your answer is $$$a$$$ and the jury's answer is $$$b$$$, then your answer is accepted if $$$\frac{|a - b|}{\max(1, |b|)} \leq 10^{-6}$$$.
+
+Note:
+Explanation for the sample input/output #1
+
+This sample is depicted in the following illustration.
+
+During scenario $$$1$$$ and $$$4$$$, you can directly go to the ending point without changing the direction.
+
+During scenario $$$2$$$, you can go to $$$(0, 2)$$$, then change direction to the ending point.
+
+During scenario $$$3$$$, you can go to $$$(6, 2)$$$, then change direction to the ending point.
+
+During scenario $$$5$$$, it can be shown that it is impossible to reach the ending point.

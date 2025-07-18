@@ -1,0 +1,15 @@
+Description:
+You are given three digits $$$a$$$, $$$b$$$, $$$c$$$. Two of them are equal, but the third one is different from the other two.
+
+Find the value that occurs exactly once.
+
+Input Format:
+The first line contains a single integer $$$t$$$ ($$$1 \leq t \leq 270$$$) — the number of test cases.
+
+The only line of each test case contains three digits $$$a$$$, $$$b$$$, $$$c$$$ ($$$0 \leq a$$$, $$$b$$$, $$$c \leq 9$$$). Two of the digits are equal, but the third one is different from the other two.
+
+Output Format:
+For each test case, output the value that occurs exactly once.
+
+Note:
+None

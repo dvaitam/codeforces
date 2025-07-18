@@ -1,0 +1,15 @@
+Description:
+You are given a qubit which is guaranteed to be either in $${ \left| + \right\rangle } = { \frac { 1 } { \sqrt { 2 } } } ( { \left| 0 \right\rangle } + { \left| 1 \right\rangle } )$$ or in $${ \left| - \right\rangle } = { \frac { 1 } { \sqrt { 2 } } } ( { \left| 0 \right\rangle } - { \left| 1 \right\rangle } )$$ state.
+
+Your task is to perform necessary operations and measurements to figure out which state it was and to return 1 if it was a $$|+\rangle$$ state or -1 if it was $$\rightarrow$$ state. The state of the qubit after the operations does not matter.
+
+Input Format:
+You have to implement an operation which takes a qubit as an input and returns an integer.
+
+Your code should have the following signature:
+
+Output Format:
+None
+
+Note:
+None

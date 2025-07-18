@@ -1,0 +1,23 @@
+Description:
+You are given an undirected graph $$$G=(V,E)$$$. Your task is to find such a maximal subset of vertices that no two vertices in the subset are connected with an edge from $$$E$$$. You don't need to find the optimal solution: the more the result found, the more points you will receive.
+
+The number of scored points is equal to the size of the returned independent set of vertices. You do not need to send the source code of a solution, just provide an independent set of vertices.
+
+Input Format:
+Download the input data by the link https://assets.codeforces.com/files/6f8518a9aaa619e7/mis.zip.
+
+The problem consists of $$$4$$$ subtasks called B1, B2, B3 and B4. They differ only by given graphs. Download the inputs by the link https://assets.codeforces.com/files/6f8518a9aaa619e7/mis.zip.
+
+Each input starts with a line containing a pair of integers $$$n$$$, $$$m$$$: the number of vertices, and the number of edges in the graph. Then $$$m$$$ lines follow. Each of them describes one edge: it contains a pair of integers $$$a_i$$$, $$$b_i$$$ ($$$1 \le a_i, b_i \le n$$$).
+
+Given graphs don't contain self-loops (i.e. $$$a_i \ne b_i$$$) and multiple edges (there is at most one edge between any pair of vertices).
+
+Output Format:
+You should submit the output, not the source code.
+
+The first line of the output should contain $$$k$$$: the size of found independent vertex subset. The second line should contain a separated by spaces sequence of integers $$$x_1, x_2, \dots, x_n$$$ ($$$0 \le x_i \le 1$$$), where $$$x_i=1$$$ if the vertex $$$i$$$ belongs to the returned independent set and $$$x_i=0$$$ otherwise.
+
+The number of scored points is equal to the size of the returned independent set of vertices.
+
+Note:
+None

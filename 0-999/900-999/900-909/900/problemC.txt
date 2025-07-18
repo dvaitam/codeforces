@@ -1,0 +1,15 @@
+Description:
+You are given a permutation p of length n. Remove one element from permutation to make the number of records the maximum possible.
+
+We remind that in a sequence of numbers a1, a2, ..., ak the element ai is a record if for every integer j (1 ≤ j < i) the following holds: aj < ai.
+
+Input Format:
+The first line contains the only integer n (1 ≤ n ≤ 105) — the length of the permutation.
+
+The second line contains n integers p1, p2, ..., pn (1 ≤ pi ≤ n) — the permutation. All the integers are distinct.
+
+Output Format:
+Print the only integer — the element that should be removed to make the number of records the maximum possible. If there are multiple such elements, print the smallest one.
+
+Note:
+In the first example the only element can be removed.

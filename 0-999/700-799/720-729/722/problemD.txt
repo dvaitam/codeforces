@@ -1,0 +1,26 @@
+Description:
+You are given a set Y of n distinct positive integers y1, y2, ..., yn.
+
+Set X of n distinct positive integers x1, x2, ..., xn is said to generate set Y if one can transform X to Y by applying some number of the following two operation to integers in X:
+
+1. Take any integer xi and multiply it by two, i.e. replace xi with 2·xi.
+2. Take any integer xi, multiply it by two and add one, i.e. replace xi with 2·xi + 1.
+
+Note that integers in X are not required to be distinct after each operation.
+
+Two sets of distinct integers X and Y are equal if they are equal as sets. In other words, if we write elements of the sets in the array in the increasing order, these arrays would be equal.
+
+Note, that any set of integers (or its permutation) generates itself.
+
+You are given a set Y and have to find a set X that generates Y and the maximum element of X is mininum possible.
+
+Input Format:
+The first line of the input contains a single integer n (1 ≤ n ≤ 50 000) — the number of elements in Y.
+
+The second line contains n integers y1, ..., yn (1 ≤ yi ≤ 109), that are guaranteed to be distinct.
+
+Output Format:
+Print n integers — set of distinct integers that generate Y and the maximum element of which is minimum possible. If there are several such sets, print any of them.
+
+Note:
+None

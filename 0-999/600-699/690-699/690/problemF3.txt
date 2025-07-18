@@ -1,0 +1,11 @@
+Description:
+To add insult to injury, the zombies have taken all but two drawings from Heidi! Please help her recover the Tree of Life from only these two drawings.
+
+Input Format:
+The input format is the same as in the medium version, except that now the bound on n is 2 ≤ n ≤ 1000 and that k = 2.
+
+Output Format:
+The same as in the medium version.
+
+Note:
+None

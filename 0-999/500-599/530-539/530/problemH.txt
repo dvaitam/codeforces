@@ -1,0 +1,11 @@
+Description:
+You are given a set of points on a plane with positive integer coordinates. Find a triangle of minimum area with vertices in points (0, 0), (A, 0) and (0, B) (A and B are unknown positive integers) that contains all the given points inside it (points on the edges count towards being inside).
+
+Input Format:
+The first line of the input contains an integer N (1 ≤ N ≤ 100) — the number of points. The following N lines contain pairs of numbers X and Y (1 ≤ X, Y ≤ 100) - the coordinates of the points. All points are distinct.
+
+Output Format:
+Output one floating-point number — the minimal area of the triangle. The answer is considered to be correct if its absolute or relative error does not exceed 10 - 4.
+
+Note:
+None

@@ -1,0 +1,15 @@
+Description:
+Valera is a coder. Recently he wrote a funny program. The pseudo code for this program is given below:
+
+Now Valera wonders: given the values x, k and p, what is the expected value of the resulting number s?
+
+Input Format:
+The first line of the input contains three integers x, k, p (1 ≤ x ≤ 109; 1 ≤ k ≤ 200; 0 ≤ p ≤ 100).
+
+Output Format:
+Print the required expected value. Your answer will be considered correct if the absolute or relative error doesn't exceed 10 - 6.
+
+Note:
+If the concept of expected value is new to you, you can read about it by the link:
+
+http://en.wikipedia.org/wiki/Expected_value

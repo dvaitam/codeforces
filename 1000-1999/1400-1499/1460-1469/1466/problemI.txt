@@ -1,0 +1,25 @@
+Description:
+This is an interactive problem. This problem doesn't support hacks.
+
+Sphinx's duty is to guard the city of Thebes by making sure that no unworthy traveler crosses its gates. Only the ones who answer her riddle timely and correctly (or get an acc for short) are allowed to pass. As of those who fail, no one heard of them ever again...
+
+So you don't have a choice but to solve the riddle. Sphinx has an array $$$a_1, a_2, \ldots, a_n$$$ of nonnegative integers strictly smaller than $$$2^b$$$ and asked you to find the maximum value among its elements. Of course, she will not show you the array, but she will give you $$$n$$$ and $$$b$$$. As it is impossible to answer this riddle blindly, you can ask her some questions. For given $$$i, y$$$, she'll answer you whether $$$a_i$$$ is bigger than $$$y$$$. As sphinxes are not very patient, you can ask at most $$$3 \cdot (n + b) $$$ such questions.
+
+Although cunning, sphinxes are honest. Even though the array can change between your queries, answers to the previously asked questions will remain valid.
+
+Input Format:
+The first line contains two integers $$$n$$$ and $$$b$$$ ($$$1 \leq n, b \leq 200$$$). The remaining parts of the input will be given throughout the interaction process.
+
+Output Format:
+None
+
+Note:
+In all examples, the sequence is fixed beforehand.
+
+In the first example, the sequence is $$$2, 1, 4, 0, 6$$$.
+
+In the second example, the sequence is $$$0, 0, 0, 0$$$.
+
+In the third example, the sequence is $$$0$$$.
+
+Note that if the interactor was adaptive, then the interaction in the first and the third example would not be sufficient to return the correct value of maximum.

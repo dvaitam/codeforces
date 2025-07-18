@@ -1,0 +1,19 @@
+Description:
+You are given a positive integer $$$n$$$. Find the longest sequence of positive integers $$$a=[a_1,a_2,\ldots,a_k]$$$ that satisfies the following conditions, and print the sequence:
+
+- $$$a_i\le n$$$ for all $$$1\le i\le k$$$.
+- $$$a$$$ is strictly increasing. That is, $$$a_i>a_{i-1}$$$ for all $$$2\le i\le k$$$.
+- $$$a_i\,|\,a_{i-1}=n$$$ for all $$$2\le i\le k$$$, where $$$|$$$ denotes the bitwise OR operation.
+
+Input Format:
+Each test contains multiple test cases. The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 1000$$$). Description of the test cases follows.
+
+The only line of each test case contains one integer $$$n$$$ ($$$1\le n\le 10^{18}$$$).
+
+It's guaranteed that the sum of lengths of the longest valid sequences does not exceed $$$5\cdot 10^5$$$.
+
+Output Format:
+For each testcase, print two lines. In the first line, print the length of your constructed sequence, $$$k$$$. In the second line, print $$$k$$$ positive integers, denoting the sequence. If there are multiple longest sequences, you can print any of them.
+
+Note:
+None

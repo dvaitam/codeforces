@@ -1,0 +1,31 @@
+Description:
+Two integers were written on a blackboard. After that, the following step was carried out $$$n-2$$$ times:
+
+- Select any two integers on the board, and write the absolute value of their difference on the board.
+
+After this process was complete, the list of $$$n$$$ integers was shuffled. You are given the final list. Recover one of the initial two numbers. You do not need to recover the other one.
+
+You are guaranteed that the input can be generated using the above process.
+
+Input Format:
+The first line of the input contains a single integer $$$t$$$ ($$$1 \le t \le 100$$$) — the number of test cases. The description of the test cases follows.
+
+The first line of each test case contains a single integer $$$n$$$ ($$$3 \le n \le 100$$$) — the size of the final list.
+
+The next line of each test case contains $$$n$$$ integers $$$a_1, a_2, \ldots a_n$$$ ($$$-10^9 \le a_i \le 10^9$$$) — the shuffled list of numbers written on the blackboard.
+
+It is guaranteed that the input was generated using the process described above.
+
+Output Format:
+For each test case, output a single integer $$$x$$$ — one of the two initial numbers on the blackboard.
+
+If there are multiple solutions, print any of them.
+
+Note:
+For the first test case, $$$a$$$ can be produced by starting with either $$$9$$$ and $$$2$$$, and then writing down $$$|9-2|=7$$$, or starting with $$$9$$$ and $$$7$$$ and writing down $$$|9-7|=2$$$. So $$$2$$$, $$$7$$$, and $$$9$$$ are all valid answers, because they all appear in at least one valid pair.
+
+For the second test case, we can show that the two initial numbers must have been $$$-4$$$ and $$$11$$$.
+
+For the fourth test case, the starting numbers could have been either $$$3$$$ and $$$3$$$, or $$$3$$$ and $$$0$$$, so $$$3$$$ and $$$0$$$ are both valid answers.
+
+For the fifth test case, we can show that the starting numbers were $$$8$$$ and $$$16$$$.

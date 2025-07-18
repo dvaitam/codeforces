@@ -1,0 +1,11 @@
+Description:
+None
+
+Input Format:
+The only line of input contains three integers a1, a2, a3 (1 ≤ a1, a2, a3 ≤ 20), separated by spaces.
+
+Output Format:
+Output a single integer.
+
+Note:
+None

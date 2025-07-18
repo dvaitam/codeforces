@@ -1,0 +1,61 @@
+Description:
+In computer networks, the Internet Protocol (IP) uses path routing. With path routing, the packet contains only the destination address; routers decide which "next hop" to forward each packet on to get it closer to its destination. Each router makes this decision locally, based only on the destination address and its local configuration. One way to store this configuration is to use routing tables, which means for each router, we store the "next hop" for every possible destination. However, as the scale of the network grows larger, the size of the router table grows as well. It is a big issue since routers only have limited computing resources. One way to address this issue is to divide the graph into several partitions.
+
+We can further merge $$$R31, R32, R33, R34$$$ into a single node $$$R3$$$. Then for $$$R1$$$, we need to store only $$$6$$$ entries in its routing table. For routers in $$$R3$$$ or $$$R2$$$, it only needs to store $$$9$$$ entries. Your task is to find an optimal partition of the initial graph to minimize the maximum size of the routing table for all routers in the network.
+
+A computer network under consideration is an undirected connected graph $$$G = (V,E)$$$, where $$$|V| = N\ (2 \leq N \leq 10^5)$$$, $$$|E| = M\ (1\leq M \leq 2\times 10^5)$$$, $$$V=\{0,1,\ldots ,N-1\}$$$, $$$E=\{ e=(u,v,w) \mid \text{There is an edge between nodes } u \text{ and } v \text{ with weight } w\}.$$$
+
+A partition $$$P$$$ of the network $$$G$$$ is a set of non-empty subsets of $$$V$$$ such that every node $$$v\in V$$$ belongs to exactly one of these subsets, and the induced sub-graph for each subset in $$$P$$$ is connected. Here, one subset corresponds to one abstract node mentioned above.
+
+Formally, $$$P$$$ is a valid partition if and only if $$$P$$$ is a family of sets that satisfies:
+
+- $$$\emptyset\not\in P$$$
+- $$$\bigcup\limits_{A\in P} A = V$$$
+- $$$\forall A,B\in P: A\not=B \implies A\cap B = \emptyset$$$
+- $$$\forall A \in P$$$, the induced subgraph $$$G[A]$$$ is connected
+
+The routing table size of any node $$$v$$$ for the corresponding partition $$$P$$$ is defined by the following equation: $$$$$$RTsize(v,P)=|P|+|Q|-1,$$$$$$ where $$$|P|$$$ is the number of subsets in $$$P$$$, $$$Q$$$ is the subset in $$$P$$$ such that $$$v\in Q$$$. $$$|Q|$$$ is the size of $$$Q$$$.
+
+The set $$$FE(P)$$$ of free edges of the partition $$$P$$$ are those edges that are not part of the merged nodes, that is, those edges that connect the merged nodes. $$$w(e)$$$ is the weight of the edge $$$e$$$.
+
+In this subtask, it is necessary to solve a narrowed bi-criteria optimization problem:
+
+- Find an optimal partition P, which minimizes: $$$$$$\max_{v\in V}RTsize(v, P);$$$$$$
+- Among all the solutions to criteria 1, choose the partition P that maximizes the total weight of free edges: $$$$$$\max_{P}\sum_{e\in FE(P)} w(e)$$$$$$
+
+The score for SubTask1 for the $$$i^{th}$$$ graph is calculated by the formula: $$$$$$ Score1_i = Score1(P=P(G_i)) = N-\left[\max_{v\in V}RTsize(v,P) \right]+ {{\sum_{e\in FE(P)}w(e)}\over 10^9}. $$$$$$
+
+The final score for SubTask1 is calculated according to the following formula: $$$$$$ Score1 = \sum 0.3 \times Score1_i $$$$$$
+
+Input Format:
+The first line contains two integers $$$N$$$ and $$$M$$$ $$$(2\leq N\leq 10^5; N-1\leq M\leq 2\times 10^5)$$$ — the number of nodes and edges, respectively.
+
+Each of the next $$$M$$$ lines contains three integers $$$u_i, v_i$$$ and $$$w_i$$$ ($$$0\leq u_i,\ v_i\leq N-1,\ u_i\neq v_i,\ 1\leq w_i\leq 10^5$$$), denoting an edge between the node $$$u_i$$$ and $$$v_i$$$ with weight $$$w_i$$$. $$$e_i=(u_i,v_i,w_i)$$$ is the edge with index $$$i$$$ in the edge set $$$E$$$. It is guaranteed that the input graph is connected and there are no multiple edges. That is, any pair (in any order) of nodes appear in this list no more than once.
+
+Output Format:
+In the first line, output the number of subsets in your partition $$$P$$$.
+
+The $$$(i+1)$$$-th line should begin with a single number $$$cnt_i$$$ — the size of the $$$i$$$-th subset, followed by $$$cnt_i$$$ numbers, denoting the node IDs in the $$$i$$$-th subset.
+
+Note:
+Scoring:
+During the coding phase, your solutions are tested against pre-tests only. The first $$$5$$$ of them are open and available for download at the link problem-gp1-open-testset.zip in the "contest materials" section in a sidebar.
+
+After the end of the coding phase, the last submission that scored a positive number of points on the pre-tests will be selected. It will be retested in the final tests. The rest of your submissions will be ignored. The final tests are secret and not available to the participants, they are mostly realistic. The result obtained on the final tests is your final official result for this problem.
+
+1. According to the formula, the solution with a larger score wins.
+2. If two solutions have the same score, the solution submitted first wins.
+3. For multiple test cases, the ranking is performed based on the following formula: $$$$$$ Score1 = \sum 0.3 \times Score1_i. $$$$$$
+4. Final formula for the "ICPC 2022 Online Challenge powered by HUAWEI - Problem 1": $$$$$$ FinalScore=Score1+Score2. $$$$$$
+
+In the first test case the graph is divided into three subsets: $$$\{0\}$$$, $$$\{1,2\}$$$, and $$$\{3\}$$$, hence $$$P=\{\{0\},\{1,2\},\{3\}\}$$$, $$$|P| = 3$$$.
+
+As $$$RTsize(1,P) = |\{1,2\}| + |P|-1 = 2+3-1=4$$$ is maximum among all nodes.
+
+And edges $$$(0, 1, 10), (0, 2, 2), (2, 3, 12)$$$ are free edges of partition $$$P$$$. $$$(2,1,1)$$$ is not a free edge since nodes 2 and 1 are in the same subset $$$\{1,2\}$$$ from $$$P$$$.From the formula we have: $$$$$$ Score1(P) = 4 - 4 + \frac{10+2+12}{10^9} = 2.4\times 10^{-8} $$$$$$
+
+In the second test case the input graph is almost the same except the edge weights.
+
+So the maximum $$$RTsize$$$ is unchanged and the weight sum of free edges increased.
+
+The $$$Score1$$$ for the output will be $$$0.3\times(1100+1120+1020)/10^9$$$ points.

@@ -1,0 +1,11 @@
+Description:
+$$$2018$$$ integers are written around a circle. Their sum is one. A good sequence is a sequence of consecutive (clockwise) numbers on the circle such that their sum is positive. How many good sequences are there?
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

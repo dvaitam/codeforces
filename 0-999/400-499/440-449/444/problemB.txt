@@ -1,0 +1,31 @@
+Description:
+DZY loves Fast Fourier Transformation, and he enjoys using it.
+
+Fast Fourier Transformation is an algorithm used to calculate convolution. Specifically, if a, b and c are sequences with length n, which are indexed from 0 to n - 1, and
+
+$$c_i = \sum_{j=0}^{i} a_j b_{i-j-1}$$
+
+We can calculate c fast using Fast Fourier Transformation.
+
+DZY made a little change on this formula. Now
+
+$$c_i = \max_{j=0}^{i} a_j b_{i-j}$$
+
+To make things easier, a is a permutation of integers from 1 to n, and b is a sequence only containing 0 and 1. Given a and b, DZY needs your help to calculate c.
+
+Because he is naughty, DZY provides a special way to get a and b. What you need is only three integers n, d, x. After getting them, use the code below to generate a and b.
+
+Operation x % y denotes remainder after division x by y. Function swap(x, y) swaps two values x and y.
+
+Input Format:
+The only line of input contains three space-separated integers n, d, x (1 ≤ d ≤ n ≤ 100000; 0 ≤ x ≤ 1000000006). Because DZY is naughty, x can't be equal to 27777500.
+
+Output Format:
+Output n lines, the i-th line should contain an integer ci - 1.
+
+Note:
+In the first sample, a is [1 3 2], b is [1 0 0], so c0 = max(1·1) = 1, c1 = max(1·0, 3·1) = 3, c2 = max(1·0, 3·0, 2·1) = 2.
+
+In the second sample, a is [2 1 4 5 3], b is [1 1 1 0 1].
+
+In the third sample, a is [5 2 1 4 3], b is [1 1 1 1 0].

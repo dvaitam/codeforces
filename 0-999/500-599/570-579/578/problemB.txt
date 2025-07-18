@@ -1,0 +1,17 @@
+Description:
+You are given n numbers a1, a2, ..., an. You can perform at most k operations. For each operation you can multiply one of the numbers by x. We want to make $${ a _ { 1 } } \mid { a _ { 2 } } \mid \ldots \mid { a _ { n } }$$ as large as possible, where $$\text{The text is not rendered as an equation but as plain text.}$$ denotes the bitwise OR.
+
+Find the maximum possible value of $${ a _ { 1 } } \mid { a _ { 2 } } \mid \ldots \mid { a _ { n } }$$ after performing at most k operations optimally.
+
+Input Format:
+The first line contains three integers n, k and x (1 ≤ n ≤ 200 000, 1 ≤ k ≤ 10, 2 ≤ x ≤ 8).
+
+The second line contains n integers a1, a2, ..., an (0 ≤ ai ≤ 109).
+
+Output Format:
+Output the maximum value of a bitwise OR of sequence elements after performing operations.
+
+Note:
+For the first sample, any possible choice of doing one operation will result the same three numbers 1, 1, 2 so the result is $$1 \mid 1 \mid 2 = 3$$.
+
+For the second sample if we multiply 8 by 3 two times we'll get 72. In this case the numbers will become 1, 2, 4, 72 so the OR value will be 79 and is the largest possible result.

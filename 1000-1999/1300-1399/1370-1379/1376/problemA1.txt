@@ -1,0 +1,15 @@
+Description:
+You are given a sequence of integer numbers. Sort them in non-decreasing order and submit the result. You do not need to send the source code of a solution, just provide the sorted sequence.
+
+This problem does not imply partial solutions. If you answer correctly, you will get $$$n$$$ points, where $$$n$$$ is the size of the input.
+
+Input Format:
+Download the input data by the link https://assets.codeforces.com/files/6f8518a9aaa619e7/sort.zip.
+
+The first line of the input contains integer $$$n$$$: the size of the input. Then $$$n$$$ integer numbers follow.
+
+Output Format:
+Submit the sequence of $$$n$$$ numbers: the given numbers in non-decreasing order.
+
+Note:
+None

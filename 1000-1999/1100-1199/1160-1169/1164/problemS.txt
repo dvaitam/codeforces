@@ -1,0 +1,11 @@
+Description:
+Let $$$ABCD$$$ be a rectangle. A point $$$P$$$ is chosen on the segment $$$BC$$$ such that $$$\angle APD=90^o$$$. Let $$$M$$$ be the projection of $$$B$$$ on the line $$$AP$$$, $$$N$$$ be the projection of $$$C$$$ on the line $$$DP$$$ and $$$Q$$$ be the midpoint of $$$MN$$$. Given that $$$BP=32$$$ and $$$PC=18$$$, find the distance from $$$Q$$$ to the line $$$AD$$$.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

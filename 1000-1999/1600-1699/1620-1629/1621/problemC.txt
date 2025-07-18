@@ -1,0 +1,30 @@
+Description:
+This is an interactive problem.
+
+The jury has a permutation $$$p$$$ of length $$$n$$$ and wants you to guess it. For this, the jury created another permutation $$$q$$$ of length $$$n$$$. Initially, $$$q$$$ is an identity permutation ($$$q_i = i$$$ for all $$$i$$$).
+
+You can ask queries to get $$$q_i$$$ for any $$$i$$$ you want. After each query, the jury will change $$$q$$$ in the following way:
+
+- At first, the jury will create a new permutation $$$q'$$$ of length $$$n$$$ such that $$$q'_i = q_{p_i}$$$ for all $$$i$$$.
+- Then the jury will replace permutation $$$q$$$ with pemutation $$$q'$$$.
+
+You can make no more than $$$2n$$$ queries in order to quess $$$p$$$.
+
+Input Format:
+The first line of input contains a single integer $$$t$$$ ($$$1 \leq t \leq 1000$$$) — the number of test cases.
+
+Output Format:
+None
+
+Note:
+In the first test case the hidden permutation $$$p = [4, 2, 1, 3]$$$.
+
+Before the first query $$$q = [1, 2, 3, 4]$$$ so answer for the query will be $$$q_3 = 3$$$.
+
+Before the second query $$$q = [4, 2, 1, 3]$$$ so answer for the query will be $$$q_2 = 2$$$.
+
+Before the third query $$$q = [3, 2, 4, 1]$$$ so answer for the query will be $$$q_4 = 1$$$.
+
+In the second test case the hidden permutation $$$p = [1, 3, 4, 2]$$$.
+
+Empty strings are given only for better readability. There will be no empty lines in the testing system.

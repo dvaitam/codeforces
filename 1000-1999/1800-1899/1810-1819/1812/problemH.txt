@@ -1,0 +1,19 @@
+Description:
+This is an interactive problem.
+
+There is an array $$$a_1, a_2, \dots, a_n$$$ of $$$n$$$ integers hidden from you. Your task is to find the smallest element of the array.
+
+To do this, you can ask several queries. In each query, you can pick two integers $$$l$$$ and $$$r$$$ ($$$1 \leq l \leq r \leq n$$$). In return, you will be given the value of $$$\max(a_l, a_{l+1}, \dots, a_r)$$$. In other words, you will be told the maximum value of the subarray from $$$a_l$$$ to $$$a_r$$$.
+
+Find the minimum of the array. You can ask at most $$$\mathbf{624}$$$ queries.
+
+It is guaranteed that the values $$$a_1, a_2, \dots, a_n$$$ are chosen uniformly at random between $$$0$$$ and $$$2^{32}-1$$$ (inclusive).
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

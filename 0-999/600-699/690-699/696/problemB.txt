@@ -1,0 +1,21 @@
+Description:
+Barney lives in country USC (United States of Charzeh). USC has n cities numbered from 1 through n and n - 1 roads between them. Cities and roads of USC form a rooted tree (Barney's not sure why it is rooted). Root of the tree is the city number 1. Thus if one will start his journey from city 1, he can visit any city he wants by following roads.
+
+Some girl has stolen Barney's heart, and Barney wants to find her. He starts looking for in the root of the tree and (since he is Barney Stinson not a random guy), he uses a random DFS to search in the cities. A pseudo code of this algorithm is as follows:
+
+As told before, Barney will start his journey in the root of the tree (equivalent to call dfs(1)).
+
+Now Barney needs to pack a backpack and so he wants to know more about his upcoming journey: for every city i, Barney wants to know the expected value of starting_time[i]. He's a friend of Jon Snow and knows nothing, that's why he asked for your help.
+
+Input Format:
+The first line of input contains a single integer n (1 ≤ n ≤ 105) — the number of cities in USC.
+
+The second line contains n - 1 integers p2, p3, ..., pn (1 ≤ pi < i), where pi is the number of the parent city of city number i in the tree, meaning there is a road between cities numbered pi and i in USC.
+
+Output Format:
+In the first and only line of output print n numbers, where i-th number is the expected value of starting_time[i].
+
+Your answer for each city will be considered correct if its absolute or relative error does not exceed 10 - 6.
+
+Note:
+None

@@ -1,0 +1,39 @@
+Description:
+Vus the Cossack has a field with dimensions $$$n \times m$$$, which consists of "0" and "1". He is building an infinite field from this field. He is doing this in this way:
+
+1. He takes the current field and finds a new inverted field. In other words, the new field will contain "1" only there, where "0" was in the current field, and "0" there, where "1" was.
+2. To the current field, he adds the inverted field to the right.
+3. To the current field, he adds the inverted field to the bottom.
+4. To the current field, he adds the current field to the bottom right.
+5. He repeats it.
+
+For example, if the initial field was:
+
+$$$\begin{matrix} 1 & 0 & \\ 1 & 1 & \\ \end{matrix}$$$
+
+After the first iteration, the field will be like this:
+
+$$$\begin{matrix} 1 & 0 & 0 & 1 \\ 1 & 1 & 0 & 0 \\ 0 & 1 & 1 & 0 \\ 0 & 0 & 1 & 1 \\ \end{matrix}$$$
+
+After the second iteration, the field will be like this:
+
+$$$\begin{matrix} 1 & 0 & 0 & 1 & 0 & 1 & 1 & 0 \\ 1 & 1 & 0 & 0 & 0 & 0 & 1 & 1 \\ 0 & 1 & 1 & 0 & 1 & 0 & 0 & 1 \\ 0 & 0 & 1 & 1 & 1 & 1 & 0 & 0 \\ 0 & 1 & 1 & 0 & 1 & 0 & 0 & 1 \\ 0 & 0 & 1 & 1 & 1 & 1 & 0 & 0 \\ 1 & 0 & 0 & 1 & 0 & 1 & 1 & 0 \\ 1 & 1 & 0& 0 & 0 & 0 & 1 & 1 \\ \end{matrix}$$$
+
+And so on...
+
+Let's numerate lines from top to bottom from $$$1$$$ to infinity, and columns from left to right from $$$1$$$ to infinity. We call the submatrix $$$(x_1, y_1, x_2, y_2)$$$ all numbers that have coordinates $$$(x, y)$$$ such that $$$x_1 \leq x \leq x_2$$$ and $$$y_1 \leq y \leq y_2$$$.
+
+The Cossack needs sometimes to find the sum of all the numbers in submatrices. Since he is pretty busy right now, he is asking you to find the answers!
+
+Input Format:
+The first line contains three integers $$$n$$$, $$$m$$$, $$$q$$$ ($$$1 \leq n, m \leq 1\,000$$$, $$$1 \leq q \leq 10^5$$$) — the dimensions of the initial matrix and the number of queries.
+
+Each of the next $$$n$$$ lines contains $$$m$$$ characters $$$c_{ij}$$$ ($$$0 \leq c_{ij} \leq 1$$$) — the characters in the matrix.
+
+Each of the next $$$q$$$ lines contains four integers $$$x_1$$$, $$$y_1$$$, $$$x_2$$$, $$$y_2$$$ ($$$1 \leq x_1 \leq x_2 \leq 10^9$$$, $$$1 \leq y_1 \leq y_2 \leq 10^9$$$) — the coordinates of the upper left cell and bottom right cell, between which you need to find the sum of all numbers.
+
+Output Format:
+For each query, print the answer.
+
+Note:
+The first example is explained in the legend.

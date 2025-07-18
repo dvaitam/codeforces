@@ -1,0 +1,11 @@
+Description:
+A regular $$$n$$$-gon is given in the plane. The length of its side is $$$\sqrt{2 - \sqrt{2}}$$$ and the length of its largest diagonal is $$$2$$$. Find all possible values of $$$n$$$. (Give the answer in the form $$$a,b,c,\dots$$$ without spaces.)
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

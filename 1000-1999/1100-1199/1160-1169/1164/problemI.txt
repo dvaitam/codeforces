@@ -1,0 +1,11 @@
+Description:
+Real numbers $$$a$$$ and $$$b$$$ satisfy the equality $$$ (a + b - 1)^2 = a b + 1. $$$ What maximum value may the expression $$$a^2 + b^2$$$ take?
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

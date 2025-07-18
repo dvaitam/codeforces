@@ -1,0 +1,11 @@
+Description:
+Let $$$N$$$ be a $$$7$$$-digit number that is divisible by each of its digits. If all the digits of $$$N$$$ are different, find the sum of the digits of $$$N$$$.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

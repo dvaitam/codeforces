@@ -1,0 +1,31 @@
+Description:
+Vasya and Petya were tired of studying so they decided to play a game. Before the game begins Vasya looks at array a consisting of n integers. As soon as he remembers all elements of a the game begins. Vasya closes his eyes and Petya does q actions of one of two types:
+
+1) Petya says 4 integers l1, r1, l2, r2 — boundaries of two non-intersecting segments. After that he swaps one random element from the [l1, r1] segment with another random element from the [l2, r2] segment.
+
+2) Petya asks Vasya the sum of the elements of a in the [l, r] segment.
+
+Vasya is a mathematician so he answers Petya the mathematical expectation of the sum of the elements in the segment.
+
+Your task is to write a program which will answer the second type questions as Vasya would do it. In other words your program should print the mathematical expectation of the sum of the elements of a in the [l, r] segment for every second type query.
+
+Input Format:
+The first line contains two integers n, q (2 ≤ n ≤ 105, 1 ≤ q ≤ 105)  — the number of elements in the array and the number of queries you need to handle.
+
+The second line contains n integers ai (1 ≤ ai ≤ 109)  — elements of the array.
+
+The next q lines contain Petya's actions of type 1 or 2.
+
+If it is a type 1 action then the line contains 5 integers 1, l1, r1, l2, r2 (1 ≤ l1 ≤ r1 ≤ n, 1 ≤ l2 ≤ r2 ≤ n).
+
+If it is a type 2 query then the line contains 3 integers 2, l, r (1 ≤ l ≤ r ≤ n).
+
+It is guaranteed that there is at least one type 2 query and segments [l1, r1], [l2, r2] don't have common elements.
+
+Output Format:
+For each type 2 query print one real number — the mathematical expectation of the sum of elements in the segment.
+
+Your answer will be considered correct if its absolute or relative error doesn't exceed 10 - 4  — formally, the answer is correct if $${ \operatorname* { m i n } } ( | x - y |, { \frac { | x - y | } { x } } ) \leq 1 0 ^ { - 4 }$$ where x is jury's answer and y is yours.
+
+Note:
+None

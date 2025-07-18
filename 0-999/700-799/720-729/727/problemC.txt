@@ -1,0 +1,22 @@
+Description:
+This is an interactive problem. You should use flush operation after each printed line. For example, in C++ you should use fflush(stdout), in Java you should use System.out.flush(), and in Pascal — flush(output).
+
+In this problem you should guess an array a which is unknown for you. The only information you have initially is the length n of the array a.
+
+The only allowed action is to ask the sum of two elements by their indices. Formally, you can print two indices i and j (the indices should be distinct). Then your program should read the response: the single integer equals to ai + aj.
+
+It is easy to prove that it is always possible to guess the array using at most n requests.
+
+Write a program that will guess the array a by making at most n requests.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+The format of a test to make a hack is:
+
+- The first line contains an integer number n (3 ≤ n ≤ 5000) — the length of the array.
+- The second line contains n numbers a1, a2, ..., an (1 ≤ ai ≤ 105) — the elements of the array to guess.

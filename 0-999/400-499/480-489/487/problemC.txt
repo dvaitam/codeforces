@@ -1,0 +1,17 @@
+Description:
+Consider a sequence [a1, a2, ... , an]. Define its prefix product sequence $${ \big [ } a _ { 1 } { \bmod { n } }, ( a _ { 1 } a _ { 2 } ) { \bmod { n } }, \cdots, ( a _ { 1 } a _ { 2 } \cdots a _ { n } ) { \bmod { n } } { \big ] }$$.
+
+Now given n, find a permutation of [1, 2, ..., n], such that its prefix product sequence is a permutation of [0, 1, ..., n - 1].
+
+Input Format:
+The only input line contains an integer n (1 ≤ n ≤ 105).
+
+Output Format:
+In the first output line, print "YES" if such sequence exists, or print "NO" if no such sequence exists.
+
+If any solution exists, you should output n more lines. i-th line contains only an integer ai. The elements of the sequence should be different positive integers no larger than n.
+
+If there are multiple solutions, you are allowed to print any of them.
+
+Note:
+For the second sample, there are no valid sequences.

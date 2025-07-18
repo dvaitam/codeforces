@@ -1,0 +1,24 @@
+Description:
+Fafa has an array A of n positive integers, the function f(A) is defined as $$\sum_{i=1}^{n-1} |a_i - a_{i+1}|$$. He wants to do q queries of two types:
+
+- 1 l r x — find the maximum possible value of f(A), if x is to be added to one element in the range [l,  r]. You can choose to which element to add x.
+- 2 l r x — increase all the elements in the range [l,  r] by value x.
+
+Note that queries of type 1 don't affect the array elements.
+
+Input Format:
+The first line contains one integer n (3 ≤ n ≤ 105) — the length of the array.
+
+The second line contains n positive integers a1, a2, ..., an (0 < ai ≤ 109) — the array elements.
+
+The third line contains an integer q (1 ≤ q ≤ 105) — the number of queries.
+
+Then q lines follow, line i describes the i-th query and contains four integers ti li ri xi $$( t _ { i } \in \{ 1, 2 \}, 1 < l _ { i } \leq r _ { i } < n, 0 < x _ { i } \leq 1 0 ^ { 9 } )$$.
+
+It is guaranteed that at least one of the queries is of type 1.
+
+Output Format:
+For each query of type 1, print the answer to the query.
+
+Note:
+None

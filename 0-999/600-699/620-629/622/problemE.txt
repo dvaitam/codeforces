@@ -1,0 +1,17 @@
+Description:
+Tree is a connected graph without cycles. A leaf of a tree is any vertex connected with exactly one other vertex.
+
+You are given a tree with n vertices and a root in the vertex 1. There is an ant in each leaf of the tree. In one second some ants can simultaneously go to the parent vertex from the vertex they were in. No two ants can be in the same vertex simultaneously except for the root of the tree.
+
+Find the minimal time required for all ants to be in the root of the tree. Note that at start the ants are only in the leaves of the tree.
+
+Input Format:
+The first line contains integer n (2 ≤ n ≤ 5·105) — the number of vertices in the tree.
+
+Each of the next n - 1 lines contains two integers xi, yi (1 ≤ xi, yi ≤ n) — the ends of the i-th edge. It is guaranteed that you are given the correct undirected tree.
+
+Output Format:
+Print the only integer t — the minimal time required for all ants to be in the root of the tree.
+
+Note:
+None

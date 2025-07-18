@@ -1,0 +1,24 @@
+Description:
+This is an interactive problem.
+
+Consider a fixed positive integer $$$n$$$. Two players, First and Second play a game as follows:
+
+1. First considers the $$$2n$$$ numbers $$$1, 2, \dots, 2n$$$, and partitions them as he wants into $$$n$$$ disjoint pairs.
+2. Then, Second chooses exactly one element from each of the pairs that First created (he chooses elements he wants).
+
+To determine the winner of the game, we compute the sum of the numbers chosen by Second. If the sum of all these numbers is a multiple of $$$2n$$$, then Second wins. Otherwise, First wins.
+
+You are given the integer $$$n$$$. Your task is to decide which player you wish to play as and win the game.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+In the first sample, $$$n = 2$$$, and you decide to play as Second. The judge chooses the pairs $$$(1, 2)$$$ and $$$(3, 4)$$$, and you reply with the numbers $$$1$$$ and $$$3$$$. This is a valid choice since it contains exactly one number from each pair, and the sum $$$1 + 3 = 4$$$ is divisible by $$$4$$$.
+
+In the second sample, $$$n = 2$$$ again, and you play as First. You choose the pairs $$$(2, 4)$$$ and $$$(1, 3)$$$. The judge fails to choose a number from each pair such that their sum is divisible by $$$4$$$, so the answer is correct.
+
+Note that the sample tests are just for illustration of the interaction protocol, and don't necessarily correspond to the behavior of the real interactor.

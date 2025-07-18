@@ -1,0 +1,17 @@
+Description:
+You are playing a board card game. In this game the player has two characteristics, x and y — the white magic skill and the black magic skill, respectively. There are n spell cards lying on the table, each of them has four characteristics, ai, bi, ci and di. In one move a player can pick one of the cards and cast the spell written on it, but only if first two of it's characteristics meet the requirement ai ≤ x and bi ≤ y, i.e. if the player has enough magic skill to cast this spell. However, after casting the spell the characteristics of a player change and become equal to x = ci and y = di.
+
+At the beginning of the game both characteristics of a player are equal to zero. The goal of the game is to cast the n-th spell. Your task is to make it in as few moves as possible. You are allowed to use spell in any order and any number of times (for example, you may not use some spells at all).
+
+Input Format:
+The first line of the input contains a single integer n (1 ≤ n ≤ 100 000) — the number of cards on the table.
+
+Each of the next n lines contains four integers ai, bi, ci, di (0 ≤ ai, bi, ci, di ≤ 109) — the characteristics of the corresponding card.
+
+Output Format:
+In the first line print a single integer k — the minimum number of moves needed to cast the n-th spell and in the second line print k numbers — the indices of the cards in the order in which you should cast them. In case there are multiple possible solutions, print any of them.
+
+If it is impossible to cast the n-th spell, print  - 1.
+
+Note:
+None

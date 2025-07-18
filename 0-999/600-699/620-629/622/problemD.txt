@@ -1,0 +1,13 @@
+Description:
+You have array a that contains all integers from 1 to n twice. You can arbitrary permute any numbers in a.
+
+Let number i be in positions xi, yi (xi < yi) in the permuted array a. Let's define the value di = yi - xi — the distance between the positions of the number i. Permute the numbers in array a to minimize the value of the sum $$s = \sum_{i=1}^{n}(n-i) \cdot |d_i + i - n|$$.
+
+Input Format:
+The only line contains integer n (1 ≤ n ≤ 5·105).
+
+Output Format:
+Print 2n integers — the permuted array a that minimizes the value of the sum s.
+
+Note:
+None

@@ -1,0 +1,36 @@
+Description:
+Duff is one if the heads of Mafia in her country, Andarz Gu. Andarz Gu has n cities (numbered from 1 to n) connected by m bidirectional roads (numbered by 1 to m).
+
+Each road has a destructing time, and a color. i-th road connects cities vi and ui and its color is ci and its destructing time is ti.
+
+Mafia wants to destruct a matching in Andarz Gu. A matching is a subset of roads such that no two roads in this subset has common endpoint. They can destruct these roads in parallel, i. e. the total destruction time is a maximum over destruction times of all selected roads.
+
+They want two conditions to be satisfied:
+
+1. The remaining roads form a proper coloring.
+2. Destructing time of this matching is minimized.
+
+The remaining roads after destructing this matching form a proper coloring if and only if no two roads of the same color have same endpoint, or, in the other words, edges of each color should form a matching.
+
+There is no programmer in Mafia. That's why Duff asked for your help. Please help her and determine which matching to destruct in order to satisfied those conditions (or state that this is not possible).
+
+Input Format:
+The first line of input contains two integers n and m (2 ≤ n ≤ 5 × 104 and 1 ≤ m ≤ 5 × 104), number of cities and number of roads in the country.
+
+The next m lines contain the the roads. i - th of them contains four integers vi, ui, ci and ti (1 ≤ vi, ui ≤ n, vi ≠ ui and 1 ≤ ci, ti ≤ 109 for each 1 ≤ i ≤ m).
+
+Output Format:
+In the first line of input, print "Yes" (without quotes) if satisfying the first condition is possible and "No" (without quotes) otherwise.
+
+If it is possible, then you have to print two integers t and k in the second line, the minimum destructing time and the number of roads in the matching ($$0 \leq k \leq \left[\frac{n}{2}\right]$$).
+
+In the third line print k distinct integers separated by spaces, indices of the roads in the matching in any order. Roads are numbered starting from one in order of their appearance in the input.
+
+If there's more than one solution, print any of them.
+
+Note:
+Graph of Andarz Gu in the first sample case is as follows:
+
+A solution would be to destruct the roads with crosses.
+
+Graph of Andarz Gu in the second sample case is as follows:

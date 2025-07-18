@@ -1,0 +1,19 @@
+Description:
+Valera conducts experiments with algorithms that search for shortest paths. He has recently studied the Floyd's algorithm, so it's time to work with it.
+
+Valera's already written the code that counts the shortest distance between any pair of vertexes in a non-directed connected graph from n vertexes and m edges, containing no loops and multiple edges. Besides, Valera's decided to mark part of the vertexes. He's marked exactly k vertexes a1, a2, ..., ak.
+
+Valera's code is given below.
+
+Valera has seen that his code is wrong. Help the boy. Given the set of marked vertexes a1, a2, ..., ak, find such non-directed connected graph, consisting of n vertexes and m edges, for which Valera's code counts the wrong shortest distance for at least one pair of vertexes (i, j). Valera is really keen to get a graph without any loops and multiple edges. If no such graph exists, print -1.
+
+Input Format:
+The first line of the input contains three integers n, m, k (3 ≤ n ≤ 300, 2 ≤ k ≤ n , $$n-1 \leq m \leq \frac{n(n-1)}{2}$$) — the number of vertexes, the number of edges and the number of marked vertexes.
+
+The second line of the input contains k space-separated integers a1, a2, ... ak (1 ≤ ai ≤ n) — the numbers of the marked vertexes. It is guaranteed that all numbers ai are distinct.
+
+Output Format:
+If the graph doesn't exist, print -1 on a single line. Otherwise, print m lines, each containing two integers u, v — the description of the edges of the graph Valera's been looking for.
+
+Note:
+None

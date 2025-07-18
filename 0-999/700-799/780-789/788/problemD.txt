@@ -1,0 +1,29 @@
+Description:
+After some programming contest Roma decided to try himself in tourism. His home country Uzhlyandia is a Cartesian plane. He wants to walk along each of the Main Straight Lines in Uzhlyandia. It is known that each of these lines is a straight line parallel to one of the axes (i.e. it is described with the equation x = a or y = a, where a is integer called the coordinate of this line).
+
+Roma lost his own map, so he should find out the coordinates of all lines at first. Uncle Anton agreed to help him, using the following rules:
+
+- Initially Roma doesn't know the number of vertical and horizontal lines and their coordinates;
+- Roma can announce integer coordinates of some point in Uzhlandia, and Anton then will tell him the minimum among the distances from the chosen point to each of the lines. However, since the coordinates of the lines don't exceed 108 by absolute value, Roma can't choose a point with coordinates exceeding 108 by absolute value.
+
+Uncle Anton is in a hurry to the UOI (Uzhlandian Olympiad in Informatics), so he can only answer no more than 3·105 questions.
+
+The problem is that Roma doesn't know how to find out the coordinates of the lines. Write a program that plays Roma's role and finds the coordinates.
+
+Input Format:
+There is no input initially. Your program should make queries to get information.
+
+It is guaranteed that the number of horizontal and vertical lines is at least 1 and less than or equal to 104 for each type.
+
+Output Format:
+None
+
+Note:
+The example test is
+
+The minimum distances are:
+
+- from (1, 2) to x = 2;
+- from ( - 2,  - 2) to y =  - 3;
+- from (5, 6) to x = 2;
+- from ( - 2, 2) to y = 0.

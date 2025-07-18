@@ -1,0 +1,17 @@
+Description:
+For a given prime integer p and integers α, A calculate the number of pairs of integers (n, k), such that 0 ≤ k ≤ n ≤ A and $${\binom {n}{k}}$$ is divisible by pα.
+
+As the answer can be rather large, print the remainder of the answer moduly 109 + 7.
+
+Let us remind you that $${\binom {n}{k}}$$ is the number of ways k objects can be chosen from the set of n objects.
+
+Input Format:
+The first line contains two integers, p and α (1 ≤ p, α ≤ 109, p is prime).
+
+The second line contains the decimal record of integer A (0 ≤ A < 101000) without leading zeroes.
+
+Output Format:
+In the single line print the answer to the problem.
+
+Note:
+In the first sample three binominal coefficients divisible by 4 are $${ \binom { 4 } { 1 } } = 4$$, $${ \binom { 4 } { 3 } } = 4$$ and $${ \binom { 6 } { 3 } } = 20$$.

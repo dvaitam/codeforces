@@ -1,0 +1,29 @@
+Description:
+This is an interactive problem.
+
+Alice has a tree $$$T$$$ consisting of $$$n$$$ nodes, numbered from $$$1$$$ to $$$n$$$. Alice will show $$$T$$$ to Bob. After observing $$$T$$$, Bob needs to tell Alice two permutations $$$p_1$$$ and $$$p_2$$$ of $$$[1, 2, \ldots, n]$$$.
+
+Then, Alice will play $$$q$$$ rounds of the following game.
+
+- Alice will create an array $$$a$$$ that is a permutation of $$$[0,1,\ldots,n-1]$$$. The value of node $$$v$$$ will be $$$a_v$$$.
+- Alice will choose two nodes $$$u$$$ and $$$v$$$ ($$$1 \leq u, v \leq n$$$, $$$u \neq v$$$) of $$$T$$$ and tell them to Bob. Bob will need to find the $$$\operatorname{MEX}^\dagger$$$ of the values on the unique simple path between nodes $$$u$$$ and $$$v$$$.
+- To find this value, Bob can ask Alice at most $$$5$$$ queries. In each query, Bob should give three integers $$$t$$$, $$$l$$$ and $$$r$$$ to Alice such that $$$t$$$ is either $$$1$$$ or $$$2$$$, and $$$1 \leq l \leq r \leq n$$$. Alice will then tell Bob the value equal to $$$$$$\min_{i=l}^{r} a[p_{t,i}].$$$$$$
+
+Note that all rounds are independent of each other. In particular, the values of $$$a$$$, $$$u$$$ and $$$v$$$ can be different in different rounds.
+
+Bob is puzzled as he only knows the HLD solution, which requires $$$O(\log(n))$$$ queries per round. So he needs your help to win the game.
+
+$$$^\dagger$$$ The $$$\operatorname{MEX}$$$ (minimum excludant) of a collection of integers $$$c_1, c_2, \ldots, c_k$$$ is defined as the smallest non-negative integer $$$x$$$ which does not occur in the collection $$$c$$$.
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+In the first test, the interaction proceeds as follows.
+
+SolutionJuryExplanation1There are 1 test cases.3 1The tree $$$T$$$ consists of $$$3$$$ nodes, and Alice will play for only one round.1 2First edge of $$$T$$$2 3Second edge of $$$T$$$1 2 3The permutation $$$p_1$$$2 1 3The permutation $$$p_2$$$Alice shuffles $$$a$$$ to $$$a=[0,2,1]$$$ before giving the nodes for the only round.2 3Nodes for the round? 1 2 31$$$\min(a_{p_{1,2}},a_{p_{1,3}})=\min(a_2,a_3)=1$$$? 2 1 30$$$\min(a_{p_{2,1}},a_{p_{2,2}},a_{p_{2,3}})=\min(a_2,a_1,a_3)=0$$$! 01Considering the output of queries, it is clear that $$$\operatorname{MEX}$$$ is $$$0$$$. Since the output is correct, the jury responds with $$$1$$$.
+
+After each test case, make sure to read $$$1$$$ or $$$-1$$$.

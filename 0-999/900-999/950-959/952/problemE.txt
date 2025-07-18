@@ -1,0 +1,13 @@
+Description:
+Not to be confused with chessboard.
+
+Input Format:
+The first line of input contains a single integer N (1 ≤ N ≤ 100) — the number of cheeses you have.
+
+The next N lines describe the cheeses you have. Each line contains two space-separated strings: the name of the cheese and its type. The name is a string of lowercase English letters between 1 and 10 characters long. The type is either "soft" or "hard. All cheese names are distinct.
+
+Output Format:
+Output a single number.
+
+Note:
+None

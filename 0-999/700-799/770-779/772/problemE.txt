@@ -1,0 +1,39 @@
+Description:
+This is an interactive problem.
+
+The judge has a hidden rooted full binary tree with n leaves. A full binary tree is one where every node has either 0 or 2 children. The nodes with 0 children are called the leaves of the tree. Since this is a full binary tree, there are exactly 2n - 1 nodes in the tree. The leaves of the judge's tree has labels from 1 to n. You would like to reconstruct a tree that is isomorphic to the judge's tree. To do this, you can ask some questions.
+
+A question consists of printing the label of three distinct leaves a1, a2, a3. Let the depth of a node be the shortest distance from the node to the root of the tree. Let LCA(a, b) denote the node with maximum depth that is a common ancestor of the nodes a and b.
+
+Consider X = LCA(a1, a2), Y = LCA(a2, a3), Z = LCA(a3, a1). The judge will tell you which one of X, Y, Z has the maximum depth. Note, this pair is uniquely determined since the tree is a binary tree; there can't be any ties.
+
+More specifically, if X (or Y, Z respectively) maximizes the depth, the judge will respond with the string "X" (or "Y", "Z" respectively).
+
+You may only ask at most 10·n questions.
+
+Input Format:
+The first line of input will contain a single integer n (3 ≤ n ≤ 1 000) — the number of leaves in the tree.
+
+Output Format:
+To print the final answer, print out the string "-1" on its own line. Then, the next line should contain 2n - 1 integers. The i-th integer should be the parent of the i-th node, or -1, if it is the root.
+
+Your answer will be judged correct if your output is isomorphic to the judge's tree. In particular, the labels of the leaves do not need to be labeled from 1 to n. Here, isomorphic means that there exists a permutation π such that node i is the parent of node j in the judge tree if and only node π(i) is the parent of node π(j) in your tree.
+
+Note:
+For the first sample, the judge has the hidden tree:
+
+Here is a more readable format of the interaction:
+
+$$\begin{array}{|c|c|}
+\hline
+\text{Judge} & \text{Contestant} \\
+\hline
+5 & 142 \\
+X & 124 \\
+Z & 241 \\
+Y & 235 \\
+Y & 243 \\
+X & -1 \\
+& -1112233366 \\
+\hline
+\end{array}$$

@@ -1,0 +1,24 @@
+Description:
+You are given a positive integer n. Let's build a graph on vertices 1, 2, ..., n in such a way that there is an edge between vertices u and v if and only if $${ \mathrm { g c d } } ( u, v ) \neq 1$$. Let d(u, v) be the shortest distance between u and v, or 0 if there is no path between them. Compute the sum of values d(u, v) over all 1 ≤ u < v ≤ n.
+
+The gcd (greatest common divisor) of two positive integers is the maximum positive integer that divides both of the integers.
+
+Input Format:
+Single integer n (1 ≤ n ≤ 107).
+
+Output Format:
+Print the sum of d(u, v) over all 1 ≤ u < v ≤ n.
+
+Note:
+All shortest paths in the first example:
+
+- $$2 \rightarrow 6 \rightarrow 3$$
+- $$2 \rightarrow 4$$
+- $$2 \rightarrow 6$$
+- $$3 \rightarrow 6 \rightarrow 4$$
+- $$3 \rightarrow 6$$
+- $$\overrightarrow{4} \to \overrightarrow{6}$$
+
+There are no paths between other pairs of vertices.
+
+The total distance is 2 + 1 + 1 + 2 + 1 + 1 = 8.

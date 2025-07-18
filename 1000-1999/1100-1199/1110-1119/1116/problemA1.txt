@@ -1,0 +1,17 @@
+Description:
+You are given two qubits in state $$$|00 \rangle$$$. Your task is to create the following state on them:
+
+$$$$$$\frac{1}{\sqrt{3}} \big( |00 \rangle + |01 \rangle + |10 \rangle)$$$$$$
+
+You have to implement an operation which takes an array of 2 qubits as an input and has no output. The "output" of your solution is the state in which it left the input qubits.
+
+Your code should have the following signature:
+
+Input Format:
+None
+
+Output Format:
+None
+
+Note:
+None

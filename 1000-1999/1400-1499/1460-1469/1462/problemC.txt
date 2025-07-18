@@ -1,0 +1,16 @@
+Description:
+You are given a positive number $$$x$$$. Find the smallest positive integer number that has the sum of digits equal to $$$x$$$ and all digits are distinct (unique).
+
+Input Format:
+The first line contains a single positive integer $$$t$$$ ($$$1 \le t \le 50$$$) — the number of test cases in the test. Then $$$t$$$ test cases follow.
+
+Each test case consists of a single integer number $$$x$$$ ($$$1 \le x \le 50$$$).
+
+Output Format:
+Output $$$t$$$ answers to the test cases:
+
+- if a positive integer number with the sum of digits equal to $$$x$$$ and all digits are different exists, print the smallest such number;
+- otherwise print -1.
+
+Note:
+None
