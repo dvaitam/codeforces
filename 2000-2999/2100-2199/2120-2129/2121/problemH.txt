@@ -1,0 +1,19 @@
+H. Ice Baby
+time limit per test2 seconds
+memory limit per test512 megabytes
+The longest non-decreasing subsequence of an array of integers 𝑎1,𝑎2,…,𝑎𝑛 is the longest sequence of indices 1≤𝑖1<𝑖2<…<𝑖𝑘≤𝑛 such that 𝑎𝑖1≤𝑎𝑖2≤…≤𝑎𝑖𝑘. The length of the sequence is defined as the number of elements in the sequence. For example, the length of the longest non-decreasing subsequence of the array 𝑎=[3,1,4,1,2] is 3.
+
+You are given two arrays of integers 𝑙1,𝑙2,…,𝑙𝑛 and 𝑟1,𝑟2,…,𝑟𝑛. For each 1≤𝑘≤𝑛, solve the following problem:
+
+Consider all arrays of integers 𝑎 of length 𝑘, such that for each 1≤𝑖≤𝑘, it holds that 𝑙𝑖≤𝑎𝑖≤𝑟𝑖. Find the maximum length of the longest non-decreasing subsequence among all such arrays.
+Input
+Each test consists of multiple test cases. The first line contains a single integer 𝑡 (1≤𝑡≤10^4) — the number of test cases. The description of the test cases follows.
+
+The first line of each test case contains a single integer 𝑛 (1≤𝑛≤2⋅10^5) — the length of the arrays 𝑙 and 𝑟.
+
+The next 𝑛 lines of each test case contain two integers 𝑙𝑖 and 𝑟𝑖 (1≤𝑙𝑖≤𝑟𝑖≤10^9).
+
+It is guaranteed that the sum of 𝑛 across all test cases does not exceed 2⋅10^5.
+
+Output
+For each test case, output 𝑛 integers: for each 𝑘 from 1 to 𝑛, output the maximum length of the longest non-decreasing subsequence among all suitable arrays.
