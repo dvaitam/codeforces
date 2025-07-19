@@ -76,9 +76,9 @@ func main() {
            goPos[dR] = -1
        } else {
            t := goPos[dL]
-           gen[dR] = '\'
-           gen[dL] = '\'
-           gen[t] = '\'
+           gen[dR] = '\\'
+           gen[dL] = '\\'
+           gen[t] = '\\'
            goPos[dR] = goPos[t]
            goPos[t] = goPos[dL]
            goPos[dL] = -1
