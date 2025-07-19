@@ -184,14 +184,14 @@ func solve() {
    ans = ans[:0]
    dfs3(1, 0)
    sort.Ints(ans)
-   fmt.Fprint(wrt, len(ans), ' ')
+   fmt.Fprint(wrt, len(ans), " ")
    for i, v := range ans {
        if i > 0 {
-           fmt.Fprint(wrt, ' ')
+           fmt.Fprint(wrt, " ")
        }
        fmt.Fprint(wrt, v)
    }
-   fmt.Fprint(wrt, '\n')
+   fmt.Fprint(wrt, "\n")
 }
 
 func main() {
@@ -226,13 +226,13 @@ func main() {
            flipRange(1, 1, n, 1, L[y])
            ok = (tree[1].cnt*2 == Ncount)
            if ok {
-               fmt.Fprint(wrt, tree[1].sum, '\n')
+               fmt.Fprint(wrt, tree[1].sum, "\n")
            } else {
-               fmt.Fprint(wrt, 0, '\n')
+               fmt.Fprint(wrt, 0, "\n")
            }
        } else if opt == 2 {
            if !ok {
-               fmt.Fprint(wrt, 0, '\n')
+               fmt.Fprint(wrt, 0, "\n")
            } else {
                solve()
            }
