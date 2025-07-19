@@ -8,8 +8,10 @@ import (
    "os"
 )
 
-const EPS = 1e-9
-const PI = math.Acos(-1.0)
+const (
+   EPS = 1e-9
+   PI  = math.Pi
+)
 
 // point or vector
 type pt struct {
