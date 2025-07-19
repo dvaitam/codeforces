@@ -84,15 +84,19 @@ func main() {
                continue
            }
            // compute l and r for third segment diff
+           // m = max(i, len1)
            m := i
-           if len1 < m {
+           if len1 > m {
                m = len1
            }
-           l := (max(i, len1) + 1) >> 1
-           if l < 1 {
-               l = 1
+           // l = ceil(m/2)
+           l := (m + 1) >> 1
+           // r = 2*m, capped by remaining n-j
+           r := m * 2
+           rem := n - j
+           if r > rem {
+               r = rem
            }
-           r := min(n, max(i, len1)*2)
            if l <= r && j+l <= n {
                x := rmq(j+l, j+r)
                d1cand := a[i+1].first - a[i].first

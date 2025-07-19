@@ -5,6 +5,7 @@ import (
    "container/heap"
    "fmt"
    "os"
+   "sort"
 )
 
 // PQEntry is an entry in the max-heap by w
@@ -213,5 +214,3 @@ func main() {
    }
    out.WriteByte('\n')
 }
-// sort import
-import "sort"
