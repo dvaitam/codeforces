@@ -104,7 +104,7 @@ func main() {
 	}
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 100; i++ {
 		n, arr, queries := generateCaseE(rng)
 		if err := runCaseE(bin, n, arr, queries); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)

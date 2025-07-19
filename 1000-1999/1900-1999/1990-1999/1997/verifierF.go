@@ -80,7 +80,7 @@ func main() {
 	}
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 100; i++ {
 		n, x, m := generateCaseF(rng)
 		if err := runCaseF(bin, n, x, m); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
