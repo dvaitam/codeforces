@@ -41,19 +41,16 @@ func main() {
 	c := readInt()
 	a := make([]int, n+1)
 	s := make([]int, n+1)
-	maxVal := 0
 	for i := 1; i <= n; i++ {
 		a[i] = readInt()
-		if a[i] > maxVal {
-			maxVal = a[i]
-		}
 		s[i] = s[i-1]
 		if a[i] == c {
 			s[i]++
 		}
 	}
 	f := make([]int, n+1)
-	l := make([]int, maxVal+1)
+	// last occurrence map to handle large values without huge slice
+	l := make(map[int]int, n)
 	for i := 1; i <= n; i++ {
 		v := a[i]
 		prev := l[v]

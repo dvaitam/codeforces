@@ -1,24 +1,15 @@
 package main
 
-import (
-   "bufio"
-   "fmt"
-   "os"
-)
+import "fmt"
 
 func main() {
-   reader := bufio.NewReader(os.Stdin)
-   writer := bufio.NewWriter(os.Stdout)
-   defer writer.Flush()
-
    var n int
    var K int64
-   fmt.Fscan(reader, &n, &K)
+   fmt.Scan(&n, &K)
    var s1, s2 string
-   fmt.Fscan(reader, &s1, &s2)
+   fmt.Scan(&s1, &s2)
 
-   var cnt, cur, ans int64
-   cur = 1
+   var cnt, cur, ans int64 = 0, 1, 0
    // iterate over positions
    for i := 0; i < n; i++ {
        // double current possibilities
@@ -38,5 +29,5 @@ func main() {
        // optimistic add of remaining with same cur
        ans = cnt + cur*int64(n-1-i)
    }
-   fmt.Fprintln(writer, ans)
+   fmt.Println(ans)
 }
