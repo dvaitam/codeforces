@@ -1,24 +1,19 @@
 package main
 
 import (
-   "bufio"
    "fmt"
    "os"
 )
 
 func main() {
-   reader := bufio.NewReader(os.Stdin)
-   writer := bufio.NewWriter(os.Stdout)
-   defer writer.Flush()
-
    var n int
-   if _, err := fmt.Fscan(reader, &n); err != nil {
+   if _, err := fmt.Fscan(os.Stdin, &n); err != nil {
        return
    }
    mp := make(map[int]int)
    var s string
    for i := 0; i < n; i++ {
-       fmt.Fscan(reader, &s)
+       fmt.Fscan(os.Stdin, &s)
        cnt0, cnt1 := 0, 0
        for j := 0; j < len(s); j++ {
            if s[j] == '(' {
@@ -54,5 +49,5 @@ func main() {
    }
    // pairs of fully balanced strings
    res += mp[0] / 2
-   fmt.Fprintln(writer, res)
+   fmt.Println(res)
 }

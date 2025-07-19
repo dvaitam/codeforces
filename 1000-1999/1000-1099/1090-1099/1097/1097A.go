@@ -1,21 +1,16 @@
 package main
 
-import (
-   "bufio"
-   "fmt"
-   "os"
-)
+import "fmt"
 
 func main() {
-   reader := bufio.NewReader(os.Stdin)
    var table string
-   if _, err := fmt.Fscan(reader, &table); err != nil {
+   if _, err := fmt.Scan(&table); err != nil {
        return
    }
    yes := false
    for i := 0; i < 5; i++ {
        var card string
-       if _, err := fmt.Fscan(reader, &card); err != nil {
+       if _, err := fmt.Scan(&card); err != nil {
            return
        }
        if len(card) >= 2 && (card[0] == table[0] || card[1] == table[1]) {
