@@ -1,1 +1,3 @@
-package main; import "fmt"; func main(){ fmt.Println("hi") }
+package main
+import "fmt"
+func main(){fmt.Println("Hello")}
