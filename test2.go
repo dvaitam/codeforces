@@ -1,6 +1,3 @@
 package main
-import (
-  "bufio"
-  "sort"
-)
+import "os"
 func main(){}
