@@ -29,11 +29,9 @@ func main() {
    for i := 1; i <= M; i++ {
        var x, y int
        fmt.Fscan(reader, &x, &y)
-       f[x] = append(f[x], pair{x, i}) // placeholder, will correct below
-       f[y] = append(f[y], pair{y, i}) // placeholder
-       // actually store neighbor and edge index
-       f[x][len(f[x])-1] = pair{first: y, second: i}
-       f[y][len(f[y])-1] = pair{first: x, second: i}
+      // record edges: neighbor node and edge index
+      f[x] = append(f[x], pair{first: y, second: i})
+      f[y] = append(f[y], pair{first: x, second: i})
    }
    chk := make([]bool, N+1)
    idx = make([]int, N+1)
