@@ -31,8 +31,8 @@ func main() {
     }
     // Construct and print the expression
     fmt.Println("YES")
-    if flag > 0 {
-        if flag > 1 {
+    if flag >= 0 {
+        if flag > 0 {
             fmt.Print("(")
             for i := 0; i < flag-1; i++ {
                 fmt.Printf("%d->", a[i])
