@@ -1,9 +1,8 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
    "os"
+   "strconv"
 )
 
 var (
@@ -15,58 +14,59 @@ var (
    fa, fe, dis []int
    vis, inst   []bool
    tot, eid    int
-   reader *bufio.Reader
-   writer *bufio.Writer
 )
 
-func readByte() byte {
-   b, err := reader.ReadByte()
-   if err != nil {
-       return 0
+var (
+   data []byte
+   ptr  int
+)
+
+func init() {
+   // read all input
+   data = make([]byte, 1<<20)
+   n, _ := os.Stdin.Read(data)
+   data = data[:n]
+}
+
+func skip() {
+   for ptr < len(data) {
+       b := data[ptr]
+       if b == ' ' || b == '\n' || b == '\r' || b == '\t' {
+           ptr++
+           continue
+       }
+       break
    }
-   return b
 }
 
 func readInt() int {
+   skip()
+   sign := 1
+   if ptr < len(data) && data[ptr] == '-' {
+       sign = -1
+       ptr++
+   }
    var x int
-   var neg bool
-   b := readByte()
-   for b != '-' && (b < '0' || b > '9') {
-       b = readByte()
+   for ptr < len(data) && data[ptr] >= '0' && data[ptr] <= '9' {
+       x = x*10 + int(data[ptr]-'0')
+       ptr++
    }
-   if b == '-' {
-       neg = true
-       b = readByte()
-   }
-   for b >= '0' && b <= '9' {
-       x = x*10 + int(b-'0')
-       b = readByte()
-   }
-   if neg {
-       return -x
-   }
-   return x
+   return x * sign
 }
 
 func readInt64() int64 {
+   skip()
+   sign := int64(1)
+   if ptr < len(data) && data[ptr] == '-' {
+       sign = -1
+       ptr++
+   }
    var x int64
-   var neg bool
-   b := readByte()
-   for b != '-' && (b < '0' || b > '9') {
-       b = readByte()
+   for ptr < len(data) && data[ptr] >= '0' && data[ptr] <= '9' {
+       x = x*10 + int64(data[ptr]-'0')
+       ptr++
    }
-   if b == '-' {
-       neg = true
-       b = readByte()
-   }
-   for b >= '0' && b <= '9' {
-       x = x*10 + int64(b-'0')
-       b = readByte()
-   }
-   if neg {
-       return -x
-   }
-   return x
+   return x * sign
 }
 
 func dfs(x, pre int) {
@@ -116,18 +116,18 @@ func update(x int, v int64) {
    }
 }
 
+// output result and exit
 func out() {
-   fmt.Fprintln(writer, "YES")
+   w := os.Stdout
+   w.WriteString("YES\n")
    for i := 1; i <= m; i++ {
-       fmt.Fprintln(writer, ans[i])
+       w.WriteString(strconv.FormatInt(ans[i], 10))
+       w.WriteString("\n")
    }
-   writer.Flush()
    os.Exit(0)
 }
 
 func main() {
-   reader = bufio.NewReader(os.Stdin)
-   writer = bufio.NewWriter(os.Stdout)
    n = readInt()
    m = readInt()
    head = make([]int, n+1)
@@ -177,6 +177,5 @@ func main() {
        update(v, coef)
        out()
    }
-   fmt.Fprintln(writer, "NO")
-   writer.Flush()
+   os.Stdout.WriteString("NO\n")
 }

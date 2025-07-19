@@ -1,3 +1,11 @@
 package main
-import "fmt"
-func main(){fmt.Println("ok")}
+import (
+   "bufio"
+   "fmt"
+   "os"
+)
+func main() {
+  reader := bufio.NewReader(os.Stdin)
+  fmt.Fprintln(reader)
+}
+EOF && go build test.go
