@@ -1,10 +1,8 @@
 package main
 
 import (
-   "bufio"
    "fmt"
    "math"
-   "os"
 )
 
 const (
@@ -123,11 +121,8 @@ func tFFT(A []int, B []int, origLen, lim int, rev []int) {
 }
 
 func main() {
-   in := bufio.NewReader(os.Stdin)
-   out := bufio.NewWriter(os.Stdout)
-   defer out.Flush()
    var n, m, c int
-   fmt.Fscan(in, &n, &m, &c)
+   fmt.Scan(&n, &m, &c)
    origLen := mod << 1
    lim := getLim(origLen)
    rev := make([]int, lim)
@@ -137,7 +132,7 @@ func main() {
    // read and encode A
    for i := 0; i < n; i++ {
        var x int
-       fmt.Fscan(in, &x)
+       fmt.Scan(&x)
        p := int((int64(i) * int64(i)) % int64(mod-1))
        exp := (int64(p)*(int64(p)-1)>>1) % int64(mod-1)
        t := qpow(c, exp)
@@ -147,7 +142,7 @@ func main() {
    // read and encode B
    for i := 0; i < m; i++ {
        var x int
-       fmt.Fscan(in, &x)
+       fmt.Scan(&x)
        p := int((int64(i) * int64(i) * int64(i)) % int64(mod-1))
        exp := (int64(p)*(int64(p)-1)>>1) % int64(mod-1)
        t := qpow(c, exp)
@@ -163,5 +158,5 @@ func main() {
        pw := qpow(c, exp)
        ans = (ans + int64(A[i])*int64(pw) % mod) % mod
    }
-   fmt.Fprint(out, ans)
+   fmt.Print(ans)
 }
