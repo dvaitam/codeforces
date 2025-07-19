@@ -22,8 +22,6 @@ func main() {
        return fac[b] - fac[a] - fac[b-a]
    }
    var ans float64
-   limit := math.Exp(1) // dummy to satisfy possible import, not used
-   _ = limit
    for i := 0; i <= n; i++ {
        for j := 0; j <= n; j++ {
            t := i*n + j*n - i*j

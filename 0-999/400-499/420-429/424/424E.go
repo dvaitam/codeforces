@@ -37,46 +37,48 @@ func myhash(n int) uint64 {
    return rtn
 }
 
+// dfs computes expected moves for state of size n
 func dfs(n int) float64 {
    s := myhash(n)
    if f, ok := memo[s]; ok {
        return f
    }
    const Inf = math.Inf(1)
+   // c[1..3] stores minimal expected for removing each color
    c := [4]float64{0, Inf, Inf, Inf}
    an := aData[n-1]
+   // iterate over layers except top
    for i := 0; i < n-1; i++ {
        ai := aData[i]
-       x := setStateArr(ai)
-       y := setStateArr(an)
-       // skip if only one block
+       x0 := setStateArr(ai)
+       // count blocks in layer i
        cntx := 0
-       for _, v := range x {
+       for _, v := range x0 {
            if v > 0 {
                cntx++
            }
        }
-       if cntx == 1 {
+       if cntx <= 1 {
            continue
        }
+       // top layer state
+       y0 := setStateArr(an)
        nn := n
-       // top layer complete
-       if y[0] > 0 && y[1] > 0 && y[2] > 0 {
+       if y0[0] > 0 && y0[1] > 0 && y0[2] > 0 {
            nn = n + 1
-           y = [3]int{0, 0, 0}
        }
-       for j, vj := range x {
+       // try taking each block from layer i
+       for j, vj := range x0 {
            if vj == 0 {
                continue
            }
-           // skip invalid two-block middle or j==1 cases
-           if cntx == 2 && (j == 1 || x[1] == 0) {
+           if cntx == 2 && (j == 1 || x0[1] == 0) {
                continue
            }
-           t := vj
-           xjOld := x[j]
+           // copy x and remove block j
+           x := x0
            x[j] = 0
-           // compute new ai
+           // compute new aData[i]
            cntx2 := 0
            for _, v := range x {
                if v > 0 {
@@ -90,51 +92,48 @@ func dfs(n int) float64 {
                newAi = getState(x[0], x[1], x[2])
            }
            aData[i] = newAi
-           // try placing
+           // prepare y
+           y0 := setStateArr(an)
+           if nn > n {
+               y0 = [3]int{0, 0, 0}
+           }
+           // place removed block on top
            for k := 0; k < 3; k++ {
-               if y[k] == 0 {
-                   y[k] = t
-                   newAn := getState(y[0], y[1], y[2])
-                   // set top layer
-                   if nn == n {
-                       aData[n-1] = newAn
-                   } else {
-                       aData = append(aData, newAn)
-                   }
-                   c[t] = math.Min(c[t], dfs(nn))
-                   // restore y
-                   y[k] = 0
-                   // restore aData length if appended
-                   if nn != n {
-                       aData = aData[:len(aData)-1]
-                   } else {
-                       // restore top layer
-                       aData[n-1] = an
-                   }
+               if y0[k] != 0 {
+                   continue
+               }
+               y := y0
+               y[k] = vj
+               newAn := getState(y[0], y[1], y[2])
+               if nn == n {
+                   aData[n-1] = newAn
+                   c[vj] = math.Min(c[vj], dfs(nn))
+                   aData[n-1] = an
+               } else {
+                   aData = append(aData, newAn)
+                   c[vj] = math.Min(c[vj], dfs(nn))
+                   aData = aData[:len(aData)-1]
                }
            }
-       }
-       // restore aData[i] and x (x is local copy)
-       aData[i] = ai
-   }
+           aData[i] = ai
        }
    }
-   // no moves
-   if c[1] == math.Inf(1) && c[2] == math.Inf(1) && c[3] == math.Inf(1) {
+   // no moves available
+   if c[1] == Inf && c[2] == Inf && c[3] == Inf {
        memo[s] = 0
        return 0
    }
-   p := 1.0 / 6.0
-   if c[1] == math.Inf(1) {
-       p += 1.0 / 3.0
+   p := 1.0/6.0
+   if c[1] == Inf {
+       p += 1.0/3.0
        c[1] = 0
    }
-   if c[2] == math.Inf(1) {
-       p += 1.0 / 3.0
+   if c[2] == Inf {
+       p += 1.0/3.0
        c[2] = 0
    }
-   if c[3] == math.Inf(1) {
-       p += 1.0 / 6.0
+   if c[3] == Inf {
+       p += 1.0/6.0
        c[3] = 0
    }
    f := (c[1]/3.0 + c[2]/3.0 + c[3]/6.0 + 1.0) / (1.0 - p)

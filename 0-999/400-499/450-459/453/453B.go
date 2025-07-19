@@ -50,8 +50,9 @@ func solveDP(i, j int) int {
 func solveBlock() {
 	num = num[:0]
 	// skip v[0] index usage; v holds chosen numbers starting at index 1
-	for i := 1; i < len(v); i++ {
-		num = append(num, v[i])
+	// include all chosen values in v
+	for _, val := range v {
+		num = append(num, val)
 	}
 	// append extra primes
 	num = append(num, 31, 37, 41, 43, 47, 53, 59)
