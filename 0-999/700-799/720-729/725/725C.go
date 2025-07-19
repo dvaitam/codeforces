@@ -1,15 +1,13 @@
 package main
 
 import (
-   "bufio"
    "fmt"
    "os"
 )
 
 func main() {
-   reader := bufio.NewReader(os.Stdin)
    var s string
-   if _, err := fmt.Fscan(reader, &s); err != nil {
+   if _, err := fmt.Fscan(os.Stdin, &s); err != nil {
        return
    }
    // Check consecutive duplicates
@@ -93,17 +91,16 @@ func main() {
            board[0][ptr] = rune(s[i]); ptr++
        }
    }
-   // Output
-   w := bufio.NewWriter(os.Stdout)
-   defer w.Flush()
+   // Output rows
    for r := 0; r < 2; r++ {
+       row := make([]rune, cols)
        for c := 0; c < cols; c++ {
            if board[r][c] == 0 {
-               w.WriteRune(' ')
+               row[c] = ' '
            } else {
-               w.WriteRune(board[r][c])
+               row[c] = board[r][c]
            }
        }
-       w.WriteByte('\n')
+       fmt.Println(string(row))
    }
 }
