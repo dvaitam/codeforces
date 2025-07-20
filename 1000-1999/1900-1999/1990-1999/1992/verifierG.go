@@ -66,9 +66,9 @@ func main() {
 		fmt.Println("Usage: go run verifierG.go /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("problemG.txt")
+	data, err := os.ReadFile("testcasesG.txt")
 	if err != nil {
-		fmt.Println("could not read problemG.txt:", err)
+		fmt.Println("could not read testcasesG.txt:", err)
 		os.Exit(1)
 	}
 	scan := bufio.NewScanner(bytes.NewReader(data))
