@@ -29,9 +29,9 @@ func main() {
 		fmt.Println("Usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("problemC.txt")
+	data, err := os.ReadFile("testcasesC.txt")
 	if err != nil {
-		fmt.Println("could not read problemC.txt:", err)
+		fmt.Println("could not read testcasesC.txt:", err)
 		os.Exit(1)
 	}
 	scan := bufio.NewScanner(bytes.NewReader(data))

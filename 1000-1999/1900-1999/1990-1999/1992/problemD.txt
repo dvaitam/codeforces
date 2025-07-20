@@ -1,201 +1,34 @@
-100
-9 9 2
-WCWCCLCLW
-10 9 3
-LCWCCWWCLL
-6 5 3
-CLCLLC
-3 2 0
-WWC
-14 7 6
-CCWLWLLLWLWCWC
-11 7 8
-WCWCCWCLWCL
-10 10 10
-CLCWCCCLCC
-8 5 4
-LLWCWLWL
-15 3 0
-WWWLLCCLWCCWCWC
-9 1 4
-LLLCCLLWW
-10 3 0
-WWWLWWWCWC
-19 2 19
-CWWCCCLWWWCWCWLWCWL
-14 10 9
-CLLCCWWWCWCCWC
-17 1 1
-CLWWCWWCCWLWLWWCW
-11 7 1
-LCCCLWCLCWL
-12 3 10
-WCCLLCWWCLWL
-4 3 1
-CWWL
-5 1 4
-LWCLW
-12 2 12
-CWCLWWCWWWCW
-11 7 9
-WLWLLLWCCWC
-9 1 7
-CCCWCWLLC
-11 2 3
-LLCCLWCLLWC
-5 2 4
-WLCLC
-19 7 1
-CLWLWCWLWLLLCLLLWLL
-17 10 12
-LWLWCCCWLWWLLLLLL
-4 4 0
-CLCC
-17 6 5
-WLWWCWCWWWLWWLLCL
-14 2 9
-LLWWCCCWCLCWLW
-17 6 13
-CWWLLLCWCCLWLWLLW
-13 9 12
-WLWCLCCCWCLCW
-20 9 3
-CCLWLLWLCLCLCWLLWLLL
-17 5 9
-LLCCCCLLCCLCLCWCL
-4 2 1
-CLWC
-14 5 5
-CWWCWLWCLWCLWC
-20 10 16
-CWLCWLLLWCWCCWCCLLWL
-6 5 4
-WLCCWC
-15 10 8
-LWLWWWLLCWLWWLW
-17 10 6
-WCCCLWCLWCLWLLCCC
-4 2 2
-LLWL
-7 5 0
-WLLWLWL
-4 1 0
-WWLW
-16 10 10
-LLWWWWWLLCCCWWLC
-12 2 4
-LCWLWCWLCCWC
-13 8 4
-CCCCWLWCCCCLC
-17 9 11
-LCWCCCCLCCCCLLWCW
-5 1 4
-LWCCC
-15 9 9
-CLWWWLCLLCLCCCC
-14 6 1
-WWWLLLWCWLCCWW
-14 8 8
-LWWLLWCLCLCCLL
-8 7 6
-CLCCLWLC
-18 3 18
-LLWWWLWWWWCCWCWCCC
-11 8 0
-CLCCLLCLWLC
-16 4 6
-CLLCCWLCWCLLWLCL
-2 2 2
-LC
-4 4 4
-LWWW
-13 3 1
-CLCLCWLLLWCLW
-12 2 12
-LWLLCLWWWCLC
-15 4 15
-WLWWCWWLWLCWWWW
-18 6 12
-LLLWWLWCLLLLLCWCLC
-2 1 0
-CL
-16 8 5
-LLWWWWLCCLLWLWWL
-9 4 1
-WWLLWCLWL
-3 3 2
-WWW
-17 4 17
-WLWCWWLLCWLCCLLLC
-4 1 1
-CLWL
-8 6 3
-WWWWCLWW
-14 2 4
-LWLCWCWCCWLCCW
-19 6 5
-WWWLWCWWWLCCCCCWWLL
-7 6 0
-WLCCCLW
-9 1 9
-LWWCCWWLL
-8 7 1
-WCWLWLCL
-9 1 2
-CLCLLLWLL
-19 9 13
-CCWCLWLCLLLCLLLWLLW
-14 4 13
-CCLCWCCWWCCWLW
-16 7 6
-LCLWWCCLWWLWLCCC
-13 7 12
-CLCCLLWLWLWWL
-10 4 5
-LCLCLCCWCC
-15 6 6
-CWWWWCLWLLLLCLW
-18 9 1
-CWLLCLWWWLWWCLCWLL
-16 5 13
-WLLLWCWWCWLWWWWC
-19 4 11
-WWLWWWWCLCLLLCCLCLL
-3 1 1
-WWW
-19 1 15
-LLLWWWLCCLWWWLCWWCW
-12 1 0
-WLCCLCLLCWCW
-19 3 8
-LLLLWCLWWCCCCWWCCLW
-7 1 2
-CLWWWWW
-10 8 4
-CLCWLCLWWL
-16 10 8
-LWCCCLWLWCWLWCLW
-3 3 3
-CWL
-11 6 2
-CWWWLWLLWWC
-14 9 4
-LLWWWLWLLCLCCL
-5 1 2
-CLWWW
-16 5 9
-CCLLLWLLLCLCWCWC
-2 1 1
-LL
-7 3 3
-CLLLCLC
-8 7 1
-WWLLWLLL
-6 3 1
-WWCLLL
-13 3 7
-LLWCWLCWWLCWC
-16 10 13
-WCCWWLCWWLCWCCLW
-7 3 4
-LLLCLWC
+Description:
+ErnKor is ready to do anything for Julen, even to swim through crocodile-infested swamps. We decided to test this love. ErnKor will have to swim across a river with a width of $$$1$$$ meter and a length of $$$n$$$ meters.
+
+The river is very cold. Therefore, in total (that is, throughout the entire swim from $$$0$$$ to $$$n+1$$$) ErnKor can swim in the water for no more than $$$k$$$ meters. For the sake of humanity, we have added not only crocodiles to the river, but also logs on which he can jump. Our test is as follows:
+
+Initially, ErnKor is on the left bank and needs to reach the right bank. They are located at the $$$0$$$ and $$$n+1$$$ meters respectively. The river can be represented as $$$n$$$ segments, each with a length of $$$1$$$ meter. Each segment contains either a log 'L', a crocodile 'C', or just water 'W'. ErnKor can move as follows:
+
+- If he is on the surface (i.e., on the bank or on a log), he can jump forward for no more than $$$m$$$ ($$$1 \le m \le 10$$$) meters (he can jump on the bank, on a log, or in the water).
+- If he is in the water, he can only swim to the next river segment (or to the bank if he is at the $$$n$$$-th meter).
+- ErnKor cannot land in a segment with a crocodile in any way.
+
+Determine if ErnKor can reach the right bank.
+
+Input Format:
+The first line contains a single integer $$$t$$$ ($$$1 \le t \le 10^4$$$)  — the number of test cases.
+
+The first line of each test case contains three numbers $$$n, m, k$$$ ($$$0 \le k \le 2 \cdot 10^5$$$, $$$1 \le n \le 2 \cdot 10^5$$$, $$$1 \le m \le 10$$$) — the length of the river, the distance ErnKor can jump, and the number of meters ErnKor can swim without freezing.
+
+The second line of each test case contains a string $$$a$$$ of length $$$n$$$. $$$a_i$$$ denotes the object located at the $$$i$$$-th meter. ($$$a_i \in \{$$$'W','C','L'$$$\}$$$)
+
+It is guaranteed that the sum of $$$n$$$ over all test cases does not exceed $$$2 \cdot 10^5$$$.
+
+Output Format:
+For each test case, output "YES" if ErnKor can pass the test, and output "NO" otherwise.
+
+You can output the answer in any case (upper or lower). For example, the strings "yEs", "yes", "Yes", and "YES" will be recognized as positive responses.
+
+Note:
+Let's consider examples:
+
+- First example: We jump from the shore to the first log ($$$0 \rightarrow 1$$$), from the first log to the second ($$$1 \rightarrow 3$$$), from the second to the fourth ($$$3 \rightarrow 5$$$), and from the last log to the shore ($$$5 \rightarrow 7$$$). So, we have $$$0 \rightarrow 1 \rightarrow 3 \rightarrow 5 \rightarrow 7$$$. Since we did not encounter a crocodile and swam no more than k meters, the answer is «YES».
+- Second example: $$$0 \rightarrow 1$$$, we jump into the water from the first log ($$$1 \rightarrow 2$$$), swim a cell to the log ($$$2 \leadsto 3$$$), $$$3 \rightarrow 4 \rightarrow 5 \rightarrow 6 \rightarrow 7$$$. Since we did not encounter a crocodile and swam no more than k meters, the answer is «YES».
+- In the third example, ErnKor needs to swim two cells 'W', but can only swim one. Therefore, the answer is «NO».
+- Sixth example: We jump from the shore into the water ($$$0 \rightarrow 6$$$) and swim one cell in the water ($$$6 \leadsto 7$$$). Since we did not encounter a crocodile and swam no more than k meters, the answer is «YES».
