@@ -76,9 +76,6 @@ func main() {
 					tmp /= f.p
 					c++
 				}
-				if c > f.e {
-					c = f.e
-				}
 				vec[j] = c
 			}
 			if tmp != 1 {
@@ -90,14 +87,16 @@ func main() {
 				for s := 0; s < states; s++ {
 					if dp[s] {
 						idx := 0
+						ok := true
 						for j := 0; j < m; j++ {
 							v := decode[s][j] + vec[j]
 							if v > exps[j] {
-								v = exps[j]
+								ok = false
+								break
 							}
 							idx += v * base[j]
 						}
-						if !newdp[idx] {
+						if ok && !newdp[idx] {
 							newdp[idx] = true
 						}
 					}
@@ -111,14 +110,16 @@ func main() {
 					for s := 0; s < states; s++ {
 						if dp[s] {
 							idx := 0
+							ok := true
 							for j := 0; j < m; j++ {
 								v := decode[s][j] + vec[j]
 								if v > exps[j] {
-									v = exps[j]
+									ok = false
+									break
 								}
 								idx += v * base[j]
 							}
-							if !dp[idx] {
+							if ok && !dp[idx] {
 								dp[idx] = true
 							}
 						}
