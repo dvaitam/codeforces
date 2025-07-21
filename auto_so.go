@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -50,7 +51,7 @@ func main() {
 		dir := filepath.Dir(path)
 		basedir := filepath.Base(dir)
 		suffix := strings.TrimPrefix(strings.TrimSuffix(name, ".txt"), "problem")
-		goFile := filepath.Join(dir, basedir+suffix+".go")
+		goFile := filepath.Join(dir, basedir + suffix + ".go")
 		_, err = os.Stat(goFile)
 		if err == nil {
 			// File exists, skip
@@ -61,7 +62,7 @@ func main() {
 			fmt.Printf("Error checking %s: %v\n", goFile, err)
 			return nil
 		}
-		logFile := filepath.Join(logDir, basedir+suffix+".log")
+		logFile := filepath.Join(logDir, basedir + suffix + ".log")
 		tasks = append(tasks, task{
 			problemPath: path,
 			goPath:      goFile,
@@ -82,11 +83,37 @@ func main() {
 	}
 
 	sem := make(chan struct{}, concurrency)
+	cancelChan := make(chan struct{})
 	var wg sync.WaitGroup
 
-	for _, t := range tasks {
-		sem <- struct{}{} // Acquire slot
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			n, err := os.Stdin.Read(buf)
+			if err == io.EOF {
+				close(cancelChan)
+				fmt.Println("EOF received (Ctrl+D pressed). Waiting for pending tasks to finish and not starting new ones.")
+				break
+			}
+			// Ignore other input
+			_ = n
+		}
+	}()
+
+	idx := 0
+tasks_loop:
+	for idx < len(tasks) {
+		t := tasks[idx]
+		select {
+		case sem <- struct{}{}:
+			// Acquired, proceed to start task
+		case <-cancelChan:
+			fmt.Println("Cancel received, not starting new tasks.")
+			break tasks_loop
+		}
+
 		wg.Add(1)
+
 		go func(t task) {
 			defer wg.Done()
 			defer func() { <-sem }()
@@ -105,6 +132,8 @@ func main() {
 				fmt.Printf("Successfully processed %s to %s\nLog saved to: %s\n", t.problemPath, t.goPath, t.logPath)
 			}
 		}(t)
+
+		idx++
 	}
 
 	wg.Wait()
