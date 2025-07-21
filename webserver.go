@@ -47,7 +47,16 @@ var contestTmpl = template.Must(template.New("contest").Parse(`
 
 var problemTmpl = template.Must(template.New("problem").Parse(`
 <!DOCTYPE html>
-<html><body>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body { max-width: 800px; margin: auto; font-family: sans-serif; }
+pre { white-space: pre-wrap; word-wrap: break-word; }
+textarea { width: 100%; }
+</style>
+</head>
+<body>
 <h1>Contest {{.Contest}} Problem {{.Letter}}</h1>
 <pre>{{.Statement}}</pre>
 <form action="/contest/{{.Contest}}/problem/{{.Letter}}/submit" method="post" enctype="multipart/form-data">
@@ -67,7 +76,15 @@ var problemTmpl = template.Must(template.New("problem").Parse(`
 
 var resultTmpl = template.Must(template.New("result").Parse(`
 <!DOCTYPE html>
-<html><body>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body { max-width: 800px; margin: auto; font-family: sans-serif; }
+pre { white-space: pre-wrap; word-wrap: break-word; }
+</style>
+</head>
+<body>
 <h1>Result for Contest {{.Contest}} Problem {{.Letter}}</h1>
 <pre>{{.Output}}</pre>
 <a href="/contest/{{.Contest}}/problem/{{.Letter}}">Back</a>
@@ -212,7 +229,11 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 			res, err := cmd.CombinedOutput()
 			output.Write(res)
 			if err != nil {
-				output.WriteString("\nVerifier error: " + err.Error())
+				if ee, ok := err.(*exec.ExitError); ok {
+					output.WriteString(fmt.Sprintf("\nVerifier exited with status %d", ee.ExitCode()))
+				} else {
+					output.WriteString("\nVerifier error: " + err.Error())
+				}
 			}
 		} else {
 			output.WriteString("Compiled successfully. No verifier available.")
