@@ -3,6 +3,7 @@ package main
 import (
    "bufio"
    "fmt"
+   "io"
    "os"
    "strings"
 )
@@ -84,7 +85,7 @@ func main() {
    strs := make([]string, 3)
    for i := 0; i < 3; i++ {
        line, err := reader.ReadString('\n')
-       if err != nil && err != os.EOF {
+       if err != nil && err != io.EOF {
            fmt.Fprintln(os.Stderr, "read error:", err)
            return
        }
