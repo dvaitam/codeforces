@@ -64,7 +64,7 @@ textarea { width: 100%; }
 <option value="c">C</option>
 <option value="cpp">C++</option>
 <option value="java">Java</option>
-<option value="python">Python</option>
+<option value="python">Python 3</option>
 <option value="go">Go</option>
 <option value="rust">Rust</option>
 </select><br>
