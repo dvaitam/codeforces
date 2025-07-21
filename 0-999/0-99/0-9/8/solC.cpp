@@ -1,3 +1,4 @@
+//go:build ignore
 #include <cstdio>
 using namespace std;
 
