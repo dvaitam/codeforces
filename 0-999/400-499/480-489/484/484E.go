@@ -76,46 +76,134 @@ func main() {
        }
        stack = append(stack, i)
    }
-   // bars: a = L[i], b = R[i], h = h[i]
-   type Bar struct{ a, b, h int }
-   bars := make([]Bar, n)
+   // build bars with width
+   type BarW struct{ a, b, w, h int }
+   barw := make([]BarW, n)
    for i := 1; i <= n; i++ {
-       bars[i-1] = Bar{L[i], R[i], h[i]}
+       barw[i-1] = BarW{L[i], R[i], R[i] - L[i] - 1, h[i]}
    }
-   sort.Slice(bars, func(i, j int) bool { return bars[i].a < bars[j].a })
+   // sort bars by width descending
+   sort.Slice(barw, func(i, j int) bool { return barw[i].w > barw[j].w })
 
+   // read queries
    var m int
    fmt.Fscan(in, &m)
-   type Query struct{ t1, t2, idx int }
-   qs := make([]Query, m)
+   type QueryW struct{ w, t1, t2, idx int }
+   qs2 := make([]QueryW, m)
    res := make([]int, m)
    for i := 0; i < m; i++ {
        var l, r, w int
        fmt.Fscan(in, &l, &r, &w)
-       t1 := r - w
-       t2 := l + w
-       qs[i] = Query{t1, t2, i}
+       qs2[i] = QueryW{w, r - w, l + w, i}
    }
-   sort.Slice(qs, func(i, j int) bool { return qs[i].t1 < qs[j].t1 })
-   // BIT on transformed b: idx = (n+2 - b)
-   size := n + 2
-   bit := NewBIT(size)
+   // sort queries by width descending
+   sort.Slice(qs2, func(i, j int) bool { return qs2[i].w > qs2[j].w })
+
+   // build segment tree on a in [0..n]
+   sizeA := n + 1
+   treeSize := 4 * sizeA
+   type Node struct{ bs []int; bit *BIT }
+   tree := make([]Node, treeSize)
+   var collect func(v, l, r, ai, bi int)
+   collect = func(v, l, r, ai, bi int) {
+       tree[v].bs = append(tree[v].bs, bi)
+       if l == r {
+           return
+       }
+       m2 := (l + r) >> 1
+       if ai <= m2 {
+           collect(v<<1, l, m2, ai, bi)
+       } else {
+           collect(v<<1|1, m2+1, r, ai, bi)
+       }
+   }
+   for _, bw := range barw {
+       collect(1, 0, n, bw.a, bw.b)
+   }
+   var initNode func(v, l, r int)
+   initNode = func(v, l, r int) {
+       if len(tree[v].bs) > 0 {
+           bs := tree[v].bs
+           sort.Ints(bs)
+           u := 0
+           for i := 1; i < len(bs); i++ {
+               if bs[i] != bs[u] {
+                   u++
+                   bs[u] = bs[i]
+               }
+           }
+           tree[v].bs = bs[:u+1]
+           tree[v].bit = NewBIT(len(tree[v].bs))
+       }
+       if l == r {
+           return
+       }
+       m2 := (l + r) >> 1
+       initNode(v<<1, l, m2)
+       initNode(v<<1|1, m2+1, r)
+   }
+   initNode(1, 0, n)
+
+   var update func(v, l, r, ai, bi, hi int)
+   update = func(v, l, r, ai, bi, hi int) {
+       bs := tree[v].bs
+       if len(bs) > 0 {
+           pos := sort.Search(len(bs), func(i int) bool { return bs[i] >= bi })
+           if pos < len(bs) {
+               id2 := len(bs) - pos
+               tree[v].bit.Update(id2, hi)
+           }
+       }
+       if l == r {
+           return
+       }
+       m2 := (l + r) >> 1
+       if ai <= m2 {
+           update(v<<1, l, m2, ai, bi, hi)
+       } else {
+           update(v<<1|1, m2+1, r, ai, bi, hi)
+       }
+   }
+
+   var queryTree func(v, l, r, ql, qr, T2 int) int
+   queryTree = func(v, l, r, ql, qr, T2 int) int {
+       if qr < l || r < ql {
+           return 0
+       }
+       if ql <= l && r <= qr {
+           bs := tree[v].bs
+           if len(bs) == 0 {
+               return 0
+           }
+           pos := sort.Search(len(bs), func(i int) bool { return bs[i] >= T2 })
+           if pos == len(bs) {
+               return 0
+           }
+           id2 := len(bs) - pos
+           return tree[v].bit.Query(id2)
+       }
+       m2 := (l + r) >> 1
+       resL := queryTree(v<<1, l, m2, ql, qr, T2)
+       resR := queryTree(v<<1|1, m2+1, r, ql, qr, T2)
+       if resL > resR {
+           return resL
+       }
+       return resR
+   }
+
+   // process queries and bars
    bi := 0
-   for _, q := range qs {
-       // insert bars with a <= t1
-       for bi < n && bars[bi].a <= q.t1 {
-           bval := bars[bi].b
-           idx := size - bval
-           // BIT is 1-indexed, idx from 0..size-1, shift by +1
-           bit.Update(idx+1, bars[bi].h)
+   for _, q := range qs2 {
+       // insert bars with width >= q.w
+       for bi < n && barw[bi].w >= q.w {
+           update(1, 0, n, barw[bi].a, barw[bi].b, barw[bi].h)
            bi++
        }
-       // query for b >= t2 => idx <= size - t2
-       k := size - q.t2
-       if k < 0 {
-           res[q.idx] = 0
+       // query a in [0..q.t1], b >= q.t2
+       if q.t1 >= 0 {
+           res[q.idx] = queryTree(1, 0, n, 0, q.t1, q.t2)
        } else {
-           res[q.idx] = bit.Query(k + 1)
+           res[q.idx] = 0
        }
    }
    for i := 0; i < m; i++ {
