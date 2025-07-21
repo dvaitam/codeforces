@@ -2,27 +2,10 @@ package main
 
 import (
    "bufio"
-   "container/heap"
    "fmt"
    "os"
 )
 
-// an IntMaxHeap is a max-heap of ints.
-type IntMaxHeap []int
-
-func (h IntMaxHeap) Len() int           { return len(h) }
-func (h IntMaxHeap) Less(i, j int) bool { return h[i] > h[j] }
-func (h IntMaxHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
-func (h *IntMaxHeap) Push(x interface{}) {
-   *h = append(*h, x.(int))
-}
-func (h *IntMaxHeap) Pop() interface{} {
-   old := *h
-   n := len(old)
-   x := old[n-1]
-   *h = old[0 : n-1]
-   return x
-}
 
 func main() {
    reader := bufio.NewReader(os.Stdin)
@@ -38,38 +21,59 @@ func main() {
    for i := 0; i < m; i++ {
        fmt.Fscan(reader, &s[i])
    }
-   // Initialize
-   time := 0
+   // Total travel distance and sum of supplies
+   totalD := 0
+   sumS := 0
+   for i := 0; i < m; i++ {
+       totalD += d[i]
+       sumS += s[i]
+   }
+   // Find city with maximum supply
+   maxS := 0
+   maxIdx := 0 // 0-based
+   for i := 0; i < m; i++ {
+       if s[i] > maxS {
+           maxS = s[i]
+           maxIdx = i
+       }
+   }
+   // Phase 1: minimal waits to reach city with maxS (index maxIdx)
    fuel := 0
-   h := &IntMaxHeap{}
-   heap.Init(h)
-   // initial at city 1
+   waitTime := 0
    if m > 0 {
        fuel = s[0]
-       heap.Push(h, s[0])
    }
-   // Traverse roads
-   for i := 0; i < m; i++ {
+   // traverse roads 0..maxIdx-1
+   for i := 0; i < maxIdx; i++ {
        need := d[i]
-       // wait as needed
-       for fuel < need {
-           if h.Len() == 0 {
-               // no supply, should not happen
-               break
+       if fuel < need {
+           // wait enough batches at city i (supply s[i])
+           // t = ceil((need - fuel) / s[i])
+           rem := need - fuel
+           t := rem / s[i]
+           if rem%s[i] != 0 {
+               t++
            }
-           best := (*h)[0]
-           fuel += best
-           time += k
+           waitTime += t * k
+           fuel += t * s[i]
        }
-       // travel
-       fuel -= need
-       time += need
-       // at city i+2, supply if exists
-       if i+1 < m {
-           heap.Push(h, s[i+1])
-           fuel += s[i+1]
+       // travel to next city
+       fuel = fuel - need + s[i+1]
+   }
+   // Phase 2: wait at city maxIdx for extra fuel
+   extra := totalD - sumS
+   if extra < 0 {
+       extra = 0
+   }
+   // batches needed at max city
+   t2 := 0
+   if extra > 0 {
+       t2 = extra / maxS
+       if extra%maxS != 0 {
+           t2++
        }
    }
-   // output total time
-   fmt.Println(time)
+   waitTime += t2 * k
+   // total time is travel time totalD plus waitTime
+   fmt.Println(waitTime + totalD)
 }
