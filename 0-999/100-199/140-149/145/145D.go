@@ -4,6 +4,7 @@ import (
    "bufio"
    "fmt"
    "os"
+   "sort"
 )
 
 func main() {
@@ -14,131 +15,111 @@ func main() {
    for i := 0; i < n; i++ {
        fmt.Fscan(in, &a[i])
    }
-   // collect lucky positions and values
-   b := make([]int, 0, 1005)
-   v := make([]int, 0, 1005)
+   // collect occurrences of each lucky value
+   first := make(map[int]int)
+   last := make(map[int]int)
    for i, x := range a {
        if isLucky(x) {
-           b = append(b, i+1)
-           v = append(v, x)
+           pos := i + 1
+           if _, ok := first[x]; !ok {
+               first[x] = pos
+           }
+           last[x] = pos
        }
    }
-   m := len(b)
-   // prev occurrence in lucky list
-   prev := make([]int, m)
-   last := map[int]int{}
-   for i := 0; i < m; i++ {
-       if p, ok := last[v[i]]; ok {
-           prev[i] = p + 1 // 1-based
-       } else {
-           prev[i] = 0
+   // no lucky values: count all non-intersecting pairs
+   if len(first) == 0 {
+       var total int64
+       for k := 1; k < n; k++ {
+           total += int64(k) * int64(n-k)
        }
-       last[v[i]] = i
-   }
-   // compute blocks c[0..m]
-   c := make([]int, m+1)
-   if m == 0 {
-       // all pure segments
-       // count pairs of non-intersecting subarrays
-       // total segments = n*(n+1)/2, but we need pairs non-intersecting
-       // formula sum_{r=1..n-1} r*(n-r)*(n-r+1)/2
-       var ans int64
-       for r := 1; r < n; r++ {
-           cnt1 := int64(r)
-           cnt2 := int64(n-r)
-           ans += cnt1 * cnt2 * (cnt2 + 1) / 2
-       }
-       fmt.Println(ans)
+       fmt.Println(total)
        return
    }
-   c[0] = b[0] - 1
-   for i := 1; i < m; i++ {
-       c[i] = b[i] - b[i-1] - 1
+   // collect critical points
+   pts := make([]int, 0, 2*len(first)+2)
+   pts = append(pts, 1, n)
+   for x, f := range first {
+       l := last[x]
+       pts = append(pts, f, l+1)
    }
-   c[m] = n - b[m-1]
-   // A[1..m], B[1..m]
-   A := make([]int64, m+1)
-   B := make([]int64, m+1)
-   for i := 1; i <= m; i++ {
-       A[i] = int64(c[i-1] + 1)
-       B[i] = int64(c[i] + 1)
+   // unique and sort
+   sort.Ints(pts)
+   uniq := pts[:0]
+   for _, v := range pts {
+       if len(uniq) == 0 || uniq[len(uniq)-1] != v {
+           uniq = append(uniq, v)
+       }
    }
-   // PA and S1prefix
-   PA := make([]int64, m+1)
-   S1 := make([]int64, m+1)
-   for i := 1; i <= m; i++ {
-       PA[i] = PA[i-1] + A[i]
-       S1[i] = S1[i-1] + PA[i]*B[i]
-   }
-   // SB, E, SE
-   SB := make([]int64, m+2)
-   for i := m; i >= 1; i-- {
-       SB[i] = SB[i+1] + B[i]
-   }
-   E := make([]int64, m+2)
-   for i := 1; i <= m; i++ {
-       E[i] = A[i] * SB[i]
-   }
-   SE := make([]int64, m+3)
-   for i := m; i >= 1; i-- {
-       SE[i] = SE[i+1] + E[i]
-   }
-   // Case1: both include lucky
+   // iterate intervals
    var ans int64
-   for i2 := 1; i2 <= m; i2++ {
-       minPrev := m + 1
-       for j2 := i2; j2 <= m; j2++ {
-           // prev index for j2: 1-based if exists
-           if prev[j2-1] > 0 && prev[j2-1] < minPrev {
-               minPrev = prev[j2-1]
+   vals := make([][2]int, 0, len(first))
+   for x, f := range first {
+       vals = append(vals, [2]int{f, last[x]})
+   }
+   for i := 0; i+1 < len(uniq); i++ {
+       L := uniq[i]
+       R := uniq[i+1] - 1
+       if L > R || L >= n {
+           continue
+       }
+       if R > n-1 {
+           R = n - 1
+       }
+       lenK := R - L + 1
+       // sum k and sum k^2 over [L..R]
+       sumK := int64(L+R) * int64(lenK) / 2
+       sumK2 := sumSquares(R) - sumSquares(L-1)
+       total := int64(n)*sumK - sumK2
+       // build S for k=L
+       rects := make([][2]int, 0, len(vals))
+       for _, p := range vals {
+           if p[0] <= L && p[1] > L {
+               rects = append(rects, p)
            }
-           // if no prev, prev=0 -> minPrev stays
-           J := minPrev - 1
-           var s1 int64
-           if J >= 1 {
-               s1 = S1[J]
-           }
-           ans += s1 * (A[i2] * B[j2])
        }
-   }
-   // pure segment counts per block
-   pureC := make([]int64, m+1)
-   for k := 0; k <= m; k++ {
-       ck := int64(c[k])
-       pureC[k] = ck * (ck + 1) / 2
-   }
-   // Case2: pure-pure
-   // internal in same block
-   for k := 0; k <= m; k++ {
-       ck := c[k]
-       // sum r1=1..ck-1 of (r1*(r1+1)/2)*((ck-r1)*(ck-r1+1)/2)
-       for r1 := 1; r1 < ck; r1++ {
-           left := int64(r1) * int64(r1+1) / 2
-           rem := int64(ck-r1)
-           right := rem * (rem + 1) / 2
-           ans += left * right
-       }
-   }
-   // inter-block k<l
-   var sumPrev int64
-   for k := 0; k <= m; k++ {
-       ans += sumPrev * pureC[k]
-       sumPrev += pureC[k]
-   }
-   // Case3: seg1 pure, seg2 include lucky
-   for k := 0; k <= m; k++ {
-       idx := k + 2
-       if idx <= m {
-           ans += pureC[k] * SE[idx]
-       }
-   }
-   // Case4: seg1 include lucky, seg2 pure
-   for k := 0; k <= m; k++ {
-       if k-1 >= 1 {
-           ans += pureC[k] * S1[k-1]
-       }
+       bad := unionArea(rects, n)
+       ans += total - bad*int64(lenK)
    }
    fmt.Println(ans)
+}
+
+func sumSquares(x int) int64 {
+   if x <= 0 {
+       return 0
+   }
+   xx := int64(x)
+   return xx * (xx + 1) * (2*xx + 1) / 6
+}
+
+// unionArea computes union area of rectangles of form [1..u] x [v..n]
+func unionArea(rects [][2]int, n int) int64 {
+   if len(rects) == 0 {
+       return 0
+   }
+   // sort by u increasing
+   sort.Slice(rects, func(i, j int) bool {
+       return rects[i][0] < rects[j][0]
+   })
+   var area int64
+   maxV := n + 1
+   // iterate from largest u
+   for i := len(rects) - 1; i >= 0; i-- {
+       u, v := rects[i][0], rects[i][1]
+       if v < maxV {
+           // new area (u - prev_u) * (n - v + 1)
+           area += int64(u) * int64(n-v+1)
+           if i < len(rects)-1 {
+               // subtract overlap: prev_u * (n - maxV +1)
+               prevU := rects[i+1][0]
+               area -= int64(prevU) * int64(n-maxV+1)
+           }
+           if v < maxV {
+               maxV = v
+           }
+       }
+   }
+   return area
 }
 
 func isLucky(x int) bool {
