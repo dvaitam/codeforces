@@ -57,38 +57,19 @@ func main() {
    }
 
    var ans int64
-   // Prepare direction vectors: basic axes and extremal pairs
+   // Try a set of fixed projection directions
    type vec struct{ dx, dy int64 }
-   dirs := []vec{{1, 0}, {0, 1}, {1, 1}, {1, -1}}
-   // find extremal in x+y
-   minSum, maxSum := xs[0]+ys[0], xs[0]+ys[0]
-   minSumI, maxSumI := 0, 0
-   // find extremal in x-y
-   minDiff, maxDiff := xs[0]-ys[0], xs[0]-ys[0]
-   minDiffI, maxDiffI := 0, 0
-   for i := 1; i < n; i++ {
-       if s := xs[i] + ys[i]; s < minSum { minSum, minSumI = s, i }
-       if s := xs[i] + ys[i]; s > maxSum { maxSum, maxSumI = s, i }
-       if d := xs[i] - ys[i]; d < minDiff { minDiff, minDiffI = d, i }
-       if d := xs[i] - ys[i]; d > maxDiff { maxDiff, maxDiffI = d, i }
+   dirs := []vec{
+       {1, 0}, {0, 1},
+       {1, 1}, {1, -1},
+       {-1, 1}, {-1, -1},
    }
-   // direction from min to max for sums and diffs
-   dirs = append(dirs, vec{xs[maxSumI] - xs[minSumI], ys[maxSumI] - ys[minSumI]})
-   dirs = append(dirs, vec{xs[maxDiffI] - xs[minDiffI], ys[maxDiffI] - ys[minDiffI]})
-   // track seen directions to avoid duplicates
-   seen := make(map[vec]bool)
    idx := make([]int, n)
    for _, v := range dirs {
-       // normalize zero vector
-       if v.dx == 0 && v.dy == 0 {
-           continue
+       // sort by projection onto v
+       for i := range idx {
+           idx[i] = i
        }
-       if seen[v] {
-           continue
-       }
-       seen[v] = true
-       // sort by projection
-       for i := range idx { idx[i] = i }
        sort.Slice(idx, func(i, j int) bool {
            return v.dx*xs[idx[i]]+v.dy*ys[idx[i]] < v.dx*xs[idx[j]]+v.dy*ys[idx[j]]
        })
