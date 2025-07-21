@@ -103,13 +103,17 @@ func main() {
    }
    offset := n
    // events at shift k: values x with posB[x] == k
+   // events at shift k: values x with posB[x] + 1 == k (transition point from regime1 to regime2)
    events := make([][]int, n+1)
    pos1 := make([]int, n+1)
    pos2 := make([]int, n+1)
    maxPos := 0
    for x := 1; x <= n; x++ {
        g := posB[x]
-       events[g] = append(events[g], x)
+       // at k == g+1, the element moves from regime1 to regime2
+       if g+1 <= n {
+           events[g+1] = append(events[g+1], x)
+       }
        c1 := g - posA[x]
        c2 := c1 + n
        p1 := c1 + offset
