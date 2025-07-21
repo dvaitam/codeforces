@@ -184,8 +184,12 @@ func compileSource(srcPath, lang string) (string, string, error) {
 			return "", "", err
 		}
 	case "python":
+		absSrc, err := filepath.Abs(srcPath)
+		if err != nil {
+			return "", "", err
+		}
 		exe = filepath.Join(tmpDir, "run-python.sh")
-		script := fmt.Sprintf("#!/bin/sh\npython3 %s \"$@\"\n", srcPath)
+		script := fmt.Sprintf("#!/bin/sh\npython3 %s \"$@\"\n", absSrc)
 		if err := os.WriteFile(exe, []byte(script), 0755); err != nil {
 			return "", "", err
 		}
