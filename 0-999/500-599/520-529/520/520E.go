@@ -33,15 +33,6 @@ func main() {
    }
    s := make([]byte, n)
    fmt.Fscan(in, &s)
-   // special case k==0: whole string
-   if k == 0 {
-       var ans int64
-       for i := 0; i < n; i++ {
-           ans = (ans*10 + int64(s[i]-'0')) % MOD
-       }
-       fmt.Println(ans)
-       return
-   }
    // precompute factorials and invfacts
    N := n
    fact := make([]int64, N+1)
@@ -54,7 +45,7 @@ func main() {
    for i := N; i > 0; i-- {
        invf[i-1] = invf[i] * int64(i) % MOD
    }
-   // nCk function
+   // nCk helper
    comb := func(n, k int) int64 {
        if k < 0 || k > n || n < 0 {
            return 0
@@ -62,38 +53,38 @@ func main() {
        return fact[n] * invf[k] % MOD * invf[n-k] % MOD
    }
    // precompute powers of 10
-   pow10 := make([]int64, n+1)
+   pow10 := make([]int64, n+2)
    pow10[0] = 1
-   for i := 1; i <= n; i++ {
+   for i := 1; i <= n+1; i++ {
        pow10[i] = pow10[i-1] * 10 % MOD
    }
-   inv9 := modInv(9)
-   // precompute reusable combs
-   c_n2 := comb(n-2, k-1)
-   c_n3 := comb(n-3, k-2)
+   // build prefix sums of f[d] * 10^d, where f[d] = C(n-2-d, k-1)
+   maxd := n - 1
+   S := make([]int64, maxd)
+   for d := 0; d < maxd; d++ {
+       val := comb(n-2-d, k-1) * pow10[d] % MOD
+       if d == 0 {
+           S[d] = val
+       } else {
+           S[d] = (S[d-1] + val) % MOD
+       }
+   }
    var ans int64
-   // iterate positions 1..n as i index 0..n-1
-   for i := 0; i < n; i++ {
-       d := int64(s[i] - '0')
+   for i := 1; i <= n; i++ {
+       d := int64(s[i-1] - '0')
        if d == 0 {
            continue
        }
-       // A = 10^(n-1-i)
-       exp := int64(n-1-i)
-       A := pow10[n-1-i]
-       // B = (10^(n-i) - 1) / 9 = sum_{d=0..n-1-i} 10^d
-       B := (pow10[n-i] + MOD - 1) % MOD * inv9 % MOD
-       // term_start: l=1, r from i..n-1: C(n-2,k-1) * B
-       term := d * c_n2 % MOD * B % MOD
-       ans = (ans + term) % MOD
-       // term_mid: l>1, r<n: (i) choices of l (positions 2..i+1 => count=i) but index i gives i choices
-       if c_n3 != 0 {
-           term = d * c_n3 % MOD * int64(i) % MOD * B % MOD
-           ans = (ans + term) % MOD
+       // sum over segments ending before n: d from 0 to n-i-1
+       var sum1 int64
+       rem := n - i - 1
+       if rem >= 0 {
+           sum1 = S[rem]
        }
-       // term_end: r=n, l>1: C(n-2,k-1) * (i) * A
-       term = d * c_n2 % MOD * int64(i) % MOD * A % MOD
-       ans = (ans + term) % MOD
+       // segments ending at n: one segment tail
+       sum2 := comb(i-1, k) * pow10[n-i] % MOD
+       total := (sum1 + sum2) % MOD
+       ans = (ans + d*total) % MOD
    }
    fmt.Println(ans)
 }
