@@ -295,5 +295,5 @@ func main() {
 		}
 		contestPage(w, r, parts[0])
 	})
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":8081", nil)
 }
