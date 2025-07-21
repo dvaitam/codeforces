@@ -35,3 +35,4 @@ func main() {
            fmt.Println("OMG>.< I don't know!")
        }
    }
+}
