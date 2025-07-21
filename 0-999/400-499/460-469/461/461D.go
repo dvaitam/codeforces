@@ -32,8 +32,14 @@ func main() {
    ok := true
    for i := 0; i < k; i++ {
        var a, b int
-       var c byte
-       fmt.Fscan(reader, &a, &b, &c)
+       var cs string
+       // read row, column, and character
+       fmt.Fscan(reader, &a, &b, &cs)
+       if len(cs) == 0 {
+           // should not happen
+           continue
+       }
+       c := cs[0]
        diff := a - b
        if diff < 0 {
            diff = -diff
