@@ -134,12 +134,6 @@ func main() {
    reader := bufio.NewReader(os.Stdin)
    writer := bufio.NewWriter(os.Stdout)
    defer writer.Flush()
-   // read ints
-   readInt := func() int {
-       s, _ := reader.ReadString(' ')
-       v, _ := strconv.Atoi(s)
-       return v
-   }
    // read n, m
    fmt.Fscan(reader, &n, &m)
    a = make([]int64, n+1)
