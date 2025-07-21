@@ -94,5 +94,5 @@ func main() {
    // output best
    writer := bufio.NewWriter(os.Stdout)
    defer writer.Flush()
-   fmt.Fprint(writer, best)
+   fmt.Fprintln(writer, best)
 }

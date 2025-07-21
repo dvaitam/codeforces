@@ -64,9 +64,9 @@ func main() {
 
    // process queries
    for k := 0; k < q; k++ {
-       var op byte
+       var op string
        fmt.Fscan(rdr, &op)
-       if op == 'A' {
+       if op[0] == 'A' {
            var x, y int
            fmt.Fscan(rdr, &x, &y)
            // query prefix [1,x]
@@ -92,6 +92,8 @@ func main() {
                l >>= 1
                r >>= 1
            }
+           // debug: print segment nodes
+           fmt.Fprintln(w, "DEBUG nodes:", nodes)
            // combine in collected order
            for _, idx := range nodes {
                cur = combine(tree[idx], cur, m)
@@ -121,9 +123,10 @@ func main() {
        } else {
            // change
            var x, y int
-           var cc byte
+           var cc string
            fmt.Fscan(rdr, &x, &y, &cc)
-           belts[x-1][y-1] = cc
+           cb := cc[0]
+           belts[x-1][y-1] = cb
            // rebuild leaf and path
            pos := size + x - 1
            rowMap := buildRow(belts, x, m)
