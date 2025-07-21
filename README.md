@@ -11,6 +11,7 @@ A few utility programs exist in the repository root:
 - `create.go` – helper for creating new contest folders and boilerplate files.
 - `auto.go` – simple concurrent build runner for multiple solutions.
 - `webserver.go` – demo HTTP server used for uploading solutions locally.
+- Python submissions run with `python3`.
 
 To build or run any of the Go utilities, use the standard Go tooling. For example:
 
