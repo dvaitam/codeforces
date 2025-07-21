@@ -130,30 +130,3 @@ func matMul(A, B [][]int) [][]int {
    }
    return C
 }
-
-// conjugate returns S[s] * M * S[s], where S swaps indices 0 and s+1
-func conjugate(M [][]int, s int) [][]int {
-   m := len(M)
-   // If no swap needed, return original
-   if s == 0 {
-       return M
-   }
-   // permute by swapping index 0 and s+1
-   perm := make([]int, m)
-   for i := 0; i < m; i++ {
-       perm[i] = i
-   }
-   swap := s + 1
-   perm[0], perm[swap] = perm[swap], perm[0]
-   // build conjugated matrix
-   C := makeMatrix(m)
-   for i := 0; i < m; i++ {
-       pi := perm[i]
-       rowPi := M[pi]
-       Ci := C[i]
-       for j := 0; j < m; j++ {
-           Ci[j] = rowPi[perm[j]]
-       }
-   }
-   return C
-}
