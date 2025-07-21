@@ -92,8 +92,6 @@ func main() {
                l >>= 1
                r >>= 1
            }
-           // debug: print segment nodes
-           fmt.Fprintln(w, "DEBUG nodes:", nodes)
            // combine in collected order
            for _, idx := range nodes {
                cur = combine(tree[idx], cur, m)

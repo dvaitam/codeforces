@@ -19,18 +19,23 @@ func main() {
    if _, err := fmt.Fscan(in, &n, &k); err != nil {
        return
    }
-   // prepare M0
+   // prepare base matrices M_base[s] = M(s)
    m := k + 1
-   // M0[i][j]: new_i = sum_j M0[i][j] * v[j]
-   M0 := makeMatrix(m)
-   // dp': 2*dp - last_contrib[0]
-   M0[0][0] = 2
-   M0[0][1] = modSub(0, 1) // -1 mod MOD
-   // last_contrib'[0] = dp
-   M0[1][0] = 1
-   // last_contrib'[i] = last_contrib[i] for i>0
-   for i := 2; i < m; i++ {
-       M0[i][i] = 1
+   M_base := make([][][]int, k)
+   for s := 0; s < k; s++ {
+       M := makeMatrix(m)
+       // dp': 2*dp - last_contrib[s]
+       M[0][0] = 2
+       M[0][1+s] = modSub(0, 1)
+       // last_contrib'[s] = dp
+       M[1+s][0] = 1
+       // other last_contrib unchanged
+       for i := 0; i < k; i++ {
+           if i != s {
+               M[1+i][1+i] = 1
+           }
+       }
+       M_base[s] = M
    }
    // compute digits of n-1 in base k
    nn := n - 1
