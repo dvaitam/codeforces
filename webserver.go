@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -135,6 +136,14 @@ func findVerifier(dir, letter string) string {
 	return ""
 }
 
+func detectJavaClassName(src []byte) string {
+	re := regexp.MustCompile(`(?m)^\s*public\s+(?:class|interface|enum|record)\s+([A-Za-z_][A-Za-z0-9_]*)`)
+	if m := re.FindSubmatch(src); m != nil {
+		return string(m[1])
+	}
+	return "Main"
+}
+
 func compileSource(srcPath, lang string) (string, string, error) {
 	tmpDir, err := os.MkdirTemp("", "submit")
 	if err != nil {
@@ -156,9 +165,21 @@ func compileSource(srcPath, lang string) (string, string, error) {
 		if err := os.Mkdir(javaDir, 0755); err != nil {
 			return "", "", err
 		}
-		cmd = exec.Command("javac", "-d", javaDir, srcPath)
+		data, err := os.ReadFile(srcPath)
+		if err != nil {
+			return "", "", err
+		}
+		className := detectJavaClassName(data)
+		javaSrc := srcPath
+		if filepath.Base(srcPath) != className+".java" {
+			javaSrc = filepath.Join(tmpDir, className+".java")
+			if err := os.WriteFile(javaSrc, data, 0644); err != nil {
+				return "", "", err
+			}
+		}
+		cmd = exec.Command("javac", "-d", javaDir, javaSrc)
 		exe = filepath.Join(tmpDir, "run-java.sh")
-		script := fmt.Sprintf("#!/bin/sh\njava -cp %s Main \"$@\"\n", javaDir)
+		script := fmt.Sprintf("#!/bin/sh\njava -cp %s %s \"$@\"\n", javaDir, className)
 		if err := os.WriteFile(exe, []byte(script), 0755); err != nil {
 			return "", "", err
 		}
