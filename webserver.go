@@ -207,7 +207,7 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 	} else {
 		verifier := findVerifier(c.Path, letter)
 		if verifier != "" {
-			cmd := exec.Command("go", "run", verifier, exe)
+			cmd := exec.Command("go", "run", filepath.Base(verifier), exe)
 			cmd.Dir = c.Path
 			res, err := cmd.CombinedOutput()
 			output.Write(res)
