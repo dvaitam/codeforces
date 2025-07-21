@@ -1,25 +1,26 @@
 # Codeforces Solutions
 
-This repository stores my experiments and solutions for Codeforces problems. The directories are organised by contest and problem ID. Each folder often contains:
+This repository contains my personal experiments and solutions for Codeforces problems. The directory tree mirrors the contest numbers (`0-999`, `1000-1999`, `2000-2999`, ...). Inside each contest folder you will typically find:
 
-- `problemX.txt` – the problem statement or notes.
-- Solution implementations (`1994A.go`, `solA.cpp`, etc.).
-- Verifier programs written in Go (`verifierA.go`, `verifierB.go`, ...). These compile a user solution and check it against provided test cases.
+- `problemX.txt` – the problem statement or notes for problem X.
+- Solution files in Go or other languages (`1234A.go`, `solB.cpp`, etc.).
+- Optional verifier programs such as `verifierA.go` that compile a submission and run it against sample tests.
 
-A few utility programs exist in the repository root:
+## Utilities
 
-- `create.go` – helper for creating new contest folders and boilerplate files.
-- `auto.go` – simple concurrent build runner for multiple solutions.
-- `webserver.go` – demo HTTP server used for uploading solutions locally.
-- Python submissions run with `python3`.
+Several helper tools live in the repository root:
 
-To build or run any of the Go utilities, use the standard Go tooling. For example:
+- `create.go` – scaffold a new contest/problem directory.
+- `auto.go` – convert existing C++ solutions to Go using the Codex CLI.
+- `auto_so.go` – generate Go solutions from problem statements with Codex.
+- `webserver.go` – simple HTTP server for browsing problems and submitting solutions locally.
+- Extra programs like `brute.go` or `probe.go` are experimental helpers.
+
+All Go utilities build with the standard tooling. Example:
 
 ```bash
-# Build and run a verifier
 cd 1000-1999/1900-1999/1990-1999/1994
 go run verifierA.go ./1994A
 ```
 
-The repository is mostly experimental and does not contain complete problem sets. Feel free to browse the directories for reference implementations or to adapt the utilities for your own workflow.
-
+The repository is mostly experimental and does not contain a complete archive of problems. Feel free to use the code or utilities as a reference for your own workflow.
