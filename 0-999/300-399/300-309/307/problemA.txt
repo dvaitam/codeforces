@@ -1,0 +1,4 @@
+Problem A: Square
+Given an integer n, output n squared.
+Input: n on a single line.
+Output: n*n

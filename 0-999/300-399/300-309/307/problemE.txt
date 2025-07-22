@@ -1,0 +1,4 @@
+Problem E: Prime Check
+Given an integer n (1 <= n <= 1000), output "YES" if n is prime and "NO" otherwise.
+Input: n on a single line.
+Output: YES or NO
