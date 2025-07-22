@@ -1,0 +1,4 @@
+Problem C: Factorial
+Given an integer n (0 <= n <= 20), output n factorial.
+Input: n on a single line.
+Output: n!

@@ -1,0 +1,4 @@
+Problem D: Reverse
+Given a lowercase string s, output s reversed.
+Input: s on a single line.
+Output: reverse of s
