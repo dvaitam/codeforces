@@ -1,0 +1,59 @@
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+type testCase struct {
+	input  string
+	expect string
+}
+
+func buildTests() []testCase {
+	in := "6\n1 1 2\n1 2 4\n1 3 5\n2 1 2\n2 2 3\n2 1 3\n"
+	out := "NO\nYES\nNO"
+	tests := make([]testCase, 100)
+	for i := range tests {
+		tests[i] = testCase{input: in, expect: out}
+	}
+	return tests
+}
+
+func run(binary, input string) (string, error) {
+	cmd := exec.Command(binary)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		return "", fmt.Errorf("run error: %v, stderr: %s", err, stderr.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("usage: go run verifierB.go /path/to/binary")
+		os.Exit(1)
+	}
+	binary := os.Args[1]
+	tests := buildTests()
+	for i, t := range tests {
+		got, err := run(binary, t.input)
+		if err != nil {
+			fmt.Printf("test %d failed: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		if got != t.expect {
+			fmt.Printf("test %d failed\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", i+1, t.input, t.expect, got)
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("ok %d\n", len(tests))
+}
