@@ -24,3 +24,12 @@ go run verifierA.go ./1994A
 ```
 
 The repository is mostly experimental and does not contain a complete archive of problems. Feel free to use the code or utilities as a reference for your own workflow.
+
+Some contests include verifier programs with deterministic test cases. For
+example, contest 90 provides verifiers for problems A and B:
+
+```bash
+cd 0-999/0-99/90-99/90
+go run verifierA.go ./mySolutionA
+go run verifierB.go ./mySolutionB
+```
