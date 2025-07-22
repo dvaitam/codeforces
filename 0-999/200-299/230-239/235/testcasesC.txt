@@ -1,0 +1,101 @@
+100
+a 1 acc
+bcaca 3 bc ccbc cbaa
+bbbbca 3 aa a aac
+cccabb 3 bcbbb bc ccab
+bccbc 2 bccc bcab
+cbb 2 ccc ccccb
+cabcb 3 abcaa a cabca
+ca 2 aa caab
+aacaaa 1 a
+b 2 ac cc
+b 3 a aa ccc
+bb 2 b ccca
+bccab 1 c
+aabacc 2 cbab bcb
+c 3 ca aaa ab
+ccaa 1 abac
+cccb 2 bcaa b
+aaccaaa 1 a
+aaac 3 bbcc acac bcac
+b 3 aacbb c c
+bcbbac 2 a aca
+abcbbacc 1 b
+b 2 a aacb
+cbabbab 1 a
+cbacaa 3 accb bba bbc
+ccbbcbba 1 cbcb
+cc 3 a aca aacc
+a 2 accc bac
+aacba 2 accba bc
+bbcc 1 bcac
+cabcabb 2 ccb bcbc
+ca 3 abcbc b ccbc
+aab 1 cbaab
+bccc 1 caac
+bbccabc 1 b
+b 3 c cbbb baacb
+bbc 3 aa bbcb ab
+abacbcba 3 bca cccb b
+bbcbcc 2 accab cacca
+aabca 3 aaa babb b
+babbbbac 2 bb aa
+acbabaaa 2 cbbcb ccc
+cbcccc 2 cccab bba
+bbbaa 2 aaab ba
+acbacbc 2 cabb ba
+abb 1 bbab
+acac 3 b cca aa
+bbabcca 2 baabb cbcc
+cc 3 bcba bcba b
+acc 1 b
+bcaba 3 aaa bc b
+abaabaca 1 caaac
+c 2 aabba ca
+abaa 3 cb ccb ccaca
+caa 2 bb abab
+bacabb 2 bbabc cc
+ac 3 aa caca c
+ccbca 3 ac aca a
+acb 3 aab cca bcca
+bcacccba 1 bbcc
+cccabac 1 bbbb
+cacbb 1 cbba
+bcc 2 cc acbac
+aaaab 1 cbc
+babbca 2 caaaa bcacc
+bcabbaac 2 ac ccc
+cbacaca 2 ac babb
+bbbaaaa 3 accca b bacb
+bc 2 bcacb ba
+b 1 ca
+baca 3 cb c cacca
+caabccb 2 c bca
+acbbcb 2 cca a
+bcabcc 3 c c ccbbb
+aaca 1 cbcab
+a 1 ababa
+aa 3 aa acbc ac
+baababc 2 c cb
+ccbabca 2 ab ac
+ccbbbba 2 babc b
+b 2 c cbcb
+bcbb 3 bcacc bb bac
+cccb 1 cbcc
+acbbcccc 2 baaac bb
+ccabbbcb 2 cbc b
+a 2 a b
+cbcbac 2 c bbcab
+ca 2 b acca
+b 2 ccab aaccb
+bbb 3 cbbba acbab aac
+acba 2 cac ab
+cbcacacc 3 bc c ac
+acab 3 ca bca b
+ba 3 bba b ab
+ba 2 accbb c
+abaa 3 baa baa cb
+ccaaa 1 b
+ba 2 c ababc
+bcaa 2 ca aacbb
+bcbbac 1 a
