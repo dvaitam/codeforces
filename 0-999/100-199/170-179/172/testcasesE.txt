@@ -1,0 +1,100 @@
+<c><c><c/><a><d></d></a></c></c>|1|c c a d
+<d/>|2|d|d
+<b></b>|3|a|a b|b
+<d/>|3|d|a|d
+<d></d>|1|d
+<b></b>|3|b|b|b
+<c></c>|1|c a
+<c><c></c><a><b/><c></c></a></c>|2|c a b|c a
+<b></b>|2|d|a
+<d/>|3|d|d|d c
+<a></a>|2|a|a
+<c><a><c></c><d><d></d></d></a></c>|3|d c|c a d d|c
+<a><c/></a>|2|a|b
+<d></d>|1|b
+<b></b>|3|b|b|b
+<b></b>|3|b|c d|b
+<c></c>|1|b d
+<c></c>|2|a a|c
+<a/>|1|b
+<d><b></b><b></b></d>|3|d b|d|a a
+<d><b></b></d>|2|b a|b
+<a><c><d></d></c></a>|3|d|c c|a
+<a></a>|3|a|a|c
+<c></c>|1|c b
+<a><b><b><b/><d></d></b></b></a>|2|c a|d
+<a><c></c></a>|2|a c|d a
+<c></c>|3|c|b|c
+<d></d>|1|d
+<b><b></b></b>|1|d
+<d><c></c></d>|2|d c|d
+<a></a>|3|d b|a|a
+<b></b>|1|c
+<b/>|1|b
+<c><d><c></c></d></c>|2|d|d
+<c><a><a><a/></a></a></c>|3|d d|b a|c
+<d/>|3|d|c d|d
+<c><b><c><a/><b></b></c></b><b/></c>|1|c b c a
+<a></a>|1|c
+<a></a>|2|c|a
+<a><c/></a>|2|a|a c
+<d><d></d></d>|2|c|d
+<d><d></d></d>|2|b d|d d
+<c></c>|1|c
+<a/>|2|a|a
+<b></b>|2|c|a
+<d><d></d></d>|3|d|d|c
+<a></a>|1|d b
+<d><b><c></c></b></d>|1|b
+<c><a><c></c></a></c>|1|c a
+<b></b>|1|d a
+<c></c>|2|c|d c
+<d><c></c><b></b></d>|3|d b|d c|d c
+<c/>|2|c|b a
+<a></a>|1|a
+<c><b><a><b></b><c></c></a><c></c></b><d><b><a/></b><b></b></d></c>|2|d c|c c
+<c><c><d><a/></d></c><d><d><b></b><b/></d></d></c>|1|a
+<c><b></b><d></d></c>|2|a|a
+<b/>|2|b|b
+<c><b><d></d><b></b></b><b></b></c>|1|c c
+<b><c></c><d/></b>|2|d a|b c
+<d/>|3|d|d|a b
+<b><c><a><d/></a></c><d><a></a></d></b>|2|b c|b c a d
+<a></a>|2|b b|a
+<b><b><c></c><a/></b></b>|2|a|c c
+<c><a><d></d></a></c>|3|d|b c|c
+<b><b></b></b>|2|c|d
+<a></a>|1|a a
+<b></b>|2|b|a
+<d></d>|3|d|d|d
+<b><a></a><a><c><b></b><a></a></c><c></c></a></b>|2|b c|b
+<d/>|2|a b|a a
+<a></a>|2|a|a
+<a><b></b></a>|3|a b|b a|a
+<b><b></b><a/></b>|2|b b|d
+<c/>|1|b d
+<b><b><c><b/><d/></c></b></b>|3|b|a c|b b c d
+<b><a><b/></a></b>|2|d a|b c
+<a><d><a><a/><b></b></a></d></a>|1|a d
+<b></b>|3|c|a|c
+<b><a></a><d><b/></d></b>|3|b d|b|b a
+<c><a></a></c>|2|b a|d d
+<c><d/></c>|3|b a|b c|c a
+<a><d></d><b></b></a>|1|c
+<c></c>|2|c|c
+<c></c>|3|a|d c|c
+<b></b>|2|b c|b
+<d></d>|3|d|c d|d
+<b><c><d/><c><a></a><a/></c></c><d></d></b>|1|b c
+<b></b>|1|c a
+<a><d></d><d></d></a>|1|a
+<c><b><c><c></c></c></b><d><a></a><b/></d></c>|3|d d|c d a|b b
+<c><d></d><d></d></c>|2|c d|c
+<c><c></c></c>|3|a d|a|a b
+<a></a>|1|a
+<a></a>|2|c c|a
+<d><c></c></d>|3|a c|d|d c
+<c><b><d><a/></d><b><c></c></b></b><c><c/></c></c>|2|c b b|c b b
+<c></c>|1|c
+<c><a></a></c>|2|a|c a
+<a><a><b><a></a></b></a><d><a/></d></a>|2|a c|a a b
