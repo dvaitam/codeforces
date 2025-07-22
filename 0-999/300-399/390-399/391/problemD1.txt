@@ -1,28 +1,719 @@
-Description:
-This problem consists of two subproblems: for solving subproblem D1 you will receive 3 points, and for solving subproblem D2 you will receive 16 points.
-
-Manao is the chief architect involved in planning a new supercollider. He has to identify a plot of land where the largest possible supercollider can be built. The supercollider he is building requires four-way orthogonal collisions of particles traveling at the same speed, so it will consist of four accelerating chambers and be shaped like a plus sign (i.e., +). Each of the four accelerating chambers must be the same length and must be aligned with the Earth's magnetic field (parallel or orthogonal) to minimize interference.
-
-The accelerating chambers need to be laid down across long flat stretches of land to keep costs under control. Thus, Manao has already commissioned a topographical study that has identified all possible maximal length tracts of land available for building accelerating chambers that are either parallel or orthogonal to the Earth's magnetic field. To build the largest possible supercollider, Manao must identify the largest symmetric plus shape from among these candidate tracts. That is, he must find the two tracts of land that form an axis-aligned plus shape with the largest distance from the center of the plus to the tip of the shortest of the four arms of the plus. Note that the collider need not use the entire length of the tracts identified (see the example in the notes).
-
-Input Format:
-The first line of the input will contain two single-space-separated integers n, the number of north-south tracts and m, the number of west-east tracts.
-
-Each of the n lines following the first describes a north-south tract. Each such tract is described by three single-space-separated integers xi, yi, li representing the vertical line segment from (xi, yi) to (xi, yi + li).
-
-Similarly, after the n lines describing north-south tracts follow m similar lines describing the west-east tracts. Each such tract is described by three single-space-separated integers xi, yi, li representing the horizontal line segment from (xi, yi) to (xi + li, yi).
-
-All xi and yi are between -100000000 and 100000000, inclusive. All li are between 1 and 100000000, inclusive. No pair of horizontal segments will touch or intersect, and no pair of vertical segments will touch or intersect.
-
-The problem consists of two subproblems. The subproblems have different constraints on the input. You will get some score for the correct submission of the subproblem. The description of the subproblems follows.
-
-- In subproblem D1 (3 points), n and m will be between 1 and 1000, inclusive.
-- In subproblem D2 (16 points), n and m will be between 1 and 50000, inclusive.
-
-Output Format:
-Print one line containing a single integer, the size of the largest supercollider that can be built on one north-south tract and one west-east tract. The size of the supercollider is defined to be the length of one of the four accelerating chambers. In other words, the size of the resulting supercollider is defined to be the distance from the intersection of the two line segments to the closest endpoint of either of the two segments. If no pair of north-south and west-east tracts intersects, it is not possible to build a supercollider and the program should report a maximum size of zero.
-
-Note:
-Consider the example. There is one vertical line segment from (4, 0) to (4, 9) and two horizontal line segments: from (1, 1) to (9, 1) and from (1, 2) to (8, 2). The largest plus shape that can be found among these segments is formed from the only vertical segment and the second of horizontal segments, and is centered at (4, 2).
-
-The program should output 2 because the closest end point of those segments to the center is (4, 0), which is distance 2 from the center point of (4, 2). The collider will be formed by the line segments from (2, 2) to (6, 2) and from (4, 0) to (4, 4).
+2 2
+2 16 5
+31 25 3
+22 30 5
+32 13 2
+0
+---
+2 1
+48 6 5
+16 34 5
+19 9 1
+0
+---
+3 1
+43 21 4
+35 6 3
+27 20 5
+13 40 5
+0
+---
+2 2
+33 16 1
+35 0 1
+25 46 1
+31 39 3
+0
+---
+1 3
+20 45 1
+36 12 2
+9 15 5
+5 28 1
+0
+---
+2 3
+31 6 3
+35 18 1
+21 35 5
+38 13 5
+18 37 4
+0
+---
+1 3
+24 20 5
+18 15 2
+11 12 1
+42 39 3
+0
+---
+2 1
+5 43 2
+9 2 1
+34 44 4
+0
+---
+3 3
+17 33 2
+13 43 5
+26 37 3
+31 28 3
+20 5 5
+31 7 5
+0
+---
+3 2
+12 15 1
+46 17 1
+45 14 3
+10 50 3
+3 27 1
+0
+---
+1 3
+14 2 5
+34 40 5
+4 43 1
+40 7 2
+0
+---
+3 3
+7 25 1
+23 7 1
+38 1 2
+45 11 1
+13 30 1
+1 43 5
+0
+---
+2 3
+6 16 1
+14 4 3
+27 22 2
+32 3 4
+38 2 1
+0
+---
+3 2
+12 16 3
+46 30 5
+10 44 2
+3 49 2
+21 10 5
+0
+---
+2 1
+38 28 2
+0 30 4
+32 36 3
+0
+---
+3 2
+24 42 3
+9 35 1
+29 47 1
+47 21 1
+17 34 2
+0
+---
+1 2
+22 39 3
+22 43 5
+39 40 2
+0
+---
+3 2
+24 47 4
+41 5 1
+38 12 3
+15 10 2
+28 40 4
+0
+---
+3 3
+36 26 1
+25 44 5
+26 49 1
+28 10 1
+44 16 2
+33 28 4
+0
+---
+3 3
+48 0 1
+31 20 3
+29 3 4
+35 12 1
+8 46 1
+43 25 4
+0
+---
+2 1
+13 0 1
+43 33 5
+12 6 1
+0
+---
+3 3
+12 19 3
+44 11 1
+30 25 1
+17 1 4
+7 50 3
+41 8 5
+0
+---
+3 3
+22 7 2
+17 1 1
+2 13 3
+20 35 3
+2 36 5
+31 41 4
+0
+---
+3 2
+23 34 2
+13 24 5
+18 0 2
+17 9 3
+50 21 3
+0
+---
+3 1
+21 49 5
+2 2 3
+10 9 5
+23 18 4
+0
+---
+3 1
+18 7 4
+46 15 1
+19 11 5
+4 46 3
+0
+---
+2 2
+19 26 1
+6 35 4
+21 30 3
+30 7 1
+0
+---
+3 2
+27 2 3
+21 47 2
+10 40 5
+40 24 1
+5 4 2
+0
+---
+3 1
+3 24 1
+6 25 5
+33 18 4
+50 31 5
+0
+---
+3 3
+13 27 1
+23 14 3
+37 49 2
+12 27 3
+4 7 1
+28 33 2
+0
+---
+1 2
+25 16 2
+2 41 2
+9 39 1
+0
+---
+1 2
+24 23 5
+6 9 5
+9 31 5
+0
+---
+2 3
+43 27 5
+31 43 3
+31 31 2
+39 34 2
+21 0 3
+0
+---
+2 1
+33 9 3
+38 50 2
+37 24 3
+0
+---
+3 3
+30 4 1
+33 2 1
+14 8 1
+0 19 4
+10 21 2
+29 41 3
+0
+---
+3 2
+33 32 1
+36 5 5
+48 38 1
+27 47 2
+34 18 5
+0
+---
+2 2
+50 24 5
+37 14 1
+0 42 2
+32 19 5
+0
+---
+2 2
+4 31 3
+19 49 4
+24 24 1
+41 10 2
+0
+---
+1 2
+46 21 1
+30 2 4
+31 9 5
+0
+---
+3 1
+43 44 2
+22 26 1
+39 29 4
+3 29 1
+0
+---
+2 1
+1 2 5
+39 8 3
+44 6 5
+0
+---
+3 2
+12 24 4
+7 3 5
+44 29 5
+21 40 1
+45 43 5
+0
+---
+2 1
+24 18 1
+33 50 2
+50 2 4
+0
+---
+2 2
+48 12 4
+22 50 1
+2 2 4
+1 16 5
+0
+---
+3 3
+36 13 2
+5 49 5
+44 33 4
+19 32 1
+27 9 5
+5 27 1
+0
+---
+2 1
+6 26 2
+46 1 4
+43 27 4
+0
+---
+1 2
+20 46 3
+22 5 1
+22 7 1
+0
+---
+2 2
+11 0 2
+23 4 5
+13 9 1
+42 13 1
+0
+---
+3 1
+18 23 1
+38 14 2
+11 29 1
+22 30 3
+0
+---
+1 1
+13 23 3
+18 30 3
+0
+---
+3 3
+20 11 5
+5 6 5
+37 19 2
+9 24 2
+20 14 5
+15 15 2
+0
+---
+2 2
+26 42 1
+8 38 1
+4 25 1
+26 8 3
+0
+---
+3 2
+47 9 5
+27 19 3
+5 15 4
+23 40 5
+24 3 4
+0
+---
+1 2
+46 20 4
+23 13 3
+5 30 2
+0
+---
+1 2
+7 35 5
+9 44 4
+11 25 4
+0
+---
+2 1
+15 29 3
+33 9 3
+40 29 1
+0
+---
+2 1
+18 0 4
+39 29 1
+19 13 1
+0
+---
+3 2
+34 38 2
+27 45 4
+5 43 4
+14 48 5
+17 25 1
+0
+---
+1 2
+42 2 1
+25 16 5
+45 37 4
+0
+---
+2 1
+47 16 3
+18 48 2
+5 38 1
+0
+---
+1 2
+19 34 3
+33 7 2
+10 48 1
+0
+---
+2 2
+18 33 2
+36 33 2
+6 34 4
+34 40 4
+0
+---
+3 2
+18 28 3
+36 40 2
+10 7 1
+25 24 5
+8 29 5
+0
+---
+3 2
+22 40 4
+47 26 2
+30 31 5
+31 20 1
+19 28 2
+0
+---
+3 2
+3 39 2
+1 22 4
+25 0 5
+43 4 1
+47 43 4
+0
+---
+1 2
+2 7 5
+17 0 3
+14 46 2
+0
+---
+3 2
+12 6 4
+29 45 3
+24 10 3
+41 26 4
+28 9 2
+0
+---
+3 2
+8 13 2
+28 22 4
+27 31 4
+14 46 2
+13 28 5
+0
+---
+3 1
+24 2 2
+40 5 2
+23 3 2
+39 14 3
+0
+---
+3 1
+45 32 3
+49 22 4
+29 3 5
+41 42 5
+0
+---
+3 2
+37 29 4
+16 45 4
+13 21 3
+2 2 1
+22 10 1
+0
+---
+2 3
+0 8 1
+50 27 2
+25 38 5
+29 14 2
+38 21 1
+0
+---
+3 1
+50 20 3
+34 29 3
+16 1 5
+12 2 3
+0
+---
+1 1
+33 22 2
+16 12 3
+0
+---
+2 3
+24 16 4
+22 45 2
+19 2 5
+0 4 4
+46 31 4
+0
+---
+1 2
+31 29 4
+5 7 1
+6 15 2
+0
+---
+2 1
+28 39 1
+27 35 4
+11 2 2
+0
+---
+2 1
+8 17 3
+20 27 1
+18 35 5
+0
+---
+3 1
+45 18 4
+32 38 4
+34 40 3
+14 17 1
+0
+---
+1 3
+50 45 1
+46 11 4
+13 15 3
+42 47 1
+0
+---
+3 3
+32 27 1
+7 24 3
+47 36 3
+43 14 5
+18 42 2
+15 47 1
+0
+---
+3 2
+43 20 2
+23 40 4
+18 37 2
+0 8 5
+20 32 3
+0
+---
+3 3
+1 8 4
+9 11 5
+4 8 2
+49 50 4
+49 36 2
+46 15 2
+0
+---
+1 2
+22 38 5
+40 8 4
+39 6 1
+0
+---
+3 3
+22 31 4
+19 0 2
+35 41 2
+31 42 4
+20 34 1
+8 16 5
+0
+---
+2 3
+12 20 3
+24 3 2
+20 2 2
+28 21 2
+22 16 2
+0
+---
+2 1
+22 36 5
+3 46 2
+1 22 4
+0
+---
+3 1
+1 15 1
+0 14 3
+4 3 3
+27 42 2
+0
+---
+1 2
+27 9 3
+11 19 3
+50 46 4
+0
+---
+2 1
+26 16 5
+34 47 4
+2 48 5
+0
+---
+1 2
+24 10 1
+8 32 5
+32 42 2
+0
+---
+1 2
+15 11 2
+10 1 5
+45 10 1
+0
+---
+2 3
+6 39 4
+45 9 5
+2 38 3
+47 21 4
+40 1 1
+0
+---
+2 1
+22 18 2
+29 15 5
+10 22 4
+0
+---
+2 2
+31 25 1
+19 33 3
+30 35 1
+34 49 5
+0
+---
+3 2
+43 2 4
+25 46 1
+22 31 1
+17 1 1
+43 16 5
+0
+---
+3 2
+43 48 2
+48 33 5
+21 24 3
+7 13 5
+15 21 5
+0
+---
+3 3
+34 43 3
+10 9 3
+47 0 5
+36 3 2
+23 22 3
+18 40 3
+0
+---
+2 2
+38 27 2
+0 50 2
+2 36 4
+21 8 1
+0
+---
+3 2
+42 42 3
+47 39 2
+4 35 4
+11 17 5
+4 10 2
+0

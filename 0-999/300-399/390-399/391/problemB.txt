@@ -1,27 +1,100 @@
-Description:
-You will receive 5 points for solving this problem.
-
-Manao has invented a new operation on strings that is called folding. Each fold happens between a pair of consecutive letters and places the second part of the string above first part, running in the opposite direction and aligned to the position of the fold. Using this operation, Manao converts the string into a structure that has one more level than there were fold operations performed. See the following examples for clarity.
-
-We will denote the positions of folds with '|' characters. For example, the word "ABRACADABRA" written as "AB|RACA|DAB|RA" indicates that it has been folded three times: first, between the leftmost pair of 'B' and 'R' letters; second, between 'A' and 'D'; and third, between the rightmost pair of 'B' and 'R' letters. Here are several examples of folded strings:
-
-One last example for "ABCD|EFGH|IJ|K":
-
-Manao noticed that each folded string can be viewed as several piles of letters. For instance, in the previous example, there are four piles, which can be read as "AHI", "BGJK", "CF", and "DE" from bottom to top. Manao wonders what is the highest pile of identical letters he can build using fold operations on a given word. Note that the pile should not contain gaps and should start at the bottom level. For example, in the rightmost of the four examples above, none of the piles would be considered valid since each of them has gaps, starts above the bottom level, or both.
-
-Input Format:
-The input will consist of one line containing a single string of n characters with 1 ≤ n ≤ 1000 and no spaces. All characters of the string will be uppercase letters.
-
-This problem doesn't have subproblems. You will get 5 points for the correct submission.
-
-Output Format:
-Print a single integer — the size of the largest pile composed of identical characters that can be seen in a valid result of folding operations on the given string.
-
-Note:
-Consider the first example. Manao can create a pile of three 'A's using the folding "AB|RACAD|ABRA", which results in the following structure:
-
-In the second example, Manao can create a pile of three 'B's using the following folding: "AB|BB|CBDB".
-
-Another way for Manao to create a pile of three 'B's with "ABBBCBDB" is the following folding: "AB|B|BCBDB".
-
-In the third example, there are no folds performed and the string is just written in one line.
+M 1
+Y 1
+N 1
+B 1
+I 1
+Q 1
+P 1
+M 1
+Z 1
+J 1
+P 1
+L 1
+S 1
+G 1
+Q 1
+EJ 1
+EY 1
+DT 1
+ZI 1
+RW 1
+ZT 1
+EJ 1
+DX 1
+CV 1
+KP 1
+RD 1
+LN 1
+KT 1
+UG 1
+RP 1
+OQI 1
+BZR 1
+ACX 1
+MWZ 1
+VUA 1
+TPK 1
+HXK 1
+WCG 1
+SHH 2
+ZEZ 1
+ROC 1
+CKQ 1
+PDJ 1
+RJW 1
+DRK 1
+RGZT 1
+RSJO 1
+CTZM 1
+KSHJ 1
+FGFB 1
+TVIP 1
+CCVY 2
+EEBC 2
+WRVM 1
+WQIQ 1
+ZHGV 1
+SNSI 1
+OPVU 1
+WZLC 1
+KTDP 1
+SUKGH 1
+AXIDW 1
+HLZFK 1
+NBDZE 1
+WHBSU 1
+RTVCA 1
+DUGTS 1
+DMCLD 1
+BTAGF 1
+WDPGX 1
+ZBVAR 1
+NTDIC 1
+HCUJL 1
+NFBQO 1
+BTDWM 1
+GILXPS 1
+FWVGYB 1
+ZVFFKQ 2
+IDTOVF 1
+APVNSQ 1
+JULMVI 1
+ERWAOX 1
+CKXBRI 1
+EHYPLT 1
+JVLSUT 1
+EWJMXN 1
+UCATGW 1
+KFHHUO 2
+MWVSNB 1
+MWSNYV 1
+WBFOCIW 1
+FOQPRTY 1
+ABPKJOB 2
+ZZNGRUC 2
+XEAMVNK 1
+AGAWYAV 2
+QTDGDTU 1
+GJIWFDP 1
+MUCAIOZ 1
+ZDIEUQU 1
