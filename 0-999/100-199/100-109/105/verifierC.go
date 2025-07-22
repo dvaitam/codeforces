@@ -1,0 +1,111 @@
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"math/rand"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
+)
+
+func runBinary(path, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(path, ".go") {
+		cmd = exec.Command("go", "run", path)
+	} else {
+		cmd = exec.Command(path)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	err := cmd.Run()
+	return out.String(), err
+}
+
+func randName(rng *rand.Rand) string {
+	l := rng.Intn(5) + 3
+	b := make([]byte, l)
+	for i := range b {
+		b[i] = byte('a' + rng.Intn(26))
+	}
+	return string(b)
+}
+
+func generateCase(rng *rand.Rand) string {
+	n := 3 + rng.Intn(3)
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d\n", n)
+	itemNames := make([]string, n)
+	itemSizes := make([]int, n)
+	classes := []string{"weapon", "armor", "orb"}
+	for i := 0; i < n; i++ {
+		name := randName(rng)
+		itemNames[i] = name
+		class := classes[i%3]
+		atk := rng.Intn(5) + 1
+		def := rng.Intn(5) + 1
+		res := rng.Intn(5) + 1
+		size := rng.Intn(3) + 1
+		itemSizes[i] = size
+		fmt.Fprintf(&sb, "%s %s %d %d %d %d\n", name, class, atk, def, res, size)
+	}
+	// residents
+	k := 0
+	for i := 0; i < n; i++ {
+		k += rng.Intn(itemSizes[i] + 1)
+	}
+	if k == 0 {
+		k = 1
+	}
+	fmt.Fprintf(&sb, "%d\n", k)
+	remain := make([]int, n)
+	copy(remain, itemSizes)
+	for i := 0; i < k; i++ {
+		rname := randName(rng)
+		types := []string{"gladiator", "sentry", "physician"}
+		typ := types[rng.Intn(3)]
+		bonus := rng.Intn(5) + 1
+		var idx int
+		for {
+			idx = rng.Intn(n)
+			if remain[idx] > 0 {
+				remain[idx]--
+				break
+			}
+		}
+		home := itemNames[idx]
+		fmt.Fprintf(&sb, "%s %s %d %s\n", rname, typ, bonus, home)
+	}
+	return sb.String()
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: go run verifierC.go /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	ref := "./105C.go"
+	for i := 0; i < 100; i++ {
+		input := generateCase(rng)
+		want, err := runBinary(ref, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "internal solver failed on case %d: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		got, err := runBinary(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\ninput:\n%s\n", i+1, err, input)
+			os.Exit(1)
+		}
+		if strings.TrimSpace(got) != strings.TrimSpace(want) {
+			fmt.Fprintf(os.Stderr, "case %d failed:\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", i+1, input, want, got)
+			os.Exit(1)
+		}
+	}
+	fmt.Println("All tests passed")
+}
