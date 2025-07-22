@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type testCaseC struct {
@@ -22,6 +24,7 @@ func main() {
 		{1, 0, 2, 0, 1, 0},
 		{1, 1, 0, 0, 1, 0},
 	}
+	tests = append(tests, generateRandomTestsC(98)...)
 	for i, t := range tests {
 		input := fmt.Sprintf("%d %d %d %d %d %d\n", t.ax, t.ay, t.bx, t.by, t.cx, t.cy)
 		expect := solveC(t.ax, t.ay, t.bx, t.by, t.cx, t.cy)
@@ -62,4 +65,20 @@ func solveC(ax, ay, bx, by, cx, cy int64) string {
 		return "YES\n"
 	}
 	return "NO\n"
+}
+
+func generateRandomTestsC(n int) []testCaseC {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	tests := make([]testCaseC, n)
+	for i := 0; i < n; i++ {
+		tests[i] = testCaseC{
+			ax: int64(r.Intn(200001) - 100000),
+			ay: int64(r.Intn(200001) - 100000),
+			bx: int64(r.Intn(200001) - 100000),
+			by: int64(r.Intn(200001) - 100000),
+			cx: int64(r.Intn(200001) - 100000),
+			cy: int64(r.Intn(200001) - 100000),
+		}
+	}
+	return tests
 }

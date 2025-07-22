@@ -5,9 +5,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type testCaseE struct {
@@ -24,6 +26,7 @@ func main() {
 		{input: "1 1 10\n3\n4\n"},
 		{input: "2 2 5\n1 2\n3 4\n"},
 	}
+	tests = append(tests, generateRandomTestsE(98)...)
 	for i, t := range tests {
 		expect := solveE(strings.NewReader(t.input))
 		out, err := runBinary(bin, t.input)
@@ -125,4 +128,26 @@ func solveE(r io.Reader) string {
 	}
 	buf.WriteByte('\n')
 	return buf.String()
+}
+
+func generateRandomTestsE(n int) []testCaseE {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	tests := make([]testCaseE, n)
+	for i := 0; i < n; i++ {
+		nval := r.Intn(10) + 1
+		mval := r.Intn(10) + 1
+		pval := r.Intn(100) + 1
+		var b strings.Builder
+		fmt.Fprintf(&b, "%d %d %d\n", nval, mval, pval)
+		for j := 0; j < nval; j++ {
+			fmt.Fprintf(&b, "%d ", r.Intn(50))
+		}
+		b.WriteByte('\n')
+		for j := 0; j < mval; j++ {
+			fmt.Fprintf(&b, "%d ", r.Intn(50))
+		}
+		b.WriteByte('\n')
+		tests[i] = testCaseE{input: b.String()}
+	}
+	return tests
 }

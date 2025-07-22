@@ -5,10 +5,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"sort"
 	"strings"
+	"time"
 )
 
 type testCaseB struct {
@@ -25,6 +27,7 @@ func main() {
 		{input: "2 1\n0 2\n"},
 		{input: "3 3\n0 2\n2 3\n0 3\n"},
 	}
+	tests = append(tests, generateRandomTestsB(98)...)
 	for i, t := range tests {
 		expect := solveB(strings.NewReader(t.input))
 		gotOut, err := runBinary(bin, t.input)
@@ -103,4 +106,22 @@ func solveB(r io.Reader) string {
 		}
 	}
 	return fmt.Sprintf("%d\n", f[E])
+}
+
+func generateRandomTestsB(n int) []testCaseB {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	tests := make([]testCaseB, n)
+	for i := 0; i < n; i++ {
+		stops := r.Intn(20) + 1
+		segs := r.Intn(20)
+		var b strings.Builder
+		fmt.Fprintf(&b, "%d %d\n", stops, segs)
+		for j := 0; j < segs; j++ {
+			l := r.Intn(stops)
+			rStop := l + 1 + r.Intn(stops-l)
+			fmt.Fprintf(&b, "%d %d\n", l, rStop)
+		}
+		tests[i] = testCaseB{input: b.String()}
+	}
+	return tests
 }
