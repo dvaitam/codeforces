@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // testCase represents a single verifier test
@@ -27,6 +29,7 @@ func main() {
 		{s: "abcdefgh", k: 10},
 		{s: "ababcd", k: 2},
 	}
+	tests = append(tests, generateRandomTestsA(95)...)
 	for i, t := range tests {
 		input := fmt.Sprintf("%s\n%d\n", t.s, t.k)
 		cmd := exec.Command(bin)
@@ -40,13 +43,17 @@ func main() {
 			fmt.Printf("test %d: execution failed: %v\nstderr: %s\n", i+1, err, stderr.String())
 			os.Exit(1)
 		}
-		lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+		outStr := strings.ReplaceAll(out.String(), "\r\n", "\n")
+		if strings.HasSuffix(outStr, "\n") {
+			outStr = outStr[:len(outStr)-1]
+		}
+		lines := strings.Split(outStr, "\n")
 		if len(lines) < 2 {
 			fmt.Printf("test %d: expected two output lines, got %d\n", i+1, len(lines))
 			os.Exit(1)
 		}
 		reportedAns := strings.TrimSpace(lines[0])
-		reportedStr := strings.TrimSpace(lines[1])
+		reportedStr := strings.TrimRight(lines[1], "\r")
 
 		expectedAns, errExp := expectedAnswer(t.s, t.k)
 		if errExp != nil {
@@ -128,4 +135,19 @@ func distinctCount(s string) int {
 		seen[s[i]] = struct{}{}
 	}
 	return len(seen)
+}
+
+func generateRandomTestsA(n int) []testCase {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	tests := make([]testCase, n)
+	for i := 0; i < n; i++ {
+		length := r.Intn(50) + 1
+		b := make([]byte, length)
+		for j := 0; j < length; j++ {
+			b[j] = byte('a' + r.Intn(26))
+		}
+		k := r.Intn(length + 10)
+		tests[i] = testCase{s: string(b), k: k}
+	}
+	return tests
 }
