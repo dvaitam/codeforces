@@ -1,0 +1,100 @@
+26 4 b ab babaab bb
+40 4 aa abaaa bbab ba
+35 5 aabbb bb ababa bba b
+30 3 babb aa b
+8 2 b bb
+15 4 abbbb baab ab aaa
+37 2 bb bbbba
+8 1 bbb
+15 1 ababab
+10 3 baaba baba aaab
+31 3 b baa aabba
+37 4 baa baaaab b bbb
+24 1 b
+11 2 abaaba abaaab
+22 5 abaa abaa baaabb bbaabb baab
+8 5 bb abbaa bba baa bba
+39 4 aa babaaa bbb bbbbb
+13 4 abaa baabb abbaa bbbab
+35 2 baaa bbbba
+40 2 abb bababb
+17 4 bbb b baaaba a
+22 4 bba aaabb bbaba bbaa
+38 4 ab baa babbb b
+27 2 abaa aabba
+6 1 aaaaab
+5 4 aaabb aaa aa bbbbbb
+9 1 baa
+37 4 babba bababb aaa abbab
+3 5 aaab ba b bbbba aaa
+13 3 bbbbab a a
+1 5 aaaaaa babbba aa ba bbb
+31 5 baa babbaa ba abaa bbbba
+23 1 abba
+19 4 abaa b baa bbab
+40 5 aabaa bbba bba abaaa ab
+23 1 a
+20 1 babb
+27 2 aaaaa bbb
+40 3 a aaa ab
+3 2 aaabb bbbaba
+2 5 ba ba abbbb baaab baaaab
+5 5 b abbbab aab ba ba
+25 1 abaabb
+19 4 abbaa bbbbaa abbb bababb
+24 2 ababa bbaaab
+27 2 ababa bab
+31 2 aab abaa
+7 1 a
+15 1 abba
+5 5 ba baa babaab aa aabaaa
+19 5 ab aa ab aa bbaaa
+27 2 a aaaab
+2 3 aabbaa bba aaa
+40 1 babba
+9 1 aa
+25 1 a
+2 5 b b aab a baaba
+28 5 ab bbbb aaaaab b bbb
+38 4 ba bbbba babbab aa
+7 2 a bbbb
+32 3 abb a abaa
+15 2 bbaaab bbabab
+30 2 b baa
+38 3 bba baabb aaaab
+33 5 babab ba aa aba bb
+22 3 ba aa ab
+22 5 baba ab ab ababb abbab
+17 1 bbbbba
+7 4 aaaab ba ababb aabaaa
+11 3 abaaa b bba
+12 5 bbbaa aababa bb aab b
+6 5 ba baaa ba aaaabb bababb
+16 3 babb ab aabb
+37 4 aaabbb abaa aa aaaa
+26 5 babbb a bbbab bbb aaa
+16 2 aa ab
+21 4 bb bab baa bbaba
+15 4 ab b aaabb baa
+13 5 abaabb baabab bba baa bb
+40 2 babb aba
+12 2 bbba aab
+34 3 abbbb a bb
+29 4 baa baaaba abab aab
+27 2 a aaaaba
+14 3 b bbabaa a
+37 3 babb ba bb
+17 1 ba
+19 5 aab baab bbab aabbb a
+33 4 bbaa abbaba ba aa
+40 5 aa a abb abb bbabb
+20 1 ababab
+9 2 aa bbaa
+17 5 bbab a bb aaaa ba
+17 2 a abaaa
+39 4 abba b bbb abab
+33 5 ba aaab bba ba bbaabb
+40 5 aaabaa abba aa abbbbb baab
+5 5 b ab aa aba ab
+37 1 babbbb
+25 5 abba bbbaa bb b a
