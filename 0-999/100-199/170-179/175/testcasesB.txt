@@ -1,0 +1,447 @@
+100
+2
+c 120
+dddb 96
+4
+d 443
+d 272
+ea 923
+aaa 665
+5
+d 702
+da 540
+dd 566
+cb 693
+dc 948
+1
+eabc 123
+6
+ede 849
+cc 601
+edea 491
+dd 680
+ce 903
+ade 110
+2
+cdad 44
+eee 403
+6
+be 232
+b 552
+de 352
+dce 623
+d 802
+ee 210
+4
+d 890
+eeb 963
+dcdc 1
+dea 823
+2
+ee 185
+e 816
+3
+a 85
+d 14
+bca 816
+5
+cc 71
+bc 540
+cc 465
+dda 24
+dcd 815
+2
+ace 1000
+ed 836
+1
+ad 149
+1
+de 694
+4
+ed 228
+d 691
+dac 128
+ac 72
+1
+cbd 578
+3
+ae 899
+e 839
+ed 175
+6
+d 205
+abe 690
+ebda 960
+ceda 333
+cabb 878
+ebc 439
+2
+ade 352
+ebaa 86
+2
+be 218
+cee 861
+3
+cca 298
+ed 138
+c 40
+4
+d 886
+bc 117
+aeeb 579
+c 373
+3
+d 918
+aac 12
+a 423
+1
+b 245
+5
+badb 697
+ba 445
+ecec 728
+cabc 40
+a 805
+3
+ddc 408
+a 935
+eda 256
+2
+ccbe 212
+bbc 83
+3
+d 92
+bdc 42
+bce 914
+3
+ca 557
+b 225
+b 411
+1
+eaa 22
+6
+c 768
+ddb 103
+aeb 183
+bc 312
+e 854
+bbb 558
+6
+c 840
+bc 443
+ab 258
+d 827
+eced 871
+adcb 264
+4
+d 999
+a 708
+ebe 128
+cc 407
+5
+beab 497
+b 541
+edb 244
+ddb 729
+ceec 995
+6
+aa 781
+beb 319
+cec 169
+eaae 983
+bbcd 222
+d 697
+4
+deb 557
+e 92
+aca 982
+ea 455
+2
+ddbc 448
+ed 982
+2
+d 615
+accb 387
+6
+b 541
+eaae 248
+bbc 151
+cc 599
+dbe 365
+dabe 900
+4
+ca 925
+a 582
+e 303
+ae 382
+5
+dec 776
+aad 735
+cced 347
+addb 570
+c 650
+5
+de 854
+cbde 684
+ce 3
+eddc 881
+d 763
+2
+adb 648
+cbae 10
+3
+dec 155
+cdbd 522
+c 522
+1
+acad 20
+2
+ad 651
+ecb 540
+2
+cc 70
+e 674
+3
+eeab 304
+ceb 401
+bdce 337
+6
+ce 723
+ae 412
+dbc 194
+b 891
+ebec 470
+bb 915
+6
+ccdb 118
+ca 108
+dc 504
+b 46
+e 23
+ad 720
+5
+ccae 709
+ab 409
+dd 386
+bb 839
+dee 398
+2
+ccde 113
+aa 15
+1
+cdec 940
+2
+bbaa 396
+ea 578
+4
+bad 667
+aae 62
+ac 799
+d 93
+2
+d 652
+cb 678
+4
+cccb 251
+e 957
+cd 619
+c 560
+4
+ed 941
+c 761
+c 181
+b 60
+2
+aaae 480
+aca 129
+5
+d 680
+dd 25
+acc 87
+ada 750
+cbc 813
+4
+c 96
+beeb 338
+ede 492
+b 668
+4
+c 761
+bc 398
+adc 129
+a 307
+6
+dcc 361
+cee 8
+b 324
+cea 462
+ddc 949
+aeab 49
+5
+ecbe 764
+ccd 314
+ecee 171
+b 256
+eb 928
+1
+de 51
+1
+abc 68
+6
+a 813
+be 882
+aecd 727
+bbe 505
+dd 691
+ebd 743
+1
+dba 764
+5
+edad 630
+acda 194
+aea 841
+ece 660
+ede 962
+5
+eecd 309
+ed 600
+eb 258
+d 753
+c 430
+4
+aaa 866
+d 275
+ccdc 397
+adcb 425
+2
+b 833
+cbe 805
+3
+cecd 707
+dcd 220
+ddaa 132
+2
+ba 105
+bda 408
+6
+aa 437
+e 223
+caae 695
+accb 491
+b 693
+d 126
+6
+cedd 118
+abde 927
+be 263
+ecde 934
+ec 881
+aacc 57
+5
+cabe 281
+bdb 133
+bde 645
+e 854
+dc 286
+4
+cdb 510
+edb 346
+eb 756
+ebae 333
+5
+bc 637
+dcab 908
+cb 90
+e 176
+b 576
+2
+dca 792
+c 841
+5
+ab 286
+cee 388
+a 337
+bac 920
+ea 355
+1
+a 307
+3
+ce 50
+aab 947
+cbac 280
+1
+acb 620
+3
+aeee 486
+edcb 647
+eba 614
+5
+b 246
+dc 559
+c 551
+ecd 129
+acae 371
+5
+e 315
+bbae 145
+dc 373
+bbd 853
+daeb 276
+3
+e 975
+b 388
+d 31
+4
+ccdd 620
+aada 661
+a 851
+e 142
+5
+ece 930
+dbe 245
+e 974
+baa 938
+dcc 673
+6
+e 445
+dccc 451
+ee 147
+c 689
+e 176
+caea 491
+2
+bdba 254
+cbd 760
+4
+dbd 451
+eaed 949
+bba 385
+aaab 469
+4
+bbe 845
+c 19
+dbed 5
+db 678
+2
+bae 957
+bd 599
+1
+db 813
+1
+ee 669
+5
+b 407
+aead 91
+d 46
+aa 978
+dcd 170
+5
+ec 789
+edeb 715
+dbdc 368
+ce 286
+ea 748
+3
+bcc 258
+dce 478
+b 976
