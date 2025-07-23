@@ -14,7 +14,7 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("problemA_tests.txt")
+	f, err := os.Open("testcasesA.txt")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "failed to open problemA.txt:", err)
 		os.Exit(1)

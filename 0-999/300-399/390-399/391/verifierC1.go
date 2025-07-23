@@ -14,7 +14,7 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	data, err := ioutil.ReadFile("problemC1_tests.txt")
+	data, err := ioutil.ReadFile("testcasesC1.txt")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "failed to open problemC1.txt:", err)
 		os.Exit(1)
