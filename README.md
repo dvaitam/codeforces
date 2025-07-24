@@ -1,6 +1,6 @@
 # Codeforces Solutions
 
-This repository contains my personal experiments and solutions for Codeforces problems. The directory tree mirrors the contest numbers (`0-999`, `1000-1999`, `2000-2999`, ...). Inside each contest folder you will typically find:
+This repository collects solutions for Codeforces problems. It is no longer experimental and we expect to have all solutions and verifiers within a week. The directory tree mirrors the contest numbers (`0-999`, `1000-1999`, `2000-2999`, ...). Inside each contest folder you will typically find:
 
 - `problemX.txt` – the problem statement or notes for problem X.
 - Solution files in Go or other languages (`1234A.go`, `solB.cpp`, etc.).
@@ -14,7 +14,7 @@ Several helper tools live in the repository root:
 - `auto.go` – convert existing C++ solutions to Go using the Codex CLI.
 - `auto_so.go` – generate Go solutions from problem statements with Codex.
 - `webserver.go` – simple HTTP server for browsing problems and submitting solutions locally.
-- Extra programs like `brute.go` or `probe.go` are experimental helpers.
+- Extra programs like `brute.go` or `probe.go` are helper utilities.
 
 All Go utilities build with the standard tooling. Example:
 
@@ -23,7 +23,7 @@ cd 1000-1999/1900-1999/1990-1999/1994
 go run verifierA.go ./1994A
 ```
 
-The repository is mostly experimental and does not contain a complete archive of problems. Feel free to use the code or utilities as a reference for your own workflow.
+This repository is no longer experimental and aims to provide a complete archive. We expect to have all solutions and verifiers within a week. Feel free to use the code or utilities as a reference for your own workflow.
 
 Some contests include verifier programs with deterministic test cases. For
 example, contest 90 provides verifiers for problems A and B:
