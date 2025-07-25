@@ -41,10 +41,10 @@ type Response struct {
 }
 
 type Problem struct {
-	ID         int
-	ContestID  int
-	IndexName  string
-	Statement  string
+	ID        int
+	ContestID int
+	IndexName string
+	Statement string
 }
 
 func main() {
@@ -399,6 +399,7 @@ func getContestDir(contestID int) string {
 }
 
 func sendPrompt(model, apiKey, prompt string) string {
+	prompt = strings.ReplaceAll(prompt, "$$$", "")
 	fmt.Printf("Prompt length: %d characters\n", len(prompt))
 
 	messages := []Message{{Role: "user", Content: prompt}}
