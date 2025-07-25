@@ -1,0 +1,6 @@
+Given an integer n, output the n-th term of the Lazy Caterer sequence.
+The sequence is defined as f(n) = n*(n+1)/2 + 1 for n >= 0.
+Input format:
+ t - number of test cases
+ then t lines follow each containing a single integer n.
+Output the value of f(n) for each test case on a separate line.

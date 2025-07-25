@@ -1,0 +1,2 @@
+Given l and r, count the number of prime numbers in the inclusive range [l,r].
+Input: t followed by t pairs l r with 1 <= l <= r <= 500.

@@ -1,0 +1,2 @@
+Given a variable name, output it prefixed with "g_".
+Input: t followed by t strings without spaces.

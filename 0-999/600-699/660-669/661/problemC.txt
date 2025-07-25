@@ -1,0 +1,5 @@
+For each test case, read an integer n followed by n integers.
+Output the sum of the integers.
+Input: t followed by t cases.
+Each case: first integer n (here n=3 in provided tests) then n numbers.
+Output one integer per line representing the sum.
