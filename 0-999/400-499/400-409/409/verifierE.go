@@ -50,5 +50,5 @@ func main() {
 			idx++
 		}
 	}
-	fmt.Println("OK")
+	fmt.Println("All tests passed")
 }
