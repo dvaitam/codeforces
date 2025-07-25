@@ -49,6 +49,7 @@ type Problem struct {
 
 func main() {
 	model := flag.String("model", "", "The AI model to use (e.g., anthropic/claude-3.5-sonnet)")
+	provider := flag.String("provider", "openrouter", "Model provider: Gemini, OpenAI, xai, Claude, openrouter")
 	dbDSN := flag.String("db", "user:pass@tcp(127.0.0.1:3306)/dbname", "Database DSN")
 	maxAttempts := flag.Int("max-attempts", 1, "Maximum attempts to fix syntax errors (1-5)")
 	flag.Parse()
@@ -58,10 +59,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	apiKey := os.Getenv("OPENROUTER_API_KEY")
+	var apiKeyEnv string
+	switch strings.ToLower(*provider) {
+	case "openai":
+		apiKeyEnv = "OPENAI_API_KEY"
+	case "gemini":
+		apiKeyEnv = "GEMINI_API_KEY"
+	case "xai":
+		apiKeyEnv = "XAI_API_KEY"
+	case "claude":
+		apiKeyEnv = "CLAUDE_API_KEY"
+	default:
+		apiKeyEnv = "OPENROUTER_API_KEY"
+	}
+
+	apiKey := os.Getenv(apiKeyEnv)
 	if *model == "" || apiKey == "" {
-		fmt.Println("Usage: go run script.go -model=<model> -db=<dsn> [-max-attempts=1-5]")
-		fmt.Println("Set OPENROUTER_API_KEY environment variable")
+		fmt.Printf("Usage: go run script.go -model=<model> -db=<dsn> [-max-attempts=1-5] -provider=%s\n", *provider)
+		fmt.Printf("Set %s environment variable\n", apiKeyEnv)
 		os.Exit(1)
 	}
 
@@ -118,7 +133,7 @@ func main() {
 		prompt := "write a go solution for " + plainStatement + ". Output only the code, with no explanation or additional text."
 		fmt.Printf("Sending prompt for Problem ID: %d, Contest ID: %d, Index: %s\n", problem.ID, problem.ContestID, problem.IndexName)
 		fmt.Println("Sending prompt...")
-		response := sendPrompt(*model, apiKey, prompt)
+		response := sendPrompt(*provider, *model, apiKey, prompt)
 		fmt.Println("Response received.")
 
 		code := extractCode(response)
@@ -139,7 +154,7 @@ func main() {
 				fixPrompt := fmt.Sprintf("The following Go code has compilation errors: %s\n\nFix the errors and output only the corrected code, no explanation.", buildErrMsg)
 				fixPrompt += "\n\nOriginal code:\n" + code
 				fmt.Println("Sending fix prompt...")
-				fixResponse := sendPrompt(*model, apiKey, fixPrompt)
+				fixResponse := sendPrompt(*provider, *model, apiKey, fixPrompt)
 				code = extractCode(fixResponse)
 				finalResponse = fixResponse // Update final response to the corrected one
 				fmt.Printf("Corrected code:\n%s\n", code)
@@ -423,7 +438,7 @@ func latexToPlain(text string) string {
 	})
 }
 
-func sendPrompt(model, apiKey, prompt string) string {
+func sendPrompt(provider, model, apiKey, prompt string) string {
 	prompt = latexToPlain(prompt)
 	fmt.Printf("Prompt length: %d characters\n", len(prompt))
 
@@ -436,13 +451,31 @@ func sendPrompt(model, apiKey, prompt string) string {
 		return ""
 	}
 
-	client := &http.Client{
-		Timeout: 30 * time.Second,
+	client := &http.Client{Timeout: 30 * time.Second}
+	url := ""
+	headers := map[string]string{"Content-Type": "application/json"}
+
+	switch strings.ToLower(provider) {
+	case "openai":
+		url = "https://api.openai.com/v1/chat/completions"
+		headers["Authorization"] = "Bearer " + apiKey
+	case "gemini":
+		url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey
+	case "xai":
+		url = "https://api.x.ai/v1/chat/completions"
+		headers["Authorization"] = "Bearer " + apiKey
+	case "claude":
+		url = "https://api.anthropic.com/v1/messages"
+		headers["x-api-key"] = apiKey
+		headers["anthropic-version"] = "2023-06-01"
+	default:
+		url = "https://openrouter.ai/api/v1/chat/completions"
+		headers["Authorization"] = "Bearer " + apiKey
 	}
 
 	const maxRetries = 3
 	for attempt := 1; attempt <= maxRetries; attempt++ {
-		httpReq, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+		httpReq, err := http.NewRequest("POST", url, bytes.NewReader(body))
 		if err != nil {
 			fmt.Printf("Error creating request (attempt %d): %v\n", attempt, err)
 			if attempt == maxRetries {
@@ -452,8 +485,9 @@ func sendPrompt(model, apiKey, prompt string) string {
 			continue
 		}
 
-		httpReq.Header.Set("Content-Type", "application/json")
-		httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+		for k, v := range headers {
+			httpReq.Header.Set(k, v)
+		}
 
 		resp, err := client.Do(httpReq)
 		if err != nil {
@@ -474,6 +508,35 @@ func sendPrompt(model, apiKey, prompt string) string {
 			}
 			time.Sleep(time.Second * time.Duration(attempt))
 			continue
+		}
+
+		if strings.ToLower(provider) == "gemini" {
+			var gResp struct {
+				Candidates []struct {
+					Content struct {
+						Parts []struct {
+							Text string `json:"text"`
+						} `json:"parts"`
+					} `json:"content"`
+				} `json:"candidates"`
+			}
+			if err = json.NewDecoder(resp.Body).Decode(&gResp); err != nil {
+				fmt.Printf("Error decoding response (attempt %d): %v\n", attempt, err)
+				if attempt == maxRetries {
+					return ""
+				}
+				time.Sleep(time.Second * time.Duration(attempt))
+				continue
+			}
+			if len(gResp.Candidates) == 0 || len(gResp.Candidates[0].Content.Parts) == 0 {
+				fmt.Printf("No response from API (attempt %d)\n", attempt)
+				if attempt == maxRetries {
+					return ""
+				}
+				time.Sleep(time.Second * time.Duration(attempt))
+				continue
+			}
+			return gResp.Candidates[0].Content.Parts[0].Text
 		}
 
 		var apiResp Response
