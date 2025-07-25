@@ -15,6 +15,8 @@ Several helper tools live in the repository root:
 - `auto_so.go` – generate Go solutions from problem statements with Codex.
 - `webserver.go` – simple HTTP server for browsing problems and submitting solutions locally.
 - Extra programs like `brute.go` or `probe.go` are helper utilities.
+- `eval.go` – evaluate AI-generated solutions. Supports flags like `-model`,
+  `-provider`, `-db` and `-timeout` to control the HTTP request timeout.
 
 All Go utilities build with the standard tooling. Example:
 
