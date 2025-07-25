@@ -1,0 +1,599 @@
+3
+cab
+1
+2 b
+8
+cbaababb
+5
+1 c
+8 b
+4 c
+2 b
+1 a
+1
+c
+5
+1 b
+1 b
+1 c
+1 b
+1 c
+4
+baca
+4
+3 a
+4 c
+1 a
+3 a
+6
+cccbcc
+2
+3 b
+5 b
+9
+bcabacbbc
+2
+6 c
+6 a
+8
+ccaacbbb
+1
+8 a
+5
+ccccb
+2
+2 c
+2 a
+4
+ccab
+5
+3 c
+3 b
+3 c
+1 b
+2 c
+9
+ababbccac
+4
+8 b
+7 b
+1 c
+9 c
+10
+bbcaacacca
+1
+9 b
+1
+c
+1
+1 a
+8
+ababacab
+3
+2 a
+3 b
+3 c
+5
+ccbbc
+3
+4 b
+1 a
+3 b
+6
+bababc
+5
+2 c
+4 a
+2 a
+4 a
+1 c
+3
+bcc
+4
+3 a
+3 c
+3 b
+1 c
+1
+b
+5
+1 c
+1 a
+1 a
+1 a
+1 a
+2
+bb
+2
+2 c
+2 a
+1
+c
+1
+1 c
+8
+acccabab
+1
+4 c
+7
+cabacbb
+5
+4 a
+3 c
+7 b
+3 a
+2 a
+6
+cabbab
+1
+4 c
+6
+ccbcaa
+1
+1 a
+3
+aca
+3
+2 c
+3 b
+2 b
+6
+abaccb
+2
+5 c
+1 b
+1
+b
+1
+1 a
+3
+bac
+5
+2 a
+3 c
+1 c
+1 b
+2 b
+10
+cabbaabacc
+1
+2 b
+2
+aa
+2
+2 a
+1 b
+3
+caa
+1
+2 b
+9
+bcbcbbaac
+3
+1 a
+1 b
+6 b
+7
+bbaabcb
+1
+3 a
+10
+ccbcbbacab
+2
+4 b
+2 b
+2
+ba
+5
+2 a
+2 b
+1 b
+1 b
+2 a
+6
+acccca
+2
+2 a
+2 b
+2
+bc
+1
+1 a
+1
+b
+3
+1 b
+1 a
+1 a
+9
+caaaabbac
+5
+5 a
+4 a
+9 c
+1 b
+9 c
+4
+abbc
+2
+1 c
+2 b
+2
+cb
+4
+2 c
+2 c
+2 a
+2 b
+3
+bba
+4
+3 a
+1 c
+2 c
+1 c
+3
+abb
+4
+3 b
+1 c
+1 a
+2 a
+3
+cbc
+4
+3 c
+3 a
+1 b
+2 c
+8
+acbbcccc
+3
+4 a
+2 c
+6 a
+9
+abbcbcbac
+4
+2 a
+9 c
+7 a
+3 b
+7
+accabcb
+3
+4 c
+7 a
+5 c
+1
+c
+1
+1 c
+2
+bc
+1
+1 c
+2
+ba
+4
+2 b
+1 b
+2 a
+2 a
+2
+bc
+5
+2 a
+2 b
+1 b
+1 a
+2 c
+1
+a
+5
+1 b
+1 a
+1 a
+1 b
+1 c
+5
+cbacb
+4
+4 a
+2 c
+4 a
+3 a
+1
+a
+5
+1 c
+1 c
+1 a
+1 c
+1 b
+9
+cbcbaabcb
+3
+5 c
+7 b
+8 a
+7
+bacabcc
+5
+2 b
+5 c
+4 c
+6 b
+6 a
+8
+cccabcac
+4
+7 b
+6 c
+2 b
+4 c
+5
+cabcc
+2
+4 b
+2 a
+10
+abbcbccbab
+3
+8 a
+8 c
+1 b
+9
+accbabacb
+1
+3 c
+3
+cab
+3
+3 b
+1 c
+1 a
+6
+baaccc
+3
+4 c
+5 c
+1 a
+5
+ccccb
+3
+5 c
+2 b
+5 b
+3
+bbc
+3
+3 a
+2 c
+3 a
+1
+c
+4
+1 b
+1 b
+1 a
+1 c
+8
+ccacbbca
+2
+3 c
+8 b
+5
+baaca
+3
+1 a
+2 b
+3 b
+2
+aa
+1
+1 a
+1
+b
+5
+1 b
+1 a
+1 a
+1 b
+1 b
+8
+baaabbcc
+4
+4 b
+5 b
+8 c
+2 a
+2
+aa
+1
+2 b
+7
+cbabaca
+1
+1 b
+3
+cca
+5
+2 b
+1 a
+2 c
+2 a
+1 c
+1
+c
+2
+1 b
+1 b
+2
+aa
+4
+1 c
+2 c
+1 c
+2 b
+6
+cbbcca
+2
+1 c
+5 a
+6
+bccccc
+1
+3 c
+7
+caccbca
+3
+6 c
+6 a
+3 a
+2
+aa
+2
+2 a
+1 c
+2
+cb
+5
+2 a
+2 a
+1 c
+1 b
+1 b
+8
+accbabba
+3
+1 b
+1 c
+5 b
+3
+bba
+3
+1 b
+1 c
+3 a
+6
+bcbcba
+2
+6 b
+5 c
+10
+cccabcaabb
+5
+6 a
+7 b
+3 c
+2 a
+5 c
+9
+bbbbbbbcc
+5
+9 a
+9 a
+3 b
+6 b
+2 b
+5
+bbbcb
+1
+5 a
+3
+acb
+5
+2 a
+3 c
+3 b
+2 c
+2 b
+5
+bcbcc
+2
+1 a
+3 c
+4
+caaa
+4
+1 a
+3 c
+1 a
+3 a
+10
+ccaaacacba
+5
+6 b
+5 a
+4 c
+8 a
+7 b
+6
+cabcab
+4
+2 a
+6 c
+4 c
+4 a
+7
+ccccbab
+4
+1 a
+3 c
+6 c
+1 c
+2
+bc
+3
+2 c
+2 c
+2 c
+10
+bbbacbcaca
+3
+1 b
+10 a
+6 b
+7
+bccaaaa
+4
+3 b
+3 b
+6 c
+7 b
+6
+bbabba
+4
+2 a
+2 b
+3 a
+5 b
+7
+bcbcbcb
+4
+3 b
+2 c
+7 b
+4 c
+7
+aaaaaac
+1
+1 b
+3
+bab
+2
+1 a
+2 c
+1
+c
+2
+1 b
+1 c
+2
+cc
+4
+1 b
+2 a
+2 c
+1 a
