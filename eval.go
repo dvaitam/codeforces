@@ -47,12 +47,16 @@ type Problem struct {
 	Statement string
 }
 
+var requestTimeout time.Duration
+
 func main() {
 	model := flag.String("model", "", "The AI model to use (e.g., anthropic/claude-3.5-sonnet)")
 	provider := flag.String("provider", "openrouter", "Model provider: Gemini, OpenAI, xai, Claude, openrouter")
 	dbDSN := flag.String("db", "user:pass@tcp(127.0.0.1:3306)/dbname", "Database DSN")
 	maxAttempts := flag.Int("max-attempts", 1, "Maximum attempts to fix syntax errors (1-5)")
+	httpTimeout := flag.Duration("timeout", 30*time.Second, "HTTP request timeout")
 	flag.Parse()
+	requestTimeout = *httpTimeout
 
 	if *maxAttempts < 1 || *maxAttempts > 5 {
 		fmt.Println("max-attempts must be between 1 and 5")
@@ -465,7 +469,7 @@ func sendPrompt(provider, model, apiKey, prompt string) string {
 		return ""
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: requestTimeout}
 	url := ""
 	headers := map[string]string{"Content-Type": "application/json"}
 
