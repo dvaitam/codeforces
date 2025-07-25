@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"html/template"
 	"io"
@@ -14,6 +15,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 type contestInfo struct {
@@ -23,6 +26,7 @@ type contestInfo struct {
 }
 
 var contests map[string]*contestInfo
+var db *sql.DB
 
 var indexTmpl = template.Must(template.New("index").Parse(`
 <!DOCTYPE html>
@@ -89,6 +93,25 @@ pre { white-space: pre-wrap; word-wrap: break-word; }
 <h1>Result for Contest {{.Contest}} Problem {{.Letter}}</h1>
 <pre>{{.Output}}</pre>
 <a href="/contest/{{.Contest}}/problem/{{.Letter}}">Back</a>
+</body></html>`))
+
+var leaderboardTmpl = template.Must(template.New("leaderboard").Parse(`
+<!DOCTYPE html>
+<html><body>
+<h1>Leaderboard</h1>
+<table border="1">
+<tr><th>Run ID</th><th>Model</th><th>Rating</th><th>Timestamp</th></tr>
+{{range .Leaders}}
+<tr><td>{{.RunID}}</td><td>{{.Model}}</td><td>{{.Rating}}</td><td>{{.Timestamp}}</td></tr>
+{{end}}
+</table>
+<h2>Evaluation History</h2>
+<table border="1">
+<tr><th>Run ID</th><th>Model</th><th>Problem ID</th><th>Success</th><th>Timestamp</th></tr>
+{{range .Evals}}
+<tr><td>{{.RunID}}</td><td>{{.Model}}</td><td>{{.ProblemID}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td></tr>
+{{end}}
+</table>
 </body></html>`))
 
 func scanContests(root string) (map[string]*contestInfo, error) {
@@ -326,12 +349,70 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	indexTmpl.Execute(w, list)
 }
 
+func leaderboardHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/leaderboard" {
+		http.NotFound(w, r)
+		return
+	}
+
+	type Leader struct {
+		RunID     string
+		Model     string
+		Rating    int
+		Timestamp string
+	}
+	var leaders []Leader
+	rows, err := db.Query("SELECT run_id, model, rating, timestamp FROM leaderboard ORDER BY rating DESC")
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var l Leader
+			if err = rows.Scan(&l.RunID, &l.Model, &l.Rating, &l.Timestamp); err == nil {
+				leaders = append(leaders, l)
+			}
+		}
+	}
+
+	type Eval struct {
+		RunID     string
+		Model     string
+		ProblemID int
+		Success   bool
+		Timestamp string
+	}
+	var evals []Eval
+	rows, err = db.Query("SELECT run_id, model, problem_id, success, timestamp FROM evaluations ORDER BY timestamp DESC")
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var e Eval
+			if err = rows.Scan(&e.RunID, &e.Model, &e.ProblemID, &e.Success, &e.Timestamp); err == nil {
+				evals = append(evals, e)
+			}
+		}
+	}
+
+	leaderboardTmpl.Execute(w, map[string]interface{}{
+		"Leaders": leaders,
+		"Evals":   evals,
+	})
+}
+
 func main() {
 	var err error
 	contests, err = scanContests(".")
 	if err != nil {
 		panic(err)
 	}
+	dsn := os.Getenv("DB_DSN")
+	if dsn == "" {
+		dsn = "user:pass@tcp(127.0.0.1:3306)/dbname"
+	}
+	db, err = sql.Open("mysql", dsn)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/contest/", func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/contest/"), "/")
@@ -341,5 +422,6 @@ func main() {
 		}
 		contestPage(w, r, parts[0])
 	})
+	http.HandleFunc("/leaderboard", leaderboardHandler)
 	http.ListenAndServe(":8081", nil)
 }
