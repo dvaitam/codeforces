@@ -95,6 +95,8 @@ pre { white-space: pre-wrap; word-wrap: break-word; }
 <a href="/contest/{{.Contest}}/problem/{{.Letter}}">Back</a>
 </body></html>`))
 
+var textTmpl = template.Must(template.New("text").Parse(`<!DOCTYPE html><html><body><pre>{{.}}</pre></body></html>`))
+
 var leaderboardTmpl = template.Must(template.New("leaderboard").Parse(`
 <!DOCTYPE html>
 <html><body>
@@ -102,16 +104,18 @@ var leaderboardTmpl = template.Must(template.New("leaderboard").Parse(`
 <table border="1">
 <tr><th>Run ID</th><th>Model</th><th>Rating</th><th>Timestamp</th></tr>
 {{range .Leaders}}
-<tr><td>{{.RunID}}</td><td>{{.Model}}</td><td>{{.Rating}}</td><td>{{.Timestamp}}</td></tr>
+<tr><td><a href="/leaderboard?run={{.RunID}}">{{.RunID}}</a></td><td>{{.Model}}</td><td>{{.Rating}}</td><td>{{.Timestamp}}</td></tr>
 {{end}}
 </table>
-<h2>Evaluation History</h2>
+{{if .Evals}}
+<h2>Evaluation History for {{.RunID}}</h2>
 <table border="1">
-<tr><th>Run ID</th><th>Model</th><th>Problem ID</th><th>Success</th><th>Timestamp</th></tr>
+<tr><th>Run ID</th><th>Model</th><th>Problem ID</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th></tr>
 {{range .Evals}}
-<tr><td>{{.RunID}}</td><td>{{.Model}}</td><td>{{.ProblemID}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td></tr>
+<tr><td>{{.RunID}}</td><td>{{.Model}}</td><td>{{.ProblemID}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td></tr>
 {{end}}
 </table>
+{{end}}
 </body></html>`))
 
 func scanContests(root string) (map[string]*contestInfo, error) {
@@ -374,6 +378,7 @@ func leaderboardHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type Eval struct {
+		ID        int
 		RunID     string
 		Model     string
 		ProblemID int
@@ -381,13 +386,16 @@ func leaderboardHandler(w http.ResponseWriter, r *http.Request) {
 		Timestamp string
 	}
 	var evals []Eval
-	rows, err = db.Query("SELECT run_id, model, problem_id, success, timestamp FROM evaluations ORDER BY timestamp DESC")
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var e Eval
-			if err = rows.Scan(&e.RunID, &e.Model, &e.ProblemID, &e.Success, &e.Timestamp); err == nil {
-				evals = append(evals, e)
+	runIDFilter := r.URL.Query().Get("run")
+	if runIDFilter != "" {
+		rows, err = db.Query("SELECT id, run_id, model, problem_id, success, timestamp FROM evaluations WHERE run_id = ? ORDER BY timestamp DESC", runIDFilter)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var e Eval
+				if err = rows.Scan(&e.ID, &e.RunID, &e.Model, &e.ProblemID, &e.Success, &e.Timestamp); err == nil {
+					evals = append(evals, e)
+				}
 			}
 		}
 	}
@@ -395,7 +403,29 @@ func leaderboardHandler(w http.ResponseWriter, r *http.Request) {
 	leaderboardTmpl.Execute(w, map[string]interface{}{
 		"Leaders": leaders,
 		"Evals":   evals,
+		"RunID":   runIDFilter,
 	})
+}
+
+func evaluationContentHandler(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/evaluation/"), "/")
+	if len(parts) != 2 {
+		http.NotFound(w, r)
+		return
+	}
+	field := parts[0]
+	id, err := strconv.Atoi(parts[1])
+	if err != nil || (field != "prompt" && field != "response") {
+		http.NotFound(w, r)
+		return
+	}
+	var content string
+	err = db.QueryRow("SELECT "+field+" FROM evaluations WHERE id = ?", id).Scan(&content)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	textTmpl.Execute(w, content)
 }
 
 func main() {
@@ -423,5 +453,6 @@ func main() {
 		contestPage(w, r, parts[0])
 	})
 	http.HandleFunc("/leaderboard", leaderboardHandler)
+	http.HandleFunc("/evaluation/", evaluationContentHandler)
 	http.ListenAndServe(":8081", nil)
 }
