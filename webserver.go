@@ -118,6 +118,29 @@ var leaderboardTmpl = template.Must(template.New("leaderboard").Parse(`
 {{end}}
 </body></html>`))
 
+var modelsTmpl = template.Must(template.New("models").Parse(`
+<!DOCTYPE html>
+<html><body>
+<h1>Models</h1>
+<ul>
+{{range .}}
+<li><a href="/model?name={{.}}">{{.}}</a></li>
+{{end}}
+</ul>
+</body></html>`))
+
+var modelTmpl = template.Must(template.New("model").Parse(`
+<!DOCTYPE html>
+<html><body>
+<h1>Evaluations for {{.Model}}</h1>
+<table border="1">
+<tr><th>Run ID</th><th>Problem ID</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th></tr>
+{{range .Evals}}
+<tr><td>{{.RunID}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ProblemID}}</a></td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td></tr>
+{{end}}
+</table>
+</body></html>`))
+
 func scanContests(root string) (map[string]*contestInfo, error) {
 	result := make(map[string]*contestInfo)
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -412,6 +435,58 @@ func leaderboardHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func modelHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/model" {
+		http.NotFound(w, r)
+		return
+	}
+	modelName := r.URL.Query().Get("name")
+	if modelName == "" {
+		var models []string
+		rows, err := db.Query("SELECT DISTINCT model FROM evaluations ORDER BY model")
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var m string
+				if err = rows.Scan(&m); err == nil {
+					models = append(models, m)
+				}
+			}
+		}
+		modelsTmpl.Execute(w, models)
+		return
+	}
+
+	type Eval struct {
+		ID        int
+		RunID     string
+		ProblemID int
+		ContestID int
+		IndexName string
+		Success   bool
+		Timestamp string
+	}
+	var evals []Eval
+	rows, err := db.Query(`SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, e.success, e.timestamp
+                               FROM evaluations e
+                               JOIN problems p ON e.problem_id = p.id
+                               WHERE e.model = ? ORDER BY e.timestamp DESC`, modelName)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var e Eval
+			if err = rows.Scan(&e.ID, &e.RunID, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Success, &e.Timestamp); err == nil {
+				evals = append(evals, e)
+			}
+		}
+	}
+
+	modelTmpl.Execute(w, map[string]interface{}{
+		"Model": modelName,
+		"Evals": evals,
+	})
+}
+
 func evaluationContentHandler(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/evaluation/"), "/")
 	if len(parts) != 2 {
@@ -458,6 +533,7 @@ func main() {
 		contestPage(w, r, parts[0])
 	})
 	http.HandleFunc("/leaderboard", leaderboardHandler)
+	http.HandleFunc("/model", modelHandler)
 	http.HandleFunc("/evaluation/", evaluationContentHandler)
 	http.ListenAndServe(":8081", nil)
 }
