@@ -1,0 +1,2 @@
+For each test case, given an integer x, print YES if x is divisible by 3 or 5, otherwise NO.
+Input: t followed by t integers x.

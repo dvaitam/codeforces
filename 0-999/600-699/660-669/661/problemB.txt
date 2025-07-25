@@ -1,0 +1,8 @@
+Given a month number m (1..12), output its season.
+Use the following mapping:
+ Winter: December, January, February (12,1,2)
+ Spring: March, April, May (3-5)
+ Summer: June, July, August (6-8)
+ Autumn: September, October, November (9-11)
+Input begins with t, then t integers m.
+Output the season name for each m on a separate line.

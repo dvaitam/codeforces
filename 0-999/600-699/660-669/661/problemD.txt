@@ -1,0 +1,4 @@
+For each test case read an integer n followed by n numbers.
+Output the maximal difference between any number and any other (max - min).
+Input: t followed by t cases.
+Each case: n (here n=4 in provided tests) then n numbers.

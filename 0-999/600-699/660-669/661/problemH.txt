@@ -1,0 +1,5 @@
+Given a 2x2 matrix, output the matrix rotated 90 degrees clockwise.
+Input: t followed by t cases. Each case has four integers a b c d representing:
+[a b]
+[c d]
+Output four integers representing the rotated matrix in the same order.
