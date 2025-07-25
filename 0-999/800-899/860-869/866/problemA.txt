@@ -1,0 +1,6 @@
+Description:
+Given two integers a and b, output their sum.
+Input Format:
+Two integers a and b separated by spaces.
+Output Format:
+Single integer equal to a+b followed by a newline.

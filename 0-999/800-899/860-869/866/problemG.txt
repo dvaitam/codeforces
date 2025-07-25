@@ -1,0 +1,6 @@
+Description:
+Given an array of integers, output YES if it is sorted in nondecreasing order and NO otherwise.
+Input Format:
+First line n, then n integers.
+Output Format:
+YES or NO followed by a newline.
