@@ -114,7 +114,8 @@ func main() {
 		actualRating := clampToNearest(estimatedRating, availableRatings)
 		fmt.Printf("Attempt %d: Targeting estimated %d (using actual rating %d)\n", i+1, estimatedRating, actualRating)
 		problem, verifierFile := getRandomProblem(db, actualRating)
-		prompt := "write a go solution for " + problem.Statement + ". Output only the code, with no explanation or additional text."
+		plainStatement := latexToPlain(problem.Statement)
+		prompt := "write a go solution for " + plainStatement + ". Output only the code, with no explanation or additional text."
 		fmt.Printf("Sending prompt for Problem ID: %d, Contest ID: %d, Index: %s\n", problem.ID, problem.ContestID, problem.IndexName)
 		fmt.Println("Sending prompt...")
 		response := sendPrompt(*model, apiKey, prompt)
@@ -398,8 +399,32 @@ func getContestDir(contestID int) string {
 	return filepath.Join(topStr, secondStr, thirdStr, fourthStr)
 }
 
+func latexToPlain(text string) string {
+	re := regexp.MustCompile(`\$\$\$(.*?)\$\$\$`)
+	return re.ReplaceAllStringFunc(text, func(m string) string {
+		sub := re.FindStringSubmatch(m)[1]
+		replacements := map[string]string{
+			`\leq`:   "<=",
+			`\le`:    "<=",
+			`\geq`:   ">=",
+			`\ge`:    ">=",
+			`\cdot`:  "*",
+			`\times`: "x",
+			`\dots`:  "...",
+		}
+		for old, val := range replacements {
+			sub = strings.ReplaceAll(sub, old, val)
+		}
+		sub = strings.ReplaceAll(sub, "{", "")
+		sub = strings.ReplaceAll(sub, "}", "")
+		sub = strings.ReplaceAll(sub, "\\", "")
+		sub = strings.ReplaceAll(sub, " ", "")
+		return sub
+	})
+}
+
 func sendPrompt(model, apiKey, prompt string) string {
-	prompt = strings.ReplaceAll(prompt, "$$$", "")
+	prompt = latexToPlain(prompt)
 	fmt.Printf("Prompt length: %d characters\n", len(prompt))
 
 	messages := []Message{{Role: "user", Content: prompt}}
