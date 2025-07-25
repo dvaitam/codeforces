@@ -74,6 +74,7 @@ func main() {
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS evaluations (
 			id INT AUTO_INCREMENT PRIMARY KEY,
+			run_id VARCHAR(255),
 			model VARCHAR(255),
 			problem_id INT,
 			prompt TEXT,
@@ -85,6 +86,21 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS leaderboard (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			run_id VARCHAR(255),
+			model VARCHAR(255),
+			rating INT,
+			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		panic(err)
+	}
+
+	runID := time.Now().Format("20060102-150405")
 
 	availableRatings := getAvailableRatings(db)
 	if len(availableRatings) == 0 {
@@ -141,13 +157,13 @@ func main() {
 		// Clean up temp files if any
 		if tempBinAbs != "" {
 			os.Remove(tempBinAbs)
-			os.Remove(filepath.Join(filepath.Dir(tempBinAbs), "solution.go")) // Clean source too
+			os.Remove(filepath.Dir(tempBinAbs) + "/solution.go") // Clean source too
 			os.RemoveAll(filepath.Dir(tempBinAbs))
 		}
 
 		_, err = db.Exec(
-			"INSERT INTO evaluations (model, problem_id, prompt, response, success) VALUES (?, ?, ?, ?, ?)",
-			*model, problem.ID, prompt, finalResponse, success,
+			"INSERT INTO evaluations (run_id, model, problem_id, prompt, response, success) VALUES (?, ?, ?, ?, ?, ?)",
+			runID, *model, problem.ID, prompt, finalResponse, success,
 		)
 		if err != nil {
 			panic(err)
@@ -160,6 +176,15 @@ func main() {
 		}
 	}
 
+	// Insert into leaderboard
+	_, err = db.Exec(
+		"INSERT INTO leaderboard (run_id, model, rating) VALUES (?, ?, ?)",
+		runID, *model, estimatedRating,
+	)
+	if err != nil {
+		panic(err)
+	}
+
 	fmt.Printf("Evaluation complete. Estimated Codeforces rating for model %s: %d\n", *model, estimatedRating)
 }
 
@@ -170,7 +195,8 @@ func buildSolution(code string) (bool, string, string) {
 	}
 
 	tempSrc := filepath.Join(tempDir, "solution.go")
-	if err := os.WriteFile(tempSrc, []byte(code), 0644); err != nil {
+	err = os.WriteFile(tempSrc, []byte(code), 0644)
+	if err != nil {
 		return false, err.Error(), ""
 	}
 
@@ -225,7 +251,7 @@ func runVerifier(verifierFile, tempBinAbs string) bool {
 	fmt.Printf("Verifier stdout: %s\n", out.String())
 	fmt.Printf("Verifier stderr: %s\n", stderr.String())
 
-	return strings.Contains(out.String(), "tests passed")
+	return strings.Contains(out.String(), "All tests passed")
 }
 
 func getAvailableRatings(db *sql.DB) []int {
@@ -238,7 +264,8 @@ func getAvailableRatings(db *sql.DB) []int {
 	var ratings []int
 	for rows.Next() {
 		var r int
-		if err := rows.Scan(&r); err != nil {
+		err := rows.Scan(&r)
+		if err != nil {
 			panic(err)
 		}
 		ratings = append(ratings, r)
@@ -251,7 +278,7 @@ func getAvailableRatings(db *sql.DB) []int {
 		}
 	}
 
-	sort.Ints(available)
+	sort.Ints(available) // Ensure sorted, though query orders it
 	return available
 }
 
@@ -265,7 +292,8 @@ func hasValidProblem(db *sql.DB, rating int) bool {
 	for rows.Next() {
 		var contestID int
 		var indexName string
-		if err := rows.Scan(&contestID, &indexName); err != nil {
+		err := rows.Scan(&contestID, &indexName)
+		if err != nil {
 			panic(err)
 		}
 		dir := getContestDir(contestID)
@@ -293,11 +321,13 @@ func clampToNearest(target int, available []int) int {
 		return available[len(available)-1]
 	}
 
+	// Find the position where target would be inserted
 	idx := sort.SearchInts(available, target)
 	if available[idx] == target {
 		return target
 	}
 
+	// Compare distance to available[idx-1] and available[idx]
 	prev := available[idx-1]
 	next := available[idx]
 	distPrev := target - prev
@@ -307,8 +337,10 @@ func clampToNearest(target int, available []int) int {
 		return prev
 	} else if distNext < distPrev {
 		return next
+	} else {
+		// Equal distance, prefer the higher one
+		return next
 	}
-	return next // Equal distance, prefer higher
 }
 
 func getRandomProblem(db *sql.DB, rating int) (Problem, string) {
@@ -321,7 +353,8 @@ func getRandomProblem(db *sql.DB, rating int) (Problem, string) {
 	var candidates []Problem
 	for rows.Next() {
 		var p Problem
-		if err := rows.Scan(&p.ID, &p.ContestID, &p.IndexName, &p.Statement); err != nil {
+		err := rows.Scan(&p.ID, &p.ContestID, &p.IndexName, &p.Statement)
+		if err != nil {
 			panic(err)
 		}
 		candidates = append(candidates, p)
@@ -353,53 +386,92 @@ func getRandomProblem(db *sql.DB, rating int) (Problem, string) {
 func getContestDir(contestID int) string {
 	top := (contestID / 1000) * 1000
 	topStr := fmt.Sprintf("%d-%d", top, top+999)
+
 	second := (contestID / 100) * 100
 	secondStr := fmt.Sprintf("%d-%d", second, second+99)
+
 	third := (contestID / 10) * 10
 	thirdStr := fmt.Sprintf("%d-%d", third, third+9)
+
 	fourthStr := fmt.Sprintf("%d", contestID)
+
 	return filepath.Join(topStr, secondStr, thirdStr, fourthStr)
 }
 
 func sendPrompt(model, apiKey, prompt string) string {
+	fmt.Printf("Prompt length: %d characters\n", len(prompt))
+
 	messages := []Message{{Role: "user", Content: prompt}}
 	reqBody := Request{Model: model, Messages: messages}
+
 	body, err := json.Marshal(reqBody)
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error marshaling request: %v\n", err)
+		return ""
 	}
 
-	httpReq, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
-	if err != nil {
-		panic(err)
+	client := &http.Client{
+		Timeout: 30 * time.Second,
 	}
 
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+	const maxRetries = 3
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		httpReq, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewReader(body))
+		if err != nil {
+			fmt.Printf("Error creating request (attempt %d): %v\n", attempt, err)
+			if attempt == maxRetries {
+				return ""
+			}
+			time.Sleep(time.Second * time.Duration(attempt))
+			continue
+		}
 
-	client := &http.Client{}
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		panic(err)
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+
+		resp, err := client.Do(httpReq)
+		if err != nil {
+			fmt.Printf("Error sending request (attempt %d): %v\n", attempt, err)
+			if attempt == maxRetries {
+				return ""
+			}
+			time.Sleep(time.Second * time.Duration(attempt))
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			bodyBytes, _ := io.ReadAll(resp.Body)
+			fmt.Printf("API error (attempt %d): %s\n", attempt, string(bodyBytes))
+			if attempt == maxRetries {
+				return ""
+			}
+			time.Sleep(time.Second * time.Duration(attempt))
+			continue
+		}
+
+		var apiResp Response
+		if err = json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+			fmt.Printf("Error decoding response (attempt %d): %v\n", attempt, err)
+			if attempt == maxRetries {
+				return ""
+			}
+			time.Sleep(time.Second * time.Duration(attempt))
+			continue
+		}
+
+		if len(apiResp.Choices) == 0 {
+			fmt.Printf("No response from API (attempt %d)\n", attempt)
+			if attempt == maxRetries {
+				return ""
+			}
+			time.Sleep(time.Second * time.Duration(attempt))
+			continue
+		}
+
+		return apiResp.Choices[0].Message.Content
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		panic(fmt.Sprintf("API error: %s", string(bodyBytes)))
-	}
-
-	var apiResp Response
-	err = json.NewDecoder(resp.Body).Decode(&apiResp)
-	if err != nil {
-		panic(err)
-	}
-
-	if len(apiResp.Choices) == 0 {
-		panic("No response from API")
-	}
-
-	return apiResp.Choices[0].Message.Content
+	return ""
 }
 
 func extractCode(response string) string {
