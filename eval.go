@@ -442,10 +442,24 @@ func sendPrompt(provider, model, apiKey, prompt string) string {
 	prompt = latexToPlain(prompt)
 	fmt.Printf("Prompt length: %d characters\n", len(prompt))
 
-	messages := []Message{{Role: "user", Content: prompt}}
-	reqBody := Request{Model: model, Messages: messages}
+	var body []byte
+	var err error
 
-	body, err := json.Marshal(reqBody)
+	lowerProvider := strings.ToLower(provider)
+	if lowerProvider == "gemini" {
+		gemReq := map[string]interface{}{
+			"contents": []map[string]interface{}{
+				{
+					"parts": []map[string]string{{"text": prompt}},
+				},
+			},
+		}
+		body, err = json.Marshal(gemReq)
+	} else {
+		messages := []Message{{Role: "user", Content: prompt}}
+		reqBody := Request{Model: model, Messages: messages}
+		body, err = json.Marshal(reqBody)
+	}
 	if err != nil {
 		fmt.Printf("Error marshaling request: %v\n", err)
 		return ""
