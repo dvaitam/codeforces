@@ -422,6 +422,11 @@ func latexToPlain(text string) string {
 	re := regexp.MustCompile(`\$\$\$(.*?)\$\$\$`)
 	return re.ReplaceAllStringFunc(text, func(m string) string {
 		sub := re.FindStringSubmatch(m)[1]
+
+		// remove sizing helpers early so other replacements don't break
+		sub = strings.ReplaceAll(sub, `\left`, "")
+		sub = strings.ReplaceAll(sub, `\right`, "")
+
 		replacements := map[string]string{
 			`\leq`:   "<=",
 			`\le`:    "<=",
@@ -434,9 +439,18 @@ func latexToPlain(text string) string {
 		for old, val := range replacements {
 			sub = strings.ReplaceAll(sub, old, val)
 		}
+
+		// common LaTeX constructs
+		fracRe := regexp.MustCompile(`\\frac{([^{}]+)}{([^{}]+)}`)
+		sub = fracRe.ReplaceAllString(sub, "$1/$2")
+		sub = strings.ReplaceAll(sub, `\lceil`, "ceil(")
+		sub = strings.ReplaceAll(sub, `\rceil`, ")")
+
+		sub = strings.ReplaceAll(sub, "\\", "")
+		sub = strings.ReplaceAll(sub, "left", "")
+		sub = strings.ReplaceAll(sub, "right", "")
 		sub = strings.ReplaceAll(sub, "{", "")
 		sub = strings.ReplaceAll(sub, "}", "")
-		sub = strings.ReplaceAll(sub, "\\", "")
 		sub = strings.ReplaceAll(sub, " ", "")
 		return sub
 	})
