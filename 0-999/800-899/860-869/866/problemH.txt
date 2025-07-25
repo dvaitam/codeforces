@@ -1,0 +1,6 @@
+Description:
+Given an integer n, output n! modulo 1000000007.
+Input Format:
+One integer n (0 <= n <= 1000).
+Output Format:
+Single integer representing n! % 1000000007 followed by a newline.

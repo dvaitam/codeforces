@@ -1,0 +1,6 @@
+Description:
+Given an integer n, output YES if n is prime and NO otherwise.
+Input Format:
+One integer n.
+Output Format:
+YES or NO followed by a newline.

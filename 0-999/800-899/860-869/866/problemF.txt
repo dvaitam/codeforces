@@ -1,0 +1,6 @@
+Description:
+Given a string s, output its reverse.
+Input Format:
+A single string without spaces.
+Output Format:
+The reversed string followed by a newline.
