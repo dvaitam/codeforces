@@ -1,0 +1,6 @@
+Description:
+Given an integer n, output n factorial modulo 1e9+7.
+Input Format:
+A single integer n.
+Output Format:
+Print n! mod 1e9+7.
