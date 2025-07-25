@@ -1,0 +1,8 @@
+Description:
+Given integers x and y, output x raised to the power y modulo 1,000,000,007.
+
+Input Format:
+Two integers x and y.
+
+Output Format:
+The value of x^y mod 1,000,000,007.

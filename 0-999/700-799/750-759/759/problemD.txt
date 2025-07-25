@@ -1,0 +1,8 @@
+Description:
+Given an integer n, output "prime" if n is a prime number, otherwise "composite".
+
+Input Format:
+Single integer n (n >= 1).
+
+Output Format:
+The word "prime" or "composite".

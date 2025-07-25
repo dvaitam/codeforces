@@ -1,0 +1,8 @@
+Description:
+Given a lowercase string s, output the number of vowels (a, e, i, o, u) in s.
+
+Input Format:
+A single lowercase string without spaces.
+
+Output Format:
+The count of vowels in s.

@@ -1,0 +1,8 @@
+Description:
+Given a word s, output the reversed string.
+
+Input Format:
+A single word containing only lowercase letters.
+
+Output Format:
+The reverse of s.
