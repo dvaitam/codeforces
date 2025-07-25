@@ -1,0 +1,6 @@
+Description:
+Given a string s consisting of lowercase letters, output the string reversed.
+Input Format:
+A single string s without spaces.
+Output Format:
+Print the reversed string.

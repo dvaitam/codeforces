@@ -1,0 +1,6 @@
+Description:
+Given n followed by n integers, output the maximum value among them.
+Input Format:
+The first integer n followed by n integers.
+Output Format:
+Print the maximum of the given numbers.
