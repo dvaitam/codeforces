@@ -1,0 +1,401 @@
+100
+1 5
+5
+b
+3 4
+5 1 5
+b
+ca
+c
+2 5
+5 4
+ca
+c
+1 5
+4
+aca
+1 5
+1
+ab
+2 5
+4 4
+cc
+ab
+1 1
+2
+ab
+3 4
+3 4 5
+cb
+cbc
+b
+3 1
+3 5 2
+bcc
+acc
+c
+3 3
+3 1 1
+cb
+b
+b
+1 1
+3
+ba
+1 5
+5
+b
+3 5
+3 5 3
+aab
+a
+c
+3 1
+2 4 3
+bac
+b
+ba
+2 4
+4 5
+cc
+cac
+3 3
+4 2 3
+bc
+cb
+b
+3 3
+1 4 5
+caa
+cbb
+cb
+3 3
+4 1 5
+c
+b
+cb
+2 5
+5 3
+b
+b
+2 5
+3 3
+aa
+cca
+2 5
+2 3
+b
+c
+2 1
+1 5
+bc
+b
+1 1
+3
+cac
+2 3
+2 1
+c
+b
+3 2
+3 3 1
+bca
+bc
+bb
+3 4
+3 4 5
+ab
+a
+b
+3 5
+4 5 2
+c
+cc
+bcb
+1 1
+5
+aa
+1 1
+5
+b
+3 1
+1 4 1
+c
+ac
+c
+3 4
+1 5 1
+ab
+bab
+a
+1 5
+1
+a
+2 2
+1 4
+cba
+ab
+3 5
+5 4 1
+ba
+a
+a
+1 1
+4
+c
+1 5
+5
+ba
+2 1
+3 4
+bcb
+ba
+2 4
+1 2
+acc
+ac
+1 1
+3
+cc
+3 4
+1 5 4
+b
+bcb
+cb
+2 1
+2 2
+bcc
+b
+1 4
+2
+b
+2 5
+3 1
+ca
+ccb
+3 1
+3 5 5
+c
+aba
+b
+1 5
+1
+acb
+1 1
+3
+a
+1 4
+3
+baa
+3 5
+5 2 1
+cac
+c
+ca
+1 2
+2
+abc
+3 4
+3 3 5
+bc
+ab
+abc
+1 4
+5
+ccc
+2 2
+4 2
+a
+cb
+3 5
+4 5 2
+b
+a
+cba
+3 5
+3 4 5
+cba
+ab
+ba
+1 5
+3
+b
+2 2
+4 4
+cab
+cca
+2 1
+4 1
+aa
+cca
+1 3
+2
+b
+1 2
+5
+cab
+1 1
+3
+b
+1 1
+1
+b
+2 1
+3 4
+ccb
+a
+2 3
+4 4
+aa
+ccb
+2 2
+5 3
+b
+c
+2 1
+4 5
+ac
+bcb
+2 3
+3 1
+cc
+cac
+2 5
+3 1
+bcc
+cac
+3 2
+2 3 4
+a
+abc
+ccb
+3 3
+2 4 4
+ac
+a
+acc
+3 4
+3 1 3
+ba
+a
+cb
+1 5
+3
+bb
+3 1
+3 4 1
+b
+aca
+caa
+3 2
+5 4 4
+acc
+b
+c
+3 2
+5 2 2
+bb
+b
+bb
+3 5
+3 4 5
+cbc
+ac
+c
+3 1
+1 2 4
+c
+baa
+aac
+3 4
+1 5 3
+aab
+c
+a
+2 5
+2 5
+b
+abb
+2 3
+2 1
+aca
+baa
+1 4
+2
+ba
+1 4
+1
+c
+1 4
+4
+ca
+3 4
+2 4 3
+b
+cb
+ab
+1 3
+3
+bc
+2 5
+4 2
+a
+ba
+2 5
+2 2
+a
+c
+2 5
+2 1
+a
+abb
+1 1
+1
+bb
+2 1
+1 2
+ab
+aa
+1 1
+4
+aa
+2 5
+1 3
+c
+c
+2 3
+4 3
+ac
+ab
+3 3
+3 1 1
+bac
+aaa
+aaa
+3 1
+4 1 2
+cba
+bb
+ca
+2 3
+5 4
+b
+b
+1 5
+4
+bcc
+2 2
+4 5
+ab
+ba
+2 4
+3 3
+c
+ccc
+2 4
+1 2
+c
+b
+1 1
+3
+c
