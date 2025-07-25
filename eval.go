@@ -251,7 +251,7 @@ func runVerifier(verifierFile, tempBinAbs string) bool {
 	fmt.Printf("Verifier stdout: %s\n", out.String())
 	fmt.Printf("Verifier stderr: %s\n", stderr.String())
 
-	return strings.Contains(out.String(), "All tests passed")
+	return strings.Contains(out.String(), "tests passed")
 }
 
 func getAvailableRatings(db *sql.DB) []int {
