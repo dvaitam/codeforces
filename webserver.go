@@ -112,7 +112,7 @@ var leaderboardTmpl = template.Must(template.New("leaderboard").Parse(`
 <table border="1">
 <tr><th>Run ID</th><th>Model</th><th>Problem ID</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th></tr>
 {{range .Evals}}
-<tr><td>{{.RunID}}</td><td>{{.Model}}</td><td>{{.ProblemID}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td></tr>
+<tr><td>{{.RunID}}</td><td>{{.Model}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ProblemID}}</a></td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td></tr>
 {{end}}
 </table>
 {{end}}
@@ -382,18 +382,23 @@ func leaderboardHandler(w http.ResponseWriter, r *http.Request) {
 		RunID     string
 		Model     string
 		ProblemID int
+		ContestID int
+		IndexName string
 		Success   bool
 		Timestamp string
 	}
 	var evals []Eval
 	runIDFilter := r.URL.Query().Get("run")
 	if runIDFilter != "" {
-		rows, err = db.Query("SELECT id, run_id, model, problem_id, success, timestamp FROM evaluations WHERE run_id = ? ORDER BY timestamp DESC", runIDFilter)
+		rows, err = db.Query(`SELECT e.id, e.run_id, e.model, e.problem_id, p.contest_id, p.index_name, e.success, e.timestamp
+                       FROM evaluations e
+                       JOIN problems p ON e.problem_id = p.id
+                       WHERE e.run_id = ? ORDER BY e.timestamp DESC`, runIDFilter)
 		if err == nil {
 			defer rows.Close()
 			for rows.Next() {
 				var e Eval
-				if err = rows.Scan(&e.ID, &e.RunID, &e.Model, &e.ProblemID, &e.Success, &e.Timestamp); err == nil {
+				if err = rows.Scan(&e.ID, &e.RunID, &e.Model, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Success, &e.Timestamp); err == nil {
 					evals = append(evals, e)
 				}
 			}
