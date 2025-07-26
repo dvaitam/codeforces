@@ -1,0 +1,6 @@
+Description:
+Given n distinct integers, reorder them so that for each adjacent pair (a_i, a_{i+1}) either a_{i+1}=a_i*2 or a_i is divisible by 3 and a_{i+1}=a_i/3.
+Input Format:
+Integer n followed by the n numbers.
+Output Format:
+A permutation that satisfies the condition.

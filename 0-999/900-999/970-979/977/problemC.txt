@@ -1,0 +1,7 @@
+Description:
+You have n integers a1..an and an integer k. Find an integer x such that exactly k of the numbers are <= x and 1 <= x <= 10^9.
+If there is no such x, output -1.
+Input Format:
+Integers n and k followed by the array a.
+Output Format:
+The integer x or -1 if it does not exist.
