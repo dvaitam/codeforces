@@ -1,0 +1,4 @@
+Problem C: Maximum of List
+
+Input: Integer n followed by n integers.
+Output: The maximum value among the n integers.

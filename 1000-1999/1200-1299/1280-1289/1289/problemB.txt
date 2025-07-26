@@ -1,0 +1,4 @@
+Problem B: Greatest Common Divisor
+
+Input: Two integers a and b.
+Output: The greatest common divisor of a and b.
