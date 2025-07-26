@@ -94,5 +94,5 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	fmt.Println("ok 100 tests")
+	fmt.Println("All tests passed")
 }
