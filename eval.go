@@ -423,6 +423,25 @@ func latexToPlain(text string) string {
 	return re.ReplaceAllStringFunc(text, func(m string) string {
 		sub := re.FindStringSubmatch(m)[1]
 
+		// handle simple tables like \begin{array}{|c|c|} ... \end{array}
+		if strings.Contains(sub, `\\begin{array}`) {
+			arrRe := regexp.MustCompile(`(?s)\\begin{array}{[^}]*}(.*?)\\end{array}`)
+			sub = arrRe.ReplaceAllStringFunc(sub, func(t string) string {
+				inner := arrRe.FindStringSubmatch(t)[1]
+				inner = strings.ReplaceAll(inner, `\\hline`, "")
+				// line breaks and columns
+				inner = strings.ReplaceAll(inner, `\\\\`, "\n")
+				inner = strings.ReplaceAll(inner, `&`, " ")
+				textRe := regexp.MustCompile(`\\text{([^{}]*)}`)
+				inner = textRe.ReplaceAllString(inner, "$1")
+				inner = strings.ReplaceAll(inner, `\\`, "")
+				inner = strings.ReplaceAll(inner, "{", "")
+				inner = strings.ReplaceAll(inner, "}", "")
+				return inner
+			})
+			return sub
+		}
+
 		// remove sizing helpers early so other replacements don't break
 		sub = strings.ReplaceAll(sub, `\left`, "")
 		sub = strings.ReplaceAll(sub, `\right`, "")
@@ -445,6 +464,9 @@ func latexToPlain(text string) string {
 		sub = fracRe.ReplaceAllString(sub, "$1/$2")
 		sub = strings.ReplaceAll(sub, `\lceil`, "ceil(")
 		sub = strings.ReplaceAll(sub, `\rceil`, ")")
+
+		textRe := regexp.MustCompile(`\\text{([^{}]*)}`)
+		sub = textRe.ReplaceAllString(sub, "$1")
 
 		sub = strings.ReplaceAll(sub, "\\", "")
 		sub = strings.ReplaceAll(sub, "left", "")
