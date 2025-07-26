@@ -1,0 +1,4 @@
+Description:
+This output only task contains thirty seven iOS related multiple choice questions.
+Each question has four answers and the first option is always correct.
+The correct submission prints thirty seven ones separated by spaces.

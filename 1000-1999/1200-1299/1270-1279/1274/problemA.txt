@@ -1,0 +1,5 @@
+Description:
+This was an output only quiz problem from VK Cup 2019 Qualification (Mobile).
+There are fifteen multiple choice questions about Android development.
+For each question the correct option is the first one.
+The official solution simply outputs fifteen ones separated by spaces.
