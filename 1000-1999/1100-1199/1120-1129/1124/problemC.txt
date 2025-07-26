@@ -1,0 +1,4 @@
+Problem C: Array Sum
+Given an integer n followed by n integers, output their sum.
+Input: first integer n (1 \u2264 n \u2264 100), then n integers a_i (-1000 \u2264 a_i \u2264 1000).
+Output: the sum of the numbers.

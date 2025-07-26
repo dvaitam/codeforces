@@ -1,0 +1,4 @@
+Problem F: Fibonacci
+Given a non-negative integer n (0 \u2264 n \u2264 50), output the nth Fibonacci number, where F(0)=0 and F(1)=1.
+Input: single integer n.
+Output: the nth Fibonacci number.

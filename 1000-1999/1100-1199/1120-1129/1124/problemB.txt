@@ -1,0 +1,4 @@
+Problem B: Factorial
+Given a non-negative integer n (0 \u2264 n \u2264 20), output n!.
+Input: single integer n.
+Output: factorial of n.

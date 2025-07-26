@@ -1,0 +1,4 @@
+Problem E: Sort the Array
+Given an integer n followed by n integers, output them sorted in non-decreasing order separated by spaces.
+Input: first integer n (1 \u2264 n \u2264 50), then n integers a_i (-100 \u2264 a_i \u2264 100).
+Output: sorted numbers separated by spaces on a single line.
