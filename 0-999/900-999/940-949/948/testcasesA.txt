@@ -1,0 +1,110 @@
+1 1 .
+1 1 S
+1 1 W
+1 2 SW
+1 2 WS
+2 2 SW WS
+2 2 S. .W
+2 2 SS WW
+3 3 ... ... ...
+2 3 S.W W.S
+3 2 SW SW .S
+5 5 S.SWS WSWW. WS.WW .SS.S WSSWS
+5 4 .W.W .SS. .W.. .SSW .W.S
+1 2 SW
+5 3 WS. WSS WW. WSW .SS
+3 2 .W WW S.
+4 4 SW.W WSWW SWSW W.WS
+5 4 W.WW .SS. S..S S..S WW.S
+2 3 W.W SWW
+2 4 .SWW W...
+3 1 S S W
+3 3 SWW SW. ..S
+2 5 .SWW. S.WWS
+3 1 S W W
+1 5 WW.W.
+1 5 WWSWS
+1 1 .
+3 5 S..S. WSS.. .W...
+4 1 W . W W
+5 5 ...S. .W..S S..W. WSSWS WSWWS
+5 3 .SW WWS SWS ..W W.W
+4 5 SSSS. .S... SWSS. S.WSW
+4 2 .S .W .. ..
+3 3 SS. W.. .S.
+5 2 SW SS .S W. .S
+4 4 SS.. .W.. WS.W S..S
+3 5 S..W. .SW.W WS.S.
+2 4 S.SS .SWW
+5 3 W.W SWS WS. SS. WSS
+4 2 .W W. WW WW
+4 1 S . S S
+1 5 ..S.S
+3 5 S.WW. W..SW WW.SW
+5 3 WW. WS. S.. ..S WWS
+3 3 SWW .W. W.W
+5 3 W.W ..S .WW ..S .SW
+5 3 WWS WS. ... SSS WSS
+4 4 .SSS SSSW ...W ...W
+2 4 W... WSSW
+5 1 S S . W .
+5 2 WS W. .W SW .S
+4 3 W.. W.S WW. WS.
+2 4 .S.W SSWS
+4 5 WWSWW .S.WW S..SS W.SWS
+1 2 W.
+1 2 S.
+4 5 .WSSW .WSSS SSS.S ..SSW
+5 2 .S .. W. W. WS
+2 5 ..W.. SWS.S
+2 1 W W
+2 2 SW ..
+2 4 SWWW SSSW
+1 1 .
+1 4 .WW.
+5 5 WSW.. .S... S..SS W..W. SWWWS
+4 2 WW SS SS S.
+2 1 S S
+4 5 .W.WS .WWWS .S.S. .S.WS
+3 4 SSSS WS.. ...W
+5 4 S.WW WS.W .WWW SW.W W...
+1 4 .SSW
+5 2 WW S. .. SW WW
+3 3 .SS .SW S..
+2 4 WWWS SW..
+5 1 W W . S .
+2 3 .WS S.S
+1 5 SSSS.
+2 3 ..W .W.
+5 1 W W S . S
+1 1 .
+1 2 S.
+2 3 SWS WW.
+3 1 . S .
+2 1 W W
+2 2 SS ..
+5 5 SS.W. WS.S. W..WW SW.SS W.SWW
+3 3 .WS .WW .S.
+1 4 S.SS
+1 3 S.W
+5 2 SS .S W. SS SW
+5 5 WSW.W .SS.. ..SS. WSWS. .S..S
+5 4 WSS. ..WW SWW. SWW. .W..
+1 3 .SS
+1 2 SS
+5 2 S. W. .. S. SW
+5 5 ..SWW SWSW. .SWS. WS.WS W..SW
+3 4 SWSW .WSW W...
+4 1 S S . .
+1 5 S.W.W
+2 3 WWS ...
+3 5 WS.SS W.W.W S.W..
+3 3 .SS ..S S..
+3 2 SW W. S.
+2 2 S. S.
+2 1 W W
+3 2 S. WS SS
+4 3 WS. W.W .S. ..W
+5 2 WW .. .. WW SS
+4 4 WS.. W.SS .WS. SSS.
+2 4 SWS. WSSW
