@@ -6,12 +6,14 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"time"
 )
 
 func runExe(path, input string) (string, error) {
+	if !strings.Contains(path, "/") {
+		path = "./" + path
+	}
 	cmd := exec.Command(path)
 	if strings.HasSuffix(path, ".go") {
 		cmd = exec.Command("go", "run", path)
