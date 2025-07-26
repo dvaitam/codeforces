@@ -77,5 +77,5 @@ func main() {
 			return
 		}
 	}
-	fmt.Println("OK")
+	fmt.Println("All tests passed")
 }

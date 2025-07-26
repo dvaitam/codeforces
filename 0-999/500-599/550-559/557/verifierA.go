@@ -81,5 +81,5 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	fmt.Println("OK")
+	fmt.Println("All tests passed")
 }
