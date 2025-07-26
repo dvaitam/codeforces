@@ -1,0 +1,2 @@
+Problem A - Count Divisors
+Given an integer n, output the number of positive divisors of n.

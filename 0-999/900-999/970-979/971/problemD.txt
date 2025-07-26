@@ -1,0 +1,2 @@
+Problem D - Greatest Common Divisor
+Given two positive integers a and b separated by space, output their greatest common divisor.
