@@ -1,0 +1,8 @@
+Description:
+Given two integers a and b, output their sum.
+
+Input Format:
+Two integers separated by space.
+
+Output Format:
+Print a+b.

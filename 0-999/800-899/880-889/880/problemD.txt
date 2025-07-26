@@ -1,0 +1,8 @@
+Description:
+Given two integers a and b, output their greatest common divisor.
+
+Input Format:
+Two integers separated by space.
+
+Output Format:
+Print gcd(a,b).

@@ -1,0 +1,8 @@
+Description:
+Given an integer n, output the sum from 1 to n.
+
+Input Format:
+A single integer n.
+
+Output Format:
+Print the sum 1+2+...+n.
