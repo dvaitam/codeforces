@@ -1,0 +1,8 @@
+7
+IN 1
+XOR 1 1
+XOR 1 1
+NOT 1
+XOR 3 4
+IN 1
+NOT 5
