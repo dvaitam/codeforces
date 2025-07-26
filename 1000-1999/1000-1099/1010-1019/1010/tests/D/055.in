@@ -1,0 +1,9 @@
+8
+IN 0
+AND 1 1
+AND 2 1
+NOT 2
+NOT 1
+AND 2 4
+NOT 3
+AND 2 4

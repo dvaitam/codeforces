@@ -1,0 +1,5 @@
+4
+IN 0
+NOT 1
+AND 1 2
+XOR 3 3

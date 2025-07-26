@@ -1,0 +1,10 @@
+9
+IN 0
+XOR 1 1
+XOR 2 2
+IN 0
+AND 1 4
+OR 1 5
+IN 1
+AND 5 2
+XOR 8 1

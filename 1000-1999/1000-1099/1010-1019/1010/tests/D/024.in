@@ -1,0 +1,8 @@
+7
+IN 0
+NOT 1
+OR 2 1
+NOT 1
+XOR 1 1
+IN 1
+IN 1
