@@ -1,0 +1,4 @@
+Problem D: Reverse a String
+
+Input: A single word or string.
+Output: The reversed string.
