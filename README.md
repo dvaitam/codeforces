@@ -45,6 +45,10 @@ directly from your browser. Launch it from the repository root:
 go run webserver.go
 ```
 
+If you set the `ADMIN_KEY` environment variable, the "Add Problem" form requires
+the same key before a problem is created. This helps prevent unauthorized
+modifications when running a public server.
+
 Open <http://localhost:8081> to see the list of contests. Each problem page
 allows you to paste code or upload a file in C, C++, Go, Rust, Java or Python.
 If a verifier is present in the contest directory it will run automatically

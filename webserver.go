@@ -54,6 +54,7 @@ var contestTmpl = template.Must(template.New("contest").Parse(`
 <form action="/addproblem" method="post">
 <input type="hidden" name="contest" value="{{.ID}}">
 Letter: <input name="letter"><br>
+Admin Key: <input type="password" name="adminkey"><br>
 <textarea name="statement" rows="10" cols="80"></textarea><br>
 <input type="submit" value="Add Problem">
 </form>
@@ -66,6 +67,7 @@ var addProblemTmpl = template.Must(template.New("addproblem").Parse(`
 <form action="/addproblem" method="post">
 Contest ID: <input name="contest" value="{{.Contest}}"><br>
 Letter: <input name="letter" value="{{.Letter}}"><br>
+Admin Key: <input type="password" name="adminkey"><br>
 <textarea name="statement" rows="10" cols="80">{{.Statement}}</textarea><br>
 <input type="submit" value="Add Problem">
 </form>
@@ -446,6 +448,11 @@ func addProblemHandler(w http.ResponseWriter, r *http.Request) {
 		contestID := r.FormValue("contest")
 		letter := strings.ToUpper(r.FormValue("letter"))
 		statement := r.FormValue("statement")
+		adminkey := r.FormValue("adminkey")
+		if adminkey != os.Getenv("ADMIN_KEY") {
+			http.Error(w, "admin key mismatch", http.StatusForbidden)
+			return
+		}
 		if contestID == "" || letter == "" {
 			http.Error(w, "missing parameters", http.StatusBadRequest)
 			return
