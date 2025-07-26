@@ -66,8 +66,9 @@ func rotate(x *Node) {
    } else {
        x.f = p.f
    }
-   p.setChild(x.s[!d], d)
-   x.setChild(p, !d)
+   // toggle child based on direction
+   p.setChild(x.s[1-d], d)
+   x.setChild(p, 1-d)
    p.update()
 }
 
