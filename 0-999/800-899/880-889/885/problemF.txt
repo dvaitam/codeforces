@@ -1,0 +1,6 @@
+Description:
+Given integer n (0 <= n <= 20), output the nth Fibonacci number.
+Input Format:
+Single integer n.
+Output Format:
+Single integer equal to Fibonacci(n).
