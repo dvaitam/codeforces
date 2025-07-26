@@ -6,6 +6,8 @@ import (
    "os"
 )
 
+const outFmt = "%.16f"
+
 func main() {
    r := bufio.NewReader(os.Stdin)
    w := bufio.NewWriter(os.Stdout)
@@ -32,7 +34,7 @@ func main() {
                fmt.Fprint(w, " ")
            }
            length := float64(cnt)/float64(m) * float64(W)
-           fmt.Fprintf(w, "%d %.16f", cur, length)
+           fmt.Fprintf(w, "%d "+outFmt, cur, length)
            printed = true
            used += cnt
            sum += cnt
