@@ -1,0 +1,9 @@
+A subarray is considered compromised if the bitwise OR of all elements in any subarray is present in the subarray itself. Find the number of compromised subarrays in a given array of positive integers.
+
+A subarray is defined as any contiguous segment of the array.
+
+Input
+n number of elements in array 1 <= n <= 10^5
+n integers followed by spaces
+Output
+the number of compromised subarrays
