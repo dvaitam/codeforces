@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"fmt"
 	"html/template"
@@ -15,6 +16,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -299,11 +301,15 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 	} else {
 		verifier := findVerifier(c.Path, letter)
 		if verifier != "" {
-			cmd := exec.Command("go", "run", filepath.Base(verifier), exe)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, "go", "run", filepath.Base(verifier), exe)
 			cmd.Dir = c.Path
 			res, err := cmd.CombinedOutput()
 			output.Write(res)
-			if err != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				output.WriteString("\nVerifier timed out after 10 seconds")
+			} else if err != nil {
 				if ee, ok := err.(*exec.ExitError); ok {
 					output.WriteString(fmt.Sprintf("\nVerifier exited with status %d", ee.ExitCode()))
 				} else {
