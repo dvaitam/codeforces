@@ -1,0 +1,2 @@
+Problem B - Sum of Digits
+Given a non-negative integer n, output the sum of its decimal digits.
