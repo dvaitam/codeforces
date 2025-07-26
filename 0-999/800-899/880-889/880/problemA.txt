@@ -1,0 +1,8 @@
+Description:
+Given an integer n, output n squared.
+
+Input Format:
+A single integer n.
+
+Output Format:
+Print n*n.
