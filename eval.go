@@ -247,7 +247,7 @@ func runVerifier(verifierFile, tempBinAbs string) bool {
 		return false
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "go", "run", verifierAbs, tempBinAbs)
@@ -261,7 +261,7 @@ func runVerifier(verifierFile, tempBinAbs string) bool {
 
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			fmt.Println("Verification timed out after 5 seconds")
+			fmt.Println("Verification timed out after 10 seconds")
 			return false
 		}
 		fmt.Printf("Verifier failed: %v\n", err)
