@@ -33,7 +33,7 @@ func buildRef() (string, error) {
 
 func genTest() []byte {
 	n := rand.Intn(6) + 1
-	m := rand.Intn(6) + 1
+	m := n + rand.Intn(6)
 	a := make([]int, n)
 	b := make([]int, m)
 	for i := 0; i < n; i++ {
