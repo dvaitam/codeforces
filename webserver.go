@@ -401,6 +401,38 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	indexTmpl.Execute(w, list)
 }
 
+func contestDir(id string) (string, error) {
+	n, err := strconv.Atoi(id)
+	if err != nil {
+		return "", err
+	}
+	thousands := (n / 1000) * 1000
+	tDir := fmt.Sprintf("%d-%d", thousands, thousands+999)
+	n %= 1000
+	hundreds := (n / 100) * 100
+	hDir := fmt.Sprintf("%d-%d", thousands+hundreds, thousands+hundreds+99)
+	n %= 100
+	tens := (n / 10) * 10
+	teDir := fmt.Sprintf("%d-%d", thousands+hundreds+tens, thousands+hundreds+tens+9)
+	return filepath.Join(tDir, hDir, teDir, id), nil
+}
+
+func ensureContest(id string) (*contestInfo, error) {
+	if c := contests[id]; c != nil {
+		return c, nil
+	}
+	dir, err := contestDir(id)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, err
+	}
+	c := &contestInfo{ID: id, Path: dir}
+	contests[id] = c
+	return c, nil
+}
+
 func addProblemHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -418,9 +450,9 @@ func addProblemHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "missing parameters", http.StatusBadRequest)
 			return
 		}
-		c := contests[contestID]
-		if c == nil {
-			http.NotFound(w, r)
+		c, err := ensureContest(contestID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		stmtPath := filepath.Join(c.Path, "problem"+letter+".txt")
@@ -432,8 +464,17 @@ func addProblemHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		c.Problems = append(c.Problems, letter)
-		sort.Strings(c.Problems)
+		found := false
+		for _, l := range c.Problems {
+			if l == letter {
+				found = true
+				break
+			}
+		}
+		if !found {
+			c.Problems = append(c.Problems, letter)
+			sort.Strings(c.Problems)
+		}
 		http.Redirect(w, r, "/contest/"+contestID+"/problem/"+letter, http.StatusSeeOther)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
