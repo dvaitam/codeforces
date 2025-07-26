@@ -1,0 +1,2 @@
+Description:
+Given a string consisting of lowercase Latin letters, find the minimal number of characters you need to delete so that the string does not contain the substring "xxx".
