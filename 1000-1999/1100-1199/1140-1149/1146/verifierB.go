@@ -1,0 +1,104 @@
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"math/rand"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
+)
+
+type pairB struct{ s, t string }
+
+func expected(t string) string {
+	var s2 []rune
+	for _, ch := range t {
+		if ch != 'a' {
+			s2 = append(s2, ch)
+		}
+	}
+	if len(s2) == 0 {
+		return t
+	}
+	if len(s2)%2 != 0 {
+		return ":("
+	}
+	half := len(s2) / 2
+	prefix := string(s2[:half])
+	suffix := t[len(t)-half:]
+	if prefix == suffix {
+		return t[:len(t)-half]
+	}
+	return ":("
+}
+
+func randString(rng *rand.Rand, n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = byte('a' + rng.Intn(26))
+	}
+	return string(b)
+}
+
+func removeA(s string) string {
+	var b strings.Builder
+	for _, ch := range s {
+		if ch != 'a' {
+			b.WriteRune(ch)
+		}
+	}
+	return b.String()
+}
+
+func genCase(rng *rand.Rand) (string, string) {
+	if rng.Float64() < 0.5 {
+		n := rng.Intn(20) + 1
+		s := randString(rng, n)
+		t := s + removeA(s)
+		return t + "\n", expected(t)
+	}
+	n := rng.Intn(20) + 1
+	t := randString(rng, n)
+	return t + "\n", expected(t)
+}
+
+func run(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: go run verifierB.go /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < 100; i++ {
+		in, exp := genCase(rng)
+		out, err := run(bin, in)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
+			os.Exit(1)
+		}
+		if out != exp {
+			fmt.Fprintf(os.Stderr, "case %d: expected %s got %s\ninput:\n%s", i+1, exp, out, in)
+			os.Exit(1)
+		}
+	}
+	fmt.Println("All tests passed")
+}
