@@ -1,0 +1,1 @@
+Given three integers, output them sorted ascending separated by spaces.
