@@ -1,0 +1,100 @@
+1 f
+2 s f
+5 s f f f s
+7 s s s f f s s
+6 s s f f f f
+1 f
+6 f f s f s s
+9 s s s s f s s f s
+5 s s s s s
+10 s s f s f s s s s s
+5 f s s f s
+1 f
+2 f f
+5 f f f s f
+4 f s f f
+6 s f f f f f
+2 f f
+1 s
+5 f f f f s
+10 f f f f f s f s s s
+1 s
+8 f s s f s f f s
+2 f s
+3 s s s
+3 s s s
+10 s f f f s f f f f f
+8 f f f f s f s f
+10 f s s s s f f f s s
+3 f f f
+2 f f
+3 f f f
+1 s
+8 s s f f s s f f
+7 f f s s f f s
+5 s s f s f
+2 s f
+1 s
+1 s
+8 s f f f s f s s
+2 f s
+4 f s s s
+3 s s f
+5 f f f s s
+4 f f s f
+8 s s s f s s s s
+7 s s s f f s s
+9 s f f f s f f s f
+2 f f
+5 s f s s f
+9 s f f s f s f s f
+3 s f s
+6 f s s f s f
+7 f s s s s s s
+6 s f f f s s
+1 s
+8 s f f f s f s f
+2 s f
+5 f s f f s
+8 s f s f f s f s
+9 f s s s s s f f s
+3 s s f
+1 f
+8 s s s f f s s f
+6 f s s f s s
+3 s s f
+5 s s s s s
+9 f f s f f s f f s
+9 f s f f f s s f s
+6 f s s s f s
+8 s s f s f s s f
+2 f s
+4 s f s f
+3 f s s
+7 s s s s s f s
+5 s s f s s
+8 s f f s s f f f
+6 f s f s f s
+4 s s s f
+6 s f s f f f
+6 s f s s s f
+6 f f f f s s
+10 f f f f s s s f s f
+6 s f f s s s
+10 s f s s s f s s s f
+2 s f
+2 f f
+7 s s f s f s f
+3 f f s
+2 s s
+1 s
+4 f s f f
+3 f f f
+9 f s f f s s f f f
+4 f s f f
+10 f s s s f f f f f s
+4 s s s f
+7 f s s s f f s
+5 s s s f s
+3 f f f
+4 f s f f

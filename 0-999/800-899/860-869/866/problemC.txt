@@ -1,0 +1,6 @@
+Description:
+Given a string s, output YES if it is a palindrome and NO otherwise.
+Input Format:
+A single string without spaces.
+Output Format:
+Either YES or NO followed by a newline.

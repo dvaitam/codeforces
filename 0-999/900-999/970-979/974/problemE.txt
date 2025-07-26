@@ -1,0 +1,9 @@
+Description:
+For each given integer n (1 <= n <= 1000), output YES if n is prime, otherwise NO.
+
+Input Format:
+First line contains t.
+Each test case has integer n.
+
+Output Format:
+For each test case output YES or NO.

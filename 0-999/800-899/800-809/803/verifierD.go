@@ -1,0 +1,100 @@
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"math/rand"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+)
+
+func buildReference() (string, error) {
+	_, file, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(file)
+	src := filepath.Join(dir, "803D.go")
+	bin := filepath.Join(os.TempDir(), "ref803D.bin")
+	cmd := exec.Command("go", "build", "-o", bin, src)
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return bin, nil
+}
+
+func runBinary(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &bytes.Buffer{}
+	err := cmd.Run()
+	return out.String(), err
+}
+
+func randChar() byte {
+	const letters = "abcdefghijklmnopqrstuvwxyz"
+	switch rand.Intn(4) {
+	case 0:
+		return ' '
+	case 1:
+		return '-'
+	default:
+		return letters[rand.Intn(len(letters))]
+	}
+}
+
+func genCase() string {
+	k := rand.Intn(5) + 1
+	n := rand.Intn(40) + 1
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = randChar()
+	}
+	// avoid leading/trailing spaces
+	if b[0] == ' ' || b[0] == '-' {
+		b[0] = 'a'
+	}
+	if b[n-1] == ' ' || b[n-1] == '-' {
+		b[n-1] = 'a'
+	}
+	text := string(b)
+	return fmt.Sprintf("%d\n%s\n", k, text)
+}
+
+func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("usage: verifierD.go <path-to-binary>")
+		return
+	}
+	userBin := os.Args[1]
+	rand.Seed(1)
+	refBin, err := buildReference()
+	if err != nil {
+		fmt.Println("failed to build reference:", err)
+		return
+	}
+	defer os.Remove(refBin)
+
+	for i := 0; i < 100; i++ {
+		input := genCase()
+		want, err1 := runBinary(refBin, input)
+		if err1 != nil {
+			fmt.Println("reference solution failed:", err1)
+			return
+		}
+		got, err2 := runBinary(userBin, input)
+		if err2 != nil {
+			fmt.Printf("test %d: runtime error: %v\n", i+1, err2)
+			fmt.Println("input:\n" + input)
+			return
+		}
+		if strings.TrimSpace(want) != strings.TrimSpace(got) {
+			fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\nactual:\n%s\n", i+1, input, want, got)
+			return
+		}
+	}
+	fmt.Println("All tests passed")
+}

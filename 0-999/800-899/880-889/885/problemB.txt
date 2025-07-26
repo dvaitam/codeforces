@@ -1,0 +1,6 @@
+Description:
+Given two integers a and b, output their product.
+Input Format:
+Two integers a and b.
+Output Format:
+Single integer equal to a*b.

@@ -1,0 +1,8 @@
+Description:
+You are given two integers n and k. Perform the following operation exactly k times:
+If the last digit of n is nonzero, subtract one from n. Otherwise divide n by ten.
+Print the resulting value of n after performing all operations.
+Input Format:
+Two integers n and k (1 <= n <= 10^9, 1 <= k <= 50).
+Output Format:
+The final value of n.

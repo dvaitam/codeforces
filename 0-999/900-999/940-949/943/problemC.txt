@@ -1,0 +1,4 @@
+Problem C: Reverse a String
+
+Input: a single string.
+Output: the string reversed.

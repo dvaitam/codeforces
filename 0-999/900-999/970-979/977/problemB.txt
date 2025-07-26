@@ -1,0 +1,7 @@
+Description:
+Given an integer n and a string s of length n consisting of lowercase letters, find the two-letter substring that appears most frequently in s.
+If several substrings occur the same maximal number of times, output the one whose first occurrence is earliest.
+Input Format:
+Integer n followed by the string s.
+Output Format:
+The most frequent two-letter substring.

@@ -1,0 +1,4 @@
+Problem A: Sum Two Numbers
+
+Input: two integers a and b.
+Output: their sum.

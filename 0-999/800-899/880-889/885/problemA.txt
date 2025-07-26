@@ -1,0 +1,7 @@
+Description:
+Given two integers a and b, output their sum.
+If a equals 0, some contestant solutions may crash. This is used to test runtime error handling in the verifier.
+Input Format:
+Two integers a and b separated by spaces.
+Output Format:
+Single integer equal to a+b.

@@ -1,0 +1,2 @@
+Description:
+A bus has capacity w. A log records differences of passengers after each stop. Count how many integer values of the initial number of passengers are possible so that the number on the bus never goes negative or exceeds w.

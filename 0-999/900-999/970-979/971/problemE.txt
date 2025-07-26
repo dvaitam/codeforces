@@ -1,0 +1,2 @@
+Problem E - Factorial Modulo
+Given an integer n (0 <= n <= 20), output n! modulo 1000000007.

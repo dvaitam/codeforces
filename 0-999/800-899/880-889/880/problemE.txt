@@ -1,0 +1,8 @@
+Description:
+Given an integer n, output the sum of its digits.
+
+Input Format:
+A single integer n.
+
+Output Format:
+Print the sum of digits of n.
