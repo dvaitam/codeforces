@@ -1,0 +1,4 @@
+Problem E: Sort Numbers
+
+Input: first integer n followed by n integers.
+Output: the numbers sorted in non-decreasing order separated by spaces.
