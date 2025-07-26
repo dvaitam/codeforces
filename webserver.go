@@ -110,9 +110,9 @@ var leaderboardTmpl = template.Must(template.New("leaderboard").Parse(`
 {{if .Evals}}
 <h2>Evaluation History for {{.RunID}}</h2>
 <table border="1">
-<tr><th>Run ID</th><th>Model</th><th>Problem ID</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th></tr>
+<tr><th>Run ID</th><th>Model</th><th>Problem ID</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th></tr>
 {{range .Evals}}
-<tr><td>{{.RunID}}</td><td>{{.Model}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ProblemID}}</a></td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td></tr>
+<tr><td>{{.RunID}}</td><td>{{.Model}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ProblemID}}</a></td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td></tr>
 {{end}}
 </table>
 {{end}}
@@ -134,9 +134,9 @@ var modelTmpl = template.Must(template.New("model").Parse(`
 <html><body>
 <h1>Evaluations for {{.Model}}</h1>
 <table border="1">
-<tr><th>Run ID</th><th>Problem ID</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th></tr>
+<tr><th>Run ID</th><th>Problem ID</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th></tr>
 {{range .Evals}}
-<tr><td>{{.RunID}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ProblemID}}</a></td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td></tr>
+<tr><td>{{.RunID}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ProblemID}}</a></td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td></tr>
 {{end}}
 </table>
 </body></html>`))
@@ -407,13 +407,14 @@ func leaderboardHandler(w http.ResponseWriter, r *http.Request) {
 		ProblemID int
 		ContestID int
 		IndexName string
+		Rating    int
 		Success   bool
 		Timestamp string
 	}
 	var evals []Eval
 	runIDFilter := r.URL.Query().Get("run")
 	if runIDFilter != "" {
-		rows, err = db.Query(`SELECT e.id, e.run_id, e.model, e.problem_id, p.contest_id, p.index_name, e.success, e.timestamp
+		rows, err = db.Query(`SELECT e.id, e.run_id, e.model, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), e.success, e.timestamp
                        FROM evaluations e
                        JOIN problems p ON e.problem_id = p.id
                        WHERE e.run_id = ? ORDER BY e.timestamp DESC`, runIDFilter)
@@ -421,7 +422,7 @@ func leaderboardHandler(w http.ResponseWriter, r *http.Request) {
 			defer rows.Close()
 			for rows.Next() {
 				var e Eval
-				if err = rows.Scan(&e.ID, &e.RunID, &e.Model, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Success, &e.Timestamp); err == nil {
+				if err = rows.Scan(&e.ID, &e.RunID, &e.Model, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Rating, &e.Success, &e.Timestamp); err == nil {
 					evals = append(evals, e)
 				}
 			}
@@ -463,11 +464,12 @@ func modelHandler(w http.ResponseWriter, r *http.Request) {
 		ProblemID int
 		ContestID int
 		IndexName string
+		Rating    int
 		Success   bool
 		Timestamp string
 	}
 	var evals []Eval
-	rows, err := db.Query(`SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, e.success, e.timestamp
+	rows, err := db.Query(`SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), e.success, e.timestamp
                                FROM evaluations e
                                JOIN problems p ON e.problem_id = p.id
                                WHERE e.model = ? ORDER BY e.timestamp DESC`, modelName)
@@ -475,7 +477,7 @@ func modelHandler(w http.ResponseWriter, r *http.Request) {
 		defer rows.Close()
 		for rows.Next() {
 			var e Eval
-			if err = rows.Scan(&e.ID, &e.RunID, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Success, &e.Timestamp); err == nil {
+			if err = rows.Scan(&e.ID, &e.RunID, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Rating, &e.Success, &e.Timestamp); err == nil {
 				evals = append(evals, e)
 			}
 		}
