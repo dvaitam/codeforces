@@ -1,0 +1,2 @@
+Description:
+Each of n students has a rating. There are k pairs of students that know each other. For each student, compute how many other students have a smaller rating and are not among their friends.
