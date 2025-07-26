@@ -95,5 +95,5 @@ func main() {
 		}
 		time.Sleep(0) // yield for determinism
 	}
-	fmt.Println("OK")
+	fmt.Println("All tests passed")
 }
