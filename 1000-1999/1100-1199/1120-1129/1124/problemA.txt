@@ -1,0 +1,4 @@
+Problem A: Common Divisor
+Given two integers a and b, output "YES" if their greatest common divisor is greater than 1. Otherwise output "NO".
+Input: two integers a and b separated by space.
+Output: a single word "YES" or "NO".
