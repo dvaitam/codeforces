@@ -1,0 +1,7 @@
+Description:
+Given n opinions about a problem difficulty (0 for easy, 1 for hard), output "EASY" if all opinions are 0, otherwise output "HARD".
+Input Format:
+First line n (1 <= n <= 100).
+Second line contains n integers 0 or 1.
+Output Format:
+"EASY" if all inputs are 0, otherwise "HARD".
