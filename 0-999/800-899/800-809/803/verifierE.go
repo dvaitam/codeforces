@@ -31,7 +31,7 @@ func runBinary(bin, input string) (string, error) {
 	cmd.Stdout = &out
 	cmd.Stderr = &bytes.Buffer{}
 	err := cmd.Run()
-	return out.String(), err
+	return strings.TrimSpace(out.String()), err
 }
 
 func randChar() byte {
@@ -55,6 +55,46 @@ func genCase() string {
 		b[i] = randChar()
 	}
 	return fmt.Sprintf("%d %d\n%s\n", n, k, string(b))
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func valid(n, k int, orig, out string) bool {
+	if len(out) != n {
+		return false
+	}
+	diff := 0
+	for i := 0; i < n; i++ {
+		c := out[i]
+		if c != 'W' && c != 'L' && c != 'D' {
+			return false
+		}
+		if orig[i] != '?' && orig[i] != c {
+			return false
+		}
+		switch c {
+		case 'W':
+			diff++
+		case 'L':
+			diff--
+		}
+		if i != n-1 && abs(diff) >= k {
+			return false
+		}
+	}
+	return abs(diff) == k
+}
+
+func parseInput(input string) (int, int, string) {
+	var n, k int
+	var s string
+	fmt.Fscan(strings.NewReader(input), &n, &k, &s)
+	return n, k, s
 }
 
 func main() {
@@ -84,9 +124,18 @@ func main() {
 			fmt.Println("input:\n" + input)
 			return
 		}
-		if strings.TrimSpace(want) != strings.TrimSpace(got) {
-			fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\nactual:\n%s\n", i+1, input, want, got)
-			return
+
+		n, k, s := parseInput(input)
+		if want == "NO" {
+			if got != "NO" {
+				fmt.Printf("test %d failed\ninput:\n%sexpected NO but got:\n%s\n", i+1, input, got)
+				return
+			}
+		} else {
+			if got == "NO" || !valid(n, k, s, got) {
+				fmt.Printf("test %d failed\ninput:\n%sreference output:\n%s\nyour output:\n%s\n", i+1, input, want, got)
+				return
+			}
 		}
 	}
 	fmt.Println("All tests passed")
