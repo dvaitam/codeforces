@@ -382,6 +382,36 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	indexTmpl.Execute(w, list)
 }
 
+func addProblemHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	contestID := r.FormValue("contest")
+	letter := strings.ToUpper(r.FormValue("letter"))
+	if contestID == "" || letter == "" {
+		http.Error(w, "missing parameters", http.StatusBadRequest)
+		return
+	}
+	c := contests[contestID]
+	if c == nil {
+		http.NotFound(w, r)
+		return
+	}
+	stmtPath := filepath.Join(c.Path, "problem"+letter+".txt")
+	if _, err := os.Stat(stmtPath); err == nil {
+		http.Error(w, "problem already exists", http.StatusBadRequest)
+		return
+	}
+	if err := os.WriteFile(stmtPath, []byte{}, 0644); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	c.Problems = append(c.Problems, letter)
+	sort.Strings(c.Problems)
+	w.Write([]byte("problem added"))
+}
+
 func leaderboardHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/leaderboard" {
 		http.NotFound(w, r)
@@ -532,6 +562,7 @@ func main() {
 	}
 	defer db.Close()
 	http.HandleFunc("/", rootHandler)
+	http.HandleFunc("/addproblem", addProblemHandler)
 	http.HandleFunc("/contest/", func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/contest/"), "/")
 		if len(parts) == 0 || parts[0] == "" {
