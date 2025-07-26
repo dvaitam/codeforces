@@ -1,0 +1,1 @@
+Given two integers a and b, output their product.
