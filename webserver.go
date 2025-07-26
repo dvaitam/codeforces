@@ -50,6 +50,25 @@ var contestTmpl = template.Must(template.New("contest").Parse(`
 <li><a href="/contest/{{$.ID}}/problem/{{.}}">Problem {{.}}</a></li>
 {{end}}
 </ul>
+<h2>Add Problem</h2>
+<form action="/addproblem" method="post">
+<input type="hidden" name="contest" value="{{.ID}}">
+Letter: <input name="letter"><br>
+<textarea name="statement" rows="10" cols="80"></textarea><br>
+<input type="submit" value="Add Problem">
+</form>
+</body></html>`))
+
+var addProblemTmpl = template.Must(template.New("addproblem").Parse(`
+<!DOCTYPE html>
+<html><body>
+<h1>Add Problem</h1>
+<form action="/addproblem" method="post">
+Contest ID: <input name="contest" value="{{.Contest}}"><br>
+Letter: <input name="letter" value="{{.Letter}}"><br>
+<textarea name="statement" rows="10" cols="80">{{.Statement}}</textarea><br>
+<input type="submit" value="Add Problem">
+</form>
 </body></html>`))
 
 var problemTmpl = template.Must(template.New("problem").Parse(`
@@ -383,33 +402,42 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func addProblemHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+	switch r.Method {
+	case http.MethodGet:
+		addProblemTmpl.Execute(w, map[string]string{
+			"Contest":   r.URL.Query().Get("contest"),
+			"Letter":    r.URL.Query().Get("letter"),
+			"Statement": "",
+		})
+		return
+	case http.MethodPost:
+		contestID := r.FormValue("contest")
+		letter := strings.ToUpper(r.FormValue("letter"))
+		statement := r.FormValue("statement")
+		if contestID == "" || letter == "" {
+			http.Error(w, "missing parameters", http.StatusBadRequest)
+			return
+		}
+		c := contests[contestID]
+		if c == nil {
+			http.NotFound(w, r)
+			return
+		}
+		stmtPath := filepath.Join(c.Path, "problem"+letter+".txt")
+		if _, err := os.Stat(stmtPath); err == nil {
+			http.Error(w, "problem already exists", http.StatusBadRequest)
+			return
+		}
+		if err := os.WriteFile(stmtPath, []byte(statement), 0644); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		c.Problems = append(c.Problems, letter)
+		sort.Strings(c.Problems)
+		http.Redirect(w, r, "/contest/"+contestID+"/problem/"+letter, http.StatusSeeOther)
+	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
 	}
-	contestID := r.FormValue("contest")
-	letter := strings.ToUpper(r.FormValue("letter"))
-	if contestID == "" || letter == "" {
-		http.Error(w, "missing parameters", http.StatusBadRequest)
-		return
-	}
-	c := contests[contestID]
-	if c == nil {
-		http.NotFound(w, r)
-		return
-	}
-	stmtPath := filepath.Join(c.Path, "problem"+letter+".txt")
-	if _, err := os.Stat(stmtPath); err == nil {
-		http.Error(w, "problem already exists", http.StatusBadRequest)
-		return
-	}
-	if err := os.WriteFile(stmtPath, []byte{}, 0644); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	c.Problems = append(c.Problems, letter)
-	sort.Strings(c.Problems)
-	w.Write([]byte("problem added"))
 }
 
 func leaderboardHandler(w http.ResponseWriter, r *http.Request) {
