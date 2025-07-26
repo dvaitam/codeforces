@@ -1,0 +1,6 @@
+Description:
+Given an integer n (0 <= n <= 10), output n! (factorial of n).
+Input Format:
+Single integer n.
+Output Format:
+Single integer equal to n factorial.

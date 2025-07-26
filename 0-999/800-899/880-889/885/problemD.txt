@@ -1,0 +1,6 @@
+Description:
+Given a string s, output its reverse.
+Input Format:
+String consisting of lowercase English letters.
+Output Format:
+String equal to reverse of s.
