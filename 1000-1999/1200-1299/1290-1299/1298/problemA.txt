@@ -1,0 +1,8 @@
+Description:
+You are given four integers which are the pairwise sums and total sum of three unknown integers.
+Each of the four integers is in random order and represents one of: x+y, x+z, y+z, and x+y+z.
+Recover the original integers x, y, z.
+Input Format:
+One line with four integers.
+Output Format:
+Three integers x, y, z that satisfy the given sums.
