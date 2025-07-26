@@ -1,0 +1,10 @@
+Description:
+Given an array of n integers, consider all consecutive triples.
+Count unordered pairs of triples that share at least two equal elements.
+
+Input Format:
+First line contains t.
+Each test case has integer n followed by n integers.
+
+Output Format:
+For each test case output the count as integer.
