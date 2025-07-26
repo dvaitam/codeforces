@@ -27,7 +27,12 @@ func compileRef(src string) (string, error) {
 }
 
 func runBinary(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -51,7 +56,7 @@ func genTest() string {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("usage: go run verifierC.go /path/to/binary")
+		fmt.Println("usage: go run verifierC.go [--] /path/to/binary_or_source.go")
 		os.Exit(1)
 	}
 	candidate, _ := filepath.Abs(os.Args[1])
