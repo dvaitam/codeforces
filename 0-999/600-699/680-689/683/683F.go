@@ -7,39 +7,39 @@ import (
 	"strings"
 )
 
+func isLetter(c byte) bool {
+	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+}
+
 func main() {
 	reader := bufio.NewReader(os.Stdin)
-	input, _ := reader.ReadString('\n')
-	input = strings.TrimRight(input, "\n\r")
+	line, _ := reader.ReadString('\n')
+	line = strings.TrimRight(line, "\n\r")
 
-	tokens := make([]string, 0)
-	n := len(input)
-	for i := 0; i < n; {
-		ch := input[i]
-		if ch == ' ' {
+	var tokens []string
+	for i := 0; i < len(line); {
+		switch line[i] {
+		case ' ':
 			i++
-			continue
-		}
-		if ch == '.' || ch == ',' {
-			tokens = append(tokens, string(ch))
+		case '.', ',':
+			tokens = append(tokens, line[i:i+1])
 			i++
-			continue
-		}
-		j := i
-		for j < n {
-			c := input[j]
-			if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
-				j++
+		default:
+			if isLetter(line[i]) {
+				j := i
+				for j < len(line) && isLetter(line[j]) {
+					j++
+				}
+				tokens = append(tokens, line[i:j])
+				i = j
 			} else {
-				break
+				i++
 			}
 		}
-		tokens = append(tokens, input[i:j])
-		i = j
 	}
 
 	var sb strings.Builder
-	sentenceStart := true
+	capNext := true
 	for idx, tok := range tokens {
 		if tok == "." || tok == "," {
 			sb.WriteString(tok)
@@ -47,17 +47,18 @@ func main() {
 				sb.WriteByte(' ')
 			}
 			if tok == "." {
-				sentenceStart = true
+				capNext = true
 			}
 			continue
 		}
+
 		word := strings.ToLower(tok)
-		if sentenceStart && len(word) > 0 {
+		if capNext && len(word) > 0 {
 			sb.WriteString(strings.ToUpper(string(word[0])))
 			if len(word) > 1 {
 				sb.WriteString(word[1:])
 			}
-			sentenceStart = false
+			capNext = false
 		} else {
 			sb.WriteString(word)
 		}
