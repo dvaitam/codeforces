@@ -1,0 +1,1 @@
+Given integers a b c, output a+b-c.
