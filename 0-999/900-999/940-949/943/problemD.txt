@@ -1,0 +1,4 @@
+Problem D: Check Prime
+
+Input: an integer n.
+Output: YES if n is prime, otherwise NO.

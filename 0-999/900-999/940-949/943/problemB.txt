@@ -1,0 +1,4 @@
+Problem B: Multiply Two Numbers
+
+Input: two integers a and b.
+Output: their product.
