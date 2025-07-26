@@ -1,0 +1,10 @@
+Description:
+Given integer n (0 <= n <= 50), output the n-th Fibonacci number modulo 1e9+7.
+F(0)=0, F(1)=1.
+
+Input Format:
+First line t.
+Each test case has integer n.
+
+Output Format:
+For each test case output F(n).

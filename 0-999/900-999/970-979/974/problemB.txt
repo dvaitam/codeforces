@@ -1,0 +1,11 @@
+Description:
+You are given a string b of length n consisting of lowercase letters.
+Let letters appearing in b form a set S sorted increasingly.
+Create mapping that maps S[i] to S[len(S)-1-i]. Decode b using this mapping.
+
+Input Format:
+The first line contains t.
+Each test case has integer n and the string b on next line.
+
+Output Format:
+For each test case output the decoded string.

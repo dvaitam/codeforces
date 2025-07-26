@@ -1,0 +1,10 @@
+Description:
+Given x 1x1 icons and y 2x2 icons, each 5x3 screen can hold icons without overlap.
+Find the minimal number of screens required.
+
+Input Format:
+The first line contains t (1 <= t <= 1000).
+Each of the next t lines has two integers x and y (0 <= x,y <= 99).
+
+Output Format:
+For each test case output one integer - the minimal number of screens.
