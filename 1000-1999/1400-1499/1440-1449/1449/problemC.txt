@@ -1,0 +1,3 @@
+Greatest Common Divisor
+Input: two integers a and b.
+Output: gcd of a and b.
