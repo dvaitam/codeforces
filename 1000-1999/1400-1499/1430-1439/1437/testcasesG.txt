@@ -1,0 +1,100 @@
+3 3 c cab c 1 2 8 1 3 4 2 b
+2 3 bb bbb 1 1 4 1 2 7 1 2 8
+1 2 a 1 1 5 1 1 8
+1 1 ba 1 1 10
+1 2 a 2 ccb 2 c
+3 1 bab cbb b 1 1 3
+2 3 a bab 1 2 1 1 1 1 1 1 3
+3 2 c c bca 1 2 1 1 3 7
+1 1 bac 2 aaa
+3 3 bcc ccb abc 1 3 5 1 2 1 1 2 5
+2 3 bba acb 2 a 1 2 8 2 cc
+2 1 c b 2 bc
+3 2 b a bab 2 ab 1 2 8
+2 2 ac a 1 2 1 2 b
+2 1 ca ccb 1 2 2
+2 2 cbc ccc 1 1 2 1 2 6
+2 2 cba baa 2 cac 1 2 1
+3 3 cc c cbb 1 3 8 2 abb 2 bc
+3 3 bb a bb 1 1 2 1 3 10 2 c
+3 1 ccb a bbc 1 1 9
+3 2 ca b ba 2 ac 2 cc
+2 3 bbc ca 1 1 3 1 1 4 2 cac
+2 1 c a 2 a
+2 2 aa cbc 1 2 2 2 cbc
+2 2 cc a 2 ca 2 bbb
+3 3 ab c bba 1 3 8 2 b 1 3 0
+2 3 a acb 2 ac 2 a 1 1 8
+2 1 cba cc 1 1 6
+3 2 cb bbc c 1 2 4 1 2 1
+2 2 bba caa 2 bba 1 1 5
+1 2 cb 2 ca 2 b
+1 3 bb 2 a 2 c 1 1 6
+2 1 b bcb 1 2 4
+1 3 bbc 2 cc 2 aba 1 1 7
+3 3 ca cab cba 1 1 2 2 aa 2 b
+2 1 bb bbc 2 abb
+3 2 a bc cc 2 cb 2 abb
+3 2 c b b 1 2 1 1 2 8
+3 2 acc c bca 2 c 2 c
+3 2 ac a bab 2 a 1 2 8
+1 3 c 2 abc 1 1 4 1 1 7
+2 2 ab c 1 1 9 1 1 1
+1 3 bbc 2 a 1 1 1 1 1 8
+1 3 cc 1 1 9 1 1 4 2 ac
+1 3 ab 2 caa 2 a 1 1 8
+1 2 aca 2 c 1 1 1
+2 2 cc bb 2 aab 1 2 2
+2 2 b ca 2 ba 2 cac
+3 1 aaa abb c 2 cca
+1 2 aaa 1 1 2 1 1 2
+3 1 a caa a 1 1 6
+3 3 ccc bcc c 2 bba 2 cab 1 1 3
+2 1 ba bab 2 ab
+3 2 cab cab acb 2 bcb 2 bc
+3 1 b a bb 2 ba
+1 1 c 2 c
+3 3 ba ccb a 1 3 3 1 3 3 1 2 9
+3 3 bac abc bbb 1 3 4 1 3 6 1 1 10
+1 3 b 2 b 1 1 8 1 1 4
+3 1 b bb bbc 2 cb
+3 2 bac b abb 2 cb 1 1 0
+2 3 a a 2 bc 2 b 1 1 3
+3 2 cc b c 2 ab 2 b
+1 2 b 1 1 0 1 1 8
+3 2 bca a b 1 1 1 1 1 8
+2 3 b a 2 aca 2 aa 2 aab
+3 1 c bc aa 1 1 8
+1 1 cc 1 1 3
+2 1 a b 1 2 1
+3 3 bcc cc ca 1 1 4 2 bc 1 2 4
+3 2 a a aa 2 ab 1 3 5
+2 3 ab cba 1 2 4 1 1 6 2 abc
+3 2 bb bb bba 1 3 8 2 aba
+2 3 ccb c 2 caa 1 1 5 1 1 3
+1 1 cca 2 cbb
+1 3 ca 2 aba 2 aa 2 c
+3 3 c cb baa 2 cb 2 bbb 2 ca
+3 3 a bc cba 1 2 9 1 3 10 2 ab
+3 2 cca aab bc 2 ca 1 2 1
+1 1 ccb 1 1 7
+2 1 aa a 1 2 7
+2 1 ba cab 2 cca
+1 2 cbb 1 1 8 2 c
+2 2 c bcb 1 1 10 2 caa
+1 3 ca 2 ab 1 1 3 2 a
+2 1 bca aca 2 a
+3 3 ca acc bb 1 1 8 1 2 2 1 2 7
+1 2 b 1 1 3 1 1 1
+2 3 cab a 2 aca 2 a 1 1 1
+2 2 c c 2 c 2 cb
+3 2 cac a ba 1 3 3 1 2 6
+2 2 c b 2 ab 1 1 1
+3 1 aa cc aba 1 3 0
+2 1 a a 1 1 10
+1 2 cb 2 ccc 1 1 6
+2 3 bb a 1 1 6 2 c 2 cc
+3 3 b aa ba 1 3 3 2 cb 2 a
+3 1 ab ccc c 2 a
+3 2 bc cb bab 1 1 5 2 a
+2 3 cab cc 1 1 4 1 2 4 2 c
