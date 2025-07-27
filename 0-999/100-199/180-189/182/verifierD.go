@@ -10,7 +10,9 @@ import (
 	"strings"
 )
 
-const refDirD = "./0-999/100-199/180-189/182"
+// refDirD references the directory of this verifier. The evaluation driver
+// runs the verifier with its working directory already set here, so use ".".
+const refDirD = "."
 
 func runBinary(path, input string) (string, error) {
 	cmd := exec.Command(path)

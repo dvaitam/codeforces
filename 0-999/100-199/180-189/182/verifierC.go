@@ -10,7 +10,9 @@ import (
 	"strings"
 )
 
-const refDirC = "./0-999/100-199/180-189/182"
+// refDirC refers to the directory containing the verifier and solutions.
+// The evaluator already sets the working directory to this folder.
+const refDirC = "."
 
 func runBinary(path, input string) (string, error) {
 	cmd := exec.Command(path)
