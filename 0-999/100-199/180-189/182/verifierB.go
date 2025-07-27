@@ -10,7 +10,10 @@ import (
 	"strings"
 )
 
-const refDirB = "./0-999/100-199/180-189/182"
+// refDirB points to the directory containing the solution and verifier.
+// The evaluator executes this verifier with that directory as the working
+// directory, so "." is sufficient.
+const refDirB = "."
 
 func runBinary(path, input string) (string, error) {
 	cmd := exec.Command(path)
