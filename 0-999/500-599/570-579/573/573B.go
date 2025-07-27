@@ -14,10 +14,12 @@ func main() {
 	for i := 0; i < n; i++ {
 		fmt.Fscan(in, &h[i])
 	}
-	if n == 1 {
-		fmt.Println(h[0])
-		return
-	}
+       if n == 1 {
+               // When there's only one tower all blocks disappear in a single
+               // operation, regardless of its height.
+               fmt.Println(1)
+               return
+       }
 	left := make([]int, n)
 	right := make([]int, n)
 	left[0] = 1
