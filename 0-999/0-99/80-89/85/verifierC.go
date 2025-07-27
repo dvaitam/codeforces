@@ -125,7 +125,7 @@ func generateCase(rng *rand.Rand) string {
 
 func buildOracle() (string, error) {
 	exe := "oracleC"
-	cmd := exec.Command("go", "build", "-o", exe, "./0-999/0-99/80-89/85/85C.go")
+	cmd := exec.Command("go", "build", "-o", exe, "85C.go")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle: %v\n%s", err, out)
 	}
