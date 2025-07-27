@@ -1,0 +1,3 @@
+Primality Check
+Input: integer n.
+Output: YES if n is prime, otherwise NO.
