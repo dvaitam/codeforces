@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 )
 
 func runTests(dir, binary string) error {
@@ -32,8 +33,10 @@ func runTests(dir, binary string) error {
 		if err != nil {
 			return fmt.Errorf("%s: %v", filepath.Base(inFile), err)
 		}
-		if string(out) != string(expected) {
-			return fmt.Errorf("%s: expected\n%sbut got\n%s", filepath.Base(inFile), expected, out)
+		got := strings.TrimSpace(string(out))
+		want := strings.TrimSpace(string(expected))
+		if got != want {
+			return fmt.Errorf("%s: expected\n%sbut got\n%s", filepath.Base(inFile), want, got)
 		}
 	}
 	return nil
