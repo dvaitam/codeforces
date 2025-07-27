@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -326,7 +327,26 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 			defer cancel()
 			cmd := exec.CommandContext(ctx, "go", "run", filepath.Base(verifier), exe)
 			cmd.Dir = c.Path
-			res, err := cmd.CombinedOutput()
+			cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+			var res []byte
+			var err error
+			done := make(chan struct{})
+			go func() {
+				res, err = cmd.CombinedOutput()
+				close(done)
+			}()
+
+			select {
+			case <-ctx.Done():
+				if cmd.Process != nil {
+					pgid, _ := syscall.Getpgid(cmd.Process.Pid)
+					syscall.Kill(-pgid, syscall.SIGKILL)
+				}
+				<-done
+			case <-done:
+			}
+
 			output.Write(res)
 			if ctx.Err() == context.DeadlineExceeded {
 				output.WriteString("\nVerifier timed out after 10 seconds")
