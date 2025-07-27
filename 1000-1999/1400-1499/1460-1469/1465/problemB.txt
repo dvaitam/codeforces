@@ -1,0 +1,31 @@
+We call a positive integer number fair if it is divisible by each of its nonzero digits. For example, 102 102 is fair (because it is divisible by 1 1 and 2 2), but 282 282 is not, because it isn't divisible by 8 8. Given a positive integer n n. Find the minimum integer x x, such that n≤x n≤x and x x is fair.
+
+Input
+
+The first line contains number of test cases t t (1≤t≤10 3 1≤t≤10 3). Each of the next t t lines contains an integer n n (1≤n≤10 18 1≤n≤10 18).
+
+Output
+
+For each of t t test cases print a single integer— the least fair number, which is not less than n n.
+
+Example
+
+Input
+
+Copy
+
+4
+1
+282
+1234567890
+1000000000000000000
+
+Output
+
+Copy
+
+1
+288
+1234568040
+1000000000000000000
+
