@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -250,21 +251,40 @@ func runVerifier(verifierFile, tempBinAbs string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "go", "run", verifierAbs, tempBinAbs)
+	// Use a separate process group so we can kill all children on timeout
+	cmd := exec.Command("go", "run", verifierAbs, tempBinAbs)
 	cmd.Dir = filepath.Dir(verifierAbs)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &stderr
-	err = cmd.Run()
 
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			fmt.Println("Verification timed out after 10 seconds")
+	if err := cmd.Start(); err != nil {
+		fmt.Printf("Error starting verifier: %v\n", err)
+		return false
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Wait()
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			fmt.Printf("Verifier failed: %v\n", err)
+			fmt.Printf("Verifier stderr: %s\n", stderr.String())
 			return false
 		}
-		fmt.Printf("Verifier failed: %v\n", err)
+	case <-ctx.Done():
+		pgid, _ := syscall.Getpgid(cmd.Process.Pid)
+		syscall.Kill(-pgid, syscall.SIGKILL)
+		<-done
+		fmt.Println("Verification timed out after 10 seconds")
+		fmt.Printf("Verifier stdout: %s\n", out.String())
+		fmt.Printf("Verifier stderr: %s\n", stderr.String())
 		return false
 	}
 
