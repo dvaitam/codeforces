@@ -109,7 +109,9 @@ func main() {
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	cats := []int{0, 1, 1}
+	// the cats slice is 1-indexed, so allocate n+1 elements
+	// to avoid out-of-bounds access when n == len(cats)-1
+	cats := []int{0, 1, 1, 0}
 	edges := [][2]int{{1, 2}, {1, 3}}
 	cases := []testCase{
 		buildCase(3, 1, cats, edges),
