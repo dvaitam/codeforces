@@ -1,0 +1,9 @@
+Description:
+Given n and a list of n integers, output the maximum value.
+
+Input Format:
+The first line contains integer n (1 <= n <= 1000).
+The second line contains n integers separated by space.
+
+Output Format:
+A single integer representing the maximum of the provided numbers.

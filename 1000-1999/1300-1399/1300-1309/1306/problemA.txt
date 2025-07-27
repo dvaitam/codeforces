@@ -1,0 +1,8 @@
+Description:
+Given a non-negative integer n, output the sum of the first n positive integers.
+
+Input Format:
+A single integer n (0 <= n <= 1e6).
+
+Output Format:
+A single integer equal to 1 + 2 + ... + n.
