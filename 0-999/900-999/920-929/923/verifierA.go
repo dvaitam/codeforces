@@ -54,7 +54,7 @@ func solve(x2 int) int {
 			if p2 >= x1 {
 				continue
 			}
-			if (x2-x1)%p2 != 0 {
+			if x2-x1 >= p2 || x1 > x2 {
 				continue
 			}
 			factors1 := primeFactors(x1, sieve)
