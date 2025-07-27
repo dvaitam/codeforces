@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
@@ -22,28 +23,35 @@ func solveCase(in string) string {
 	fmt.Sscan(fields[1], &m)
 	lines := strings.Split(strings.TrimSpace(in), "\n")
 	grid := lines[1 : 1+n]
-	colCount := make([]int, m)
+
+	// dp[i][j] holds the number of consecutive 1's ending at column j in row i
+	dp := make([][]int, n)
 	for i := 0; i < n; i++ {
-		row := grid[i]
+		dp[i] = make([]int, m)
 		for j := 0; j < m; j++ {
-			if row[j] == '1' {
-				colCount[j]++
+			if grid[i][j] == '1' {
+				if j == 0 {
+					dp[i][j] = 1
+				} else {
+					dp[i][j] = dp[i][j-1] + 1
+				}
 			}
 		}
 	}
-	freq := make([]int, n+1)
-	for _, c := range colCount {
-		if c >= 0 && c <= n {
-			freq[c]++
-		}
-	}
-	eligible := 0
+
 	maxArea := 0
-	for h := n; h >= 1; h-- {
-		eligible += freq[h]
-		area := h * eligible
-		if area > maxArea {
-			maxArea = area
+	colHeights := make([]int, n)
+	for j := 0; j < m; j++ {
+		// gather column j widths and sort descending
+		for i := 0; i < n; i++ {
+			colHeights[i] = dp[i][j]
+		}
+		sort.Slice(colHeights, func(a, b int) bool { return colHeights[a] > colHeights[b] })
+		for i := 0; i < n; i++ {
+			area := colHeights[i] * (i + 1)
+			if area > maxArea {
+				maxArea = area
+			}
 		}
 	}
 	return fmt.Sprint(maxArea)
