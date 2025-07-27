@@ -6,51 +6,44 @@ import (
 	"os"
 )
 
-func min(a, b int64) int64 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func main() {
 	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
-	defer out.Flush()
-
 	var n int
 	if _, err := fmt.Fscan(in, &n); err != nil {
 		return
 	}
-
-	h := make([]int64, n+2) // h[0] and h[n+1] are 0 (outside)
-	for i := 1; i <= n; i++ {
-		fmt.Fscan(in, &h[i])
+	a := make([]int64, n)
+	for i := 0; i < n; i++ {
+		fmt.Fscan(in, &a[i])
 	}
 
-	L := make([]int64, n+2)
-	R := make([]int64, n+2)
-
-	// left to right
+	const negInf int64 = -1 << 63 / 4
+	dp := make([]int64, n+1)
 	for i := 1; i <= n; i++ {
-		L[i] = min(h[i], L[i-1]+1)
+		dp[i] = negInf
 	}
-
-	// right to left
-	for i := n; i >= 1; i-- {
-		R[i] = min(h[i], R[i+1]+1)
-	}
-
-	var ans int64
-	for i := 1; i <= n; i++ {
-		t := 1 + min(L[i-1], R[i+1])
-		if t > h[i] {
-			t = h[i]
+	for _, v := range a {
+		next := make([]int64, n+1)
+		copy(next, dp)
+		for j := 0; j < n; j++ {
+			if dp[j] == negInf {
+				continue
+			}
+			val := dp[j] + int64(j+1)*v
+			if val > next[j+1] {
+				next[j+1] = val
+			}
 		}
-		if t > ans {
-			ans = t
+		dp = next
+	}
+	ans := negInf
+	for _, v := range dp {
+		if v > ans {
+			ans = v
 		}
 	}
-
-	fmt.Fprintln(out, ans)
+	if ans == negInf {
+		ans = 0
+	}
+	fmt.Println(ans)
 }
