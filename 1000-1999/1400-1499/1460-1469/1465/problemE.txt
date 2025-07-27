@@ -1,0 +1,57 @@
+You've got a string S S consisting of n n lowercase English letters from your friend. It turned out that this is a number written in poman numerals. The poman numeral system is long forgotten. All that's left is the algorithm to transform number from poman numerals to the numeral system familiar to us. Characters of S S are numbered from 1 1 to n n from left to right. Let's denote the value of S S as f(S)f(S), it is defined as follows:
+
+*    If |S|>1|S|>1, an arbitrary integer m m (1≤m<|S|1≤m<|S|) is chosen, and it is defined that f(S)=−f(S[1,m])+f(S[m+1,|S|])f(S)=−f(S[1,m])+f(S[m+1,|S|]), where S[l,r]S[l,r] denotes the substring of S S from the l l-th to the r r-th position, inclusively. 
+*    Otherwise S=c S=c, where c c is some English letter. Then f(S)=2 p o s(c)f(S)=2 p o s(c), where p o s(c)p o s(c) is the position of letter c c in the alphabet (p o s(p o s(a)=0)=0, p o s(p o s(z)=25)=25). 
+
+Note that m m is chosen independently on each step.
+
+Your friend thinks it is possible to get f(S)=T f(S)=T by choosing the right m m on every step. Is he right?
+
+Input
+
+The first line contains two integers n n and T T (2≤n≤10 5 2≤n≤10 5, −10 15≤T≤10 15−10 15≤T≤10 15).
+
+The second line contains a string S S consisting of n n lowercase English letters.
+
+Output
+
+Print "Yes" if it is possible to get the desired value. Otherwise, print "No".
+
+You can print each letter in any case (upper or lower).
+
+Examples
+
+Input
+
+Copy
+
+2 -1
+ba
+
+Output
+
+Copy
+
+Yes
+
+Input
+
+Copy
+
+3 -7
+abc
+
+Output
+
+Copy
+
+No
+
+Input
+
+Copy
+
+7 -475391
+qohshra
+
+Output
