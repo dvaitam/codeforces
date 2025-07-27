@@ -1,0 +1,3 @@
+Problem C - Fibonacci Mod
+Input: A single integer n (0 <= n <= 50).
+Output: The n-th Fibonacci number modulo 1e9+7. F(0)=0, F(1)=1.

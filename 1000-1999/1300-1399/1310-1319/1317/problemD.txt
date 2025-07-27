@@ -1,0 +1,3 @@
+Problem D - Factorial
+Input: A single integer n (0 <= n <= 20).
+Output: n factorial.
