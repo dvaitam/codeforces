@@ -28,22 +28,18 @@ func main() {
 		fmt.Fscan(reader, &n, &a, &b)
 		var s string
 		fmt.Fscan(reader, &s)
-		dp0 := make([]int64, n+1)
-		dp1 := make([]int64, n+1)
-		for i := 0; i <= n; i++ {
-			dp0[i] = inf
-			dp1[i] = inf
-		}
-		dp0[0] = b
-		for i := 1; i <= n; i++ {
-			if s[i-1] == '1' {
-				dp0[i] = inf
-				dp1[i] = dp1[i-1] + a + 2*b
+
+		dp0, dp1 := b, inf
+		for i := 0; i < n; i++ {
+			if s[i] == '1' {
+				dp0 = inf
+				dp1 = dp1 + a + 2*b
 			} else {
-				dp0[i] = min(dp0[i-1]+a+b, dp1[i-1]+2*a+b)
-				dp1[i] = min(dp1[i-1]+a+2*b, dp0[i-1]+2*a+2*b)
+				ndp0 := min(dp0+a+b, dp1+2*a+b)
+				ndp1 := min(dp1+a+2*b, dp0+2*a+2*b)
+				dp0, dp1 = ndp0, ndp1
 			}
 		}
-		fmt.Fprintln(writer, dp0[n])
+		fmt.Fprintln(writer, dp0)
 	}
 }
