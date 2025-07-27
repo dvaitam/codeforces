@@ -1,0 +1,8 @@
+Description:
+Given a string s, output its reverse.
+
+Input Format:
+A single line containing a string s consisting of lowercase letters (1 <= |s| <= 100).
+
+Output Format:
+The reverse of s.

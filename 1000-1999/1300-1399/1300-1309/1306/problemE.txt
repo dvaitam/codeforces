@@ -1,0 +1,9 @@
+Description:
+Given an integer n, compute the n-th Fibonacci number modulo 1e9+7.
+F(0)=0, F(1)=1, F(n)=F(n-1)+F(n-2).
+
+Input Format:
+A single integer n (0 <= n <= 1000).
+
+Output Format:
+A single integer equal to F(n) mod 1e9+7.

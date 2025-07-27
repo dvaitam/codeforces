@@ -1,0 +1,8 @@
+Description:
+Compute the greatest common divisor of two positive integers a and b.
+
+Input Format:
+A single line with two integers a and b (1 <= a, b <= 1e9).
+
+Output Format:
+A single integer equal to gcd(a, b).
