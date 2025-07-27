@@ -63,7 +63,8 @@ func genTests() []string {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierB.go /path/to/binary")
+		fmt.Println("usage: go run verifierB.go -- /path/to/solution")
+		fmt.Println("       (pass a compiled binary or a .go file)")
 		os.Exit(1)
 	}
 	candPath, err := prepareBinary(os.Args[1], "candB")

@@ -22,7 +22,8 @@ All Go utilities build with the standard tooling. Example:
 
 ```bash
 cd 1000-1999/1900-1999/1990-1999/1994
-go run verifierA.go ./1994A
+go build -o solA 1994A.go
+go run verifierA.go ./solA
 ```
 
 This repository aims to provide a complete archive. We expect to have all solutions and verifiers within a week. Feel free to use the code or utilities as a reference for your own workflow.
@@ -32,8 +33,10 @@ example, contest 90 provides verifiers for problems A and B:
 
 ```bash
 cd 0-999/0-99/90-99/90
-go run verifierA.go ./mySolutionA
-go run verifierB.go ./mySolutionB
+go build -o myA mySolutionA.go
+go build -o myB mySolutionB.go
+go run verifierA.go ./myA
+go run verifierB.go ./myB
 ```
 
 ## Running the local webserver
