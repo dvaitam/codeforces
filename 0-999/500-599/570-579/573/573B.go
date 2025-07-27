@@ -6,49 +6,51 @@ import (
 	"os"
 )
 
+func min(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func main() {
 	in := bufio.NewReader(os.Stdin)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+
 	var n int
-	fmt.Fscan(in, &n)
-	h := make([]int, n)
-	for i := 0; i < n; i++ {
-		fmt.Fscan(in, &h[i])
-	}
-	if n == 1 {
-		fmt.Println(h[0])
+	if _, err := fmt.Fscan(in, &n); err != nil {
 		return
 	}
-	left := make([]int, n)
-	right := make([]int, n)
-	left[0] = 1
-	if left[0] > h[0] {
-		left[0] = h[0]
+
+	h := make([]int64, n+2) // h[0] and h[n+1] are 0 (outside)
+	for i := 1; i <= n; i++ {
+		fmt.Fscan(in, &h[i])
 	}
-	for i := 1; i < n; i++ {
-		left[i] = left[i-1] + 1
-		if left[i] > h[i] {
-			left[i] = h[i]
+
+	L := make([]int64, n+2)
+	R := make([]int64, n+2)
+
+	// left to right
+	for i := 1; i <= n; i++ {
+		L[i] = min(h[i], L[i-1]+1)
+	}
+
+	// right to left
+	for i := n; i >= 1; i-- {
+		R[i] = min(h[i], R[i+1]+1)
+	}
+
+	var ans int64
+	for i := 1; i <= n; i++ {
+		t := 1 + min(L[i-1], R[i+1])
+		if t > h[i] {
+			t = h[i]
+		}
+		if t > ans {
+			ans = t
 		}
 	}
-	right[n-1] = 1
-	if right[n-1] > h[n-1] {
-		right[n-1] = h[n-1]
-	}
-	for i := n - 2; i >= 0; i-- {
-		right[i] = right[i+1] + 1
-		if right[i] > h[i] {
-			right[i] = h[i]
-		}
-	}
-	ans := 0
-	for i := 0; i < n; i++ {
-		v := left[i]
-		if right[i] < v {
-			v = right[i]
-		}
-		if v > ans {
-			ans = v
-		}
-	}
-	fmt.Println(ans)
+
+	fmt.Fprintln(out, ans)
 }
