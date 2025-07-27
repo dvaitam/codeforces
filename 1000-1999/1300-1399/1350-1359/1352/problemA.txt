@@ -1,0 +1,6 @@
+Description:
+Given an integer n, represent it as a sum of round numbers. A round number has exactly one non-zero digit and any number of trailing zeros. For example, 400 or 50.
+Input Format:
+The first line contains t, the number of test cases. Each test case consists of a single integer n.
+Output Format:
+For each test case output the count of round numbers followed by the numbers themselves.
