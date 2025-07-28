@@ -84,18 +84,65 @@ func solve(a []int) (int, []int) {
 	return changes, a
 }
 
-func expected(a []int) string {
-	c, arr := solve(a)
-	var sb strings.Builder
-	sb.WriteString(strconv.Itoa(c))
-	sb.WriteByte('\n')
-	for i, v := range arr {
-		if i > 0 {
-			sb.WriteByte(' ')
-		}
-		sb.WriteString(strconv.Itoa(v))
+func validateOutput(orig []int, out string, expectChanges int) error {
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 2 {
+		return fmt.Errorf("output should contain two lines")
 	}
-	return sb.String()
+	c, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+	if err != nil {
+		return fmt.Errorf("invalid first line: %v", err)
+	}
+	if c != expectChanges {
+		return fmt.Errorf("reported %d changes, expected %d", c, expectChanges)
+	}
+	fields := strings.Fields(lines[1])
+	if len(fields) != len(orig) {
+		return fmt.Errorf("expected %d numbers, got %d", len(orig), len(fields))
+	}
+	b := make([]int, len(orig))
+	diff := 0
+	for i, f := range fields {
+		v, err := strconv.Atoi(f)
+		if err != nil {
+			return fmt.Errorf("invalid integer on second line: %v", err)
+		}
+		if v < 1 || v > len(orig) {
+			return fmt.Errorf("value %d out of range", v)
+		}
+		b[i] = v
+		if v != orig[i] {
+			diff++
+		}
+	}
+	if diff != c {
+		return fmt.Errorf("reported %d changes but sequence differs in %d positions", c, diff)
+	}
+	root := -1
+	for i, v := range b {
+		if v == i+1 {
+			if root != -1 {
+				return fmt.Errorf("multiple roots")
+			}
+			root = i + 1
+		}
+	}
+	if root == -1 {
+		return fmt.Errorf("no root")
+	}
+	n := len(b)
+	for i := 1; i <= n; i++ {
+		vis := make(map[int]bool)
+		v := i
+		for !vis[v] {
+			vis[v] = true
+			v = b[v-1]
+		}
+		if v != root {
+			return fmt.Errorf("cycle not ending at root")
+		}
+	}
+	return nil
 }
 
 func main() {
@@ -133,15 +180,15 @@ func main() {
 			v, _ := strconv.Atoi(fields[i+1])
 			nums[i] = v
 		}
-		want := expected(append([]int(nil), nums...))
+		minChanges, _ := solve(append([]int(nil), nums...))
 		input := fmt.Sprintf("%d\n%s\n", n, strings.Join(fields[1:], " "))
 		got, err := runCandidate(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
 			os.Exit(1)
 		}
-		if got != want {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected\n%s\ngot\n%s\n", idx, want, got)
+		if err := validateOutput(nums, got, minChanges); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
 			os.Exit(1)
 		}
 	}
