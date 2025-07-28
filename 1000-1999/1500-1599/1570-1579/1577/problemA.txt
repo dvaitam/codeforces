@@ -1,0 +1,2 @@
+Problem A: Array Sum
+Given an integer n followed by n integers, output the sum of these integers.

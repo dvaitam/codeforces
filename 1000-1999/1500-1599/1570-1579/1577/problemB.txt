@@ -1,0 +1,2 @@
+Problem B: Maximum Element
+Given an integer n followed by n integers, output the maximum of these integers.
