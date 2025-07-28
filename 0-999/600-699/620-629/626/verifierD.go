@@ -66,5 +66,10 @@ func main() {
 		}
 		fmt.Printf("case %d failed: expected %s got %s\n", i+1, t.Out, got)
 	}
-	fmt.Printf("passed %d/%d\n", passed, len(tests))
+	if passed == len(tests) {
+		fmt.Println("All tests passed")
+	} else {
+		fmt.Printf("passed %d/%d\n", passed, len(tests))
+		os.Exit(1)
+	}
 }
