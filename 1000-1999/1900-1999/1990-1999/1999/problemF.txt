@@ -1,0 +1,4 @@
+Problem F - Fibonacci
+
+Input: A single integer n (1 <= n <= 20)
+Output: The nth Fibonacci number (F1=1, F2=1).

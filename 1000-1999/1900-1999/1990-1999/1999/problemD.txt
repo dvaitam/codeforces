@@ -1,0 +1,4 @@
+Problem D - Reverse String
+
+Input: A lowercase string s (1 <= |s| <= 20)
+Output: The string reversed.

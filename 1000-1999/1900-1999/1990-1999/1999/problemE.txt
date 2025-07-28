@@ -1,0 +1,4 @@
+Problem E - Sort Numbers
+
+Input: First an integer n (1 <= n <= 10) then n integers.
+Output: The integers sorted in nondecreasing order separated by spaces.

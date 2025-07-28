@@ -1,0 +1,4 @@
+Problem A - Square Number
+
+Input: A single integer n (1 <= n <= 1000)
+Output: Print n squared.

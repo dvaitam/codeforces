@@ -1,0 +1,4 @@
+Problem B - Greatest Common Divisor
+
+Input: Two integers a and b (1 <= a,b <= 1000)
+Output: Print gcd(a,b).
