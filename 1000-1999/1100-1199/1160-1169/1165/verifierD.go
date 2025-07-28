@@ -87,8 +87,15 @@ func main() {
 			var divs []int64
 			var ans int64
 			if valid {
-				x := int64(rand.Intn(5000) + 2)
-				d := divisors(x)
+				var x int64
+				var d []int64
+				for {
+					x = int64(rand.Intn(5000) + 2)
+					d = divisors(x)
+					if len(d) > 2 {
+						break
+					}
+				}
 				// remove 1 and x
 				var list []int64
 				for _, v := range d {
@@ -111,8 +118,16 @@ func main() {
 				}
 				if len(list) > 0 {
 					list[0]++ // modify to break
+					for solveQuery(append([]int64(nil), list...)) != -1 {
+						list[0]++
+					}
 				} else {
-					list = append(list, x+1)
+					v := x + 1
+					list = []int64{v}
+					for solveQuery([]int64{v}) != -1 {
+						v++
+						list[0] = v
+					}
 				}
 				divs = list
 				n = len(divs)
