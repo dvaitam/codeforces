@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -74,9 +75,28 @@ func main() {
 			fmt.Printf("candidate runtime error on test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(exp) != strings.TrimSpace(got) {
-			fmt.Printf("Test %d failed\nInput:%sExpected:%sGot:%s\n", i+1, input, exp, got)
+		expFields := strings.Fields(exp)
+		gotFields := strings.Fields(got)
+		if len(expFields) != len(gotFields) {
+			fmt.Printf("Test %d failed\nInput:%sExpected %d numbers got %d\n%s", i+1, input, len(expFields), len(gotFields), got)
 			os.Exit(1)
+		}
+		for j := range expFields {
+			var ef, gf float64
+			if _, err := fmt.Sscan(expFields[j], &ef); err != nil {
+				fmt.Printf("bad reference output on test %d: %v\n", i+1, err)
+				os.Exit(1)
+			}
+			if _, err := fmt.Sscan(gotFields[j], &gf); err != nil {
+				fmt.Printf("bad candidate output on test %d: %v\n", i+1, err)
+				os.Exit(1)
+			}
+			diff := math.Abs(ef - gf)
+			tol := 1e-6 * math.Max(1, math.Abs(ef))
+			if diff > tol {
+				fmt.Printf("Test %d failed\nInput:%sExpected:%sGot:%s\n", i+1, input, exp, got)
+				os.Exit(1)
+			}
 		}
 	}
 	fmt.Println("all tests passed")
