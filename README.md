@@ -1,6 +1,6 @@
 # Codeforces Solutions
 
-This repository collects solutions for Codeforces problems. We expect to have all solutions and verifiers within a week. The directory tree mirrors the contest numbers (`0-999`, `1000-1999`, `2000-2999`, ...). Inside each contest folder you will typically find:
+This repository collects solutions for Codeforces problems. The directory tree mirrors the contest numbers (`0-999`, `1000-1999`, `2000-2999`, ...). Inside each contest folder you will typically find:
 
 - `problemX.txt` – the problem statement or notes for problem X.
 - Solution files in Go or other languages (`1234A.go`, `solB.cpp`, etc.).
@@ -25,7 +25,7 @@ cd 1000-1999/1900-1999/1990-1999/1994
 go run verifierA.go ./1994A
 ```
 
-This repository aims to provide a complete archive. We expect to have all solutions and verifiers within a week. Feel free to use the code or utilities as a reference for your own workflow.
+This repository aims to provide a complete archive. Feel free to use the code or utilities as a reference for your own workflow.
 
 Some contests include verifier programs with deterministic test cases. For
 example, contest 90 provides verifiers for problems A and B:
