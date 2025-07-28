@@ -36,6 +36,14 @@ go run verifierA.go ./mySolutionA
 go run verifierB.go ./mySolutionB
 ```
 
+Contest 1989 includes verifiers for all six problems with at least 100 test
+cases each. Run them by passing the path to your executable. For example:
+
+```bash
+cd 1000-1999/1900-1999/1980-1989/1989
+go run verifierA.go ./1989A
+```
+
 ## Running the local webserver
 
 The `webserver.go` program lets you browse contests and test solutions
