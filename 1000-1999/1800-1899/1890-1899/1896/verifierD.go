@@ -1,0 +1,82 @@
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"math/rand"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+func generateInput() []byte {
+	r := rand.New(rand.NewSource(42))
+	t := 100
+	var buf bytes.Buffer
+	fmt.Fprintln(&buf, t)
+	for i := 0; i < t; i++ {
+		n := r.Intn(5) + 1
+		q := r.Intn(5) + 1
+		fmt.Fprintln(&buf, n, q)
+		for j := 0; j < n; j++ {
+			if j > 0 {
+				buf.WriteByte(' ')
+			}
+			fmt.Fprint(&buf, r.Intn(2)+1)
+		}
+		buf.WriteByte('\n')
+		for j := 0; j < q; j++ {
+			if r.Intn(2) == 0 {
+				s := r.Intn(2*n) + 1
+				fmt.Fprintln(&buf, 1, s)
+			} else {
+				idx := r.Intn(n) + 1
+				v := r.Intn(2) + 1
+				fmt.Fprintln(&buf, 2, idx, v)
+			}
+		}
+	}
+	return buf.Bytes()
+}
+
+func run(cmd *exec.Cmd, input []byte) ([]byte, error) {
+	cmd.Stdin = bytes.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	err := cmd.Run()
+	return out.Bytes(), err
+}
+
+func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("usage: go run verifierD.go /path/to/binary")
+		os.Exit(1)
+	}
+	input := generateInput()
+	refOut, err := run(exec.Command("go", "run", "1896D.go"), input)
+	if err != nil {
+		fmt.Println("reference solution error:", err)
+		fmt.Print(string(refOut))
+		os.Exit(1)
+	}
+	out, err := run(exec.Command(os.Args[1]), input)
+	if err != nil {
+		fmt.Println("solution runtime error:", err)
+		fmt.Print(string(out))
+		os.Exit(1)
+	}
+	refLines := strings.Split(strings.TrimSpace(string(refOut)), "\n")
+	outLines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if len(refLines) != len(outLines) {
+		fmt.Printf("mismatched lines: expected %d got %d\n", len(refLines), len(outLines))
+		os.Exit(1)
+	}
+	for i := range refLines {
+		if strings.TrimSpace(refLines[i]) != strings.TrimSpace(outLines[i]) {
+			fmt.Printf("mismatch on line %d: expected %q got %q\n", i+1, refLines[i], outLines[i])
+			os.Exit(1)
+		}
+	}
+	fmt.Println("all tests passed")
+}
