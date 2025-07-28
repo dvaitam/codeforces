@@ -48,10 +48,8 @@ func genCaseG(rng *rand.Rand) (string, int, [][2]interface{}) {
 	ops := make([][2]interface{}, m)
 	for i := 0; i < m; i++ {
 		pos := rng.Intn(n) + 1
-		mask := 0
-		letters := rng.Intn(1 << 6)
-		// ensure some letters chosen
-		mask = letters
+		// pick a non-empty subset of letters [a-f]
+		mask := rng.Intn((1<<6)-1) + 1
 		ops[i][0] = pos
 		ops[i][1] = mask
 	}
