@@ -1,0 +1,6 @@
+Boxers
+
+You are given n integers representing the weights of boxers. You may increase or decrease each weight by at most 1 (each boxer adjusted at most once). Determine the maximum number of distinct weights that can be achieved.
+
+Input: n and n integers.
+Output: maximum possible number of distinct weights.

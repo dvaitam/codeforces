@@ -1,0 +1,6 @@
+Two Shuffled Sequences
+
+Given n integers, determine if no integer appears more than twice. If any value occurs more than twice output NO. Otherwise output YES and two sequences: all distinct numbers in increasing order followed by numbers that appeared twice in decreasing order.
+
+Input: n and n integers.
+Output: either "NO" or "YES" followed by two lines with the sequences.

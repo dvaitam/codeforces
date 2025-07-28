@@ -1,0 +1,6 @@
+Median String
+
+Given k strings of equal length consisting of lowercase Latin letters, find a string that differs from each of them in at most one position. If multiple strings satisfy, output the lexicographically smallest. If no such string exists, output -1.
+
+Input: k and k strings.
+Output: resulting string or -1.
