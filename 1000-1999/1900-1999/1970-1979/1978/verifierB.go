@@ -18,7 +18,7 @@ type testCaseB struct {
 
 func genTestsB() []testCaseB {
 	rand.Seed(43)
-	tests := make([]testCaseB, 20)
+	tests := make([]testCaseB, 100)
 	for i := range tests {
 		tests[i] = testCaseB{
 			n: int64(rand.Intn(50) + 1),

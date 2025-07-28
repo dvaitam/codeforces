@@ -21,7 +21,7 @@ type testCaseE struct {
 
 func genTestsE() []testCaseE {
 	rand.Seed(46)
-	tests := make([]testCaseE, 20)
+	tests := make([]testCaseE, 100)
 	for i := range tests {
 		n := rand.Intn(3) + 3 // 3..5
 		s := randomBinary(n)
