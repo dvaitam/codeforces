@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
@@ -32,22 +33,22 @@ type testCase struct {
 	k int
 }
 
-func expected(tc testCase) string {
-	var sb strings.Builder
+func expectedSets(tc testCase) (int, []string) {
 	m := (6*tc.n - 1) * tc.k
-	sb.WriteString(fmt.Sprintf("%d\n", m))
+	sets := make([]string, tc.n)
 	for i := 0; i < tc.n; i++ {
 		x := 1 + 6*i
-		a := x * tc.k
-		b := (x + 2) * tc.k
-		c := (x + 4) * tc.k
-		d := (x + 1) * tc.k
-		if (x+1)%3 == 0 {
-			d = (x + 3) * tc.k
+		nums := []int{x * tc.k, (x + 2) * tc.k, (x + 4) * tc.k}
+		if (x+1)%3 != 0 {
+			nums = append(nums, (x+1)*tc.k)
+		} else {
+			nums = append(nums, (x+3)*tc.k)
 		}
-		sb.WriteString(fmt.Sprintf("%d %d %d %d\n", a, b, c, d))
+		sort.Ints(nums)
+		sets[i] = fmt.Sprintf("%d %d %d %d", nums[0], nums[1], nums[2], nums[3])
 	}
-	return strings.TrimSpace(sb.String())
+	sort.Strings(sets)
+	return m, sets
 }
 
 func generateRandomCase(rng *rand.Rand) testCase {
@@ -58,13 +59,41 @@ func generateRandomCase(rng *rand.Rand) testCase {
 
 func runCase(bin string, tc testCase) error {
 	input := fmt.Sprintf("%d %d\n", tc.n, tc.k)
-	exp := expected(tc)
 	out, err := runCandidate(bin, input)
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(out) != exp {
-		return fmt.Errorf("expected:\n%s\ngot:\n%s", exp, out)
+
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != tc.n+1 {
+		return fmt.Errorf("expected %d lines, got %d", tc.n+1, len(lines))
+	}
+
+	var mGot int
+	if _, err := fmt.Sscan(lines[0], &mGot); err != nil {
+		return fmt.Errorf("cannot parse m: %v", err)
+	}
+	mExp, expSets := expectedSets(tc)
+	if mGot != mExp {
+		return fmt.Errorf("expected m %d, got %d", mExp, mGot)
+	}
+
+	candSets := make([]string, tc.n)
+	for i := 0; i < tc.n; i++ {
+		var a, b, c, d int
+		if _, err := fmt.Sscan(lines[i+1], &a, &b, &c, &d); err != nil {
+			return fmt.Errorf("cannot parse set %d: %v", i+1, err)
+		}
+		nums := []int{a, b, c, d}
+		sort.Ints(nums)
+		candSets[i] = fmt.Sprintf("%d %d %d %d", nums[0], nums[1], nums[2], nums[3])
+	}
+	sort.Strings(candSets)
+
+	for i := range expSets {
+		if expSets[i] != candSets[i] {
+			return fmt.Errorf("expected set %s but got %s", expSets[i], candSets[i])
+		}
 	}
 	return nil
 }
