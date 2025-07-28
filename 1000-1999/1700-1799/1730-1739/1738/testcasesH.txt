@@ -1,0 +1,100 @@
+6 push b push a pop push c push c push a
+7 push a push b push c push a push c pop push b
+1 push a
+3 push a push c push c
+3 push c push b push c
+2 push c push c
+7 push b push b push a pop push a push b push b
+8 push a push b push b push b push c push c push b push b
+8 push b push a pop push c push c pop push c pop
+5 push c push b push c push a push b
+3 push b push b push b
+7 push a pop pop push b pop push b pop
+3 push a push a push c
+3 push a push c push c
+6 push c pop pop push c push c pop
+7 push b push c push a push a push a push a push c
+3 push b push a pop
+7 push b pop push b push b pop push b push a
+2 push c push c
+3 push a pop push a
+1 push b
+2 push b push a
+6 push c push c push a push a pop pop
+4 push b push a pop pop
+8 push c push b push c pop pop push a push b push a
+8 push c pop push c push c push c push b pop pop
+8 push b pop push c push b pop push a push a push c
+8 push a push c pop push b push c push a pop pop
+2 push a push a
+4 push a push a pop push c
+7 push a pop push b push c push c push a push a
+8 push c push a push b push a push b push c push a pop
+1 push b
+1 push c
+8 push a push c pop push a push b push b push a push b
+4 push a push b push a push b
+2 push b pop
+3 push c push a push a
+8 push a push b push c pop push b pop push b push b
+2 push a push b
+8 push b push c push a push a pop push b push a push a
+7 push c pop push a push c push c push b push c
+3 push a push a push b
+2 push a push a
+8 push c push b push a push a pop pop push a push b
+5 push a push c push b push a pop
+1 push c
+4 push a pop push c push b
+7 push b push a push c pop push b pop pop
+1 push c
+5 push a push b pop push b push c
+5 push a push b push b pop pop
+6 push b push a push b push b push a push a
+2 push a push c
+1 push b
+5 push a push c pop push c pop
+7 push c pop push c push a push c pop push c
+3 push c push a pop
+4 push a push b pop push b
+1 push c
+4 push a push a pop push c
+2 push a pop
+8 push a pop push a push c pop push b push c push a
+4 push a push c pop push c
+3 push a push c push a
+8 push c push b push a pop push b pop pop push b
+2 push b pop
+7 push a push a push c push b push c push a pop
+4 push b push a push b push b
+5 push b push b push b push b pop
+2 push a pop
+5 push a push c push b pop pop
+5 push c push a push b push b push b
+7 push c push c push c push c push c pop push b
+8 push c push b push b push c pop push b push b push c
+7 push c push a push b push b pop pop push a
+4 push a push a push b push c
+4 push c pop push c push b
+5 push a push c pop push c push a
+2 push a push c
+8 push b pop pop push a push b pop push a push c
+8 push a pop push a push c push c pop pop pop
+2 push a push a
+4 push a push b pop push c
+7 push a push b push c push b push c push c push b
+5 push c pop push c push a push b
+5 push a push c push a push c push b
+4 push c push b push b push b
+2 push a push a
+4 push b pop push c push a
+4 push c push c push b push a
+3 push c push b push c
+6 push a pop push a push c pop push c
+7 push b push a push b push b pop push a push b
+7 push c push b push b push b pop push c push c
+7 push a push a push c push c push b push c push c
+6 push b push c pop push a push a push c
+8 push b pop pop pop push b push c push c pop
+4 push b push c push a push a
+4 push c push c push a pop
