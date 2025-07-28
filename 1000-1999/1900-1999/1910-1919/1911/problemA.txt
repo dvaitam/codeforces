@@ -1,0 +1,6 @@
+Spy Detected!
+
+Given an array of n integers where all elements are equal except for a single element, output the 1-based index of this unique element.
+
+Input: n followed by n integers.
+Output: index of the unique element.

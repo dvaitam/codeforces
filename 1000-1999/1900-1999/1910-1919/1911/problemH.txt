@@ -1,0 +1,6 @@
+Two Merged Sequences
+
+Given two increasing sequences A and B, output the merged increasing sequence containing all elements from A and B.
+
+Input: n followed by n integers of A, then m followed by m integers of B.
+Output: merged sorted sequence.

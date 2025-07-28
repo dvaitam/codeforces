@@ -1,0 +1,6 @@
+Repeating Cipher
+
+Given a string s of length n, decode it by printing characters at positions 1, 1+2, 1+2+3, ... while the index is within the string.
+
+Input: n and string s.
+Output: decoded string.
