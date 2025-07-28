@@ -1,0 +1,115 @@
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"fmt"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+)
+
+func buildOracle() (string, error) {
+	exe := "oracleE"
+	cmd := exec.Command("go", "build", "-o", exe, "1838E.go")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("build oracle failed: %v\n%s", err, string(out))
+	}
+	return exe, nil
+}
+
+func runProg(exe, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(exe, ".go") {
+		cmd = exec.Command("go", "run", exe)
+	} else {
+		cmd = exec.Command(exe)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func main() {
+	if len(os.Args) < 2 {
+		fmt.Fprintln(os.Stderr, "Usage: go run verifierE.go /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[len(os.Args)-1]
+	data, err := os.ReadFile("testcasesE.txt")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "could not read testcasesE.txt:", err)
+		os.Exit(1)
+	}
+	oracle, err := buildOracle()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer os.Remove(oracle)
+
+	scan := bufio.NewScanner(bytes.NewReader(data))
+	scan.Split(bufio.ScanWords)
+	if !scan.Scan() {
+		fmt.Fprintln(os.Stderr, "invalid test file")
+		os.Exit(1)
+	}
+	t, _ := strconv.Atoi(scan.Text())
+	for caseNum := 1; caseNum <= t; caseNum++ {
+		if !scan.Scan() {
+			fmt.Fprintf(os.Stderr, "bad test case %d\n", caseNum)
+			os.Exit(1)
+		}
+		n, _ := strconv.Atoi(scan.Text())
+		if !scan.Scan() {
+			fmt.Fprintf(os.Stderr, "bad test case %d\n", caseNum)
+			os.Exit(1)
+		}
+		m, _ := strconv.Atoi(scan.Text())
+		if !scan.Scan() {
+			fmt.Fprintf(os.Stderr, "bad test case %d\n", caseNum)
+			os.Exit(1)
+		}
+		k, _ := strconv.Atoi(scan.Text())
+		arr := make([]int, n)
+		for i := 0; i < n; i++ {
+			if !scan.Scan() {
+				fmt.Fprintf(os.Stderr, "bad test case %d\n", caseNum)
+				os.Exit(1)
+			}
+			arr[i], _ = strconv.Atoi(scan.Text())
+		}
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "1\n%d %d %d\n", n, m, k)
+		for i, v := range arr {
+			if i > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.Itoa(v))
+		}
+		sb.WriteByte('\n')
+		input := sb.String()
+		exp, err := runProg("./"+oracle, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "oracle failure on case %d: %v\n", caseNum, err)
+			os.Exit(1)
+		}
+		got, err := runProg(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: %v\n", caseNum, err)
+			os.Exit(1)
+		}
+		if got != exp {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", caseNum, exp, got)
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", t)
+}

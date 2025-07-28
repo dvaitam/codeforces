@@ -1,0 +1,6 @@
+Teams Forming
+
+Given an even number n and n integers, pair them to minimize the sum of absolute differences in each pair. Output that minimal sum.
+
+Input: n and n integers (n is even).
+Output: minimal possible sum of differences when pairing.

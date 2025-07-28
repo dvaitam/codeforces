@@ -1,0 +1,1 @@
+Dummy Problem D2: Given n numbers, output their product modulo 1000000007.

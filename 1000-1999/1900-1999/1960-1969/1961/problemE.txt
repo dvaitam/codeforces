@@ -1,0 +1,9 @@
+Description:
+Given an array, output its maximum element.
+
+Input Format:
+The first line contains t (1 <= t <= 100).
+Each test consists of a line with n followed by n integers where 1 <= n <= 10 and each integer is between 1 and 100.
+
+Output Format:
+For each test case print the maximum of the given integers.

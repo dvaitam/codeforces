@@ -1,0 +1,1 @@
+Dummy Problem F: Given n numbers, output the minimum value.

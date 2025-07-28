@@ -1,0 +1,1 @@
+Dummy Problem C: Given a string s, output the reversed string.

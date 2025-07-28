@@ -1,0 +1,1 @@
+Dummy Problem E: Given n numbers, output the maximum value.

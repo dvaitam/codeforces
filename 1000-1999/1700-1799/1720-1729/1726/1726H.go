@@ -10,7 +10,7 @@ import (
 type pt struct{ x, y float64 }
 
 const (
-   pi  = math.Acos(-1)
+   pi  = math.Pi
    eps = 1e-8
 )
 

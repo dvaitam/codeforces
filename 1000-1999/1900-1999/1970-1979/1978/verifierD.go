@@ -23,7 +23,7 @@ type subset struct {
 
 func genTestsD() []testCaseD {
 	rand.Seed(45)
-	tests := make([]testCaseD, 20)
+	tests := make([]testCaseD, 100)
 	for i := range tests {
 		n := rand.Intn(5) + 2 // 2..6
 		a := make([]int, n)
