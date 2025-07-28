@@ -1,0 +1,4 @@
+Given integer n, compute the nth Fibonacci number.
+F_0 = 0, F_1 = 1, F_{n} = F_{n-1} + F_{n-2}.
+Input: n (0 <= n <= 92).
+Output: F_n.

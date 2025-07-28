@@ -1,0 +1,3 @@
+Given a string, output 1 if it is a palindrome, otherwise 0.
+Input: a single line string consisting of lowercase letters.
+Output: 1 or 0.
