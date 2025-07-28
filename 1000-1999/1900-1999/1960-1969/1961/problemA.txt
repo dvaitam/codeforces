@@ -1,0 +1,9 @@
+Description:
+Given two integers x and y, output them in nondecreasing order.
+
+Input Format:
+The first line contains a single integer t (1 <= t <= 100) — number of test cases.
+Each of the next t lines contains two integers x and y (0 <= x, y <= 9).
+
+Output Format:
+For each test case print two integers: the minimum of x and y followed by the maximum.

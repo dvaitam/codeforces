@@ -1,0 +1,9 @@
+Description:
+Compute n^m for given integers n and m.
+
+Input Format:
+The first line contains t (1 <= t <= 100).
+Each of the next t lines contains two integers n and m where 0 <= n, m <= 10.
+
+Output Format:
+For each test case output n raised to the power m.
