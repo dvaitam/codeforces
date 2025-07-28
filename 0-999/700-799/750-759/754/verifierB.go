@@ -99,23 +99,99 @@ func runCase(bin string, board [4]string) error {
 	return nil
 }
 
-func randBoard(rng *rand.Rand) [4]string {
-	var b [4]string
+func isWin(b [4][4]byte, ch byte) bool {
 	for i := 0; i < 4; i++ {
-		row := make([]byte, 4)
-		for j := 0; j < 4; j++ {
-			switch rng.Intn(3) {
-			case 0:
-				row[j] = '.'
-			case 1:
-				row[j] = 'x'
-			default:
-				row[j] = 'o'
+		for j := 0; j <= 1; j++ {
+			if b[i][j] == ch && b[i][j+1] == ch && b[i][j+2] == ch {
+				return true
 			}
 		}
-		b[i] = string(row)
 	}
-	return b
+	for j := 0; j < 4; j++ {
+		for i := 0; i <= 1; i++ {
+			if b[i][j] == ch && b[i+1][j] == ch && b[i+2][j] == ch {
+				return true
+			}
+		}
+	}
+	for i := 0; i <= 1; i++ {
+		for j := 0; j <= 1; j++ {
+			if b[i][j] == ch && b[i+1][j+1] == ch && b[i+2][j+2] == ch {
+				return true
+			}
+		}
+	}
+	for i := 0; i <= 1; i++ {
+		for j := 2; j < 4; j++ {
+			if b[i][j] == ch && b[i+1][j-1] == ch && b[i+2][j-2] == ch {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func randBoard(rng *rand.Rand) [4]string {
+	for {
+		var b [4][4]byte
+		for i := 0; i < 4; i++ {
+			for j := 0; j < 4; j++ {
+				b[i][j] = '.'
+			}
+		}
+
+		moves := rng.Intn(8) // number of X/O pairs played
+		valid := true
+		for m := 0; m < moves && valid; m++ {
+			var empties [][2]int
+			for i := 0; i < 4; i++ {
+				for j := 0; j < 4; j++ {
+					if b[i][j] == '.' {
+						empties = append(empties, [2]int{i, j})
+					}
+				}
+			}
+			if len(empties) == 0 {
+				valid = false
+				break
+			}
+			sel := empties[rng.Intn(len(empties))]
+			b[sel[0]][sel[1]] = 'x'
+			if isWin(b, 'x') {
+				valid = false
+				break
+			}
+
+			empties = empties[:0]
+			for i := 0; i < 4; i++ {
+				for j := 0; j < 4; j++ {
+					if b[i][j] == '.' {
+						empties = append(empties, [2]int{i, j})
+					}
+				}
+			}
+			if len(empties) == 0 {
+				valid = false
+				break
+			}
+			sel = empties[rng.Intn(len(empties))]
+			b[sel[0]][sel[1]] = 'o'
+			if isWin(b, 'o') {
+				valid = false
+				break
+			}
+		}
+
+		if !valid || isWin(b, 'x') || isWin(b, 'o') {
+			continue
+		}
+
+		var res [4]string
+		for i := 0; i < 4; i++ {
+			res[i] = string(b[i][:])
+		}
+		return res
+	}
 }
 
 func main() {
