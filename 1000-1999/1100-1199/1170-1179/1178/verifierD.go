@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -56,6 +57,48 @@ func nextPrime(n int) int {
 	return n
 }
 
+type edge struct{ u, v int }
+
+func parseOutput(out string) (int, []edge, error) {
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) == 0 {
+		return 0, nil, fmt.Errorf("empty output")
+	}
+	m, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+	if err != nil {
+		return 0, nil, fmt.Errorf("invalid first line: %v", err)
+	}
+	edges := make([]edge, 0, len(lines)-1)
+	for _, line := range lines[1:] {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) != 2 {
+			return 0, nil, fmt.Errorf("invalid edge line: %q", line)
+		}
+		u, err1 := strconv.Atoi(parts[0])
+		v, err2 := strconv.Atoi(parts[1])
+		if err1 != nil || err2 != nil {
+			return 0, nil, fmt.Errorf("invalid numbers in line: %q", line)
+		}
+		if u > v {
+			u, v = v, u
+		}
+		edges = append(edges, edge{u, v})
+	}
+	if len(edges) != m {
+		return 0, nil, fmt.Errorf("edge count mismatch: %d vs %d", m, len(edges))
+	}
+	sort.Slice(edges, func(i, j int) bool {
+		if edges[i].u == edges[j].u {
+			return edges[i].v < edges[j].v
+		}
+		return edges[i].u < edges[j].u
+	})
+	return m, edges, nil
+}
+
 func solveD(n int) string {
 	m := nextPrime(n)
 	var sb strings.Builder
@@ -79,13 +122,26 @@ func genCaseD(rng *rand.Rand) int {
 
 func runCaseD(bin string, n int) error {
 	input := fmt.Sprintf("%d\n", n)
-	expected := solveD(n)
-	out, err := run(bin, input)
+	expectedStr := solveD(n)
+	outStr, err := run(bin, input)
 	if err != nil {
 		return fmt.Errorf("runtime error: %v", err)
 	}
-	if out != expected {
-		return fmt.Errorf("expected:\n%s\n got:\n%s", expected, out)
+	_, expEdges, err := parseOutput(expectedStr)
+	if err != nil {
+		return fmt.Errorf("bad expected output: %v", err)
+	}
+	_, gotEdges, err := parseOutput(outStr)
+	if err != nil {
+		return fmt.Errorf("bad output: %v", err)
+	}
+	if len(expEdges) != len(gotEdges) {
+		return fmt.Errorf("edge count mismatch: expected %d got %d", len(expEdges), len(gotEdges))
+	}
+	for i := range expEdges {
+		if expEdges[i] != gotEdges[i] {
+			return fmt.Errorf("expected:\n%s\n got:\n%s", expectedStr, outStr)
+		}
 	}
 	return nil
 }
