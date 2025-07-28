@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -50,11 +52,19 @@ func main() {
 			fmt.Printf("case %d runtime error: %v\n", i+1, err)
 			continue
 		}
-		if got == strings.TrimSpace(t.Out) {
+		expectedVal, err1 := strconv.ParseFloat(strings.TrimSpace(t.Out), 64)
+		gotVal, err2 := strconv.ParseFloat(got, 64)
+		if err1 == nil && err2 == nil {
+			diff := math.Abs(expectedVal - gotVal)
+			if diff <= 1e-6*math.Max(1.0, math.Abs(expectedVal)) {
+				passed++
+				continue
+			}
+		} else if got == strings.TrimSpace(t.Out) {
 			passed++
-		} else {
-			fmt.Printf("case %d failed: expected %s got %s\n", i+1, t.Out, got)
+			continue
 		}
+		fmt.Printf("case %d failed: expected %s got %s\n", i+1, t.Out, got)
 	}
 	fmt.Printf("passed %d/%d\n", passed, len(tests))
 }
