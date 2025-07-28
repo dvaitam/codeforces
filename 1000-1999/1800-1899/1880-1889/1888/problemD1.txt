@@ -1,0 +1,1 @@
+Dummy Problem D1: Given n numbers, output their sum.
