@@ -1,0 +1,9 @@
+Description:
+Output the n-th Fibonacci number where F(0)=0 and F(1)=1.
+
+Input Format:
+The first line contains t (1 <= t <= 100).
+Each of the next t lines contains an integer n (0 <= n <= 20).
+
+Output Format:
+For each test case print F(n).

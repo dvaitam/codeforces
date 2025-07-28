@@ -1,0 +1,9 @@
+Description:
+For a given integer n, compute the sum of the first n positive integers.
+
+Input Format:
+The first line contains t (1 <= t <= 100).
+Each of the next t lines contains a single integer n (1 <= n <= 1000).
+
+Output Format:
+For each test case output n*(n+1)/2.

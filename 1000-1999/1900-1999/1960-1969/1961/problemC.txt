@@ -1,0 +1,9 @@
+Description:
+Given a lowercase string s, output its reversal.
+
+Input Format:
+The first line contains t (1 <= t <= 100).
+Each of the next t lines contains a string consisting of lowercase letters with length at most 10.
+
+Output Format:
+For each test case print the reversed string.
