@@ -1,0 +1,3 @@
+Given two integers a and b, output their product.
+Input: a b
+Output: a*b

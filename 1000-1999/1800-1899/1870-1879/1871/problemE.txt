@@ -1,0 +1,3 @@
+Given two integers a and b, output their greatest common divisor.
+Input: a b
+Output: gcd(a, b)
