@@ -3,10 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -144,6 +146,19 @@ func runProg(exe, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func parseFloats(out string) ([]float64, error) {
+	fields := strings.Fields(strings.TrimSpace(out))
+	res := make([]float64, len(fields))
+	for i, f := range fields {
+		v, err := strconv.ParseFloat(f, 64)
+		if err != nil {
+			return nil, err
+		}
+		res[i] = v
+	}
+	return res, nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierC.go /path/to/binary")
@@ -159,19 +174,36 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input := generateCase(rng)
-		exp, err := runProg("./"+oracle, input)
+		expOut, err := runProg("./"+oracle, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle failure on case %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		got, err := runProg(bin, input)
+		expVals, err := parseFloats(expOut)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "oracle output parse error on case %d: %v\ninput:\n%s", i+1, err, input)
+			os.Exit(1)
+		}
+
+		gotOut, err := runProg(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if got != exp {
-			fmt.Fprintf(os.Stderr, "case %d mismatch\nexpected:%s\n got:%s\ninput:\n%s", i+1, exp, got, input)
+		gotVals, err := parseFloats(gotOut)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d parse output error: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
+		}
+		if len(gotVals) != len(expVals) {
+			fmt.Fprintf(os.Stderr, "case %d length mismatch\nexpected:%d values got:%d\ninput:\n%s", i+1, len(expVals), len(gotVals), input)
+			os.Exit(1)
+		}
+		for j := range gotVals {
+			if math.Abs(gotVals[j]-expVals[j]) > 1e-6 {
+				fmt.Fprintf(os.Stderr, "case %d value %d mismatch\nexpected:%.10f\n got:%.10f\ninput:\n%s", i+1, j+1, expVals[j], gotVals[j], input)
+				os.Exit(1)
+			}
 		}
 	}
 	fmt.Println("All tests passed")
