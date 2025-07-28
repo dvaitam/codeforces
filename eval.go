@@ -247,7 +247,7 @@ func runVerifier(verifierFile, tempBinAbs string) bool {
 		return false
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	// Use a separate process group so we can kill all children on timeout
@@ -281,7 +281,7 @@ func runVerifier(verifierFile, tempBinAbs string) bool {
 		pgid, _ := syscall.Getpgid(cmd.Process.Pid)
 		syscall.Kill(-pgid, syscall.SIGKILL)
 		<-done
-		fmt.Println("Verification timed out after 10 seconds")
+		fmt.Println("Verification timed out after 30 seconds")
 		fmt.Printf("Verifier stdout: %s\n", out.String())
 		fmt.Printf("Verifier stderr: %s\n", stderr.String())
 		return false

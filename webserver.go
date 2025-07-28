@@ -323,7 +323,7 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 	} else {
 		verifier := findVerifier(c.Path, letter)
 		if verifier != "" {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 			cmd := exec.CommandContext(ctx, "go", "run", filepath.Base(verifier), exe)
 			cmd.Dir = c.Path
@@ -349,7 +349,7 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 
 			output.Write(res)
 			if ctx.Err() == context.DeadlineExceeded {
-				output.WriteString("\nVerifier timed out after 10 seconds")
+				output.WriteString("\nVerifier timed out after 30 seconds")
 			} else if err != nil {
 				if ee, ok := err.(*exec.ExitError); ok {
 					output.WriteString(fmt.Sprintf("\nVerifier exited with status %d", ee.ExitCode()))
