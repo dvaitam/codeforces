@@ -1,0 +1,104 @@
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"math/rand"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
+)
+
+type Test struct {
+	n     int
+	s     string
+	edges [][2]int
+}
+
+func (t Test) Input() string {
+	var sb strings.Builder
+	sb.WriteString("1\n")
+	sb.WriteString(fmt.Sprintf("%d\n", t.n))
+	sb.WriteString(fmt.Sprintf("%s\n", t.s))
+	for _, e := range t.edges {
+		sb.WriteString(fmt.Sprintf("%d %d\n", e[0], e[1]))
+	}
+	return sb.String()
+}
+
+func buildOracle() (string, error) {
+	ref := "oracleD"
+	cmd := exec.Command("go", "build", "-o", ref, "1771D.go")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("build oracle failed: %v\n%s", err, string(out))
+	}
+	return ref, nil
+}
+
+func runExe(path, input string) (string, error) {
+	if !strings.Contains(path, "/") {
+		path = "./" + path
+	}
+	cmd := exec.Command(path)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	err := cmd.Run()
+	return strings.TrimSpace(out.String()), err
+}
+
+func genTests() []Test {
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	letters := []rune("abcde")
+	tests := make([]Test, 100)
+	for i := 0; i < 100; i++ {
+		n := rng.Intn(7) + 1 // 1..7
+		var sb strings.Builder
+		for j := 0; j < n; j++ {
+			sb.WriteRune(letters[rng.Intn(len(letters))])
+		}
+		edges := make([][2]int, 0, n-1)
+		for v := 2; v <= n; v++ {
+			u := rng.Intn(v-1) + 1
+			edges = append(edges, [2]int{u, v})
+		}
+		tests[i] = Test{n: n, s: sb.String(), edges: edges}
+	}
+	return tests
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: go run verifierD.go /path/to/binary")
+		return
+	}
+	bin := os.Args[1]
+	ref, err := buildOracle()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer os.Remove(ref)
+
+	tests := genTests()
+	for i, tc := range tests {
+		input := tc.Input()
+		exp, err := runExe(ref, input)
+		if err != nil {
+			fmt.Printf("oracle runtime error on test %d: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		got, err := runExe(bin, input)
+		if err != nil {
+			fmt.Printf("candidate runtime error on test %d: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		if exp != got {
+			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input, exp, got)
+			os.Exit(1)
+		}
+	}
+	fmt.Println("all tests passed")
+}
