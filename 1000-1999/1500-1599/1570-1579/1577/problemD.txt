@@ -1,0 +1,2 @@
+Problem D: Multiply
+Read two integers a and b and output their product.
