@@ -167,6 +167,21 @@ var modelTmpl = template.Must(template.New("model").Parse(`
 </table>
 </body></html>`))
 
+var submissionsTmpl = template.Must(template.New("submissions").Parse(`
+<!DOCTYPE html>
+<html><body>
+<h1>Submissions</h1>
+<table border="1">
+<tr><th>ID</th><th>Language</th><th>Exit Code</th><th>Timestamp</th><th>Code</th></tr>
+{{range .}}
+<tr>
+<td>{{.ID}}</td><td>{{.Lang}}</td><td>{{.ExitCode}}</td><td>{{.Timestamp}}</td>
+<td><a href="/submission/code/{{.ID}}">View</a></td>
+</tr>
+{{end}}
+</table>
+</body></html>`))
+
 func scanContests(root string) (map[string]*contestInfo, error) {
 	result := make(map[string]*contestInfo)
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -631,6 +646,51 @@ func modelHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func submissionsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/submission" {
+		http.NotFound(w, r)
+		return
+	}
+	type Sub struct {
+		ID        int
+		Lang      string
+		ExitCode  int
+		Timestamp string
+	}
+	var subs []Sub
+	rows, err := db.Query("SELECT id, lang, exit_code, timestamp FROM submissions ORDER BY id DESC")
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var s Sub
+			if err = rows.Scan(&s.ID, &s.Lang, &s.ExitCode, &s.Timestamp); err == nil {
+				subs = append(subs, s)
+			}
+		}
+	}
+	submissionsTmpl.Execute(w, subs)
+}
+
+func submissionContentHandler(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/submission/"), "/")
+	if len(parts) != 2 || parts[0] != "code" {
+		http.NotFound(w, r)
+		return
+	}
+	id, err := strconv.Atoi(parts[1])
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	var code string
+	err = db.QueryRow("SELECT code FROM submissions WHERE id = ?", id).Scan(&code)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	textTmpl.Execute(w, code)
+}
+
 func evaluationContentHandler(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/evaluation/"), "/")
 	if len(parts) != 2 {
@@ -691,6 +751,8 @@ func main() {
 	})
 	http.HandleFunc("/leaderboard", leaderboardHandler)
 	http.HandleFunc("/model", modelHandler)
+	http.HandleFunc("/submission", submissionsHandler)
+	http.HandleFunc("/submission/", submissionContentHandler)
 	http.HandleFunc("/evaluation/", evaluationContentHandler)
 	http.ListenAndServe(":8081", nil)
 }
