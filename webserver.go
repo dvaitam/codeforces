@@ -100,6 +100,7 @@ textarea { width: 100%; }
 <textarea name="code" rows="20" cols="80"></textarea><br>
 <input type="file" name="file"><br>
 <input type="submit" value="Submit">
+<div style="padding-bottom:20px;"></div>
 </form>
 </body></html>`))
 
