@@ -318,6 +318,7 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 	}
 	exe, compileOut, err := compileSource(srcPath, lang)
 	output := bytes.Buffer{}
+	exitCode := -1
 	if err != nil {
 		output.WriteString("Compilation failed:\n")
 		output.WriteString(compileOut)
@@ -354,19 +355,26 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 				output.WriteString("\nVerifier timed out after 30 seconds")
 			} else if err != nil {
 				if ee, ok := err.(*exec.ExitError); ok {
+					exitCode = ee.ExitCode()
 					output.WriteString(fmt.Sprintf("\nVerifier exited with status %d", ee.ExitCode()))
 				} else {
 					output.WriteString("\nVerifier error: " + err.Error())
 				}
+			} else {
+				exitCode = 0
 			}
 		} else {
 			output.WriteString("Compiled successfully. No verifier available.")
 		}
 	}
+	respStr := output.String()
+	if _, dbErr := db.Exec("INSERT INTO submissions (lang, code, response, exit_code) VALUES (?, ?, ?, ?)", lang, string(data), respStr, exitCode); dbErr != nil {
+		fmt.Println("failed to insert submission:", dbErr)
+	}
 	resultTmpl.Execute(w, map[string]string{
 		"Contest": c.ID,
 		"Letter":  letter,
-		"Output":  output.String(),
+		"Output":  respStr,
 	})
 }
 
@@ -659,6 +667,18 @@ func main() {
 		panic(err)
 	}
 	defer db.Close()
+	if _, err = db.Exec(`
+                CREATE TABLE IF NOT EXISTS submissions (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        lang VARCHAR(20),
+                        code TEXT,
+                        response TEXT,
+                        exit_code INT,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+        `); err != nil {
+		panic(err)
+	}
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/addproblem", addProblemHandler)
 	http.HandleFunc("/contest/", func(w http.ResponseWriter, r *http.Request) {
