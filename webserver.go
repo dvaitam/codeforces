@@ -167,6 +167,21 @@ var modelTmpl = template.Must(template.New("model").Parse(`
 </table>
 </body></html>`))
 
+var submissionsTmpl = template.Must(template.New("submissions").Parse(`
+<!DOCTYPE html>
+<html><body>
+<h1>Submissions</h1>
+<table border="1">
+<tr><th>ID</th><th>Language</th><th>Exit Code</th><th>Timestamp</th><th>Code</th></tr>
+{{range .}}
+<tr>
+<td>{{.ID}}</td><td>{{.Lang}}</td><td>{{.ExitCode}}</td><td>{{.Timestamp}}</td>
+<td><a href="/submission/code/{{.ID}}">View</a></td>
+</tr>
+{{end}}
+</table>
+</body></html>`))
+
 func scanContests(root string) (map[string]*contestInfo, error) {
 	result := make(map[string]*contestInfo)
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -318,6 +333,7 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 	}
 	exe, compileOut, err := compileSource(srcPath, lang)
 	output := bytes.Buffer{}
+	exitCode := -1
 	if err != nil {
 		output.WriteString("Compilation failed:\n")
 		output.WriteString(compileOut)
@@ -354,19 +370,26 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 				output.WriteString("\nVerifier timed out after 30 seconds")
 			} else if err != nil {
 				if ee, ok := err.(*exec.ExitError); ok {
+					exitCode = ee.ExitCode()
 					output.WriteString(fmt.Sprintf("\nVerifier exited with status %d", ee.ExitCode()))
 				} else {
 					output.WriteString("\nVerifier error: " + err.Error())
 				}
+			} else {
+				exitCode = 0
 			}
 		} else {
 			output.WriteString("Compiled successfully. No verifier available.")
 		}
 	}
+	respStr := output.String()
+	if _, dbErr := db.Exec("INSERT INTO submissions (lang, code, response, exit_code) VALUES (?, ?, ?, ?)", lang, string(data), respStr, exitCode); dbErr != nil {
+		fmt.Println("failed to insert submission:", dbErr)
+	}
 	resultTmpl.Execute(w, map[string]string{
 		"Contest": c.ID,
 		"Letter":  letter,
-		"Output":  output.String(),
+		"Output":  respStr,
 	})
 }
 
@@ -623,6 +646,51 @@ func modelHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func submissionsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/submission" {
+		http.NotFound(w, r)
+		return
+	}
+	type Sub struct {
+		ID        int
+		Lang      string
+		ExitCode  int
+		Timestamp string
+	}
+	var subs []Sub
+	rows, err := db.Query("SELECT id, lang, exit_code, timestamp FROM submissions ORDER BY id DESC")
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var s Sub
+			if err = rows.Scan(&s.ID, &s.Lang, &s.ExitCode, &s.Timestamp); err == nil {
+				subs = append(subs, s)
+			}
+		}
+	}
+	submissionsTmpl.Execute(w, subs)
+}
+
+func submissionContentHandler(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/submission/"), "/")
+	if len(parts) != 2 || parts[0] != "code" {
+		http.NotFound(w, r)
+		return
+	}
+	id, err := strconv.Atoi(parts[1])
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	var code string
+	err = db.QueryRow("SELECT code FROM submissions WHERE id = ?", id).Scan(&code)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	textTmpl.Execute(w, code)
+}
+
 func evaluationContentHandler(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/evaluation/"), "/")
 	if len(parts) != 2 {
@@ -659,6 +727,18 @@ func main() {
 		panic(err)
 	}
 	defer db.Close()
+	if _, err = db.Exec(`
+                CREATE TABLE IF NOT EXISTS submissions (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        lang VARCHAR(20),
+                        code TEXT,
+                        response TEXT,
+                        exit_code INT,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+        `); err != nil {
+		panic(err)
+	}
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/addproblem", addProblemHandler)
 	http.HandleFunc("/contest/", func(w http.ResponseWriter, r *http.Request) {
@@ -671,6 +751,8 @@ func main() {
 	})
 	http.HandleFunc("/leaderboard", leaderboardHandler)
 	http.HandleFunc("/model", modelHandler)
+	http.HandleFunc("/submission", submissionsHandler)
+	http.HandleFunc("/submission/", submissionContentHandler)
 	http.HandleFunc("/evaluation/", evaluationContentHandler)
 	http.ListenAndServe(":8081", nil)
 }
