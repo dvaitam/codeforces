@@ -99,6 +99,7 @@ textarea { width: 100%; }
 </select><br>
 <textarea name="code" rows="20" cols="80"></textarea><br>
 <input type="file" name="file"><br>
+<div style="padding-top:20px;"></div>
 <input type="submit" value="Submit">
 <div style="padding-bottom:100px;"></div>
 </form>
