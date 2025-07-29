@@ -101,7 +101,7 @@ textarea { width: 100%; }
 <input type="file" name="file"><br>
 <div style="padding-top:20px;"></div>
 <input type="submit" value="Submit">
-<div style="padding-bottom:20px;"></div>
+<div style="padding-bottom:100px;"></div>
 </form>
 </body></html>`))
 
