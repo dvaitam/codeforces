@@ -10,28 +10,135 @@ import (
 	"strings"
 )
 
-func solveCase(n int, edges [][2]int) string {
-	sol := make([][]int, n+1)
-	cnt := 0
+type Rook struct {
+	x, y  int
+	color int
+}
+
+func parseOutput(n int, out string) ([]Rook, [][]int, error) {
+	r := bufio.NewReader(strings.NewReader(out))
+	var rooks []Rook
+	colorIdx := make([][]int, n+1)
+	coords := make(map[[2]int]bool)
+	total := 0
+	for c := 1; c <= n; c++ {
+		var cnt int
+		if _, err := fmt.Fscan(r, &cnt); err != nil {
+			return nil, nil, fmt.Errorf("failed to read count for color %d: %v", c, err)
+		}
+		if cnt <= 0 || cnt > 5000 {
+			return nil, nil, fmt.Errorf("invalid count for color %d", c)
+		}
+		for i := 0; i < cnt; i++ {
+			var x, y int
+			if _, err := fmt.Fscan(r, &x, &y); err != nil {
+				return nil, nil, fmt.Errorf("failed to read rook for color %d: %v", c, err)
+			}
+			if x < 1 || x > 1_000_000_000 || y < 1 || y > 1_000_000_000 {
+				return nil, nil, fmt.Errorf("coordinates out of range: %d %d", x, y)
+			}
+			key := [2]int{x, y}
+			if coords[key] {
+				return nil, nil, fmt.Errorf("duplicate cell %d %d", x, y)
+			}
+			coords[key] = true
+			rooks = append(rooks, Rook{x: x, y: y, color: c})
+			colorIdx[c] = append(colorIdx[c], len(rooks)-1)
+		}
+		total += cnt
+		if total > 5000 {
+			return nil, nil, fmt.Errorf("total rooks exceed limit")
+		}
+	}
+	if _, err := fmt.Fscan(r, new(int)); err == nil {
+		return nil, nil, fmt.Errorf("extra output")
+	}
+	return rooks, colorIdx, nil
+}
+
+func isConnected(indices []int, rooks []Rook, rowMap, colMap map[int][]int) bool {
+	if len(indices) == 0 {
+		return false
+	}
+	allowed := make(map[int]bool, len(indices))
+	for _, idx := range indices {
+		allowed[idx] = true
+	}
+	visited := make(map[int]bool)
+	q := []int{indices[0]}
+	visited[indices[0]] = true
+	for len(q) > 0 {
+		u := q[0]
+		q = q[1:]
+		row := rooks[u].x
+		for _, v := range rowMap[row] {
+			if allowed[v] && !visited[v] {
+				visited[v] = true
+				q = append(q, v)
+			}
+		}
+		col := rooks[u].y
+		for _, v := range colMap[col] {
+			if allowed[v] && !visited[v] {
+				visited[v] = true
+				q = append(q, v)
+			}
+		}
+	}
+	return len(visited) == len(indices)
+}
+
+func verifyCase(n int, edges [][2]int, output string) error {
+	rooks, colorIdx, err := parseOutput(n, output)
+	if err != nil {
+		return err
+	}
+	rowMap := make(map[int][]int)
+	colMap := make(map[int][]int)
+	for i, r := range rooks {
+		rowMap[r.x] = append(rowMap[r.x], i)
+		colMap[r.y] = append(colMap[r.y], i)
+	}
+	for c := 1; c <= n; c++ {
+		if !isConnected(colorIdx[c], rooks, rowMap, colMap) {
+			return fmt.Errorf("color %d rooks not connected", c)
+		}
+	}
+	adj := make([][]bool, n+1)
+	for i := range adj {
+		adj[i] = make([]bool, n+1)
+	}
 	for _, e := range edges {
-		cnt++
-		sol[e[0]] = append(sol[e[0]], cnt)
-		sol[e[1]] = append(sol[e[1]], cnt)
+		a, b := e[0], e[1]
+		adj[a][b] = true
+		adj[b][a] = true
 	}
-	for i := 1; i <= n; i++ {
-		if len(sol[i]) == 0 {
-			cnt++
-			sol[i] = append(sol[i], cnt)
+	for a := 1; a <= n; a++ {
+		for b := a + 1; b <= n; b++ {
+			inds := append(append([]int{}, colorIdx[a]...), colorIdx[b]...)
+			conn := isConnected(inds, rooks, rowMap, colMap)
+			if adj[a][b] && !conn {
+				return fmt.Errorf("colors %d and %d should be connected", a, b)
+			}
+			if !adj[a][b] && conn {
+				return fmt.Errorf("colors %d and %d should not be connected", a, b)
+			}
 		}
 	}
-	var sb strings.Builder
-	for i := 1; i <= n; i++ {
-		sb.WriteString(fmt.Sprintf("%d\n", len(sol[i])))
-		for _, id := range sol[i] {
-			sb.WriteString(fmt.Sprintf("%d %d\n", i, id))
-		}
+	return nil
+}
+
+func runSolution(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
 	}
-	return strings.TrimSpace(sb.String())
+	return out.String(), nil
 }
 
 func main() {
@@ -84,27 +191,18 @@ func main() {
 			y, _ := strconv.Atoi(nums[2*j+1])
 			edges[j] = [2]int{x, y}
 		}
-		// build input
 		var input strings.Builder
 		input.WriteString(fmt.Sprintf("%d %d\n", nVal, mVal))
 		for _, e := range edges {
 			input.WriteString(fmt.Sprintf("%d %d\n", e[0], e[1]))
 		}
-		expected := solveCase(nVal, edges)
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input.String())
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		err := cmd.Run()
+		out, err := runSolution(bin, input.String())
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
+			fmt.Printf("test %d: %v\n", idx, err)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
-		if got != expected {
-			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx, expected, got)
+		if err := verifyCase(nVal, edges, out); err != nil {
+			fmt.Printf("test %d failed: %v\n", idx, err)
 			os.Exit(1)
 		}
 	}
