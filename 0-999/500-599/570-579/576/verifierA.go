@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 )
 
@@ -67,8 +68,28 @@ func main() {
 			fmt.Printf("wrong answer on test %d\ninput:\n%sexpected:\n%s\ngot:\n%s", idx+1, input, exp, out)
 			os.Exit(1)
 		}
-		for i := range expToks {
-			if expToks[i] != outToks[i] {
+
+		// Compare outputs ignoring the order of numbers. The first token
+		// is the count of numbers in the sequence; the remaining tokens
+		// are the actual question values, which may appear in any order.
+		if len(expToks) == 0 {
+			fmt.Printf("wrong answer on test %d: empty output\n", idx+1)
+			os.Exit(1)
+		}
+		if expToks[0] != outToks[0] {
+			fmt.Printf("wrong answer on test %d\ninput:\n%sexpected:\n%s\ngot:\n%s", idx+1, input, exp, out)
+			os.Exit(1)
+		}
+		expNums := expToks[1:]
+		outNums := outToks[1:]
+		if len(expNums) != len(outNums) {
+			fmt.Printf("wrong answer on test %d\ninput:\n%sexpected:\n%s\ngot:\n%s", idx+1, input, exp, out)
+			os.Exit(1)
+		}
+		sort.Strings(expNums)
+		sort.Strings(outNums)
+		for i := range expNums {
+			if expNums[i] != outNums[i] {
 				fmt.Printf("wrong answer on test %d\ninput:\n%sexpected:\n%s\ngot:\n%s", idx+1, input, exp, out)
 				os.Exit(1)
 			}
