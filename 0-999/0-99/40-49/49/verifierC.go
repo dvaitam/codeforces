@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -22,14 +23,13 @@ func main() {
 	tests := generateTests()
 	for i, t := range tests {
 		input := fmt.Sprintf("%d\n", t.n)
-		expect := solveC(t.n)
 		out, err := runBinary(bin, input)
 		if err != nil {
 			fmt.Printf("test %d: execution failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != strings.TrimSpace(expect) {
-			fmt.Printf("test %d failed: expected %q got %q\n", i+1, strings.TrimSpace(expect), strings.TrimSpace(out))
+		if !validateOutput(t.n, out) {
+			fmt.Printf("test %d failed: invalid permutation for n=%d\n", i+1, t.n)
 			os.Exit(1)
 		}
 	}
@@ -46,14 +46,29 @@ func runBinary(path, input string) (string, error) {
 	return out.String(), err
 }
 
-func solveC(n int) string {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d ", n))
-	for i := 1; i < n; i++ {
-		sb.WriteString(fmt.Sprintf("%d ", i))
+func validateOutput(n int, out string) bool {
+	fields := strings.Fields(out)
+	if len(fields) != n {
+		return false
 	}
-	sb.WriteByte('\n')
-	return sb.String()
+	p := make([]int, n)
+	seen := make([]bool, n+1)
+	for i, f := range fields {
+		v, err := strconv.Atoi(f)
+		if err != nil || v < 1 || v > n || seen[v] {
+			return false
+		}
+		seen[v] = true
+		p[i] = v
+	}
+	for i := 2; i <= n; i++ {
+		for j := i; j <= n; j += i {
+			if p[j-1]%i == 0 {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func generateTests() []testCase {
