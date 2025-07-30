@@ -51,7 +51,7 @@ var requestTimeout time.Duration
 
 func main() {
 	model := flag.String("model", "", "The AI model to use (e.g., anthropic/claude-3.5-sonnet)")
-	provider := flag.String("provider", "openrouter", "Model provider: Gemini, OpenAI, xai, Claude, openrouter")
+	provider := flag.String("provider", "openrouter", "Model provider: Gemini, OpenAI, xai, Claude, Deepseek, openrouter")
 	dbDSN := flag.String("db", "user:pass@tcp(127.0.0.1:3306)/dbname", "Database DSN")
 	maxAttempts := flag.Int("max-attempts", 1, "Maximum attempts to fix syntax errors (1-5)")
 	httpTimeout := flag.Duration("timeout", 30*time.Second, "HTTP request timeout")
@@ -73,6 +73,8 @@ func main() {
 		apiKeyEnv = "XAI_API_KEY"
 	case "claude":
 		apiKeyEnv = "CLAUDE_API_KEY"
+	case "deepseek":
+		apiKeyEnv = "DEEPSEEK_API_KEY"
 	default:
 		apiKeyEnv = "OPENROUTER_API_KEY"
 	}
@@ -541,6 +543,9 @@ func sendPrompt(provider, model, apiKey, prompt string) string {
 		url = "https://api.anthropic.com/v1/messages"
 		headers["x-api-key"] = apiKey
 		headers["anthropic-version"] = "2023-06-01"
+	case "deepseek":
+		url = "https://api.deepseek.com/v1/chat/completions"
+		headers["Authorization"] = "Bearer " + apiKey
 	default:
 		url = "https://openrouter.ai/api/v1/chat/completions"
 		headers["Authorization"] = "Bearer " + apiKey
