@@ -75,9 +75,12 @@ func main() {
 	var input strings.Builder
 	fmt.Fprintln(&input, len(tests))
 	for _, tc := range tests {
-		fmt.Fprint(&input, len(tc.arr))
-		for _, v := range tc.arr {
-			fmt.Fprintf(&input, " %d", v)
+		fmt.Fprintln(&input, len(tc.arr))
+		for i, v := range tc.arr {
+			if i > 0 {
+				fmt.Fprint(&input, " ")
+			}
+			fmt.Fprint(&input, v)
 		}
 		fmt.Fprintln(&input)
 	}
