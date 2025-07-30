@@ -53,8 +53,15 @@ func canWin(a []int, k int) bool {
 		}
 		arr = append(arr[:idx], arr[idx+1:]...)
 		if len(arr) > 0 {
-			arr[len(arr)-1] += need
-			sort.Ints(arr)
+			// Bob wants to make future removals harder, so the
+			// optimal strategy is to add `need` to the smallest
+			// remaining element.
+			newVal := arr[0] + need
+			arr = arr[1:]
+			pos := sort.Search(len(arr), func(j int) bool { return arr[j] >= newVal })
+			arr = append(arr, 0)
+			copy(arr[pos+1:], arr[pos:])
+			arr[pos] = newVal
 		}
 	}
 	return true
