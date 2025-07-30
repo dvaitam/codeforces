@@ -165,5 +165,5 @@ func main() {
 		fmt.Fprintln(os.Stderr, "extra output")
 		os.Exit(1)
 	}
-	fmt.Println("Accepted")
+	fmt.Println("All tests passed")
 }
