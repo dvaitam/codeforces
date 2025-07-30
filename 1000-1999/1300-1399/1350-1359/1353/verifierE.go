@@ -29,7 +29,7 @@ func runExe(path, input string) (string, error) {
 }
 
 func buildRef() (string, error) {
-	ref := "oracleE.bin"
+	ref := "./oracleE.bin"
 	cmd := exec.Command("go", "build", "-o", ref, "1353E.go")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
