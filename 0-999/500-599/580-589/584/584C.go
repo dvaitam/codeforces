@@ -102,3 +102,4 @@ func main() {
    // output
    writer.Write(ans)
    writer.WriteByte('\n')
+}
