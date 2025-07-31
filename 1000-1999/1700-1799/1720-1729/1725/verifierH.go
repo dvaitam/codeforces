@@ -6,23 +6,9 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
-
-func buildRef() (string, error) {
-	exe, err := os.CreateTemp("", "refH-*")
-	if err != nil {
-		return "", err
-	}
-	exe.Close()
-	path := exe.Name()
-	cmd := exec.Command("go", "build", "-o", path, "1725H.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		os.Remove(path)
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, string(out))
-	}
-	return path, nil
-}
 
 func runProg(bin, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -78,17 +64,74 @@ func genCases() []Case {
 	return cases
 }
 
-func runCase(bin, ref string, c Case) error {
-	expect, err := runProg(ref, c.input)
-	if err != nil {
-		return fmt.Errorf("reference failed: %v", err)
+func validate(input, output string) error {
+	fields := strings.Fields(input)
+	if len(fields) == 0 {
+		return fmt.Errorf("empty input")
 	}
+	n, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return fmt.Errorf("invalid n")
+	}
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		a[i], err = strconv.Atoi(fields[i+1])
+		if err != nil {
+			return fmt.Errorf("invalid number")
+		}
+	}
+	out := strings.TrimSpace(output)
+	if out == "-1" {
+		return fmt.Errorf("should be solvable but got -1")
+	}
+	parts := strings.Fields(out)
+	if len(parts) != 2 {
+		return fmt.Errorf("expected two tokens")
+	}
+	z, err := strconv.Atoi(parts[0])
+	if err != nil || z < 0 || z > 2 {
+		return fmt.Errorf("invalid Z")
+	}
+	s := parts[1]
+	if len(s) != n {
+		return fmt.Errorf("invalid string length")
+	}
+	zeros := 0
+	for i := 0; i < n; i++ {
+		if s[i] == '0' {
+			zeros++
+		} else if s[i] != '1' {
+			return fmt.Errorf("invalid character in string")
+		}
+	}
+	if zeros*2 != n {
+		return fmt.Errorf("need %d zeros got %d", n/2, zeros)
+	}
+	mods := make([]int, n)
+	for i := 0; i < n; i++ {
+		mods[i] = a[i] % 3
+	}
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			if s[i] == s[j] {
+				continue
+			}
+			v := (mods[i]*mods[i] + mods[j]*mods[j]) % 3
+			if v == z {
+				return fmt.Errorf("pair %d,%d triggers reaction", i+1, j+1)
+			}
+		}
+	}
+	return nil
+}
+
+func runCase(bin string, c Case) error {
 	got, err := runProg(bin, c.input)
 	if err != nil {
 		return err
 	}
-	if expect != strings.TrimSpace(got) {
-		return fmt.Errorf("expected %s got %s", expect, got)
+	if err := validate(c.input, got); err != nil {
+		return err
 	}
 	return nil
 }
@@ -99,15 +142,9 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	ref, err := buildRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 	cases := genCases()
 	for i, c := range cases {
-		if err := runCase(bin, ref, c); err != nil {
+		if err := runCase(bin, c); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, c.input)
 			os.Exit(1)
 		}
