@@ -9,6 +9,14 @@ import (
 	"strings"
 )
 
+func normalize(s string) string {
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimSpace(line)
+	}
+	return strings.Join(lines, "\n")
+}
+
 func runRef(input string) (string, error) {
 	cmd := exec.Command("go", "run", "303A.go")
 	cmd.Stdin = strings.NewReader(input)
@@ -16,7 +24,7 @@ func runRef(input string) (string, error) {
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+	return normalize(out.String()), err
 }
 
 func runBin(bin string, input string) (string, error) {
@@ -31,7 +39,7 @@ func runBin(bin string, input string) (string, error) {
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+	return normalize(out.String()), err
 }
 
 func main() {
