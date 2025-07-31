@@ -136,9 +136,9 @@ var leaderboardTmpl = template.Must(template.New("leaderboard").Parse(`
 {{if .Evals}}
 <h2>Evaluation History for {{.RunID}}</h2>
 <table border="1">
-<tr><th>Run ID</th><th>Model</th><th>Problem ID</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th></tr>
+<tr><th>Run ID</th><th>Model</th><th>Problem ID</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
 {{range .Evals}}
-<tr><td>{{.RunID}}</td><td>{{.Model}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ProblemID}}</a></td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td></tr>
+<tr><td>{{.RunID}}</td><td>{{.Model}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ProblemID}}</a></td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td><td><a href="/evaluation/stdout/{{.ID}}">View</a></td><td><a href="/evaluation/stderr/{{.ID}}">View</a></td></tr>
 {{end}}
 </table>
 {{end}}
@@ -160,9 +160,9 @@ var modelTmpl = template.Must(template.New("model").Parse(`
 <html><body>
 <h1>Evaluations for {{.Model}}</h1>
 <table border="1">
-<tr><th>Run ID</th><th>Problem ID</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th></tr>
+<tr><th>Run ID</th><th>Problem ID</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
 {{range .Evals}}
-<tr><td>{{.RunID}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ProblemID}}</a></td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td></tr>
+<tr><td>{{.RunID}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ProblemID}}</a></td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td><td><a href="/evaluation/stdout/{{.ID}}">View</a></td><td><a href="/evaluation/stderr/{{.ID}}">View</a></td></tr>
 {{end}}
 </table>
 </body></html>`))
@@ -172,11 +172,11 @@ var submissionsTmpl = template.Must(template.New("submissions").Parse(`
 <html><body>
 <h1>Submissions</h1>
 <table border="1">
-<tr><th>ID</th><th>Language</th><th>Exit Code</th><th>Timestamp</th><th>Code</th></tr>
+<tr><th>ID</th><th>Language</th><th>Exit Code</th><th>Timestamp</th><th>Code</th><th>Stdout</th><th>Stderr</th></tr>
 {{range .}}
 <tr>
 <td>{{.ID}}</td><td>{{.Lang}}</td><td>{{.ExitCode}}</td><td>{{.Timestamp}}</td>
-<td><a href="/submission/code/{{.ID}}">View</a></td>
+<td><a href="/submission/code/{{.ID}}">View</a></td><td><a href="/submission/stdout/{{.ID}}">View</a></td><td><a href="/submission/stderr/{{.ID}}">View</a></td>
 </tr>
 {{end}}
 </table>
@@ -334,6 +334,8 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 	exe, compileOut, err := compileSource(srcPath, lang)
 	output := bytes.Buffer{}
 	exitCode := -1
+	stdoutStr := ""
+	stderrStr := ""
 	if err != nil {
 		output.WriteString("Compilation failed:\n")
 		output.WriteString(compileOut)
@@ -347,43 +349,53 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 			cmd.Dir = c.Path
 			cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-			var res []byte
-			var err error
-			done := make(chan struct{})
-			go func() {
-				res, err = cmd.CombinedOutput()
-				close(done)
-			}()
+			var stdoutBuf, stderrBuf bytes.Buffer
+			cmd.Stdout = &stdoutBuf
+			cmd.Stderr = &stderrBuf
 
-			select {
-			case <-ctx.Done():
-				if cmd.Process != nil {
-					pgid, _ := syscall.Getpgid(cmd.Process.Pid)
-					syscall.Kill(-pgid, syscall.SIGKILL)
-				}
-				<-done
-			case <-done:
-			}
-
-			output.Write(res)
-			if ctx.Err() == context.DeadlineExceeded {
-				output.WriteString("\nVerifier timed out after 30 seconds")
-			} else if err != nil {
-				if ee, ok := err.(*exec.ExitError); ok {
-					exitCode = ee.ExitCode()
-					output.WriteString(fmt.Sprintf("\nVerifier exited with status %d", ee.ExitCode()))
-				} else {
-					output.WriteString("\nVerifier error: " + err.Error())
-				}
+			if err := cmd.Start(); err != nil {
+				output.WriteString("Verifier error: " + err.Error())
 			} else {
-				exitCode = 0
+				errCh := make(chan error, 1)
+				go func() {
+					errCh <- cmd.Wait()
+				}()
+
+				var runErr error
+				select {
+				case <-ctx.Done():
+					if cmd.Process != nil {
+						pgid, _ := syscall.Getpgid(cmd.Process.Pid)
+						syscall.Kill(-pgid, syscall.SIGKILL)
+					}
+					runErr = <-errCh
+				case runErr = <-errCh:
+				}
+
+				stdoutStr = stdoutBuf.String()
+				stderrStr = stderrBuf.String()
+				output.WriteString(stdoutStr)
+				output.WriteString(stderrStr)
+
+				if ctx.Err() == context.DeadlineExceeded {
+					output.WriteString("\nVerifier timed out after 30 seconds")
+				} else if runErr != nil {
+					if ee, ok := runErr.(*exec.ExitError); ok {
+						exitCode = ee.ExitCode()
+						output.WriteString(fmt.Sprintf("\nVerifier exited with status %d", ee.ExitCode()))
+					} else {
+						output.WriteString("\nVerifier error: " + runErr.Error())
+					}
+				} else {
+					exitCode = 0
+				}
 			}
 		} else {
 			output.WriteString("Compiled successfully. No verifier available.")
 		}
 	}
 	respStr := output.String()
-	if _, dbErr := db.Exec("INSERT INTO submissions (lang, code, response, exit_code) VALUES (?, ?, ?, ?)", lang, string(data), respStr, exitCode); dbErr != nil {
+	if _, dbErr := db.Exec("INSERT INTO submissions (lang, code, stdout, stderr, response, exit_code) VALUES (?, ?, ?, ?, ?, ?)", lang, string(data), stdoutStr, stderrStr, respStr, exitCode); dbErr != nil {
 		fmt.Println("failed to insert submission:", dbErr)
 	}
 	resultTmpl.Execute(w, map[string]string{
@@ -673,7 +685,12 @@ func submissionsHandler(w http.ResponseWriter, r *http.Request) {
 
 func submissionContentHandler(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/submission/"), "/")
-	if len(parts) != 2 || parts[0] != "code" {
+	if len(parts) != 2 {
+		http.NotFound(w, r)
+		return
+	}
+	field := parts[0]
+	if field != "code" && field != "stdout" && field != "stderr" {
 		http.NotFound(w, r)
 		return
 	}
@@ -682,13 +699,13 @@ func submissionContentHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	var code string
-	err = db.QueryRow("SELECT code FROM submissions WHERE id = ?", id).Scan(&code)
+	var content string
+	err = db.QueryRow("SELECT "+field+" FROM submissions WHERE id = ?", id).Scan(&content)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	textTmpl.Execute(w, code)
+	textTmpl.Execute(w, content)
 }
 
 func evaluationContentHandler(w http.ResponseWriter, r *http.Request) {
@@ -699,7 +716,7 @@ func evaluationContentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	field := parts[0]
 	id, err := strconv.Atoi(parts[1])
-	if err != nil || (field != "prompt" && field != "response") {
+	if err != nil || (field != "prompt" && field != "response" && field != "stdout" && field != "stderr") {
 		http.NotFound(w, r)
 		return
 	}
@@ -728,15 +745,17 @@ func main() {
 	}
 	defer db.Close()
 	if _, err = db.Exec(`
-                CREATE TABLE IF NOT EXISTS submissions (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        lang VARCHAR(20),
-                        code TEXT,
-                        response TEXT,
-                        exit_code INT,
-                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-        `); err != nil {
+               CREATE TABLE IF NOT EXISTS submissions (
+                       id INT AUTO_INCREMENT PRIMARY KEY,
+                       lang VARCHAR(20),
+                       code TEXT,
+                       stdout TEXT,
+                       stderr TEXT,
+                       response TEXT,
+                       exit_code INT,
+                       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+               )
+       `); err != nil {
 		panic(err)
 	}
 	http.HandleFunc("/", rootHandler)

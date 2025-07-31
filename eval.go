@@ -93,17 +93,19 @@ func main() {
 	defer db.Close()
 
 	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS evaluations (
-			id INT AUTO_INCREMENT PRIMARY KEY,
-			run_id VARCHAR(255),
-			model VARCHAR(255),
-			problem_id INT,
-			prompt TEXT,
-			response TEXT,
-			success BOOL,
-			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-		)
-	`)
+               CREATE TABLE IF NOT EXISTS evaluations (
+                       id INT AUTO_INCREMENT PRIMARY KEY,
+                       run_id VARCHAR(255),
+                       model VARCHAR(255),
+                       problem_id INT,
+                       prompt TEXT,
+                       response TEXT,
+                       success BOOL,
+                       stdout TEXT,
+                       stderr TEXT,
+                       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+               )
+       `)
 	if err != nil {
 		panic(err)
 	}
@@ -149,6 +151,7 @@ func main() {
 		finalResponse := response
 		attempt := 1
 		var tempBinAbs string
+		var verifierStdout, verifierStderr string
 		for attempt <= *maxAttempts {
 			fmt.Printf("Verification attempt %d of %d\n", attempt, *maxAttempts)
 			buildSuccess, buildErrMsg, builtBinAbs := buildSolution(code)
@@ -169,7 +172,9 @@ func main() {
 			}
 
 			// Build succeeded, now verify
-			verifySuccess := runVerifier(verifierFile, tempBinAbs)
+			verifySuccess, vOut, vErr := runVerifier(verifierFile, tempBinAbs)
+			verifierStdout = vOut
+			verifierStderr = vErr
 			if verifySuccess {
 				success = true
 			}
@@ -184,8 +189,8 @@ func main() {
 		}
 
 		_, err = db.Exec(
-			"INSERT INTO evaluations (run_id, model, problem_id, prompt, response, success) VALUES (?, ?, ?, ?, ?, ?)",
-			runID, *model, problem.ID, prompt, finalResponse, success,
+			"INSERT INTO evaluations (run_id, model, problem_id, prompt, response, success, stdout, stderr) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+			runID, *model, problem.ID, prompt, finalResponse, success, verifierStdout, verifierStderr,
 		)
 		if err != nil {
 			panic(err)
@@ -242,11 +247,11 @@ func buildSolution(code string) (bool, string, string) {
 	return true, "", tempBinAbs
 }
 
-func runVerifier(verifierFile, tempBinAbs string) bool {
+func runVerifier(verifierFile, tempBinAbs string) (bool, string, string) {
 	verifierAbs, err := filepath.Abs(verifierFile)
 	if err != nil {
 		fmt.Printf("Error getting absolute path for verifier: %v\n", err)
-		return false
+		return false, "", ""
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -264,7 +269,7 @@ func runVerifier(verifierFile, tempBinAbs string) bool {
 
 	if err := cmd.Start(); err != nil {
 		fmt.Printf("Error starting verifier: %v\n", err)
-		return false
+		return false, "", ""
 	}
 
 	done := make(chan error, 1)
@@ -277,7 +282,7 @@ func runVerifier(verifierFile, tempBinAbs string) bool {
 		if err != nil {
 			fmt.Printf("Verifier failed: %v\n", err)
 			fmt.Printf("Verifier stderr: %s\n", stderr.String())
-			return false
+			return false, out.String(), stderr.String()
 		}
 	case <-ctx.Done():
 		pgid, _ := syscall.Getpgid(cmd.Process.Pid)
@@ -286,13 +291,13 @@ func runVerifier(verifierFile, tempBinAbs string) bool {
 		fmt.Println("Verification timed out after 30 seconds")
 		fmt.Printf("Verifier stdout: %s\n", out.String())
 		fmt.Printf("Verifier stderr: %s\n", stderr.String())
-		return false
+		return false, out.String(), stderr.String()
 	}
 
 	fmt.Printf("Verifier stdout: %s\n", out.String())
 	fmt.Printf("Verifier stderr: %s\n", stderr.String())
 
-	return true
+	return true, out.String(), stderr.String()
 }
 
 func getAvailableRatings(db *sql.DB) []int {
