@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -73,7 +75,14 @@ func main() {
 			os.Exit(1)
 		}
 		got := strings.TrimSpace(out.String())
-		if got != expected {
+
+		expectedVal, err1 := strconv.ParseFloat(expected, 64)
+		gotVal, err2 := strconv.ParseFloat(got, 64)
+		if err1 != nil || err2 != nil {
+			fmt.Printf("test %d: failed to parse output\nexpected: %q (%v)\n got: %q (%v)\n", idx, expected, err1, got, err2)
+			os.Exit(1)
+		}
+		if math.Abs(expectedVal-gotVal) > 1e-6 {
 			fmt.Printf("test %d failed\nexpected: %s\n got: %s\n", idx, expected, got)
 			os.Exit(1)
 		}
