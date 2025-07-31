@@ -55,9 +55,16 @@ func genCases() []Case {
 		for i := 0; i < k; i++ {
 			remain := n - pos
 			groupsLeft := k - i
-			m := 1
-			if remain-groupsLeft > 0 {
-				m += rng.Intn(remain - groupsLeft + 1)
+			var m int
+			if i == k-1 {
+				// ensure the last chain consumes all remaining elements
+				m = remain
+			} else {
+				m = 1
+				extra := remain - groupsLeft
+				if extra > 0 {
+					m += rng.Intn(extra + 1)
+				}
 			}
 			chain := make([]int, m)
 			for j := 0; j < m; j++ {
