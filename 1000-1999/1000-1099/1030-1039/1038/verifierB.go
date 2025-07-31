@@ -10,35 +10,102 @@ import (
 	"strings"
 )
 
-func expected(n int) string {
-	if n <= 2 {
-		return "No"
+func gcd(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
 	}
-	var sb strings.Builder
-	sb.WriteString("Yes\n")
-	if n%2 == 0 {
-		sb.WriteString(fmt.Sprintf("2 1 %d\n", n))
-		sb.WriteString(fmt.Sprintf("%d", n-2))
-		for i := 2; i < n; i++ {
-			sb.WriteString(fmt.Sprintf(" %d", i))
-		}
-		sb.WriteString("\n")
-	} else {
-		k := (n + 1) / 2
-		sb.WriteString(fmt.Sprintf("1 %d\n", k))
-		sb.WriteString(fmt.Sprintf("%d", n-1))
-		for i := 1; i <= n; i++ {
-			if i == k {
-				continue
-			}
-			sb.WriteString(fmt.Sprintf(" %d", i))
-		}
-		sb.WriteString("\n")
+	if a < 0 {
+		return -a
 	}
-	return strings.TrimRight(sb.String(), "\n")
+	return a
 }
 
-func runCase(exe, input, exp string) error {
+func verify(n int, out string) error {
+	out = strings.TrimSpace(out)
+	if out == "" {
+		return fmt.Errorf("empty output")
+	}
+	lines := strings.Split(out, "\n")
+	first := strings.TrimSpace(lines[0])
+	if strings.EqualFold(first, "No") {
+		if n > 2 {
+			return fmt.Errorf("expected Yes for n=%d", n)
+		}
+		if len(lines) > 1 {
+			return fmt.Errorf("unexpected extra output after No")
+		}
+		return nil
+	}
+	if !strings.EqualFold(first, "Yes") {
+		return fmt.Errorf("first line must be Yes or No, got %q", first)
+	}
+	if n <= 2 {
+		return fmt.Errorf("expected No for n=%d but got Yes", n)
+	}
+	if len(lines) < 3 {
+		return fmt.Errorf("expected three lines for Yes output")
+	}
+	aFields := strings.Fields(lines[1])
+	bFields := strings.Fields(lines[2])
+	if len(aFields) == 0 || len(bFields) == 0 {
+		return fmt.Errorf("missing subset lines")
+	}
+	k, err := strconv.Atoi(aFields[0])
+	if err != nil {
+		return fmt.Errorf("invalid subset size: %v", err)
+	}
+	m, err := strconv.Atoi(bFields[0])
+	if err != nil {
+		return fmt.Errorf("invalid subset size: %v", err)
+	}
+	if len(aFields)-1 != k || len(bFields)-1 != m {
+		return fmt.Errorf("subset size mismatch")
+	}
+	if k+m != n {
+		return fmt.Errorf("subsets do not partition 1..n")
+	}
+	used := make([]bool, n+1)
+	sumA, sumB := 0, 0
+	for _, tok := range aFields[1:] {
+		v, err := strconv.Atoi(tok)
+		if err != nil {
+			return fmt.Errorf("invalid number in first subset: %v", err)
+		}
+		if v < 1 || v > n {
+			return fmt.Errorf("number %d out of range", v)
+		}
+		if used[v] {
+			return fmt.Errorf("number %d repeated", v)
+		}
+		used[v] = true
+		sumA += v
+	}
+	for _, tok := range bFields[1:] {
+		v, err := strconv.Atoi(tok)
+		if err != nil {
+			return fmt.Errorf("invalid number in second subset: %v", err)
+		}
+		if v < 1 || v > n {
+			return fmt.Errorf("number %d out of range", v)
+		}
+		if used[v] {
+			return fmt.Errorf("number %d repeated", v)
+		}
+		used[v] = true
+		sumB += v
+	}
+	for i := 1; i <= n; i++ {
+		if !used[i] {
+			return fmt.Errorf("number %d missing from partition", i)
+		}
+	}
+	if gcd(sumA, sumB) <= 1 {
+		return fmt.Errorf("sums %d and %d are coprime", sumA, sumB)
+	}
+	return nil
+}
+
+func runCase(exe, input string, n int) error {
 	cmd := exec.Command(exe)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
@@ -47,11 +114,7 @@ func runCase(exe, input, exp string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	got := strings.TrimSpace(out.String())
-	if got != strings.TrimSpace(exp) {
-		return fmt.Errorf("expected %q got %q", exp, got)
-	}
-	return nil
+	return verify(n, out.String())
 }
 
 func main() {
@@ -76,8 +139,7 @@ func main() {
 		scan.Scan()
 		n, _ := strconv.Atoi(scan.Text())
 		input := fmt.Sprintf("%d\n", n)
-		exp := expected(n)
-		if err := runCase(exe, input, exp); err != nil {
+		if err := runCase(exe, input, n); err != nil {
 			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
