@@ -127,6 +127,60 @@ func genCase(rng *rand.Rand) (string, string) {
 	return s + "\n", s
 }
 
+// validateA checks whether ans is a valid output for input s.
+func validateA(s, ans string) bool {
+	n := len(s)
+	if len(ans) != n {
+		return false
+	}
+	// check multiset of characters matches
+	freq := make([]int, 26)
+	for i := 0; i < n; i++ {
+		freq[int(s[i]-'a')]++
+		freq[int(ans[i]-'a')]--
+	}
+	for i := 0; i < 26; i++ {
+		if freq[i] != 0 {
+			return false
+		}
+	}
+	// build groups via DSU
+	isPrime := make([]bool, n+1)
+	for i := 2; i <= n; i++ {
+		isPrime[i] = true
+	}
+	for i := 2; i*i <= n; i++ {
+		if isPrime[i] {
+			for j := i * i; j <= n; j += i {
+				isPrime[j] = false
+			}
+		}
+	}
+	dsu := newDSU(n)
+	for p := 2; p <= n; p++ {
+		if !isPrime[p] {
+			continue
+		}
+		for k := 2; p*k <= n; k++ {
+			dsu.union(p, p*k)
+		}
+	}
+	groups := make(map[int][]int)
+	for i := 1; i <= n; i++ {
+		r := dsu.find(i)
+		groups[r] = append(groups[r], i)
+	}
+	for _, g := range groups {
+		ch := ans[g[0]-1]
+		for _, pos := range g[1:] {
+			if ans[pos-1] != ch {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierA.go /path/to/binary")
@@ -142,8 +196,22 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if got != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, expect, got, input)
+		got = strings.TrimSpace(got)
+		expParts := strings.Fields(expect)
+		gotParts := strings.Fields(got)
+		if len(expParts) == 0 || len(gotParts) == 0 {
+			fmt.Fprintf(os.Stderr, "case %d failed: invalid output\ninput:\n%s", i+1, input)
+			os.Exit(1)
+		}
+		if expParts[0] == "NO" {
+			if gotParts[0] != "NO" {
+				fmt.Fprintf(os.Stderr, "case %d failed: expected NO got %s\ninput:\n%s", i+1, gotParts[0], input)
+				os.Exit(1)
+			}
+			continue
+		}
+		if gotParts[0] != "YES" || len(gotParts) < 2 || !validateA(s, gotParts[1]) {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected valid YES output got %s\ninput:\n%s", i+1, got, input)
 			os.Exit(1)
 		}
 	}
