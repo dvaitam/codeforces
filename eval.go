@@ -103,18 +103,19 @@ func main() {
 	defer db.Close()
 
 	_, err = db.Exec(`
-               CREATE TABLE IF NOT EXISTS evaluations (
-                       id INT AUTO_INCREMENT PRIMARY KEY,
-                       run_id VARCHAR(255),
-                       model VARCHAR(255),
-                       problem_id INT,
-                       prompt TEXT,
-                       response TEXT,
-                       success BOOL,
-                       stdout TEXT,
-                       stderr TEXT,
-                       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-               )
+                CREATE TABLE IF NOT EXISTS evaluations (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        run_id VARCHAR(255),
+                        model VARCHAR(255),
+                        lang VARCHAR(255),
+                        problem_id INT,
+                        prompt TEXT,
+                        response TEXT,
+                        success BOOL,
+                        stdout TEXT,
+                        stderr TEXT,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
        `)
 	if err != nil {
 		panic(err)
@@ -205,8 +206,8 @@ func main() {
 		}
 
 		_, err = db.Exec(
-			"INSERT INTO evaluations (run_id, model, problem_id, prompt, response, success, stdout, stderr) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-			runID, *model, problem.ID, prompt, finalResponse, success, verifierStdout, verifierStderr,
+			"INSERT INTO evaluations (run_id, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			runID, *model, lang, problem.ID, prompt, finalResponse, success, verifierStdout, verifierStderr,
 		)
 		if err != nil {
 			panic(err)
