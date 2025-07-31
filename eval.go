@@ -55,7 +55,17 @@ func main() {
 	dbDSN := flag.String("db", "user:pass@tcp(127.0.0.1:3306)/dbname", "Database DSN")
 	maxAttempts := flag.Int("max-attempts", 1, "Maximum attempts to fix syntax errors (1-5)")
 	httpTimeout := flag.Duration("timeout", 30*time.Second, "HTTP request timeout")
+	language := flag.String("lang", "go", "Programming language to generate the solution in")
 	flag.Parse()
+	lang := strings.ToLower(*language)
+	switch lang {
+	case "py":
+		lang = "python"
+	case "rs":
+		lang = "rust"
+	case "cpp":
+		lang = "c++"
+	}
 	requestTimeout = *httpTimeout
 
 	if *maxAttempts < 1 || *maxAttempts > 5 {
@@ -138,13 +148,13 @@ func main() {
 		fmt.Printf("Attempt %d: Targeting estimated %d (using actual rating %d)\n", i+1, estimatedRating, actualRating)
 		problem, verifierFile := getRandomProblem(db, actualRating)
 		plainStatement := latexToPlain(problem.Statement)
-		prompt := "write a go solution for " + plainStatement + ". Output only the code, with no explanation or additional text."
+		prompt := fmt.Sprintf("write a %s solution for %s. Output only the code with no comments, explanation, or additional text.", lang, plainStatement)
 		fmt.Printf("Sending prompt for Problem ID: %d, Contest ID: %d, Index: %s\n", problem.ID, problem.ContestID, problem.IndexName)
 		fmt.Println("Sending prompt...")
 		response := sendPrompt(*provider, *model, apiKey, prompt)
 		fmt.Println("Response received.")
 
-		code := extractCode(response)
+		code := extractCode(response, lang)
 		fmt.Printf("Solution code:\n%s\n", code)
 
 		success := false
@@ -154,17 +164,17 @@ func main() {
 		var verifierStdout, verifierStderr string
 		for attempt <= *maxAttempts {
 			fmt.Printf("Verification attempt %d of %d\n", attempt, *maxAttempts)
-			buildSuccess, buildErrMsg, builtBinAbs := buildSolution(code)
+			buildSuccess, buildErrMsg, builtBinAbs := buildSolution(code, lang)
 			tempBinAbs = builtBinAbs
 			if !buildSuccess {
 				if attempt == *maxAttempts {
 					break
 				}
-				fixPrompt := fmt.Sprintf("The following Go code has compilation errors: %s\n\nFix the errors and output only the corrected code, no explanation.", buildErrMsg)
+				fixPrompt := fmt.Sprintf("The following %s code has compilation errors: %s\n\nFix the errors and output only the corrected code with no comments or explanation.", lang, buildErrMsg)
 				fixPrompt += "\n\nOriginal code:\n" + code
 				fmt.Println("Sending fix prompt...")
 				fixResponse := sendPrompt(*provider, *model, apiKey, fixPrompt)
-				code = extractCode(fixResponse)
+				code = extractCode(fixResponse, lang)
 				finalResponse = fixResponse // Update final response to the corrected one
 				fmt.Printf("Corrected code:\n%s\n", code)
 				attempt++
@@ -184,7 +194,13 @@ func main() {
 		// Clean up temp files if any
 		if tempBinAbs != "" {
 			os.Remove(tempBinAbs)
-			os.Remove(filepath.Dir(tempBinAbs) + "/solution.go") // Clean source too
+			os.Remove(filepath.Join(filepath.Dir(tempBinAbs), "solution.go"))
+			os.Remove(filepath.Join(filepath.Dir(tempBinAbs), "solution.py"))
+			os.Remove(filepath.Join(filepath.Dir(tempBinAbs), "solution.rs"))
+			os.Remove(filepath.Join(filepath.Dir(tempBinAbs), "Main.java"))
+			os.Remove(filepath.Join(filepath.Dir(tempBinAbs), "Main.class"))
+			os.Remove(filepath.Join(filepath.Dir(tempBinAbs), "solution.c"))
+			os.Remove(filepath.Join(filepath.Dir(tempBinAbs), "solution.cpp"))
 			os.RemoveAll(filepath.Dir(tempBinAbs))
 		}
 
@@ -215,36 +231,119 @@ func main() {
 	fmt.Printf("Evaluation complete. Estimated Codeforces rating for model %s: %d\n", *model, estimatedRating)
 }
 
-func buildSolution(code string) (bool, string, string) {
-	tempDir, err := os.MkdirTemp("", "gobuild-*")
+func buildSolution(code, language string) (bool, string, string) {
+	tempDir, err := os.MkdirTemp("", "build-*")
 	if err != nil {
 		return false, err.Error(), ""
 	}
 
-	tempSrc := filepath.Join(tempDir, "solution.go")
-	err = os.WriteFile(tempSrc, []byte(code), 0644)
-	if err != nil {
-		return false, err.Error(), ""
-	}
+	switch strings.ToLower(language) {
+	case "go":
+		tempSrc := filepath.Join(tempDir, "solution.go")
+		err = os.WriteFile(tempSrc, []byte(code), 0644)
+		if err != nil {
+			return false, err.Error(), ""
+		}
 
-	// Format the code
-	cmd := exec.Command("gofmt", "-w", "solution.go")
-	cmd.Dir = tempDir
-	if err := cmd.Run(); err != nil {
-		return false, err.Error(), ""
-	}
+		// Format the code
+		cmd := exec.Command("gofmt", "-w", "solution.go")
+		cmd.Dir = tempDir
+		if err := cmd.Run(); err != nil {
+			return false, err.Error(), ""
+		}
 
-	tempBin := filepath.Join(tempDir, "solution")
-	cmd = exec.Command("go", "build", "-o", "solution", "solution.go")
-	cmd.Dir = tempDir
-	var buildStderr bytes.Buffer
-	cmd.Stderr = &buildStderr
-	if err := cmd.Run(); err != nil {
-		return false, buildStderr.String(), tempDir // Return tempDir to clean later
-	}
+		tempBin := filepath.Join(tempDir, "solution")
+		cmd = exec.Command("go", "build", "-o", "solution", "solution.go")
+		cmd.Dir = tempDir
+		var buildStderr bytes.Buffer
+		cmd.Stderr = &buildStderr
+		if err := cmd.Run(); err != nil {
+			return false, buildStderr.String(), tempDir // Return tempDir to clean later
+		}
 
-	tempBinAbs, _ := filepath.Abs(tempBin)
-	return true, "", tempBinAbs
+		tempBinAbs, _ := filepath.Abs(tempBin)
+		return true, "", tempBinAbs
+	case "python", "py":
+		if !strings.HasPrefix(code, "#!/") {
+			code = "#!/usr/bin/env python3\n" + code
+		}
+		tempSrc := filepath.Join(tempDir, "solution.py")
+		if err = os.WriteFile(tempSrc, []byte(code), 0755); err != nil {
+			return false, err.Error(), ""
+		}
+		cmd := exec.Command("python3", "-m", "py_compile", "solution.py")
+		cmd.Dir = tempDir
+		var buildStderr bytes.Buffer
+		cmd.Stderr = &buildStderr
+		if err := cmd.Run(); err != nil {
+			return false, buildStderr.String(), tempDir
+		}
+		tempSrcAbs, _ := filepath.Abs(tempSrc)
+		return true, "", tempSrcAbs
+	case "rust", "rs":
+		tempSrc := filepath.Join(tempDir, "solution.rs")
+		if err = os.WriteFile(tempSrc, []byte(code), 0644); err != nil {
+			return false, err.Error(), ""
+		}
+		cmd := exec.Command("rustc", "-O", "-o", "solution", "solution.rs")
+		cmd.Dir = tempDir
+		var buildStderr bytes.Buffer
+		cmd.Stderr = &buildStderr
+		if err := cmd.Run(); err != nil {
+			return false, buildStderr.String(), tempDir
+		}
+		tempBinAbs, _ := filepath.Abs(filepath.Join(tempDir, "solution"))
+		return true, "", tempBinAbs
+	case "java":
+		tempSrc := filepath.Join(tempDir, "Main.java")
+		if err = os.WriteFile(tempSrc, []byte(code), 0644); err != nil {
+			return false, err.Error(), ""
+		}
+		cmd := exec.Command("javac", "Main.java")
+		cmd.Dir = tempDir
+		var buildStderr bytes.Buffer
+		cmd.Stderr = &buildStderr
+		if err := cmd.Run(); err != nil {
+			return false, buildStderr.String(), tempDir
+		}
+		runner := filepath.Join(tempDir, "solution")
+		runScript := "#!/usr/bin/env bash\ncd \"$(dirname \"$0\")\"\njava Main \"$@\"\n"
+		if err = os.WriteFile(runner, []byte(runScript), 0755); err != nil {
+			return false, err.Error(), ""
+		}
+		tempBinAbs, _ := filepath.Abs(runner)
+		return true, "", tempBinAbs
+	case "c":
+		tempSrc := filepath.Join(tempDir, "solution.c")
+		if err = os.WriteFile(tempSrc, []byte(code), 0644); err != nil {
+			return false, err.Error(), ""
+		}
+		cmd := exec.Command("gcc", "-O2", "-std=c11", "-o", "solution", "solution.c")
+		cmd.Dir = tempDir
+		var buildStderr bytes.Buffer
+		cmd.Stderr = &buildStderr
+		if err := cmd.Run(); err != nil {
+			return false, buildStderr.String(), tempDir
+		}
+		tempBinAbs, _ := filepath.Abs(filepath.Join(tempDir, "solution"))
+		return true, "", tempBinAbs
+	case "c++", "cpp":
+		tempSrc := filepath.Join(tempDir, "solution.cpp")
+		if err = os.WriteFile(tempSrc, []byte(code), 0644); err != nil {
+			return false, err.Error(), ""
+		}
+		cmd := exec.Command("g++", "-O2", "-std=gnu++17", "-o", "solution", "solution.cpp")
+		cmd.Dir = tempDir
+		var buildStderr bytes.Buffer
+		cmd.Stderr = &buildStderr
+		if err := cmd.Run(); err != nil {
+			return false, buildStderr.String(), tempDir
+		}
+		tempBinAbs, _ := filepath.Abs(filepath.Join(tempDir, "solution"))
+		return true, "", tempBinAbs
+	default:
+		return false, "unsupported language", ""
+	}
 }
 
 func runVerifier(verifierFile, tempBinAbs string) (bool, string, string) {
@@ -646,9 +745,14 @@ func sendPrompt(provider, model, apiKey, prompt string) string {
 	return ""
 }
 
-func extractCode(response string) string {
-	re := regexp.MustCompile(`(?s)\x60\x60\x60go\s*(.*?)\x60\x60\x60`)
+func extractCode(response, language string) string {
+	re := regexp.MustCompile(fmt.Sprintf(`(?s)\x60\x60\x60%s\s*(.*?)\x60\x60\x60`, regexp.QuoteMeta(language)))
 	matches := re.FindStringSubmatch(response)
+	if len(matches) > 1 {
+		return strings.TrimSpace(matches[1])
+	}
+	re = regexp.MustCompile(`(?s)\x60\x60\x60\s*(.*?)\x60\x60\x60`)
+	matches = re.FindStringSubmatch(response)
 	if len(matches) > 1 {
 		return strings.TrimSpace(matches[1])
 	}
