@@ -136,9 +136,9 @@ var leaderboardTmpl = template.Must(template.New("leaderboard").Parse(`
 {{if .Evals}}
 <h2>Evaluation History for {{.RunID}}</h2>
 <table border="1">
-<tr><th>Run ID</th><th>Model</th><th>Problem ID</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
+<tr><th>Eval ID</th><th>Run ID</th><th>Model</th><th>Problem ID</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
 {{range .Evals}}
-<tr><td>{{.RunID}}</td><td>{{.Model}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ProblemID}}</a></td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td><td><a href="/evaluation/stdout/{{.ID}}">View</a></td><td><a href="/evaluation/stderr/{{.ID}}">View</a></td></tr>
+<tr><td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td><td>{{.RunID}}</td><td>{{.Model}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ContestID}}{{.IndexName}}</a></td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td><td><a href="/evaluation/stdout/{{.ID}}">View</a></td><td><a href="/evaluation/stderr/{{.ID}}">View</a></td></tr>
 {{end}}
 </table>
 {{end}}
@@ -160,9 +160,9 @@ var modelTmpl = template.Must(template.New("model").Parse(`
 <html><body>
 <h1>Evaluations for {{.Model}}</h1>
 <table border="1">
-<tr><th>Run ID</th><th>Problem ID</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
+<tr><th>Eval ID</th><th>Run ID</th><th>Problem ID</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
 {{range .Evals}}
-<tr><td>{{.RunID}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ProblemID}}</a></td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td><td><a href="/evaluation/stdout/{{.ID}}">View</a></td><td><a href="/evaluation/stderr/{{.ID}}">View</a></td></tr>
+<tr><td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td><td>{{.RunID}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ContestID}}{{.IndexName}}</a></td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td><td><a href="/evaluation/stdout/{{.ID}}">View</a></td><td><a href="/evaluation/stderr/{{.ID}}">View</a></td></tr>
 {{end}}
 </table>
 </body></html>`))
@@ -175,7 +175,7 @@ var submissionsTmpl = template.Must(template.New("submissions").Parse(`
 <tr><th>ID</th><th>Language</th><th>Exit Code</th><th>Timestamp</th><th>Code</th><th>Stdout</th><th>Stderr</th></tr>
 {{range .}}
 <tr>
-<td>{{.ID}}</td><td>{{.Lang}}</td><td>{{.ExitCode}}</td><td>{{.Timestamp}}</td>
+<td><a href="/submission/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td><td>{{.Lang}}</td><td>{{.ExitCode}}</td><td>{{.Timestamp}}</td>
 <td><a href="/submission/code/{{.ID}}">View</a></td><td><a href="/submission/stdout/{{.ID}}">View</a></td><td><a href="/submission/stderr/{{.ID}}">View</a></td>
 </tr>
 {{end}}
