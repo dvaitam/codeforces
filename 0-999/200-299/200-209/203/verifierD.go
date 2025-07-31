@@ -7,22 +7,43 @@ import (
 	"math"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+func reflectPos(pos, limit float64) float64 {
+	period := 2 * limit
+	pos = math.Mod(pos, period)
+	if pos < 0 {
+		pos += period
 	}
-	oracle := filepath.Join(dir, "oracleD")
-	cmd := exec.Command("go", "build", "-o", oracle, "203D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	if pos > limit {
+		return period - pos
 	}
-	return oracle, nil
+	return pos
+}
+
+func computeExpected(line string) (float64, float64, error) {
+	parts := strings.Fields(line)
+	if len(parts) != 6 {
+		return 0, 0, fmt.Errorf("input should contain six numbers")
+	}
+	vals := make([]float64, 6)
+	for i, p := range parts {
+		v, err := strconv.ParseFloat(p, 64)
+		if err != nil {
+			return 0, 0, fmt.Errorf("invalid number: %v", err)
+		}
+		vals[i] = v
+	}
+	a, b, m := vals[0], vals[1], vals[2]
+	vx, vy, vz := vals[3], vals[4], vals[5]
+	t := m / -vy
+	xUnfold := a/2 + vx*t
+	zUnfold := vz * t
+	x0 := reflectPos(xUnfold, a)
+	z0 := reflectPos(zUnfold, b)
+	return x0, z0, nil
 }
 
 func parseFloats(s string) (float64, float64, error) {
@@ -44,12 +65,6 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
 	file, err := os.Open("testcasesD.txt")
 	if err != nil {
@@ -66,20 +81,12 @@ func main() {
 			continue
 		}
 		idx++
-		input := line + "\n"
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(input)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error: %v\n", err)
-			os.Exit(1)
-		}
-		expX, expZ, err := parseFloats(strings.TrimSpace(outO.String()))
+		expX, expZ, err := computeExpected(line)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle output parse error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "oracle compute error: %v\n", err)
 			os.Exit(1)
 		}
+		input := line + "\n"
 
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(input)
