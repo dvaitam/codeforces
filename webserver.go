@@ -696,7 +696,7 @@ func submissionFixPromptHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	prompt := fmt.Sprintf("For problem %s%s this is a correction solution , but verifier ends with %s can you fix the verifier ? %s", contestID, letter, stderr, code)
+	prompt := fmt.Sprintf("For problem %s%s this is a correct solution, but verifier ends with %s can you fix the verifier? %s", contestID, letter, stderr, code)
 	textTmpl.Execute(w, prompt)
 }
 
@@ -738,7 +738,7 @@ func evaluationFixPromptHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	prompt := fmt.Sprintf("For problem %s%s this is a correction solution , but verifier ends with %s can you fix the verifier ? %s", contestID, letter, stderr, code)
+	prompt := fmt.Sprintf("For problem %s%s this is a correct solution, but verifier ends with %s can you fix the verifier? %s", contestID, letter, stderr, code)
 	textTmpl.Execute(w, prompt)
 }
 
