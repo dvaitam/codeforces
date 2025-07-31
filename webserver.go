@@ -460,6 +460,14 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	indexTmpl.Execute(w, list)
 }
 
+func pathHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/path" {
+		http.NotFound(w, r)
+		return
+	}
+	fmt.Fprintln(w, os.Getenv("PATH"))
+}
+
 func contestDir(id string) (string, error) {
 	n, err := strconv.Atoi(id)
 	if err != nil {
@@ -765,6 +773,7 @@ func evaluationContentHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	var err error
+	fmt.Println("PATH:", os.Getenv("PATH"))
 	contests, err = scanContests(".")
 	if err != nil {
 		panic(err)
@@ -795,6 +804,7 @@ func main() {
 		panic(err)
 	}
 	http.HandleFunc("/", rootHandler)
+	http.HandleFunc("/path", pathHandler)
 	http.HandleFunc("/addproblem", addProblemHandler)
 	http.HandleFunc("/contest/", func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/contest/"), "/")
