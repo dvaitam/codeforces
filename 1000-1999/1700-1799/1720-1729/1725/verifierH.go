@@ -49,7 +49,7 @@ func genCases() []Case {
 	preset := []struct {
 		n    int
 		vals []int
-	}{{1, []int{0}}, {2, []int{1, 2}}}
+	}{{2, []int{1, 2}}, {4, []int{1, 2, 3, 4}}}
 	for _, p := range preset {
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d\n", p.n))
@@ -63,14 +63,14 @@ func genCases() []Case {
 		cases = append(cases, Case{sb.String()})
 	}
 	for len(cases) < 100 {
-		n := rng.Intn(6) + 1
+		n := rng.Intn(3)*2 + 2
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d\n", n))
 		for i := 0; i < n; i++ {
 			if i > 0 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(fmt.Sprintf("%d", rng.Intn(10)))
+			sb.WriteString(fmt.Sprintf("%d", rng.Intn(10)+1))
 		}
 		sb.WriteByte('\n')
 		cases = append(cases, Case{sb.String()})
