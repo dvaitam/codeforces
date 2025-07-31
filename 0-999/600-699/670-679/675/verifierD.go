@@ -121,6 +121,7 @@ func main() {
 		os.Exit(1)
 	}
 	t, _ := strconv.Atoi(scan.Text())
+	cases := make([][]int, t)
 	expectedOut := make([][]string, t)
 	for i := 0; i < t; i++ {
 		if !scan.Scan() {
@@ -137,18 +138,28 @@ func main() {
 			v, _ := strconv.Atoi(scan.Text())
 			arr[j] = v
 		}
+		cases[i] = arr
 		expectedOut[i] = expected(arr)
 	}
-	cmd := exec.Command(os.Args[1])
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("execution failed: %v\n%s", err, out)
-		os.Exit(1)
-	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
 	for i := 0; i < t; i++ {
+		var buf bytes.Buffer
+		fmt.Fprintf(&buf, "%d\n", len(cases[i]))
+		for j, v := range cases[i] {
+			if j > 0 {
+				buf.WriteByte(' ')
+			}
+			fmt.Fprintf(&buf, "%d", v)
+		}
+		buf.WriteByte('\n')
+		cmd := exec.Command(os.Args[1])
+		cmd.Stdin = bytes.NewReader(buf.Bytes())
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf("execution failed on test %d: %v\n%s", i+1, err, out)
+			os.Exit(1)
+		}
+		outScan := bufio.NewScanner(bytes.NewReader(out))
+		outScan.Split(bufio.ScanWords)
 		for j := 0; j < len(expectedOut[i]); j++ {
 			if !outScan.Scan() {
 				fmt.Printf("missing output for test %d\n", i+1)
@@ -160,10 +171,10 @@ func main() {
 				os.Exit(1)
 			}
 		}
-	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
-		os.Exit(1)
+		if outScan.Scan() {
+			fmt.Printf("extra output detected on test %d\n", i+1)
+			os.Exit(1)
+		}
 	}
 	fmt.Println("All tests passed")
 }
