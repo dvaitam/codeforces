@@ -395,7 +395,7 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 		}
 	}
 	respStr := output.String()
-	if _, dbErr := db.Exec("INSERT INTO submissions (lang, code, stdout, stderr, response, exit_code) VALUES (?, ?, ?, ?, ?, ?)", lang, string(data), stdoutStr, stderrStr, respStr, exitCode); dbErr != nil {
+	if _, dbErr := db.Exec("INSERT INTO submissions (contest_id, problem_letter, lang, code, stdout, stderr, response, exit_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", c.ID, letter, lang, string(data), stdoutStr, stderrStr, respStr, exitCode); dbErr != nil {
 		fmt.Println("failed to insert submission:", dbErr)
 	}
 	resultTmpl.Execute(w, map[string]string{
@@ -683,6 +683,23 @@ func submissionsHandler(w http.ResponseWriter, r *http.Request) {
 	submissionsTmpl.Execute(w, subs)
 }
 
+func submissionFixPromptHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/submission/generate/fix/prompt/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	var contestID, letter, code, stderr string
+	err = db.QueryRow("SELECT contest_id, problem_letter, code, stderr FROM submissions WHERE id = ?", id).Scan(&contestID, &letter, &code, &stderr)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	prompt := fmt.Sprintf("For problem %s%s this is a correction solution , but verifier ends with %s can you fix the verifier ? %s", contestID, letter, stderr, code)
+	textTmpl.Execute(w, prompt)
+}
+
 func submissionContentHandler(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/submission/"), "/")
 	if len(parts) != 2 {
@@ -706,6 +723,23 @@ func submissionContentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	textTmpl.Execute(w, content)
+}
+
+func evaluationFixPromptHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/evaluation/generate/fix/prompt/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	var contestID, letter, code, stderr string
+	err = db.QueryRow(`SELECT p.contest_id, p.index_name, e.response, e.stderr FROM evaluations e JOIN problems p ON e.problem_id = p.id WHERE e.id = ?`, id).Scan(&contestID, &letter, &code, &stderr)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	prompt := fmt.Sprintf("For problem %s%s this is a correction solution , but verifier ends with %s can you fix the verifier ? %s", contestID, letter, stderr, code)
+	textTmpl.Execute(w, prompt)
 }
 
 func evaluationContentHandler(w http.ResponseWriter, r *http.Request) {
@@ -747,6 +781,8 @@ func main() {
 	if _, err = db.Exec(`
                CREATE TABLE IF NOT EXISTS submissions (
                        id INT AUTO_INCREMENT PRIMARY KEY,
+                       contest_id VARCHAR(20),
+                       problem_letter VARCHAR(10),
                        lang VARCHAR(20),
                        code TEXT,
                        stdout TEXT,
@@ -771,7 +807,9 @@ func main() {
 	http.HandleFunc("/leaderboard", leaderboardHandler)
 	http.HandleFunc("/model", modelHandler)
 	http.HandleFunc("/submission", submissionsHandler)
+	http.HandleFunc("/submission/generate/fix/prompt/", submissionFixPromptHandler)
 	http.HandleFunc("/submission/", submissionContentHandler)
+	http.HandleFunc("/evaluation/generate/fix/prompt/", evaluationFixPromptHandler)
 	http.HandleFunc("/evaluation/", evaluationContentHandler)
 	http.ListenAndServe(":8081", nil)
 }
