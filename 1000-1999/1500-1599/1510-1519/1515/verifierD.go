@@ -44,7 +44,7 @@ func genCase(rng *rand.Rand) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", t))
 	for i := 0; i < t; i++ {
-		n := rng.Intn(12) + 2
+		n := rng.Intn(6)*2 + 2 // ensure n is even
 		l := rng.Intn(n + 1)
 		r := n - l
 		sb.WriteString(fmt.Sprintf("%d %d %d\n", n, l, r))
