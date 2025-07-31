@@ -119,18 +119,28 @@ func main() {
 		fmt.Println("failed to parse testcases:", err)
 		os.Exit(1)
 	}
-	for idx, c := range cases {
-		var sb strings.Builder
-		sb.WriteString("1\n")
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d\n", len(cases)))
+	expected := make([]string, len(cases))
+	for i, c := range cases {
 		sb.WriteString(fmt.Sprintf("%d\n", c))
-		expected := solveG(c)
-		got, err := run(bin, sb.String())
-		if err != nil {
-			fmt.Printf("case %d failed: %v\n", idx+1, err)
-			os.Exit(1)
-		}
-		if strings.TrimSpace(got) != expected {
-			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, expected, got)
+		expected[i] = solveG(c)
+	}
+
+	got, err := run(bin, sb.String())
+	if err != nil {
+		fmt.Printf("failed: %v\n", err)
+		os.Exit(1)
+	}
+	outputs := strings.Fields(got)
+	if len(outputs) != len(expected) {
+		fmt.Printf("expected %d lines of output, got %d\n", len(expected), len(outputs))
+		os.Exit(1)
+	}
+	for i, exp := range expected {
+		if outputs[i] != exp {
+			fmt.Printf("case %d failed: expected %s got %s\n", i+1, exp, outputs[i])
 			os.Exit(1)
 		}
 	}
