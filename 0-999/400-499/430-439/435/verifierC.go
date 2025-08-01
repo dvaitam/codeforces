@@ -103,7 +103,11 @@ func main() {
 		for i := 0; i < n; i++ {
 			arr[i], _ = strconv.Atoi(parts[1+i])
 		}
-		expect := expectedCardio(arr)
+		// Solutions may or may not print a trailing newline after the
+		// last row. Trim any trailing newlines from both the expected
+		// and actual output before comparison to avoid false
+		// mismatches.
+		expect := strings.TrimRight(expectedCardio(arr), "\n")
 		input := fmt.Sprintf("%d\n", n)
 		for i, a := range arr {
 			if i > 0 {
@@ -123,7 +127,7 @@ func main() {
 			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
 			os.Exit(1)
 		}
-		got := out.String()
+		got := strings.TrimRight(out.String(), "\n")
 		if got != expect {
 			fmt.Printf("test %d failed:\nexpected:\n%s\ngot:\n%s\n", idx, expect, got)
 			os.Exit(1)
