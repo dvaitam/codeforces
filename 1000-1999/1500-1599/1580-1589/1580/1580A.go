@@ -1,10 +1,9 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"os"
-	"strings"
+        "bufio"
+        "fmt"
+        "os"
 )
 
 func solveCase(grid [][]byte, n, m int) int32 {
