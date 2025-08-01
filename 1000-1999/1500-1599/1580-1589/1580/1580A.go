@@ -4,76 +4,75 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 )
 
-func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
-	defer out.Flush()
+func solveCase(grid [][]byte, n, m int) int32 {
+	// Initialize prefix sum array
+	pref := make([][]int32, n+1)
+	for i := range pref {
+		pref[i] = make([]int32, m)
+	}
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			pref[i+1][j] = pref[i][j] + int32(grid[i][j])
+		}
+	}
 
+	best := int32(1<<31 - 1) // Equivalent to std::i32::MAX
+	vertZero := make([]int32, m)
+	sumCol := make([]int32, m)
+	ps := make([]int32, m+1)
+
+	for r1 := 0; r1 < n; r1++ {
+		for r2 := r1 + 4; r2 < n; r2++ {
+			h := int32(r2 - r1 + 1)
+			for j := 0; j < m; j++ {
+				interiorOnes := pref[r2][j] - pref[r1+1][j]
+				vertZero[j] = (h - 2) - interiorOnes
+				topBottomMissing := 2 - (int32(grid[r1][j]) + int32(grid[r2][j]))
+				sumCol[j] = interiorOnes + topBottomMissing
+			}
+			ps[0] = 0
+			for j := 0; j < m; j++ {
+				ps[j+1] = ps[j] + sumCol[j]
+			}
+			minVal := int32(1<<31 - 1)
+			for c2 := 3; c2 < m; c2++ {
+				c1 := c2 - 3
+				candidate := vertZero[c1] - ps[c1+1]
+				if candidate < minVal {
+					minVal = candidate
+				}
+				cost := vertZero[c2] + ps[c2] + minVal
+				if cost < best {
+					best = cost
+				}
+			}
+		}
+	}
+	return best
+}
+
+func main() {
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
 	var t int
-	fmt.Fscan(in, &t)
+	fmt.Sscanf(scanner.Text(), "%d", &t)
+
 	for ; t > 0; t-- {
+		scanner.Scan()
 		var n, m int
-		fmt.Fscan(in, &n, &m)
+		fmt.Sscanf(scanner.Text(), "%d %d", &n, &m)
 		grid := make([][]byte, n)
 		for i := 0; i < n; i++ {
-			var s string
-			fmt.Fscan(in, &s)
-			grid[i] = []byte(s)
-		}
-
-		// prefix sums of ones for each row
-		prefix := make([][]int, n)
-		for i := 0; i < n; i++ {
-			prefix[i] = make([]int, m+1)
-			for j := 0; j < m; j++ {
-				prefix[i][j+1] = prefix[i][j]
-				if grid[i][j] == '1' {
-					prefix[i][j+1]++
-				}
+			scanner.Scan()
+			grid[i] = []byte(scanner.Text())
+			for j := range grid[i] {
+				grid[i][j] -= '0' // Convert '0' or '1' to 0 or 1
 			}
 		}
-
-		ans := n * m // upper bound
-		if n >= 5 && m >= 4 {
-			for top := 0; top+4 < n; top++ {
-				bottom := top + 4
-				// precompute mid column prefix sums and ones counts
-				midOnes := make([]int, m)
-				midPrefix := make([]int, m+1)
-				for j := 0; j < m; j++ {
-					cnt := 0
-					for r := top + 1; r <= top+3; r++ {
-						if grid[r][j] == '1' {
-							cnt++
-						}
-					}
-					midOnes[j] = cnt
-					midPrefix[j+1] = midPrefix[j] + cnt
-				}
-				for left := 0; left+3 < m; left++ {
-					for right := left + 3; right < m; right++ {
-						width := right - left - 1
-						// top and bottom horizontal edges cost
-						topOnes := prefix[top][right] - prefix[top][left+1]
-						bottomOnes := prefix[bottom][right] - prefix[bottom][left+1]
-						costTop := width - topOnes
-						costBottom := width - bottomOnes
-						// interior zero cost
-						interiorOnes := midPrefix[right] - midPrefix[left+1]
-						// vertical edges cost
-						verticalCost := (3 - midOnes[left]) + (3 - midOnes[right])
-						cost := costTop + costBottom + interiorOnes + verticalCost
-						if cost < ans {
-							ans = cost
-						}
-					}
-				}
-			}
-		} else {
-			ans = 0
-		}
-		fmt.Fprintln(out, ans)
+		ans := solveCase(grid, n, m)
+		fmt.Println(ans)
 	}
 }
