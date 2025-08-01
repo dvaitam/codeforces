@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
@@ -69,29 +70,23 @@ func solve(n, m, k int, edges [][4]int) string {
 	if k > n-1 {
 		k = n - 1
 	}
-	children := make([][]int, n+1)
-	edgesIdx := make([][]int, n+1)
-	for v := 2; v <= n; v++ {
-		p := parent[v]
-		if p != 0 {
-			children[p] = append(children[p], v)
-			edgesIdx[p] = append(edgesIdx[p], parentEdge[v])
-		}
+	type pair struct {
+		dist int64
+		v    int
 	}
-	ans := make([]int, 0, k)
-	type stackEntry struct{ u, next int }
-	stack := []stackEntry{{1, 0}}
-	for len(stack) > 0 && len(ans) < k {
-		top := &stack[len(stack)-1]
-		if top.next < len(children[top.u]) {
-			v := children[top.u][top.next]
-			id := edgesIdx[top.u][top.next]
-			top.next++
-			ans = append(ans, id)
-			stack = append(stack, stackEntry{v, 0})
-		} else {
-			stack = stack[:len(stack)-1]
+	verts := make([]pair, 0, n-1)
+	for v := 2; v <= n; v++ {
+		verts = append(verts, pair{dist[v], v})
+	}
+	sort.Slice(verts, func(i, j int) bool {
+		if verts[i].dist == verts[j].dist {
+			return verts[i].v < verts[j].v
 		}
+		return verts[i].dist < verts[j].dist
+	})
+	ans := make([]int, 0, k)
+	for i := 0; i < len(verts) && len(ans) < k; i++ {
+		ans = append(ans, parentEdge[verts[i].v])
 	}
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", len(ans)))
