@@ -1,116 +1,150 @@
 package main
 
 import (
-   "bufio"
-   "container/heap"
-   "fmt"
-   "os"
+	"container/heap"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
 )
 
-type Edge struct {
-   to, w, idx int
+// State represents a node in the priority queue
+type State struct {
+	dist int64
+	v    int
 }
 
-type Item struct {
-   node int
-   dist int64
+// PriorityQueue implements a min-heap for State
+type PriorityQueue []State
+
+func (pq PriorityQueue) Len() int { return len(pq) }
+func (pq PriorityQueue) Less(i, j int) bool {
+	if pq[i].dist == pq[j].dist {
+		return pq[i].v < pq[j].v
+	}
+	return pq[i].dist < pq[j].dist
 }
-
-// Min-heap of Items
-type PriorityQueue []Item
-
-func (h PriorityQueue) Len() int            { return len(h) }
-func (h PriorityQueue) Less(i, j int) bool  { return h[i].dist < h[j].dist }
-func (h PriorityQueue) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
-func (h *PriorityQueue) Push(x interface{}) { *h = append(*h, x.(Item)) }
-func (h *PriorityQueue) Pop() interface{} {
-   old := *h
-   n := len(old)
-   item := old[n-1]
-   *h = old[:n-1]
-   return item
+func (pq PriorityQueue) Swap(i, j int) { pq[i], pq[j] = pq[j], pq[i] }
+func (pq *PriorityQueue) Push(x interface{}) {
+	*pq = append(*pq, x.(State))
+}
+func (pq *PriorityQueue) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	x := old[n-1]
+	*pq = old[0 : n-1]
+	return x
 }
 
 func main() {
-   in := bufio.NewReader(os.Stdin)
-   out := bufio.NewWriter(os.Stdout)
-   defer out.Flush()
+	// Read input
+	input, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		panic(err)
+	}
+	parts := strings.Fields(string(input))
+	it := 0
 
-   var N, M, K int
-   fmt.Fscan(in, &N, &M, &K)
-   adj := make([][]Edge, N+1)
-   for i := 1; i <= M; i++ {
-       var a, b, c int
-       fmt.Fscan(in, &a, &b, &c)
-       adj[a] = append(adj[a], Edge{to: b, w: c, idx: i})
-       adj[b] = append(adj[b], Edge{to: a, w: c, idx: i})
-   }
+	// Parse n, m, k
+	n, _ := strconv.Atoi(parts[it])
+	it++
+	m, _ := strconv.Atoi(parts[it])
+	it++
+	k, _ := strconv.Atoi(parts[it])
+	it++
 
-   const inf = int64(1e18)
-   dist := make([]int64, N+1)
-   for i := 1; i <= N; i++ {
-       dist[i] = inf
-   }
-   dist[1] = 0
-   parentEdge := make([]int, N+1)
-   parentNode := make([]int, N+1)
+	// Initialize graph
+	g := make([][][3]int, n+1)
+	for i := range g {
+		g[i] = make([][3]int, 0)
+	}
+	for idx := 1; idx <= m; idx++ {
+		x, _ := strconv.Atoi(parts[it])
+		it++
+		y, _ := strconv.Atoi(parts[it])
+		it++
+		w, _ := strconv.ParseInt(parts[it], 10, 64)
+		it++
+		g[x] = append(g[x], [3]int{y, int(w), idx})
+		g[y] = append(g[y], [3]int{x, int(w), idx})
+	}
 
-   pq := &PriorityQueue{}
-   heap.Init(pq)
-   heap.Push(pq, Item{node: 1, dist: 0})
-   for pq.Len() > 0 {
-       it := heap.Pop(pq).(Item)
-       u := it.node
-       if it.dist != dist[u] {
-           continue
-       }
-       for _, e := range adj[u] {
-           nd := it.dist + int64(e.w)
-           if nd < dist[e.to] {
-               dist[e.to] = nd
-               parentEdge[e.to] = e.idx
-               parentNode[e.to] = u
-               heap.Push(pq, Item{node: e.to, dist: nd})
-           }
-       }
-   }
+	// Initialize distances and parent edges
+	const INF = int64(1 << 60)
+	dist := make([]int64, n+1)
+	parEdge := make([]int, n+1)
+	for i := range dist {
+		dist[i] = INF
+	}
+	dist[1] = 0
 
-   maxEdges := N - 1
-   if K > maxEdges {
-       K = maxEdges
-   }
-   // build tree of shortest path edges
-   children := make([][]Edge, N+1)
-   for v := 2; v <= N; v++ {
-       p := parentNode[v]
-       if p != 0 {
-           children[p] = append(children[p], Edge{to: v, idx: parentEdge[v]})
-       }
-   }
+	// Initialize priority queue
+	pq := &PriorityQueue{}
+	heap.Init(pq)
+	heap.Push(pq, State{dist: 0, v: 1})
 
-   // DFS up to K edges
-   ans := make([]int, 0, K)
-   type stackEntry struct{ node, nxt int }
-   stack := []stackEntry{{node: 1, nxt: 0}}
-   for len(stack) > 0 && len(ans) < K {
-       top := &stack[len(stack)-1]
-       u := top.node
-       if top.nxt < len(children[u]) {
-           e := children[u][top.nxt]
-           top.nxt++
-           ans = append(ans, e.idx)
-           stack = append(stack, stackEntry{node: e.to, nxt: 0})
-       } else {
-           stack = stack[:len(stack)-1]
-       }
-   }
+	// Dijkstra's algorithm
+	for pq.Len() > 0 {
+		state := heap.Pop(pq).(State)
+		d, u := state.dist, state.v
+		if d != dist[u] {
+			continue
+		}
+		for _, edge := range g[u] {
+			v, w, idx := edge[0], int64(edge[1]), edge[2]
+			nd := d + w
+			if nd < dist[v] {
+				dist[v] = nd
+				parEdge[v] = idx
+				heap.Push(pq, State{dist: nd, v: v})
+			}
+		}
+	}
 
-   fmt.Fprintln(out, len(ans))
-   for i, v := range ans {
-       if i > 0 {
-           fmt.Fprint(out, ' ')
-       }
-       fmt.Fprint(out, v)
-   }
-   fmt.Fprintln(out)
+	// Collect vertices with distances
+	type Vert struct {
+		dist int64
+		v    int
+	}
+	verts := make([]Vert, 0, n-1)
+	for v := 2; v <= n; v++ {
+		verts = append(verts, Vert{dist[v], v})
+	}
+	sort.Slice(verts, func(i, j int) bool {
+		if verts[i].dist == verts[j].dist {
+			return verts[i].v < verts[j].v
+		}
+		return verts[i].dist < verts[j].dist
+	})
+
+	// Select up to k edges
+	limit := min(k, n-1)
+	ans := make([]int, 0, limit)
+	for _, vert := range verts {
+		if len(ans) == limit {
+			break
+		}
+		ans = append(ans, parEdge[vert.v])
+	}
+
+	// Output results
+	fmt.Println(len(ans))
+	if len(ans) > 0 {
+		for i, e := range ans {
+			if i > 0 {
+				fmt.Print(" ")
+			}
+			fmt.Print(e)
+		}
+	}
+	fmt.Println()
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
