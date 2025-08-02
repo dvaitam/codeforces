@@ -6,28 +6,50 @@ import (
 	"os"
 )
 
-const MOD int64 = 998244353
+const (
+	p = 998244353
+	N = 200010
+	K = 12
+)
 
 func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
-	defer out.Flush()
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
 
-	var t int
-	if _, err := fmt.Fscan(in, &t); err != nil {
-		return
+	scanner.Scan()
+	var n int64
+	fmt.Sscan(scanner.Text(), &n)
+	scanner.Scan()
+	var k int
+	fmt.Sscan(scanner.Text(), &k)
+
+	f := make([][]int64, N)
+	s := make([][]int64, N)
+	for i := range f {
+		f[i] = make([]int64, K)
+		s[i] = make([]int64, K)
 	}
-	for ; t > 0; t-- {
-		var n int
-		fmt.Fscan(in, &n)
-		f := make([]int64, n+2)
-		s := make([]int64, n+2)
-		for i := 1; i <= n; i++ {
-			var x int64
-			fmt.Fscan(in, &x)
-			f[i] = (s[i-1] + x*int64(n-i+1)) % MOD
-			s[i] = (s[i-1] + f[i]) % MOD
+
+	var ans int64
+	for i := int64(1); i <= n; i++ {
+		f[i][1] = 1
+		s[i][1] = i
+		if i > 1 {
+			for j := 2; j <= k; j++ {
+				term1 := (s[i-1][j-1] - f[i-2][j-1] + p) % p
+				term2 := (s[i-1][j] - f[i-2][j] + p) % p
+				if j == k {
+					f[i][j] = (term1 + term2) % p
+				} else {
+					f[i][j] = term1 % p
+				}
+				s[i][j] = (s[i-1][j] + f[i][j]) % p
+			}
 		}
-		fmt.Fprintln(out, f[n])
+		if i < n {
+			ans = (ans + f[i][k] + f[i][k-1]) % p
+		}
 	}
+
+	fmt.Println(ans)
 }
