@@ -1,29 +1,33 @@
 package main
 
 import (
-    "bufio"
-    "fmt"
-    "os"
+	"bufio"
+	"fmt"
+	"os"
 )
 
-func main() {
-    in := bufio.NewReader(os.Stdin)
-    out := bufio.NewWriter(os.Stdout)
-    defer out.Flush()
+func max(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
 
-    var t int
-    fmt.Fscan(in, &t)
-    for ; t > 0; t-- {
-        var n int
-        fmt.Fscan(in, &n)
-        maxVal := 0
-        for i := 0; i < n; i++ {
-            var x int
-            fmt.Fscan(in, &x)
-            if x > maxVal {
-                maxVal = x
-            }
-        }
-        fmt.Fprintln(out, maxVal)
-    }
+func main() {
+	in := bufio.NewReader(os.Stdin)
+	var queries int
+	fmt.Fscan(in, &queries)
+	for i := 0; i < queries; i++ {
+		var n int
+		fmt.Fscan(in, &n)
+		a := make([]int64, n)
+		for j := 0; j < n; j++ {
+			fmt.Fscan(in, &a[j])
+		}
+		mx := int64(0)
+		for j := 0; j < n; j += 2 {
+			mx = max(mx, a[j])
+		}
+		fmt.Println(mx)
+	}
 }
