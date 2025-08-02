@@ -6,103 +6,123 @@ import (
 	"os"
 )
 
-type pair struct {
-	first  int
-	second int
-}
+const (
+	N = 5007
+	B = 70
+)
 
-func ask(w *bufio.Writer, r *bufio.Reader, x int) int {
-	fmt.Fprintf(w, "? %d\n", x+1)
-	w.Flush()
+func query(x int) int {
+	fmt.Printf("? %d\n", x)
+	os.Stdout.Sync()
 	var b int
-	fmt.Fscan(r, &b)
+	fmt.Scan(&b)
 	return b
 }
 
-func solve(g []map[int]struct{}, r *bufio.Reader, w *bufio.Writer) int {
-	n := len(g)
-	f := make([]int, n)
-	d := make([]int, n)
-	m := make([]int, n)
-	var dfs func(int, int)
-	dfs = func(u, p int) {
-		f[u] = p
-		m[u] = d[u]
-		for v := range g[u] {
-			if v != p {
-				d[v] = d[u] + 1
-				dfs(v, u)
-				if m[v] > m[u] {
-					m[u] = m[v]
-				}
+func dfs1(u, fa int, to [][]int, h []int) {
+	h[u] = 1
+	for _, v := range to[u] {
+		if v != fa {
+			dfs1(v, u, to, h)
+			if h[v]+1 > h[u] {
+				h[u] = h[v] + 1
 			}
 		}
 	}
-	dfs(0, 0)
-	b := make([]bool, n)
-	l := 0
-	for i := 1; i < n; i++ {
-		if d[i] > d[l] {
-			l = i
+}
+
+func search(u, fa int, to [][]int, h []int, a []int, k *int) {
+	*k++
+	a[*k] = u
+	vec := []int{}
+	for _, v := range to[u] {
+		if v != fa && h[v] > B {
+			vec = append(vec, v)
 		}
 	}
-	if ask(w, r, l) != 0 {
-		return l
+	if len(vec) == 0 {
+		return
 	}
-	for i := 0; i < n; i++ {
-		if m[i]-d[i] == 51 && !b[i] {
-			b[i] = true
-			if ask(w, r, i) != 0 {
-				if i != 0 {
-					for {
-						ask(w, r, l)
-						if ask(w, r, i) == 0 {
-							break
-						}
-					}
-					if ask(w, r, f[i]) != 0 {
-						return f[i]
-					}
-					return f[f[f[i]]]
+	for len(vec) > 1 {
+		if query(vec[len(vec)-1]) != 0 {
+			search(vec[len(vec)-1], u, to, h, a, k)
+			return
+		}
+		vec = vec[:len(vec)-1]
+	}
+	search(vec[len(vec)-1], u, to, h, a, k)
+}
+
+func solve(n int, to [][]int, h []int, a []int) int {
+	var k int
+	dfs1(1, 0, to, h)
+
+	for i := 1; i <= n; i++ {
+		if h[i] == 1 {
+			for c := 1; c <= B; c++ {
+				if query(i) != 0 {
+					return i
 				}
-				break
+			}
+			break
+		}
+	}
+
+	search(1, 0, to, h, a, &k)
+
+	l := 1
+	r := k
+	for l < r {
+		mid := (l + r + 1) >> 1
+		if query(a[mid]) != 0 {
+			l = mid
+		} else {
+			if l-1 > 1 {
+				l = l - 1
 			} else {
-				delete(g[f[i]], i)
-				delete(g[i], f[i])
-				dfs(0, 0)
-				i = -1
+				l = 1
+			}
+			if mid-2 > 1 {
+				r = mid - 2
+			} else {
+				r = 1
 			}
 		}
 	}
-	for i := 0; i < 100; i++ {
-		ask(w, r, l)
-	}
-	return 0
+	return a[l]
 }
 
 func main() {
-	reader := bufio.NewReader(os.Stdin)
-	writer := bufio.NewWriter(os.Stdout)
-	defer writer.Flush()
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
 
-	var t int
-	fmt.Fscan(reader, &t)
-	for ; t > 0; t-- {
+	var T int
+	fmt.Scan(&T)
+
+	for T > 0 {
+		scanner.Scan()
 		var n int
-		fmt.Fscan(reader, &n)
-		g := make([]map[int]struct{}, n)
-		for i := 0; i < n; i++ {
-			g[i] = make(map[int]struct{})
-		}
+		fmt.Sscan(scanner.Text(), &n)
+
+		to := make([][]int, n+1)
+		h := make([]int, n+1)
+		a := make([]int, n+1)
+
 		for i := 1; i < n; i++ {
-			var u, v int
-			fmt.Fscan(reader, &u, &v)
-			u--
-			v--
-			g[u][v] = struct{}{}
-			g[v][u] = struct{}{}
+			scanner.Scan()
+			var u int
+			fmt.Sscan(scanner.Text(), &u)
+			scanner.Scan()
+			var v int
+			fmt.Sscan(scanner.Text(), &v)
+			to[u] = append(to[u], v)
+			to[v] = append(to[v], u)
 		}
-		x := solve(g, reader, writer)
-		fmt.Fprintf(writer, "! %d\n", x+1)
+
+		x := solve(n, to, h, a)
+		fmt.Printf("! %d\n", x)
+		os.Stdout.Sync()
+
+		T--
 	}
 }
