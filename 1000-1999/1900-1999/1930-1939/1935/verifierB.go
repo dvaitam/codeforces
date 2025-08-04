@@ -89,21 +89,29 @@ func canSplit(tc TestCase) (bool, int) {
 	if m == tc.n {
 		return false, m
 	}
-	if m == 0 {
-		return true, m
-	}
-	freq := make([]int, m)
-	for _, v := range tc.arr {
-		if v < m {
-			freq[v]++
+
+	n := tc.n
+	// try all possible partitions using a bitmask over the n-1 gaps
+	for mask := 1; mask < (1 << (n - 1)); mask++ {
+		l := 0
+		ok := true
+		for i := 0; i < n-1; i++ {
+			if (mask>>i)&1 == 1 {
+				if mexRange(tc.arr, l, i) != m {
+					ok = false
+					break
+				}
+				l = i + 1
+			}
+		}
+		if !ok {
+			continue
+		}
+		if mexRange(tc.arr, l, n-1) == m {
+			return true, m
 		}
 	}
-	for _, c := range freq {
-		if c < 2 {
-			return false, m
-		}
-	}
-	return true, m
+	return false, m
 }
 
 func main() {
