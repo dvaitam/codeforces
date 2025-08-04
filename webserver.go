@@ -698,13 +698,14 @@ func submissionFixPromptHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	var contestID, letter, code, stderr string
-	err = db.QueryRow("SELECT contest_id, problem_letter, code, stderr FROM submissions WHERE id = ?", id).Scan(&contestID, &letter, &code, &stderr)
+	var contestID, letter, code, stdout, stderr string
+	err = db.QueryRow("SELECT contest_id, problem_letter, code, stdout, stderr FROM submissions WHERE id = ?", id).Scan(&contestID, &letter, &code, &stdout, &stderr)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	prompt := fmt.Sprintf("For problem %s%s this is a correct solution, but verifier ends with %s can you fix the verifier? %s", contestID, letter, stderr, code)
+	output := strings.TrimSpace(stdout + "\n" + stderr)
+	prompt := fmt.Sprintf("For problem %s%s this is a correct solution, but verifier ends with %s can you fix the verifier? %s", contestID, letter, output, code)
 	textTmpl.Execute(w, prompt)
 }
 
@@ -740,13 +741,14 @@ func evaluationFixPromptHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	var contestID, letter, code, stderr string
-	err = db.QueryRow(`SELECT p.contest_id, p.index_name, e.response, e.stderr FROM evaluations e JOIN problems p ON e.problem_id = p.id WHERE e.id = ?`, id).Scan(&contestID, &letter, &code, &stderr)
+	var contestID, letter, code, stdout, stderr string
+	err = db.QueryRow(`SELECT p.contest_id, p.index_name, e.response, e.stdout, e.stderr FROM evaluations e JOIN problems p ON e.problem_id = p.id WHERE e.id = ?`, id).Scan(&contestID, &letter, &code, &stdout, &stderr)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	prompt := fmt.Sprintf("For problem %s%s this is a correct solution, but verifier ends with %s can you fix the verifier? %s", contestID, letter, stderr, code)
+	output := strings.TrimSpace(stdout + "\n" + stderr)
+	prompt := fmt.Sprintf("For problem %s%s this is a correct solution, but verifier ends with %s can you fix the verifier? %s", contestID, letter, output, code)
 	textTmpl.Execute(w, prompt)
 }
 
