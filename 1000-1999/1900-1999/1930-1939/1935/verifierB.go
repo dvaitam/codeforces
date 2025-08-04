@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -54,49 +55,55 @@ func runBinary(path string, input []byte) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-func mexCount(db map[int]int) int {
+func mex(arr []int) int {
+	seen := make([]bool, len(arr)+2)
+	for _, v := range arr {
+		if v < len(seen) {
+			seen[v] = true
+		}
+	}
 	m := 0
-	for db[m] > 0 {
+	for seen[m] {
 		m++
 	}
 	return m
 }
 
-func expected(tc TestCase) string {
-	n := tc.n
-	t := tc.arr
-	pref := make([]int, n)
-	suf := make([]int, n)
-	db := make(map[int]int)
-	mex := 0
-	for i := 0; i < n; i++ {
-		db[t[i]]++
-		for db[mex] > 0 {
-			mex++
-		}
-		pref[i] = mex
-	}
-	for i := range db {
-		delete(db, i)
-	}
-	mex = 0
-	for i := n - 1; i >= 0; i-- {
-		db[t[i]]++
-		for db[mex] > 0 {
-			mex++
-		}
-		suf[i] = mex
-	}
-	pos := -1
-	for i := 0; i+1 < n; i++ {
-		if pref[i] == suf[i+1] {
-			pos = i
+func mexRange(arr []int, l, r int) int {
+	seen := make([]bool, r-l+3)
+	for i := l; i <= r; i++ {
+		v := arr[i]
+		if v < len(seen) {
+			seen[v] = true
 		}
 	}
-	if pos < 0 {
-		return "-1"
+	m := 0
+	for seen[m] {
+		m++
 	}
-	return fmt.Sprintf("2\n1 %d\n%d %d", pos+1, pos+2, n)
+	return m
+}
+
+func canSplit(tc TestCase) (bool, int) {
+	m := mex(tc.arr)
+	if m == tc.n {
+		return false, m
+	}
+	if m == 0 {
+		return true, m
+	}
+	freq := make([]int, m)
+	for _, v := range tc.arr {
+		if v < m {
+			freq[v]++
+		}
+	}
+	for _, c := range freq {
+		if c < 2 {
+			return false, m
+		}
+	}
+	return true, m
 }
 
 func main() {
@@ -109,42 +116,75 @@ func main() {
 	tests := genTests()
 	input := buildInput(tests)
 
-	expectedOutputs := make([]string, len(tests))
-	for i, tc := range tests {
-		expectedOutputs[i] = expected(tc)
-	}
-
 	out, err := runBinary(binary, input)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error executing binary: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error executing binary: %v\n%s", err, out)
 		os.Exit(1)
 	}
-	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	tokens := strings.Fields(string(out))
 	idx := 0
-	for i, exp := range expectedOutputs {
-		if idx >= len(lines) {
+	for i, tc := range tests {
+		possible, m := canSplit(tc)
+		if idx >= len(tokens) {
 			fmt.Fprintf(os.Stderr, "output too short on test %d\n", i+1)
 			os.Exit(1)
 		}
-		if exp == "-1" {
-			if strings.TrimSpace(lines[idx]) != "-1" {
-				fmt.Fprintf(os.Stderr, "mismatch on test %d\nexpected -1 got %s\n", i+1, lines[idx])
+		if !possible {
+			if tokens[idx] != "-1" {
+				fmt.Fprintf(os.Stderr, "mismatch on test %d\nexpected -1 got %s\n", i+1, tokens[idx])
 				os.Exit(1)
 			}
 			idx++
-		} else {
-			parts := strings.Split(exp, "\n")
-			for _, p := range parts {
-				if idx >= len(lines) || strings.TrimSpace(lines[idx]) != strings.TrimSpace(p) {
-					fmt.Fprintf(os.Stderr, "mismatch on test %d\nexpected %s got %s\n", i+1, p, lines[idx])
-					os.Exit(1)
-				}
-				idx++
+			continue
+		}
+		k, err := strconv.Atoi(tokens[idx])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "invalid k on test %d: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		idx++
+		if k < 2 {
+			fmt.Fprintf(os.Stderr, "mismatch on test %d\nexpected k >= 2 got %d\n", i+1, k)
+			os.Exit(1)
+		}
+		segs := make([][2]int, k)
+		for j := 0; j < k; j++ {
+			if idx+1 >= len(tokens) {
+				fmt.Fprintf(os.Stderr, "output too short on test %d\n", i+1)
+				os.Exit(1)
+			}
+			l, err1 := strconv.Atoi(tokens[idx])
+			r, err2 := strconv.Atoi(tokens[idx+1])
+			if err1 != nil || err2 != nil {
+				fmt.Fprintf(os.Stderr, "invalid segment on test %d\n", i+1)
+				os.Exit(1)
+			}
+			idx += 2
+			segs[j] = [2]int{l, r}
+		}
+		// validate segments
+		if segs[0][0] != 1 || segs[k-1][1] != tc.n {
+			fmt.Fprintf(os.Stderr, "mismatch on test %d\nsegments must cover array\n", i+1)
+			os.Exit(1)
+		}
+		for j := 0; j < k; j++ {
+			l, r := segs[j][0], segs[j][1]
+			if l < 1 || r > tc.n || l > r {
+				fmt.Fprintf(os.Stderr, "invalid segment boundaries on test %d\n", i+1)
+				os.Exit(1)
+			}
+			if j > 0 && l != segs[j-1][1]+1 {
+				fmt.Fprintf(os.Stderr, "segments not contiguous on test %d\n", i+1)
+				os.Exit(1)
+			}
+			if mexRange(tc.arr, l-1, r-1) != m {
+				fmt.Fprintf(os.Stderr, "wrong mex on test %d\n", i+1)
+				os.Exit(1)
 			}
 		}
 	}
-	if idx != len(lines) {
-		fmt.Fprintf(os.Stderr, "extra output lines detected")
+	if idx != len(tokens) {
+		fmt.Fprintln(os.Stderr, "extra output detected")
 		os.Exit(1)
 	}
 	fmt.Println("all tests passed")
