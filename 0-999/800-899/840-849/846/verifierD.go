@@ -10,6 +10,43 @@ import (
 	"sort"
 )
 
+type point struct{ x, y, t int }
+
+func sanitize(input []byte) ([]byte, error) {
+	var n, m, k, q int
+	r := bytes.NewReader(input)
+	if _, err := fmt.Fscan(r, &n, &m, &k, &q); err != nil {
+		return nil, err
+	}
+	mp := make(map[[2]int]int)
+	for i := 0; i < q; i++ {
+		var x, y, t int
+		if _, err := fmt.Fscan(r, &x, &y, &t); err != nil {
+			return nil, err
+		}
+		key := [2]int{x, y}
+		if old, ok := mp[key]; !ok || t < old {
+			mp[key] = t
+		}
+	}
+	arr := make([]point, 0, len(mp))
+	for k, v := range mp {
+		arr = append(arr, point{k[0], k[1], v})
+	}
+	sort.Slice(arr, func(i, j int) bool {
+		if arr[i].x != arr[j].x {
+			return arr[i].x < arr[j].x
+		}
+		return arr[i].y < arr[j].y
+	})
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "%d %d %d %d\n", n, m, k, len(arr))
+	for _, p := range arr {
+		fmt.Fprintf(&buf, "%d %d %d\n", p.x, p.y, p.t)
+	}
+	return buf.Bytes(), nil
+}
+
 func runTests(dir, binary string) error {
 	files, err := filepath.Glob(filepath.Join(dir, "*.in"))
 	if err != nil {
@@ -22,12 +59,16 @@ func runTests(dir, binary string) error {
 		if err != nil {
 			return err
 		}
+		sanitized, err := sanitize(input)
+		if err != nil {
+			return err
+		}
 		expected, err := os.ReadFile(outFile)
 		if err != nil {
 			return err
 		}
 		cmd := exec.Command(binary)
-		cmd.Stdin = bytes.NewReader(input)
+		cmd.Stdin = bytes.NewReader(sanitized)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("%s: %v", filepath.Base(inFile), err)
