@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"strconv"
@@ -93,7 +94,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\n", caseIdx+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(exp) {
+		expVal, err1 := strconv.ParseFloat(strings.TrimSpace(exp), 64)
+		gotVal, err2 := strconv.ParseFloat(strings.TrimSpace(got), 64)
+		if err1 != nil || err2 != nil || math.Abs(expVal-gotVal) > 1e-6 {
 			fmt.Fprintf(os.Stderr, "case %d failed\ninput:\n%sexpected:%s\ngot:%s\n", caseIdx+1, input, exp, got)
 			os.Exit(1)
 		}
