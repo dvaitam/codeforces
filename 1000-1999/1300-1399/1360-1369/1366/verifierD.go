@@ -10,34 +10,24 @@ import (
 	"strings"
 )
 
-func factorDistinct(x int) []int {
-	res := []int{}
-	for p := 2; p*p <= x && len(res) < 2; p++ {
+// smallestPrime returns the smallest prime factor of x.
+func smallestPrime(x int) int {
+	for p := 2; p*p <= x; p++ {
 		if x%p == 0 {
-			res = append(res, p)
-			for x%p == 0 {
-				x /= p
-			}
+			return p
 		}
 	}
-	if x > 1 {
-		res = append(res, x)
-	}
-	return res
+	return x
 }
 
-func solve(nums []int) ([]int, []int) {
-	a := make([]int, len(nums))
-	b := make([]int, len(nums))
-	for i, v := range nums {
-		fac := factorDistinct(v)
-		if len(fac) < 2 {
-			a[i], b[i] = -1, -1
-		} else {
-			a[i], b[i] = fac[0], fac[1]
-		}
+func gcd(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
 	}
-	return a, b
+	if a < 0 {
+		return -a
+	}
+	return a
 }
 
 func main() {
@@ -74,7 +64,6 @@ func main() {
 			v, _ := strconv.Atoi(fields[1+i])
 			arr[i] = v
 		}
-		ansA, ansB := solve(arr)
 
 		var input strings.Builder
 		input.WriteString(fmt.Sprintf("%d\n", n))
@@ -111,9 +100,29 @@ func main() {
 		for i := 0; i < n; i++ {
 			ga, _ := strconv.Atoi(gotA[i])
 			gb, _ := strconv.Atoi(gotB[i])
-			if ga != ansA[i] || gb != ansB[i] {
-				fmt.Printf("Test %d failed at index %d expected %d %d got %d %d\n", idx, i, ansA[i], ansB[i], ga, gb)
-				os.Exit(1)
+			p := smallestPrime(arr[i])
+			x := arr[i]
+			for x%p == 0 {
+				x /= p
+			}
+			if x == 1 {
+				if ga != -1 || gb != -1 {
+					fmt.Printf("Test %d failed at index %d expected -1 -1 got %d %d\n", idx, i, ga, gb)
+					os.Exit(1)
+				}
+			} else {
+				if ga <= 1 || gb <= 1 {
+					fmt.Printf("Test %d failed at index %d: divisors must be >1\n", idx, i)
+					os.Exit(1)
+				}
+				if arr[i]%(ga*gb) != 0 {
+					fmt.Printf("Test %d failed at index %d: product %d*%d does not divide %d\n", idx, i, ga, gb, arr[i])
+					os.Exit(1)
+				}
+				if gcd(ga, gb) != 1 {
+					fmt.Printf("Test %d failed at index %d: gcd(%d,%d) != 1\n", idx, i, ga, gb)
+					os.Exit(1)
+				}
 			}
 		}
 	}
