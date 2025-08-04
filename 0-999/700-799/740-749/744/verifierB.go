@@ -1,14 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
-	"context"
 	"fmt"
 	"math"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -50,83 +50,47 @@ func expectedRowMins(mat Matrix) []int {
 
 func runCase(bin string, mat Matrix) error {
 	n := len(mat)
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, bin)
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return err
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Start(); err != nil {
-		return err
+	var in bytes.Buffer
+	fmt.Fprintln(&in, n)
+	for i := 0; i < n; i++ {
+		for j := 0; j < n; j++ {
+			if j > 0 {
+				fmt.Fprint(&in, " ")
+			}
+			fmt.Fprint(&in, mat[i][j])
+		}
+		fmt.Fprintln(&in)
 	}
 
-	w := bufio.NewWriter(stdin)
-	r := bufio.NewReader(stdout)
-	fmt.Fprintln(w, n)
-	w.Flush()
-	queries := 0
-	for {
-		var token string
-		if _, err := fmt.Fscan(r, &token); err != nil {
-			return fmt.Errorf("read error: %v stderr:%s", err, stderr.String())
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd := exec.Command(bin)
+	cmd.Stdin = &in
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("runtime error: %v stderr:%s", err, stderr.String())
+	}
+
+	tokens := strings.Fields(out.String())
+	if len(tokens) != n+1 || tokens[0] != "-1" {
+		return fmt.Errorf("unexpected output: %s stderr:%s", out.String(), stderr.String())
+	}
+	ans := make([]int, n)
+	for i := 0; i < n; i++ {
+		v, err := strconv.Atoi(tokens[i+1])
+		if err != nil {
+			return fmt.Errorf("parse error: %v", err)
 		}
-		if token == "?" {
-			queries++
-			if queries > 20 {
-				return fmt.Errorf("too many queries")
-			}
-			var k int
-			fmt.Fscan(r, &k)
-			idx := make([]int, k)
-			for i := 0; i < k; i++ {
-				fmt.Fscan(r, &idx[i])
-			}
-			res := make([]int, n)
-			for i := 0; i < n; i++ {
-				best := math.MaxInt32
-				for _, id := range idx {
-					id--
-					if mat[i][id] < best {
-						best = mat[i][id]
-					}
-				}
-				res[i] = best
-			}
-			for i := 0; i < n; i++ {
-				if i > 0 {
-					fmt.Fprint(w, " ")
-				}
-				fmt.Fprint(w, res[i])
-			}
-			fmt.Fprint(w, "\n")
-			w.Flush()
-		} else if token == "-1" {
-			ans := make([]int, n)
-			for i := 0; i < n; i++ {
-				fmt.Fscan(r, &ans[i])
-			}
-			expect := expectedRowMins(mat)
-			for i := 0; i < n; i++ {
-				if ans[i] != expect[i] {
-					return fmt.Errorf("row %d expected %d got %d", i+1, expect[i], ans[i])
-				}
-			}
-			stdin.Close()
-			if err := cmd.Wait(); err != nil {
-				return fmt.Errorf("runtime error: %v stderr:%s", err, stderr.String())
-			}
-			return nil
-		} else {
-			return fmt.Errorf("unexpected token %s", token)
+		ans[i] = v
+	}
+	expect := expectedRowMins(mat)
+	for i := 0; i < n; i++ {
+		if ans[i] != expect[i] {
+			return fmt.Errorf("row %d expected %d got %d", i+1, expect[i], ans[i])
 		}
 	}
+	return nil
 }
 
 func main() {
