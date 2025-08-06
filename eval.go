@@ -144,7 +144,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	estimatedRating := 800
-	for i := 0; i < 25; i++ {
+	for i := 0; i < 50; i++ {
 		actualRating := clampToNearest(estimatedRating, availableRatings)
 		fmt.Printf("Attempt %d: Targeting estimated %d (using actual rating %d)\n", i+1, estimatedRating, actualRating)
 		problem, verifierFile := getRandomProblem(db, actualRating)
