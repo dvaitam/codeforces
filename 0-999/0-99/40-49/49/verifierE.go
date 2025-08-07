@@ -164,9 +164,9 @@ func generateTests() []testCase {
 	rand.Seed(5)
 	tests := make([]testCase, 0, 100)
 	letters := []byte{'a', 'b', 'c'}
-	for i := 0; i < 20; i++ {
-		tests = append(tests, testCase{input: "a a 0\n"})
-	}
+       for i := 0; i < 20; i++ {
+               tests = append(tests, testCase{input: "a\na\n0\n"})
+       }
 	for len(tests) < 100 {
 		n1 := rand.Intn(3) + 1
 		n2 := rand.Intn(3) + 1
@@ -178,8 +178,8 @@ func generateTests() []testCase {
 			s2.WriteByte(letters[rand.Intn(len(letters))])
 		}
 		rules := rand.Intn(3)
-		var sb strings.Builder
-		fmt.Fprintf(&sb, "%s %s %d\n", s1.String(), s2.String(), rules)
+               var sb strings.Builder
+               fmt.Fprintf(&sb, "%s\n%s\n%d\n", s1.String(), s2.String(), rules)
 		for i := 0; i < rules; i++ {
 			a := letters[rand.Intn(len(letters))]
 			b := letters[rand.Intn(len(letters))]
