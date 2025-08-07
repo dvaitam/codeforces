@@ -111,6 +111,10 @@ func solveD(r *bufio.Reader) string {
 		for i := 0; i < n; i++ {
 			fmt.Fscan(r, &a[i])
 		}
+		if a[0] > m {
+			out.WriteString("0\n")
+			continue
+		}
 		ans := int64(1)
 		ok := true
 		for i := 1; i < n && ok; i++ {
