@@ -63,8 +63,9 @@ func main() {
 	bin := os.Args[1]
 	cases := genCases()
 	for i, tc := range cases {
+		var t int
 		var n int64
-		fmt.Sscan(strings.TrimSpace(tc), &n)
+		fmt.Sscan(tc, &t, &n)
 		want := solveD(n)
 		got, err := runCase(bin, tc)
 		if err != nil {
