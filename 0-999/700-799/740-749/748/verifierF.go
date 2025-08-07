@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -47,6 +49,54 @@ func runRef(ref, input string) (string, error) {
 		return "", fmt.Errorf("ref runtime error: %v\n%s", err, out.String())
 	}
 	return strings.TrimSpace(out.String()), nil
+}
+
+// normalize converts the output into a canonical form so that the
+// order of the k triplets and the order of endpoints within each
+// triplet do not affect comparison.
+func normalize(s string) (string, error) {
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	if len(lines) < 2 {
+		return "", fmt.Errorf("output too short")
+	}
+	first := strings.TrimSpace(lines[0])
+	second := strings.TrimSpace(lines[1])
+	type triplet struct{ a, b, c int }
+	trips := make([]triplet, 0, len(lines)-2)
+	for _, ln := range lines[2:] {
+		fields := strings.Fields(ln)
+		if len(fields) != 3 {
+			return "", fmt.Errorf("invalid line: %q", ln)
+		}
+		a, err1 := strconv.Atoi(fields[0])
+		b, err2 := strconv.Atoi(fields[1])
+		c, err3 := strconv.Atoi(fields[2])
+		if err1 != nil || err2 != nil || err3 != nil {
+			return "", fmt.Errorf("invalid integers in line: %q", ln)
+		}
+		if a > b {
+			a, b = b, a
+		}
+		trips = append(trips, triplet{a, b, c})
+	}
+	sort.Slice(trips, func(i, j int) bool {
+		if trips[i].a != trips[j].a {
+			return trips[i].a < trips[j].a
+		}
+		if trips[i].b != trips[j].b {
+			return trips[i].b < trips[j].b
+		}
+		return trips[i].c < trips[j].c
+	})
+	var sb strings.Builder
+	sb.WriteString(first)
+	sb.WriteByte('\n')
+	sb.WriteString(second)
+	for _, t := range trips {
+		sb.WriteByte('\n')
+		sb.WriteString(fmt.Sprintf("%d %d %d", t.a, t.b, t.c))
+	}
+	return sb.String(), nil
 }
 
 func generateCase(r *rand.Rand) string {
@@ -95,7 +145,9 @@ func main() {
 			fmt.Printf("test %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != strings.TrimSpace(exp) {
+		nOut, err1 := normalize(out)
+		nExp, err2 := normalize(exp)
+		if err1 != nil || err2 != nil || nOut != nExp {
 			fmt.Printf("test %d failed.\nInput:\n%sExpected: %s\nGot: %s\n", i+1, in, exp, out)
 			os.Exit(1)
 		}
