@@ -4,8 +4,10 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -40,6 +42,15 @@ func main() {
 			os.Exit(1)
 		}
 		got := strings.TrimSpace(string(out))
+		if e, err1 := strconv.ParseFloat(expect, 64); err1 == nil {
+			if g, err2 := strconv.ParseFloat(got, 64); err2 == nil {
+				if math.Abs(e-g) > 1e-6 {
+					fmt.Printf("test %d failed\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", i+1, in, expect, got)
+					os.Exit(1)
+				}
+				continue
+			}
+		}
 		if got != expect {
 			fmt.Printf("test %d failed\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", i+1, in, expect, got)
 			os.Exit(1)
