@@ -15,48 +15,74 @@ type Segment struct {
 	time  int
 }
 
+func sign(x int) int {
+	if x > 0 {
+		return 1
+	} else if x < 0 {
+		return -1
+	}
+	return 0
+}
+
 func countCrosses(a, b []Segment) int64 {
-	i, j := 0, 0
+	totalA, totalB := 0, 0
+	for _, s := range a {
+		totalA += s.time
+	}
+	for _, s := range b {
+		totalB += s.time
+	}
+	limit := totalA
+	if totalB < limit {
+		limit = totalB
+	}
+	ia, ib := 0, 0
 	remA, remB := a[0].time, b[0].time
 	vA, vB := a[0].speed, b[0].speed
-	posA, posB := 0, 0
-	var crosses int64
-	for i < len(a) && j < len(b) {
-		dur := remA
-		if remB < dur {
-			dur = remB
+	tElapsed := 0
+	diff := 0 // position difference a - b
+	prevM := 0
+	havePrev := false
+	var cnt int64
+	for tElapsed < limit {
+		for remA == 0 && ia+1 < len(a) {
+			ia++
+			remA = a[ia].time
+			vA = a[ia].speed
 		}
-		delta0 := posA - posB
-		dv := vA - vB
-		if dv > 0 {
-			if delta0 < 0 && delta0+dv*dur > 0 {
-				crosses++
-			}
-		} else if dv < 0 {
-			if delta0 > 0 && delta0+dv*dur < 0 {
-				crosses++
-			}
+		for remB == 0 && ib+1 < len(b) {
+			ib++
+			remB = b[ib].time
+			vB = b[ib].speed
 		}
-		posA += vA * dur
-		posB += vB * dur
-		remA -= dur
-		remB -= dur
-		if remA == 0 {
-			i++
-			if i < len(a) {
-				remA = a[i].time
-				vA = a[i].speed
-			}
+		dt := limit - tElapsed
+		if remA < dt {
+			dt = remA
 		}
-		if remB == 0 {
-			j++
-			if j < len(b) {
-				remB = b[j].time
-				vB = b[j].speed
+		if remB < dt {
+			dt = remB
+		}
+		if dt == 0 {
+			break
+		}
+		m := vA - vB
+		if diff == 0 && tElapsed > 0 {
+			if havePrev && prevM != 0 && m != 0 && sign(prevM) == sign(m) {
+				cnt++
 			}
 		}
+		diffAfter := diff + m*dt
+		if diff != 0 && diffAfter != 0 && sign(diff) != sign(diffAfter) {
+			cnt++
+		}
+		tElapsed += dt
+		diff = diffAfter
+		remA -= dt
+		remB -= dt
+		prevM = m
+		havePrev = true
 	}
-	return crosses
+	return cnt
 }
 
 func expected(cars [][]Segment) int64 {
