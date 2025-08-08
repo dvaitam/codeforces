@@ -33,154 +33,471 @@ var db *sql.DB
 
 var indexTmpl = template.Must(template.New("index").Parse(`
 <!DOCTYPE html>
-<html><body>
-<h1>Contests</h1>
-<ul>
-{{range .}}
-<li><a href="/contest/{{.ID}}">{{.ID}}</a></li>
-{{end}}
-</ul>
-</body></html>`))
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Contests</title>
+    <style>
+      :root {
+        --bg: #0b0f17;
+        --panel: #111827;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --accent: #60a5fa;
+        --border: #1f2937;
+        --good: #10b981;
+        --bad: #ef4444;
+      }
+      html, body { height: 100%; }
+      body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); }
+      a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .container { max-width: 960px; margin: 0 auto; padding: 24px; }
+      .nav { display:flex; gap:16px; align-items:center; padding:16px 0; border-bottom:1px solid var(--border); margin-bottom:24px; }
+      .brand { font-weight: 600; color: var(--text); }
+      .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:16px; }
+      .card { background: var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; }
+      .muted { color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="nav">
+        <div class="brand">Codeforces Helper</div>
+        <a href="/leaderboard">Leaderboard</a>
+        <a href="/model">Models</a>
+        <a href="/submission">Submissions</a>
+      </div>
+      <h1>Contests</h1>
+      <div class="grid">
+        {{range .}}
+        <div class="card">
+          <div style="font-size:22px; font-weight:600; margin-bottom:8px;"><a href="/contest/{{.ID}}">#{{.ID}}</a></div>
+          <div class="muted">Problems: {{len .Problems}}</div>
+        </div>
+        {{end}}
+      </div>
+    </div>
+  </body>
+</html>`))
 
 var contestTmpl = template.Must(template.New("contest").Parse(`
 <!DOCTYPE html>
-<html><body>
-<h1>Contest {{.ID}}</h1>
-<ul>
-{{range .Problems}}
-<li><a href="/contest/{{$.ID}}/problem/{{.}}">Problem {{.}}</a> (<a href="https://codeforces.com/contest/{{$.ID}}/problem/{{.}}">Codeforces</a>)</li>
-{{end}}
-</ul>
-<h2>Add Problem</h2>
-<form action="/addproblem" method="post">
-<input type="hidden" name="contest" value="{{.ID}}">
-Letter: <input name="letter"><br>
-Admin Key: <input type="password" name="adminkey"><br>
-<textarea name="statement" rows="10" cols="80"></textarea><br>
-<input type="submit" value="Add Problem">
-</form>
-</body></html>`))
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Contest {{.ID}}</title>
+    <style>
+      :root { --bg:#0b0f17; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; --border:#1f2937; }
+      body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+      a { color: var(--accent); text-decoration:none; } a:hover{ text-decoration:underline; }
+      .container{ max-width: 960px; margin: 0 auto; padding: 24px; }
+      .nav { display:flex; gap:16px; align-items:center; padding:16px 0; border-bottom:1px solid var(--border); margin-bottom:24px; }
+      .brand { font-weight:600; }
+      .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap:12px; }
+      .chip { background:var(--panel); border:1px solid var(--border); border-radius:999px; padding:10px 14px; text-align:center; }
+      .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; }
+      input, textarea { background:#0f172a; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:10px; width:100%; box-sizing:border-box; }
+      label { display:block; margin-top:8px; margin-bottom:6px; color:var(--muted); }
+      .row { display:flex; gap:12px; }
+      .row > div { flex:1; }
+      .btn { background:#1f2937; color:var(--text); border:1px solid var(--border); padding:10px 14px; border-radius:8px; cursor:pointer; }
+      .btn:hover { background:#243042; }
+      details { margin-top:24px; }
+      summary { cursor:pointer; color:var(--muted); }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="nav">
+        <a class="brand" href="/">← Contests</a>
+        <a href="/leaderboard">Leaderboard</a>
+        <a href="/model">Models</a>
+        <a href="/submission">Submissions</a>
+      </div>
+      <h1>Contest {{.ID}}</h1>
+      <h2>Problems</h2>
+      <div class="grid">
+        {{range .Problems}}
+          <a class="chip" href="/contest/{{$.ID}}/problem/{{.}}">Problem {{.}}</a>
+        {{end}}
+      </div>
+      <details>
+        <summary>Add Problem</summary>
+        <div class="panel" style="margin-top:12px;">
+          <form action="/addproblem" method="post">
+            <input type="hidden" name="contest" value="{{.ID}}">
+            <div class="row">
+              <div>
+                <label>Letter</label>
+                <input name="letter" placeholder="A">
+              </div>
+              <div>
+                <label>Admin Key</label>
+                <input type="password" name="adminkey" placeholder="••••••">
+              </div>
+            </div>
+            <label style="margin-top:12px;">Problem statement (plain text)</label>
+            <textarea name="statement" rows="10" placeholder="Paste the problem text here..."></textarea>
+            <div style="margin-top:12px;">
+              <button class="btn" type="submit">Add Problem</button>
+            </div>
+          </form>
+        </div>
+      </details>
+    </div>
+  </body>
+</html>`))
 
 var addProblemTmpl = template.Must(template.New("addproblem").Parse(`
 <!DOCTYPE html>
-<html><body>
-<h1>Add Problem</h1>
-<form action="/addproblem" method="post">
-Contest ID: <input name="contest" value="{{.Contest}}"><br>
-Letter: <input name="letter" value="{{.Letter}}"><br>
-Admin Key: <input type="password" name="adminkey"><br>
-<textarea name="statement" rows="10" cols="80">{{.Statement}}</textarea><br>
-<input type="submit" value="Add Problem">
-</form>
-</body></html>`))
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Add Problem</title>
+    <style>
+      :root { --bg:#0b0f17; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; --border:#1f2937; }
+      body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+      .container{ max-width: 880px; margin: 0 auto; padding: 24px; }
+      a { color: var(--accent); text-decoration:none; } a:hover{ text-decoration:underline; }
+      .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; }
+      label { display:block; color:var(--muted); margin: 8px 0 6px; }
+      input, textarea { background:#0f172a; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:10px; width:100%; box-sizing:border-box; }
+      .row { display:flex; gap:12px; }
+      .row > div { flex:1; }
+      .btn { background:#1f2937; color:var(--text); border:1px solid var(--border); padding:10px 14px; border-radius:8px; cursor:pointer; }
+      .btn:hover { background:#243042; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a href="/">← Back</a>
+      <h1 style="margin-top:8px;">Add Problem</h1>
+      <div class="panel">
+        <form action="/addproblem" method="post">
+          <div class="row">
+            <div>
+              <label>Contest ID</label>
+              <input name="contest" value="{{.Contest}}" placeholder="1772">
+            </div>
+            <div>
+              <label>Letter</label>
+              <input name="letter" value="{{.Letter}}" placeholder="A">
+            </div>
+          </div>
+          <label>Admin Key</label>
+          <input type="password" name="adminkey" placeholder="••••••">
+          <label>Problem statement (plain text)</label>
+          <textarea name="statement" rows="12" placeholder="Paste the problem text here...">{{.Statement}}</textarea>
+          <div style="margin-top:12px;">
+            <button class="btn" type="submit">Add Problem</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>`))
 
 var problemTmpl = template.Must(template.New("problem").Parse(`
 <!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
-body { max-width: 800px; margin: auto; font-family: sans-serif; }
-pre { white-space: pre-wrap; word-wrap: break-word; }
-textarea { width: 100%; }
-</style>
-</head>
-<body>
-<h1>Contest {{.Contest}} Problem {{.Letter}} (<a href="https://codeforces.com/contest/{{.Contest}}/problem/{{.Letter}}">Codeforces</a>)</h1>
-<pre>{{.Statement}}</pre>
-<form action="/contest/{{.Contest}}/problem/{{.Letter}}/submit" method="post" enctype="multipart/form-data">
-<select name="lang">
-<option value="c">C</option>
-<option value="cpp">C++</option>
-<option value="java">Java</option>
-<option value="python">Python 3</option>
-<option value="go">Go</option>
-<option value="rust">Rust</option>
-</select><br>
-<textarea name="code" rows="20" cols="80"></textarea><br>
-<input type="file" name="file"><br>
-<div style="padding-top:20px;"></div>
-<input type="submit" value="Submit">
-<div style="padding-bottom:100px;"></div>
-</form>
-</body></html>`))
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Contest {{.Contest}} Problem {{.Letter}}</title>
+    <style>
+      :root { --bg:#0b0f17; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; --border:#1f2937; }
+      body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+      a { color: var(--accent); text-decoration:none; } a:hover{ text-decoration:underline; }
+      .container{ max-width: 1040px; margin: 0 auto; padding: 24px; }
+      .nav { display:flex; gap:16px; align-items:center; padding:16px 0; border-bottom:1px solid var(--border); margin-bottom:24px; }
+      .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; }
+      .cols { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+      pre { white-space: pre-wrap; word-wrap: break-word; background:#0f172a; border:1px solid var(--border); border-radius:8px; padding:12px; }
+      label { display:block; color:var(--muted); margin: 8px 0 6px; }
+      select, input, textarea { background:#0f172a; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:10px; width:100%; box-sizing:border-box; }
+      textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      .btn { background:#1f2937; color:var(--text); border:1px solid var(--border); padding:10px 14px; border-radius:8px; cursor:pointer; }
+      .btn:hover { background:#243042; }
+      .actions { display:flex; gap:8px; align-items:center; }
+      .copy { float:right; font-size:12px; color:var(--muted); cursor:pointer; }
+      @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+    </style>
+    <script>
+      function copyPre(id){
+        const el = document.getElementById(id);
+        if(!el) return;
+        navigator.clipboard.writeText(el.innerText).then(()=>{
+          const msg = document.getElementById(id+"-copied");
+          if(msg){ msg.style.opacity = 1; setTimeout(()=> msg.style.opacity = 0, 800); }
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="nav">
+        <a href="/contest/{{.Contest}}">← Contest {{.Contest}}</a>
+        <a href="https://codeforces.com/contest/{{.Contest}}/problem/{{.Letter}}" target="_blank" rel="noopener">Open on Codeforces ↗</a>
+      </div>
+      <h1>Problem {{.Letter}}</h1>
+      <div class="cols">
+        <div class="panel">
+          <div class="actions">
+            <div style="flex:1; color:var(--muted);">Statement</div>
+            <span class="copy" onclick="copyPre('statement')">Copy</span>
+            <span id="statement-copied" style="opacity:0; transition:opacity .2s; color:#10b981;">Copied</span>
+          </div>
+          <pre id="statement">{{.Statement}}</pre>
+        </div>
+        <div class="panel">
+          <form action="/contest/{{.Contest}}/problem/{{.Letter}}/submit" method="post" enctype="multipart/form-data">
+            <label>Language</label>
+            <select name="lang">
+              <option value="c">C</option>
+              <option value="cpp">C++</option>
+              <option value="java">Java</option>
+              <option value="python">Python 3</option>
+              <option value="go">Go</option>
+              <option value="rust">Rust</option>
+            </select>
+            <label style="margin-top:8px;">Paste your solution</label>
+            <textarea name="code" rows="18" placeholder="// Paste your solution here"></textarea>
+            <label style="margin-top:8px;">…or upload a file</label>
+            <input type="file" name="file">
+            <div style="margin-top:12px;">
+              <button class="btn" type="submit">Submit</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div style="height:40px"></div>
+    </div>
+  </body>
+</html>`))
 
 var resultTmpl = template.Must(template.New("result").Parse(`
 <!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
-body { max-width: 800px; margin: auto; font-family: sans-serif; }
-pre { white-space: pre-wrap; word-wrap: break-word; }
-</style>
-</head>
-<body>
-<h1>Result for Contest {{.Contest}} Problem {{.Letter}}</h1>
-<pre>{{.Output}}</pre>
-<a href="/contest/{{.Contest}}/problem/{{.Letter}}">Back</a>
-</body></html>`))
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Result {{.Contest}}{{.Letter}}</title>
+    <style>
+      :root { --bg:#0b0f17; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; --border:#1f2937; --good:#10b981; --bad:#ef4444; }
+      body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+      .container{ max-width: 960px; margin: 0 auto; padding: 24px; }
+      a { color: var(--accent); text-decoration:none; } a:hover{ text-decoration:underline; }
+      .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; }
+      pre { white-space: pre-wrap; word-wrap: break-word; background:#0f172a; border:1px solid var(--border); border-radius:8px; padding:12px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a href="/contest/{{.Contest}}/problem/{{.Letter}}">← Back to Problem</a>
+      <h1 style="margin-top:8px;">Result for {{.Contest}}{{.Letter}}</h1>
+      <div class="panel">
+        <pre>{{.Output}}</pre>
+      </div>
+    </div>
+  </body>
+</html>`))
 
-var textTmpl = template.Must(template.New("text").Parse(`<!DOCTYPE html><html><body><pre>{{.}}</pre></body></html>`))
+var textTmpl = template.Must(template.New("text").Parse(`
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>View</title>
+    <style>
+      :root { --bg:#0b0f17; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; --border:#1f2937; }
+      body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+      .container{ max-width: 960px; margin: 0 auto; padding: 24px; }
+      pre { white-space: pre-wrap; word-wrap: break-word; background:#0f172a; border:1px solid var(--border); border-radius:8px; padding:12px; }
+      .row { display:flex; gap:12px; align-items:center; }
+      .btn { background:#1f2937; color:var(--text); border:1px solid var(--border); padding:8px 12px; border-radius:8px; cursor:pointer; }
+      .btn:hover { background:#243042; }
+    </style>
+    <script>
+      function copyAll(){
+        const t = document.getElementById("content").innerText;
+        navigator.clipboard.writeText(t);
+      }
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <a href="/">← Home</a>
+        <button class="btn" onclick="copyAll()">Copy</button>
+      </div>
+      <pre id="content">{{.}}</pre>
+    </div>
+  </body>
+</html>`))
 
 var leaderboardTmpl = template.Must(template.New("leaderboard").Parse(`
 <!DOCTYPE html>
-<html><body>
-<h1>Leaderboard</h1>
-<table border="1">
-<tr><th>Run ID</th><th>Model</th><th>Rating</th><th>Timestamp</th></tr>
-{{range .Leaders}}
-<tr><td><a href="/leaderboard?run={{.RunID}}">{{.RunID}}</a></td><td>{{.Model}}</td><td>{{.Rating}}</td><td>{{.Timestamp}}</td></tr>
-{{end}}
-</table>
-{{if .Evals}}
-<h2>Evaluation History for {{.RunID}}</h2>
-<table border="1">
-<tr><th>Eval ID</th><th>Run ID</th><th>Model</th><th>Problem ID</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
-{{range .Evals}}
-<tr><td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td><td>{{.RunID}}</td><td>{{.Model}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ContestID}}{{.IndexName}}</a> (<a href="https://codeforces.com/contest/{{.ContestID}}/problem/{{.IndexName}}">CF</a>)</td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td><td><a href="/evaluation/stdout/{{.ID}}">View</a></td><td><a href="/evaluation/stderr/{{.ID}}">View</a></td></tr>
-{{end}}
-</table>
-{{end}}
-</body></html>`))
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Leaderboard</title>
+    <style>
+      :root { --bg:#0b0f17; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; --border:#1f2937; --good:#10b981; --bad:#ef4444; }
+      body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+      .container{ max-width: 1200px; margin: 0 auto; padding: 24px; }
+      a { color: var(--accent); text-decoration:none; } a:hover{ text-decoration:underline; }
+      table { width:100%; border-collapse: collapse; background:var(--panel); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+      th, td { padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; }
+      th { color: var(--muted); font-weight:600; }
+      tr:hover td { background:#0f172a; }
+      .nav { display:flex; gap:16px; align-items:center; padding:16px 0; border-bottom:1px solid var(--border); margin-bottom:24px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="nav">
+        <a href="/">← Contests</a>
+        <a href="/model">Models</a>
+        <a href="/submission">Submissions</a>
+      </div>
+      <h1>Leaderboard</h1>
+      <table>
+        <tr><th>Run ID</th><th>Model</th><th>Rating</th><th>Timestamp</th></tr>
+        {{range .Leaders}}
+        <tr><td><a href="/leaderboard?run={{.RunID}}">{{.RunID}}</a></td><td>{{.Model}}</td><td>{{.Rating}}</td><td>{{.Timestamp}}</td></tr>
+        {{end}}
+      </table>
+      {{if .Evals}}
+      <h2 style="margin-top:24px;">Evaluation History for {{.RunID}}</h2>
+      <table>
+        <tr><th>Eval ID</th><th>Run ID</th><th>Model</th><th>Problem</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
+        {{range .Evals}}
+        <tr>
+          <td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td>
+          <td>{{.RunID}}</td>
+          <td>{{.Model}}</td>
+          <td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ContestID}}{{.IndexName}}</a> (<a href="https://codeforces.com/contest/{{.ContestID}}/problem/{{.IndexName}}" target="_blank" rel="noopener">CF</a>)</td>
+          <td>{{.Rating}}</td>
+          <td>{{.Success}}</td>
+          <td>{{.Timestamp}}</td>
+          <td><a href="/evaluation/prompt/{{.ID}}">View</a></td>
+          <td><a href="/evaluation/response/{{.ID}}">View</a></td>
+          <td><a href="/evaluation/stdout/{{.ID}}">View</a></td>
+          <td><a href="/evaluation/stderr/{{.ID}}">View</a></td>
+        </tr>
+        {{end}}
+      </table>
+      {{end}}
+    </div>
+  </body>
+</html>`))
 
 var modelsTmpl = template.Must(template.New("models").Parse(`
 <!DOCTYPE html>
-<html><body>
-<h1>Models</h1>
-<ul>
-{{range .}}
-<li><a href="/model?name={{.}}">{{.}}</a></li>
-{{end}}
-</ul>
-</body></html>`))
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Models</title>
+    <style>
+      :root { --bg:#0b0f17; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; --border:#1f2937; }
+      body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+      a { color: var(--accent); text-decoration:none; } a:hover{ text-decoration:underline; }
+      .container{ max-width: 960px; margin: 0 auto; padding: 24px; }
+      .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:12px; }
+      .card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a href="/">← Contests</a>
+      <h1>Models</h1>
+      <div class="grid">
+        {{range .}}
+          <div class="card"><a href="/model?name={{.}}">{{.}}</a></div>
+        {{end}}
+      </div>
+    </div>
+  </body>
+</html>`))
 
 var modelTmpl = template.Must(template.New("model").Parse(`
 <!DOCTYPE html>
-<html><body>
-<h1>Evaluations for {{.Model}}</h1>
-<table border="1">
-<tr><th>Eval ID</th><th>Run ID</th><th>Problem ID</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
-{{range .Evals}}
-<tr><td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td><td>{{.RunID}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ContestID}}{{.IndexName}}</a> (<a href="https://codeforces.com/contest/{{.ContestID}}/problem/{{.IndexName}}">CF</a>)</td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td><td><a href="/evaluation/stdout/{{.ID}}">View</a></td><td><a href="/evaluation/stderr/{{.ID}}">View</a></td></tr>
-{{end}}
-</table>
-</body></html>`))
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Evaluations for {{.Model}}</title>
+    <style>
+      :root { --bg:#0b0f17; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; --border:#1f2937; }
+      body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+      .container{ max-width: 1200px; margin: 0 auto; padding: 24px; }
+      a { color: var(--accent); text-decoration:none; } a:hover{ text-decoration:underline; }
+      table { width:100%; border-collapse: collapse; background:var(--panel); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+      th, td { padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; }
+      th { color: var(--muted); font-weight:600; }
+      tr:hover td { background:#0f172a; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a href="/model">← Models</a>
+      <h1>Evaluations for {{.Model}}</h1>
+      <table>
+        <tr><th>Eval ID</th><th>Run ID</th><th>Problem</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
+        {{range .Evals}}
+        <tr><td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td><td>{{.RunID}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ContestID}}{{.IndexName}}</a> (<a href="https://codeforces.com/contest/{{.ContestID}}/problem/{{.IndexName}}" target="_blank" rel="noopener">CF</a>)</td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td><td><a href="/evaluation/stdout/{{.ID}}">View</a></td><td><a href="/evaluation/stderr/{{.ID}}">View</a></td></tr>
+        {{end}}
+      </table>
+    </div>
+  </body>
+</html>`))
 
 var submissionsTmpl = template.Must(template.New("submissions").Parse(`
 <!DOCTYPE html>
-<html><body>
-<h1>Submissions</h1>
-<table border="1">
-<tr><th>ID</th><th>Language</th><th>Exit Code</th><th>Timestamp</th><th>Code</th><th>Stdout</th><th>Stderr</th></tr>
-{{range .}}
-<tr>
-<td><a href="/submission/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td><td>{{.Lang}}</td><td>{{.ExitCode}}</td><td>{{.Timestamp}}</td>
-<td><a href="/submission/code/{{.ID}}">View</a></td><td><a href="/submission/stdout/{{.ID}}">View</a></td><td><a href="/submission/stderr/{{.ID}}">View</a></td>
-</tr>
-{{end}}
-</table>
-</body></html>`))
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Submissions</title>
+    <style>
+      :root { --bg:#0b0f17; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; --border:#1f2937; }
+      body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+      .container{ max-width: 1200px; margin: 0 auto; padding: 24px; }
+      a { color: var(--accent); text-decoration:none; } a:hover{ text-decoration:underline; }
+      table { width:100%; border-collapse: collapse; background:var(--panel); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+      th, td { padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; }
+      th { color: var(--muted); font-weight:600; }
+      tr:hover td { background:#0f172a; }
+      .nav { display:flex; gap:16px; align-items:center; padding:16px 0; border-bottom:1px solid var(--border); margin-bottom:24px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="nav">
+        <a href="/">← Contests</a>
+        <a href="/leaderboard">Leaderboard</a>
+        <a href="/model">Models</a>
+      </div>
+      <h1>Submissions</h1>
+      <table>
+        <tr><th>ID</th><th>Language</th><th>Exit Code</th><th>Timestamp</th><th>Code</th><th>Stdout</th><th>Stderr</th></tr>
+        {{range .}}
+        <tr>
+          <td><a href="/submission/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td><td>{{.Lang}}</td><td>{{.ExitCode}}</td><td>{{.Timestamp}}</td>
+          <td><a href="/submission/code/{{.ID}}">View</a></td><td><a href="/submission/stdout/{{.ID}}">View</a></td><td><a href="/submission/stderr/{{.ID}}">View</a></td>
+        </tr>
+        {{end}}
+      </table>
+    </div>
+  </body>
+</html>`))
 
 func scanContests(root string) (map[string]*contestInfo, error) {
 	result := make(map[string]*contestInfo)
