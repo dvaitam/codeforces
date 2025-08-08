@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -59,7 +61,11 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\ninput:\n%s\n", i+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(want) {
+		g := strings.TrimSpace(got)
+		w := strings.TrimSpace(want)
+		gf, errG := strconv.ParseFloat(g, 64)
+		wf, errW := strconv.ParseFloat(w, 64)
+		if errG != nil || errW != nil || math.Abs(gf-wf) > 1e-6 {
 			fmt.Fprintf(os.Stderr, "case %d failed:\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", i+1, input, want, got)
 			os.Exit(1)
 		}
