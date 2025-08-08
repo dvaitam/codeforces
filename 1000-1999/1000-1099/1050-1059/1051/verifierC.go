@@ -30,10 +30,11 @@ func runCandidate(bin, input string) (string, error) {
 }
 
 func possible(nums []int) bool {
-	cnt := make([]int, 110)
-	for _, v := range nums {
-		cnt[v]++
-	}
+        // numbers are in the range [1, 100]
+        cnt := make([]int, 101)
+        for _, v := range nums {
+                cnt[v]++
+        }
 	calc := make([]int, 4)
 	for _, c := range cnt {
 		if c <= 2 {
@@ -70,12 +71,13 @@ func isValid(nums []int, assign string) bool {
 }
 
 func genCase(rng *rand.Rand) []int {
-	n := rng.Intn(8) + 2
-	nums := make([]int, n)
-	for i := 0; i < n; i++ {
-		nums[i] = rng.Intn(10)
-	}
-	return nums
+        n := rng.Intn(8) + 2
+        nums := make([]int, n)
+        for i := 0; i < n; i++ {
+                // generate values within the problem constraints [1, 100]
+                nums[i] = rng.Intn(100) + 1
+        }
+        return nums
 }
 
 func main() {
