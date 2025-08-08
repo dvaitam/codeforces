@@ -340,6 +340,7 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 		output.WriteString("Compilation failed:\n")
 		output.WriteString(compileOut)
 		output.WriteString(err.Error())
+		stderrStr = compileOut + err.Error()
 	} else {
 		verifier := findVerifier(c.Path, letter)
 		if verifier != "" {
