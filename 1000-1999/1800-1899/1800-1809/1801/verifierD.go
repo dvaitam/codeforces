@@ -7,28 +7,28 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
 
 func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleD")
-	cmd := exec.Command("go", "build", "-o", oracle, "1801D.go")
+	_, file, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(file)
+	src := filepath.Join(dir, "1801D.go")
+	bin := filepath.Join(os.TempDir(), "oracle1801D.bin")
+	cmd := exec.Command("go", "build", "-o", bin, src)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}
-	return oracle, nil
+	return bin, nil
 }
 
 func genCase(r *rand.Rand) string {
 	var sb strings.Builder
 	sb.WriteString("1\n")
 	n := r.Intn(4) + 2
-	m := r.Intn(5) + 1
+	m := r.Intn(5) + n - 1
 	p := r.Intn(20)
 	sb.WriteString(fmt.Sprintf("%d %d %d\n", n, m, p))
 	for i := 0; i < n; i++ {
@@ -38,7 +38,11 @@ func genCase(r *rand.Rand) string {
 		sb.WriteString(fmt.Sprintf("%d", r.Intn(10)+1))
 	}
 	sb.WriteByte('\n')
-	for i := 0; i < m; i++ {
+	for i := 1; i < n; i++ {
+		s := r.Intn(10) + 1
+		sb.WriteString(fmt.Sprintf("%d %d %d\n", i, i+1, s))
+	}
+	for i := n - 1; i < m; i++ {
 		a := r.Intn(n) + 1
 		b := r.Intn(n) + 1
 		s := r.Intn(10) + 1
