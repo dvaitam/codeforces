@@ -163,12 +163,14 @@ func main() {
 		attempt := 1
 		var tempBinAbs string
 		var verifierStdout, verifierStderr string
+		var buildErrMsg string
 		for attempt <= *maxAttempts {
 			fmt.Printf("Verification attempt %d of %d\n", attempt, *maxAttempts)
 			buildSuccess, buildErrMsg, builtBinAbs := buildSolution(code, lang)
 			tempBinAbs = builtBinAbs
 			if !buildSuccess {
 				if attempt == *maxAttempts {
+					verifierStderr = buildErrMsg
 					break
 				}
 				fixPrompt := fmt.Sprintf("The following %s code has compilation errors: %s\n\nFix the errors and output only the corrected code with no comments or explanation.", lang, buildErrMsg)
