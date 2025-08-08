@@ -48,7 +48,7 @@ var contestTmpl = template.Must(template.New("contest").Parse(`
 <h1>Contest {{.ID}}</h1>
 <ul>
 {{range .Problems}}
-<li><a href="/contest/{{$.ID}}/problem/{{.}}">Problem {{.}}</a></li>
+<li><a href="/contest/{{$.ID}}/problem/{{.}}">Problem {{.}}</a> (<a href="https://codeforces.com/contest/{{$.ID}}/problem/{{.}}">Codeforces</a>)</li>
 {{end}}
 </ul>
 <h2>Add Problem</h2>
@@ -86,7 +86,7 @@ textarea { width: 100%; }
 </style>
 </head>
 <body>
-<h1>Contest {{.Contest}} Problem {{.Letter}}</h1>
+<h1>Contest {{.Contest}} Problem {{.Letter}} (<a href="https://codeforces.com/contest/{{.Contest}}/problem/{{.Letter}}">Codeforces</a>)</h1>
 <pre>{{.Statement}}</pre>
 <form action="/contest/{{.Contest}}/problem/{{.Letter}}/submit" method="post" enctype="multipart/form-data">
 <select name="lang">
@@ -138,7 +138,7 @@ var leaderboardTmpl = template.Must(template.New("leaderboard").Parse(`
 <table border="1">
 <tr><th>Eval ID</th><th>Run ID</th><th>Model</th><th>Problem ID</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
 {{range .Evals}}
-<tr><td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td><td>{{.RunID}}</td><td>{{.Model}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ContestID}}{{.IndexName}}</a></td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td><td><a href="/evaluation/stdout/{{.ID}}">View</a></td><td><a href="/evaluation/stderr/{{.ID}}">View</a></td></tr>
+<tr><td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td><td>{{.RunID}}</td><td>{{.Model}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ContestID}}{{.IndexName}}</a> (<a href="https://codeforces.com/contest/{{.ContestID}}/problem/{{.IndexName}}">CF</a>)</td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td><td><a href="/evaluation/stdout/{{.ID}}">View</a></td><td><a href="/evaluation/stderr/{{.ID}}">View</a></td></tr>
 {{end}}
 </table>
 {{end}}
@@ -162,7 +162,7 @@ var modelTmpl = template.Must(template.New("model").Parse(`
 <table border="1">
 <tr><th>Eval ID</th><th>Run ID</th><th>Problem ID</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
 {{range .Evals}}
-<tr><td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td><td>{{.RunID}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ContestID}}{{.IndexName}}</a></td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td><td><a href="/evaluation/stdout/{{.ID}}">View</a></td><td><a href="/evaluation/stderr/{{.ID}}">View</a></td></tr>
+<tr><td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td><td>{{.RunID}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ContestID}}{{.IndexName}}</a> (<a href="https://codeforces.com/contest/{{.ContestID}}/problem/{{.IndexName}}">CF</a>)</td><td>{{.Rating}}</td><td>{{.Success}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td><td><a href="/evaluation/stdout/{{.ID}}">View</a></td><td><a href="/evaluation/stderr/{{.ID}}">View</a></td></tr>
 {{end}}
 </table>
 </body></html>`))
