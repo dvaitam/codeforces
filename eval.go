@@ -163,7 +163,6 @@ func main() {
 		attempt := 1
 		var tempBinAbs string
 		var verifierStdout, verifierStderr string
-		var buildErrMsg string
 		for attempt <= *maxAttempts {
 			fmt.Printf("Verification attempt %d of %d\n", attempt, *maxAttempts)
 			buildSuccess, buildErrMsg, builtBinAbs := buildSolution(code, lang)
