@@ -1119,6 +1119,7 @@ func failedJSONHandler(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "missing model query parameter", http.StatusBadRequest)
         return
     }
+    langFilter := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("lang")))
     type Eval struct {
         ID        int    `json:"id"`
         RunID     string `json:"run_id"`
@@ -1129,10 +1130,17 @@ func failedJSONHandler(w http.ResponseWriter, r *http.Request) {
         Timestamp string `json:"timestamp"`
     }
     var evals []Eval
-    rows, err := db.Query(`SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), e.timestamp
-                               FROM evaluations e
-                               JOIN problems p ON e.problem_id = p.id
-                               WHERE e.model = ? AND e.success = 0 ORDER BY e.timestamp DESC`, modelName)
+    cond := "WHERE e.model = ? AND e.success = 0"
+    var args []interface{}
+    args = append(args, modelName)
+    if langFilter != "" {
+        cond += " AND e.lang = ?"
+        args = append(args, langFilter)
+    }
+    q := `SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), e.timestamp
+            FROM evaluations e
+            JOIN problems p ON e.problem_id = p.id ` + cond + ` ORDER BY e.timestamp DESC`
+    rows, err := db.Query(q, args...)
     if err == nil {
         defer rows.Close()
         for rows.Next() {
@@ -1145,6 +1153,7 @@ func failedJSONHandler(w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "application/json; charset=utf-8")
     _ = json.NewEncoder(w).Encode(map[string]interface{}{
         "model": modelName,
+        "lang":  langFilter,
         "evals": evals,
     })
 }
