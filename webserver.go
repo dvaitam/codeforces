@@ -227,13 +227,37 @@ var problemTmpl = template.Must(template.New("problem").Parse(`
       @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
     </style>
     <script>
+      function copyTextFallback(text){
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly','');
+        ta.style.position = 'absolute';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        const selection = document.getSelection();
+        const selected = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+        ta.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        document.body.removeChild(ta);
+        if (selected) { selection.removeAllRanges(); selection.addRange(selected); }
+        return ok;
+      }
       function copyPre(id){
         const el = document.getElementById(id);
         if(!el) return;
-        navigator.clipboard.writeText(el.innerText).then(()=>{
+        const text = el.innerText;
+        const done = () => {
           const msg = document.getElementById(id+"-copied");
           if(msg){ msg.style.opacity = 1; setTimeout(()=> msg.style.opacity = 0, 800); }
-        });
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done).catch(()=>{
+            if (copyTextFallback(text)) done();
+          });
+        } else {
+          if (copyTextFallback(text)) done();
+        }
       }
     </script>
   </head>
@@ -323,16 +347,37 @@ var textTmpl = template.Must(template.New("text").Parse(`
       .btn:hover { background:#243042; }
     </style>
     <script>
+      function copyTextFallback(text){
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly','');
+        ta.style.position = 'absolute';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        const selection = document.getSelection();
+        const selected = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+        ta.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        document.body.removeChild(ta);
+        if (selected) { selection.removeAllRanges(); selection.addRange(selected); }
+        return ok;
+      }
       async function copyAll(){
         const t = document.getElementById("content").innerText;
         try {
-          await navigator.clipboard.writeText(t);
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(t);
+          } else if (!copyTextFallback(t)) {
+            throw new Error('No clipboard API and fallback failed');
+          }
           const btn = document.getElementById("copyBtn");
           const original = btn.innerText;
           btn.innerText = "Copied!";
           setTimeout(() => { btn.innerText = original; }, 2000);
         } catch (err) {
           console.error('Copy failed', err);
+          alert('Copy failed. Select all and copy manually.');
         }
       }
     </script>

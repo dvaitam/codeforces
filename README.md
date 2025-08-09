@@ -17,6 +17,8 @@ Several helper tools live in the repository root:
 - Other helper utilities may be added for brute-force testing or instrumentation.
 - `eval.go` – evaluate AI-generated solutions. Supports flags like `-model`,
   `-provider`, `-db` and `-timeout` to control the HTTP request timeout.
+- `export_failed.go` – export failed AI responses by model into per-model
+  folders with filenames like `1395D.go` or `1453A.rs` based on language.
 
 All Go utilities build with the standard tooling. Example:
 
@@ -61,6 +63,21 @@ Open <http://localhost:8081> to see the list of contests. Each problem page
 allows you to paste code or upload a file in C, C++, Go, Rust, Java or Python.
 If a verifier is present in the contest directory it will run automatically
 after compilation.
+
+## Exporting failed AI responses
+
+Use `export_failed.go` to pull all failed evaluations for specific models (exact
+model names) and save their code into folders named after each model:
+
+```bash
+go run export_failed.go \
+  -db "user:pass@tcp(127.0.0.1:3306)/dbname" \
+  -models "grok-4,gemini-2.5-pro,gpt-5-mini,o3,gpt-5"
+```
+
+This creates directories like `gpt-5`, `gemini-2.5-pro`, etc., and files such
+as `1395D.go` or `1453A.rs` depending on the stored language. Use `-dry-run`
+to preview without writing files.
 
 ### Required compilers
 
