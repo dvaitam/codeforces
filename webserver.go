@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
@@ -1108,6 +1109,46 @@ func failedHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func failedJSONHandler(w http.ResponseWriter, r *http.Request) {
+    if r.URL.Path != "/failed/json" {
+        http.NotFound(w, r)
+        return
+    }
+    modelName := r.URL.Query().Get("model")
+    if modelName == "" {
+        http.Error(w, "missing model query parameter", http.StatusBadRequest)
+        return
+    }
+    type Eval struct {
+        ID        int    `json:"id"`
+        RunID     string `json:"run_id"`
+        ProblemID int    `json:"problem_id"`
+        ContestID int    `json:"contest_id"`
+        IndexName string `json:"index_name"`
+        Rating    int    `json:"rating"`
+        Timestamp string `json:"timestamp"`
+    }
+    var evals []Eval
+    rows, err := db.Query(`SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), e.timestamp
+                               FROM evaluations e
+                               JOIN problems p ON e.problem_id = p.id
+                               WHERE e.model = ? AND e.success = 0 ORDER BY e.timestamp DESC`, modelName)
+    if err == nil {
+        defer rows.Close()
+        for rows.Next() {
+            var e Eval
+            if err = rows.Scan(&e.ID, &e.RunID, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Rating, &e.Timestamp); err == nil {
+                evals = append(evals, e)
+            }
+        }
+    }
+    w.Header().Set("Content-Type", "application/json; charset=utf-8")
+    _ = json.NewEncoder(w).Encode(map[string]interface{}{
+        "model": modelName,
+        "evals": evals,
+    })
+}
+
 func submissionsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/submission" {
 		http.NotFound(w, r)
@@ -1287,6 +1328,7 @@ func main() {
 	http.HandleFunc("/leaderboard", leaderboardHandler)
 	http.HandleFunc("/model", modelHandler)
 	http.HandleFunc("/failed/", failedHandler)
+    http.HandleFunc("/failed/json", failedJSONHandler)
 	http.HandleFunc("/submission", submissionsHandler)
 	http.HandleFunc("/submission/generate/fix/prompt/", submissionFixPromptHandler)
 	http.HandleFunc("/submission/", submissionContentHandler)
