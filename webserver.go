@@ -1215,6 +1215,32 @@ func evaluationContentHandler(w http.ResponseWriter, r *http.Request) {
 	textTmpl.Execute(w, content)
 }
 
+func evaluationRawResponseHandler(w http.ResponseWriter, r *http.Request) {
+    path := r.URL.Path
+    idStr := strings.TrimPrefix(path, "/evaluation/raw/response/")
+    id, err := strconv.Atoi(idStr)
+    if err != nil {
+        http.NotFound(w, r)
+        return
+    }
+    var resp string
+    if err := db.QueryRow("SELECT response FROM evaluations WHERE id = ?", id).Scan(&resp); err != nil {
+        http.NotFound(w, r)
+        return
+    }
+    // Extract code block only if fenced with go or rust
+    code := ""
+    if m := regexp.MustCompile(`(?s)\x60\x60\x60go\s*(.*?)\x60\x60\x60`).FindStringSubmatch(resp); len(m) > 1 {
+        code = strings.TrimSpace(m[1])
+    } else if m := regexp.MustCompile(`(?s)\x60\x60\x60rust\s*(.*?)\x60\x60\x60`).FindStringSubmatch(resp); len(m) > 1 {
+        code = strings.TrimSpace(m[1])
+    } else {
+        code = resp
+    }
+    w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+    _, _ = w.Write([]byte(code))
+}
+
 func main() {
 	var err error
 	fmt.Println("PATH:", os.Getenv("PATH"))
@@ -1266,5 +1292,7 @@ func main() {
 	http.HandleFunc("/submission/", submissionContentHandler)
 	http.HandleFunc("/evaluation/generate/fix/prompt/", evaluationFixPromptHandler)
 	http.HandleFunc("/evaluation/", evaluationContentHandler)
+    // raw code response
+    http.HandleFunc("/evaluation/raw/response/", evaluationRawResponseHandler)
 	http.ListenAndServe(":8081", nil)
 }
