@@ -323,9 +323,17 @@ var textTmpl = template.Must(template.New("text").Parse(`
       .btn:hover { background:#243042; }
     </style>
     <script>
-      function copyAll(){
+      async function copyAll(){
         const t = document.getElementById("content").innerText;
-        navigator.clipboard.writeText(t);
+        try {
+          await navigator.clipboard.writeText(t);
+          const btn = document.getElementById("copyBtn");
+          const original = btn.innerText;
+          btn.innerText = "Copied!";
+          setTimeout(() => { btn.innerText = original; }, 2000);
+        } catch (err) {
+          console.error('Copy failed', err);
+        }
       }
     </script>
   </head>
@@ -333,7 +341,7 @@ var textTmpl = template.Must(template.New("text").Parse(`
     <div class="container">
       <div class="row">
         <a href="/">← Home</a>
-        <button class="btn" onclick="copyAll()">Copy</button>
+        <button id="copyBtn" class="btn" onclick="copyAll()">Copy</button>
       </div>
       <pre id="content">{{.}}</pre>
     </div>
