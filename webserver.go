@@ -459,6 +459,38 @@ var modelTmpl = template.Must(template.New("model").Parse(`
   </body>
 </html>`))
 
+var failedTmpl = template.Must(template.New("failed").Parse(`
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Failed Evaluations for {{.Model}}</title>
+    <style>
+      :root { --bg:#0b0f17; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; --border:#1f2937; }
+      body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+      .container{ max-width: 1200px; margin: 0 auto; padding: 24px; }
+      a { color: var(--accent); text-decoration:none; } a:hover{ text-decoration:underline; }
+      table { width:100%; border-collapse: collapse; background:var(--panel); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+      th, td { padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; }
+      th { color: var(--muted); font-weight:600; }
+      tr:hover td { background:#0f172a; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a href="/model?name={{.Model}}">← Back to {{.Model}}</a>
+      <h1>Failed evaluations for {{.Model}}</h1>
+      <table>
+        <tr><th>Eval ID</th><th>Run ID</th><th>Problem</th><th>Rating</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
+        {{range .Evals}}
+        <tr><td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td><td>{{.RunID}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ContestID}}{{.IndexName}}</a> (<a href="https://codeforces.com/contest/{{.ContestID}}/problem/{{.IndexName}}" target="_blank" rel="noopener">CF</a>)</td><td>{{.Rating}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td><td><a href="/evaluation/stdout/{{.ID}}">View</a></td><td><a href="/evaluation/stderr/{{.ID}}">View</a></td></tr>
+        {{end}}
+      </table>
+    </div>
+  </body>
+</html>`))
+
 var submissionsTmpl = template.Must(template.New("submissions").Parse(`
 <!DOCTYPE html>
 <html lang="en">
@@ -984,6 +1016,45 @@ func modelHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func failedHandler(w http.ResponseWriter, r *http.Request) {
+	if !strings.HasPrefix(r.URL.Path, "/failed/") {
+		http.NotFound(w, r)
+		return
+	}
+	modelName := strings.TrimPrefix(r.URL.Path, "/failed/")
+	if modelName == "" {
+		http.NotFound(w, r)
+		return
+	}
+	type Eval struct {
+		ID        int
+		RunID     string
+		ProblemID int
+		ContestID int
+		IndexName string
+		Rating    int
+		Timestamp string
+	}
+	var evals []Eval
+	rows, err := db.Query(`SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), e.timestamp
+                               FROM evaluations e
+                               JOIN problems p ON e.problem_id = p.id
+                               WHERE e.model = ? AND e.success = 0 ORDER BY e.timestamp DESC`, modelName)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var e Eval
+			if err = rows.Scan(&e.ID, &e.RunID, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Rating, &e.Timestamp); err == nil {
+				evals = append(evals, e)
+			}
+		}
+	}
+	failedTmpl.Execute(w, map[string]interface{}{
+		"Model": modelName,
+		"Evals": evals,
+	})
+}
+
 func submissionsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/submission" {
 		http.NotFound(w, r)
@@ -1136,6 +1207,7 @@ func main() {
 	})
 	http.HandleFunc("/leaderboard", leaderboardHandler)
 	http.HandleFunc("/model", modelHandler)
+	http.HandleFunc("/failed/", failedHandler)
 	http.HandleFunc("/submission", submissionsHandler)
 	http.HandleFunc("/submission/generate/fix/prompt/", submissionFixPromptHandler)
 	http.HandleFunc("/submission/", submissionContentHandler)
