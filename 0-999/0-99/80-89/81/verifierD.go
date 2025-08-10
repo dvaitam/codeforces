@@ -10,36 +10,87 @@ import (
 	"strings"
 )
 
-func expected(n, m int, a []int) string {
-	v := make([]int, m+1)
-	copy(v[1:], a)
-	ans := make([]int, n)
-	last := -1
-	for i := 0; i < n; i++ {
-		id := 0
-		for j := 1; j <= m; j++ {
-			if j == last || (i == n-1 && j == ans[0]) {
-				continue
-			}
-			if v[j] > v[id] || (v[j] == v[id] && j == ans[0]) {
-				id = j
-			}
-		}
-		if v[id] == 0 {
-			return "-1"
-		}
-		v[id]--
-		ans[i] = id
-		last = id
+func min(a, b int) int {
+	if a < b {
+		return a
 	}
-	var sb strings.Builder
-	for i := 0; i < n; i++ {
-		if i > 0 {
-			sb.WriteByte(' ')
+	return b
+}
+
+// possible determines whether a valid arrangement exists.
+func possible(n, m int, a []int) bool {
+	low, high := 1, n
+	bestK := -1
+	for low <= high {
+		mid := low + (high-low)/2
+		if mid == 0 {
+			low = 1
+			continue
 		}
-		sb.WriteString(strconv.Itoa(ans[i]))
+		sum := 0
+		for _, v := range a {
+			sum += min(v, mid)
+		}
+		if sum >= n {
+			bestK = mid
+			high = mid - 1
+		} else {
+			low = mid + 1
+		}
 	}
-	return sb.String()
+	if bestK == -1 || 2*bestK > n {
+		return false
+	}
+	return true
+}
+
+// validateOutput checks if the contestant output satisfies the problem constraints.
+func validateOutput(n, m int, a []int, out string) error {
+	out = strings.TrimSpace(out)
+	if out == "-1" {
+		if possible(n, m, a) {
+			return fmt.Errorf("solution exists but got -1")
+		}
+		return nil
+	}
+
+	parts := strings.Fields(out)
+	if len(parts) != n {
+		return fmt.Errorf("expected %d numbers, got %d", n, len(parts))
+	}
+	used := make([]int, m+1)
+	prev := -1
+	first := -1
+	for i, p := range parts {
+		v, err := strconv.Atoi(p)
+		if err != nil {
+			return fmt.Errorf("output contains non-integer: %v", p)
+		}
+		if v < 1 || v > m {
+			return fmt.Errorf("album %d out of range", v)
+		}
+		used[v]++
+		if used[v] > a[v-1] {
+			return fmt.Errorf("album %d used more than available", v)
+		}
+		if i == 0 {
+			first = v
+		} else if v == prev {
+			return fmt.Errorf("adjacent photos from album %d", v)
+		}
+		prev = v
+	}
+	if n > 1 && prev == first {
+		return fmt.Errorf("first and last photos from same album")
+	}
+	total := 0
+	for i := 1; i <= m; i++ {
+		total += used[i]
+	}
+	if total != n {
+		return fmt.Errorf("expected %d photos, got %d", n, total)
+	}
+	return nil
 }
 
 func main() {
@@ -78,7 +129,6 @@ func main() {
 			v, _ := strconv.Atoi(parts[2+i])
 			arr[i] = v
 		}
-		expect := expected(nVal, mVal, arr)
 		input := fmt.Sprintf("%d %d\n%s\n", nVal, mVal, strings.Join(parts[2:], " "))
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(input)
@@ -91,9 +141,9 @@ func main() {
 			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
-		if got != expect {
-			fmt.Printf("test %d failed\nexpected: %s\n     got: %s\n", idx, expect, got)
+		got := out.String()
+		if err := validateOutput(nVal, mVal, arr, got); err != nil {
+			fmt.Printf("test %d failed: %v\n", idx, err)
 			os.Exit(1)
 		}
 	}
