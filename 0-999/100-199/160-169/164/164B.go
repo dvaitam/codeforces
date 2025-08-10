@@ -6,55 +6,96 @@ import (
 	"os"
 )
 
-func isSubseq(sub []int, b []int) bool {
-	j := 0
-	for _, x := range b {
-		if j < len(sub) && x == sub[j] {
-			j++
-			if j == len(sub) {
-				return true
-			}
-		}
+// fast integer reader
+func nextInt(r *bufio.Reader) int {
+	sign, val := 1, 0
+	c, _ := r.ReadByte()
+	for (c < '0' || c > '9') && c != '-' {
+		c, _ = r.ReadByte()
 	}
-	return j == len(sub)
+	if c == '-' {
+		sign = -1
+		c, _ = r.ReadByte()
+	}
+	for c >= '0' && c <= '9' {
+		val = val*10 + int(c-'0')
+		c, _ = r.ReadByte()
+	}
+	return sign * val
 }
 
 func main() {
 	reader := bufio.NewReader(os.Stdin)
-	var la, lb int
-	if _, err := fmt.Fscan(reader, &la, &lb); err != nil {
-		return
-	}
+	la := nextInt(reader)
+	lb := nextInt(reader)
+
 	a := make([]int, la)
 	for i := 0; i < la; i++ {
-		fmt.Fscan(reader, &a[i])
+		a[i] = nextInt(reader)
 	}
-	b := make([]int, lb)
+
+	index := make(map[int]int, lb)
 	for i := 0; i < lb; i++ {
-		fmt.Fscan(reader, &b[i])
+		v := nextInt(reader)
+		index[v] = i
 	}
-	best := 0
-	for sa := 0; sa < la; sa++ {
-		aa := append(append([]int{}, a[sa:]...), a[:sa]...)
-		for sb := 0; sb < lb; sb++ {
-			bb := append(append([]int{}, b[sb:]...), b[:sb]...)
-			for l := 0; l < la; l++ {
-				for r := l; r < la; r++ {
-					sub := aa[l : r+1]
-					if isSubseq(sub, bb) {
-						if len(sub) > best {
-							best = len(sub)
-						}
-					}
-				}
-			}
+
+	// map elements of a to positions in b (or -1 if absent)
+	pos := make([]int, la)
+	for i, v := range a {
+		if p, ok := index[v]; ok {
+			pos[i] = p
+		} else {
+			pos[i] = -1
 		}
 	}
+
+	// handle rotation of a by doubling the array
+	pos2 := make([]int, 2*la)
+	copy(pos2, pos)
+	copy(pos2[la:], pos)
+
+	const INF int64 = -1
+	arr := make([]int64, len(pos2)) // unwrapped positions in b
+	var prev int64 = INF
+	lb64 := int64(lb)
+	for i, p := range pos2 {
+		if p == -1 {
+			arr[i] = INF
+			prev = INF
+			continue
+		}
+		cur := int64(p)
+		if prev != INF && cur <= prev {
+			cur += ((prev-cur)/lb64 + 1) * lb64
+		}
+		arr[i] = cur
+		prev = cur
+	}
+
+	best := 0
+	l := 0
+	for r := 0; r < len(arr); r++ {
+		if arr[r] == INF {
+			l = r + 1
+			continue
+		}
+		for l <= r && (arr[r]-arr[l] >= lb64 || r-l+1 > la) {
+			l++
+		}
+		if r-l+1 > best {
+			best = r - l + 1
+		}
+	}
+
 	if best > la {
 		best = la
 	}
 	if best > lb {
 		best = lb
 	}
-	fmt.Println(best)
+
+	writer := bufio.NewWriter(os.Stdout)
+	fmt.Fprintln(writer, best)
+	writer.Flush()
 }
