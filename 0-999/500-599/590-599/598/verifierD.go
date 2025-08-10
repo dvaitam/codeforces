@@ -129,10 +129,15 @@ func runCase(exe, input, expected string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	got := strings.TrimSpace(out.String())
-	exp := strings.TrimSpace(expected)
-	if got != exp {
-		return fmt.Errorf("expected\n%s\ngot\n%s", exp, got)
+	gotFields := strings.Fields(out.String())
+	expFields := strings.Fields(expected)
+	if len(gotFields) != len(expFields) {
+		return fmt.Errorf("expected\n%s\ngot\n%s", strings.TrimSpace(expected), strings.TrimSpace(out.String()))
+	}
+	for i := range expFields {
+		if gotFields[i] != expFields[i] {
+			return fmt.Errorf("expected\n%s\ngot\n%s", strings.TrimSpace(expected), strings.TrimSpace(out.String()))
+		}
 	}
 	return nil
 }
