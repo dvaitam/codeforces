@@ -38,14 +38,15 @@ func run(bin, input string) (string, error) {
 
 func genCase(r *rand.Rand) string {
 	n := r.Intn(10) + 1
-	m := r.Intn(10) + 1
+	perm := r.Perm(n)
+	m := r.Intn(n) + 1
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d %d\n", n, m)
 	for i := 0; i < n; i++ {
 		if i > 0 {
 			sb.WriteByte(' ')
 		}
-		fmt.Fprintf(&sb, "%d", r.Intn(20)+1)
+		fmt.Fprintf(&sb, "%d", perm[i]+1)
 	}
 	sb.WriteByte('\n')
 	return sb.String()
