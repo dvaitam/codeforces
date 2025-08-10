@@ -25,7 +25,15 @@ func run(bin, input string) (string, error) {
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
 	}
-	return strings.TrimSpace(out.String()), nil
+	return normalize(out.String()), nil
+}
+
+func normalize(s string) string {
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimSpace(line)
+	}
+	return strings.Join(lines, "\n")
 }
 
 func main() {
