@@ -55,45 +55,51 @@ func genTest(rng *rand.Rand) Test {
 	return Test{ops: ops, input: sb.String()}
 }
 
-func solve(t Test) string {
-	zero := [10]int{}
-	one := [10]int{}
-	for i := 0; i < 10; i++ {
-		zero[i] = 0
-		one[i] = 1
-	}
-	for _, op := range t.ops {
-		for j := 0; j < 10; j++ {
-			b := (op.x >> j) & 1
-			switch op.op {
-			case "|":
-				zero[j] |= b
-				one[j] |= b
-			case "&":
-				zero[j] &= b
-				one[j] &= b
-			case "^":
-				zero[j] ^= b
-				one[j] ^= b
-			}
+func apply(ops []Op, x int) int {
+	for _, op := range ops {
+		switch op.op {
+		case "&":
+			x &= op.x
+		case "|":
+			x |= op.x
+		case "^":
+			x ^= op.x
 		}
 	}
-	andMask, orMask, xorMask := 0, 0, 0
-	for j := 0; j < 10; j++ {
-		a0 := zero[j]
-		a1 := one[j]
-		if a0 == 0 && a1 == 0 {
-		} else if a0 == 1 && a1 == 1 {
-			andMask |= 1 << j
-			orMask |= 1 << j
-		} else if a0 == 0 && a1 == 1 {
-			andMask |= 1 << j
-		} else {
-			andMask |= 1 << j
-			xorMask |= 1 << j
-		}
+	return x
+}
+
+func parseOutput(out string) ([]Op, error) {
+	tokens := strings.Fields(out)
+	if len(tokens) == 0 {
+		return nil, fmt.Errorf("empty output")
 	}
-	return fmt.Sprintf("3\n& %d\n| %d\n^ %d", andMask, orMask, xorMask)
+	m, err := strconv.Atoi(tokens[0])
+	if err != nil {
+		return nil, fmt.Errorf("invalid number of ops: %v", err)
+	}
+	if m < 0 || m > 3 {
+		return nil, fmt.Errorf("invalid m=%d", m)
+	}
+	if len(tokens) != 1+2*m {
+		return nil, fmt.Errorf("expected %d tokens, got %d", 1+2*m, len(tokens))
+	}
+	ops := make([]Op, m)
+	idx := 1
+	for i := 0; i < m; i++ {
+		typ := tokens[idx]
+		idx++
+		if typ != "&" && typ != "|" && typ != "^" {
+			return nil, fmt.Errorf("invalid op %q", typ)
+		}
+		val, err := strconv.Atoi(tokens[idx])
+		idx++
+		if err != nil {
+			return nil, fmt.Errorf("invalid value: %v", err)
+		}
+		ops[i] = Op{op: typ, x: val}
+	}
+	return ops, nil
 }
 
 func main() {
@@ -105,16 +111,23 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		t := genTest(rng)
-		expected := solve(t)
 		out, err := run(bin, t.input)
 		if err != nil {
 			fmt.Printf("test %d runtime error: %v\noutput:\n%s", i+1, err, out)
 			os.Exit(1)
 		}
-		out = strings.TrimSpace(out)
-		if out != expected {
-			fmt.Printf("test %d failed\ninput:\n%s\nexpected:\n%s\nactual:\n%s\n", i+1, t.input, expected, out)
+		ops, err := parseOutput(out)
+		if err != nil {
+			fmt.Printf("test %d parse error: %v\noutput:\n%s", i+1, err, out)
 			os.Exit(1)
+		}
+		for x := 0; x < 1024; x++ {
+			expected := apply(t.ops, x)
+			actual := apply(ops, x)
+			if expected != actual {
+				fmt.Printf("test %d failed\ninput:\n%sx = %d\nexpected = %d\nactual = %d\noutput:\n%s", i+1, t.input, x, expected, actual, out)
+				os.Exit(1)
+			}
 		}
 	}
 	fmt.Println("All tests passed")
