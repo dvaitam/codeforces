@@ -41,33 +41,71 @@ func expected(t Test) string {
 		sumR += t.a[i]
 		sumB += t.b[i]
 	}
-	dp := make([]bool, k)
-	dp[0] = true
+	// dp[remR][remB] = maximum number of mixed baskets achievable
+	dp := make([][]int, sumR+1)
+	for i := range dp {
+		dp[i] = make([]int, sumB+1)
+		for j := range dp[i] {
+			dp[i][j] = -1
+		}
+	}
+	dp[0][0] = 0
 	for i := 0; i < n; i++ {
-		ndp := make([]bool, k)
-		for r := 0; r < k; r++ {
-			if !dp[r] {
-				continue
+		ndp := make([][]int, sumR+1)
+		for x := range ndp {
+			ndp[x] = make([]int, sumB+1)
+			for y := range ndp[x] {
+				ndp[x][y] = -1
 			}
-			maxx := min(t.a[i], k-1)
-			for x := 0; x <= maxx; x++ {
-				y := (k - ((r + x) % k)) % k
-				if y <= t.b[i] && x+y <= t.a[i]+t.b[i] {
-					ndp[(r+x)%k] = true
+		}
+		for remR := 0; remR <= sumR; remR++ {
+			for remB := 0; remB <= sumB; remB++ {
+				if dp[remR][remB] < 0 {
+					continue
+				}
+				base := dp[remR][remB]
+				limit := t.a[i] + t.b[i]
+				for take := 0; take <= limit; take += k {
+					if take > limit {
+						break
+					}
+					rmin := 0
+					if take-t.b[i] > rmin {
+						rmin = take - t.b[i]
+					}
+					rmax := t.a[i]
+					if take < rmax {
+						rmax = take
+					}
+					for rTake := rmin; rTake <= rmax; rTake++ {
+						bTake := take - rTake
+						newR := remR + t.a[i] - rTake
+						newB := remB + t.b[i] - bTake
+						newMixed := base + take/k
+						if newMixed > ndp[newR][newB] {
+							ndp[newR][newB] = newMixed
+						}
+					}
 				}
 			}
 		}
 		dp = ndp
 	}
-	total := sumR + sumB
-	res := total / k
-	if !dp[sumR%k] {
-		res--
+	ans := 0
+	for remR := 0; remR <= sumR; remR++ {
+		for remB := 0; remB <= sumB; remB++ {
+			if dp[remR][remB] >= 0 {
+				total := dp[remR][remB] + remR/k + remB/k
+				if total > ans {
+					ans = total
+				}
+			}
+		}
 	}
-	if res < 0 {
-		res = 0
+	if ans < 0 {
+		ans = 0
 	}
-	return fmt.Sprintf("%d", res)
+	return fmt.Sprintf("%d", ans)
 }
 
 func runProg(bin, input string) (string, error) {
