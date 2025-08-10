@@ -20,57 +20,63 @@ func note(x, y byte) byte {
 	return 'a'
 }
 
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func solve(s1, s2 string, t int) (string, bool) {
 	n := len(s1)
-	eq := 0
-	for i := 0; i < n; i++ {
-		if s1[i] == s2[i] {
-			eq++
-		}
-	}
-	dif := n - eq
-	sdMin := t - dif
-	if sdMin < 0 {
-		sdMin = 0
-	}
-	half := (dif + 1) / 2
-	sdMax := t - half
-	if sdMax > eq {
-		sdMax = eq
-	}
-	if sdMin > sdMax {
-		return "", false
-	}
-	sd := sdMin
-	tPrime := t - sd
-	db := 2*tPrime - dif
-
-	ans := make([]byte, n)
-	c := 0
+	diffIdx := make([]int, 0, n)
+	sameIdx := make([]int, 0, n)
 	for i := 0; i < n; i++ {
 		if s1[i] != s2[i] {
-			if c < db {
-				ans[i] = note(s1[i], s2[i])
-			} else {
-				if c%2 == 1 {
-					ans[i] = s1[i]
-				} else {
-					ans[i] = s2[i]
-				}
-			}
-			c++
+			diffIdx = append(diffIdx, i)
+		} else {
+			sameIdx = append(sameIdx, i)
 		}
 	}
-	c = 0
-	for i := 0; i < n; i++ {
-		if s1[i] == s2[i] {
-			if c < sd {
-				ans[i] = byte('a' + (s1[i]-'a'+1)%26)
-			} else {
-				ans[i] = s1[i]
-			}
-			c++
-		}
+
+	d := len(diffIdx)
+	s := n - d
+
+	low := max(0, d-t)
+	high := min(d/2, n-t)
+	if low > high {
+		return "", false
+	}
+	x := low
+	y := t - d + x
+
+	ans := make([]byte, n)
+	for i := 0; i < x; i++ {
+		idx := diffIdx[i]
+		ans[idx] = s1[idx]
+	}
+	for i := x; i < 2*x; i++ {
+		idx := diffIdx[i]
+		ans[idx] = s2[idx]
+	}
+	for i := 2 * x; i < d; i++ {
+		idx := diffIdx[i]
+		ans[idx] = note(s1[idx], s2[idx])
+	}
+	for i := 0; i < y; i++ {
+		idx := sameIdx[i]
+		ans[idx] = note(s1[idx], 0)
+	}
+	for i := y; i < s; i++ {
+		idx := sameIdx[i]
+		ans[idx] = s1[idx]
 	}
 	return string(ans), true
 }
@@ -140,7 +146,7 @@ func main() {
 
 	for idx, tc := range cases {
 		input := fmt.Sprintf("%d %d\n%s\n%s\n", tc.n, tc.t, tc.s1, tc.s2)
-		expect, ok := solve(tc.s1, tc.s2, tc.t)
+		_, ok := solve(tc.s1, tc.s2, tc.t)
 		out, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:%s", idx+1, err, input)
@@ -163,10 +169,6 @@ func main() {
 		}
 		if diff(tc.s1, out) != tc.t || diff(tc.s2, out) != tc.t {
 			fmt.Fprintf(os.Stderr, "case %d failed: output doesn't differ by t\ninput:%soutput:%s\n", idx+1, input, out)
-			os.Exit(1)
-		}
-		if expect != out {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:%s", idx+1, expect, out, input)
 			os.Exit(1)
 		}
 	}
