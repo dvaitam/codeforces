@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -34,36 +33,80 @@ func genTestsB() []testCaseB {
 
 func solveB(tc testCaseB) int64 {
 	n, k := tc.n, tc.k
-	arr := append([]int64(nil), tc.arr...)
-	sort.Slice(arr, func(i, j int) bool { return arr[i] < arr[j] })
-	l, r := 0, n-1
-	for l < r && k > 0 {
-		if l+1 <= n-1-r {
-			diff := arr[l+1] - arr[l]
-			cost := diff * int64(l+1)
-			if cost <= k {
-				k -= cost
-				l++
-			} else {
-				arr[l] += k / int64(l+1)
-				k = 0
-			}
-		} else {
-			diff := arr[r] - arr[r-1]
-			cost := diff * int64(n-r)
-			if cost <= k {
-				k -= cost
-				r--
-			} else {
-				arr[r] -= k / int64(n-r)
-				k = 0
-			}
+	arr := tc.arr
+
+	// Compute basic statistics
+	var total, minVal, maxVal int64
+	minVal, maxVal = arr[0], arr[0]
+	for _, v := range arr {
+		total += v
+		if v < minVal {
+			minVal = v
+		}
+		if v > maxVal {
+			maxVal = v
 		}
 	}
-	if arr[r] < arr[l] {
+
+	maxMinPossible := total / int64(n)
+	minMaxPossible := (total + int64(n) - 1) / int64(n)
+
+	// Binary search for the highest achievable minimum wealth
+	checkMin := func(target int64) bool {
+		var need int64
+		for _, v := range arr {
+			if v < target {
+				need += target - v
+				if need > k {
+					return false
+				}
+			}
+		}
+		return need <= k
+	}
+
+	low, high := minVal, maxMinPossible
+	finalMin := minVal
+	for low <= high {
+		mid := low + (high-low)/2
+		if checkMin(mid) {
+			finalMin = mid
+			low = mid + 1
+		} else {
+			high = mid - 1
+		}
+	}
+
+	// Binary search for the lowest achievable maximum wealth
+	checkMax := func(target int64) bool {
+		var removed int64
+		for _, v := range arr {
+			if v > target {
+				removed += v - target
+				if removed > k {
+					return false
+				}
+			}
+		}
+		return removed <= k
+	}
+
+	low, high = minMaxPossible, maxVal
+	finalMax := maxVal
+	for low <= high {
+		mid := low + (high-low)/2
+		if checkMax(mid) {
+			finalMax = mid
+			high = mid - 1
+		} else {
+			low = mid + 1
+		}
+	}
+
+	if finalMax < finalMin {
 		return 0
 	}
-	return arr[r] - arr[l]
+	return finalMax - finalMin
 }
 
 func run(bin, input string) (string, error) {
