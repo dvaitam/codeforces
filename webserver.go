@@ -529,18 +529,50 @@ var failedTmpl = template.Must(template.New("failed").Parse(`
       th, td { padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; }
       th { color: var(--muted); font-weight:600; }
       tr:hover td { background:#0f172a; }
+      .controls { display:flex; gap:12px; align-items:center; margin:12px 0; }
+      .btn { background:#1f2937; color:var(--text); border:1px solid var(--border); padding:8px 12px; border-radius:8px; cursor:pointer; }
+      .btn:hover { background:#243042; }
+      .muted { color: var(--muted); }
     </style>
   </head>
   <body>
     <div class="container">
       <a href="/model?name={{.Model}}">← Back to {{.Model}}</a>
       <h1>Failed evaluations for {{.Model}}</h1>
+      <div class="controls">
+        <form method="get" action="/failed/{{.Model}}" style="display:flex; gap:8px; align-items:center;">
+          <label class="muted"><input type="checkbox" name="unreviewed" value="1" {{if .Unreviewed}}checked{{end}}> Only non-reviewed</label>
+          <button class="btn" type="submit">Apply</button>
+        </form>
+        <form id="markForm" method="post" action="/evaluation/mark-reviewed" style="margin-left:auto;">
+          <input type="hidden" name="redirect" value="/failed/{{.Model}}{{if .Unreviewed}}?unreviewed=1{{end}}">
+          <button class="btn" type="submit">Mark Reviewed</button>
+        </form>
+      </div>
       <table>
-        <tr><th>Eval ID</th><th>Run ID</th><th>Problem</th><th>Rating</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
+        <tr><th><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th><th>Eval ID</th><th>Run ID</th><th>Problem</th><th>Rating</th><th>Reviewed</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
         {{range .Evals}}
-        <tr><td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td><td>{{.RunID}}</td><td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ContestID}}{{.IndexName}}</a> (<a href="https://codeforces.com/contest/{{.ContestID}}/problem/{{.IndexName}}" target="_blank" rel="noopener">CF</a>)</td><td>{{.Rating}}</td><td>{{.Timestamp}}</td><td><a href="/evaluation/prompt/{{.ID}}">View</a></td><td><a href="/evaluation/response/{{.ID}}">View</a></td><td><a href="/evaluation/stdout/{{.ID}}">View</a></td><td><a href="/evaluation/stderr/{{.ID}}">View</a></td></tr>
+        <tr>
+          <td><input form="markForm" type="checkbox" name="ids" value="{{.ID}}"></td>
+          <td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td>
+          <td>{{.RunID}}</td>
+          <td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ContestID}}{{.IndexName}}</a> (<a href="https://codeforces.com/contest/{{.ContestID}}/problem/{{.IndexName}}" target="_blank" rel="noopener">CF</a>)</td>
+          <td>{{.Rating}}</td>
+          <td>{{.Reviewed}}</td>
+          <td>{{.Timestamp}}</td>
+          <td><a href="/evaluation/prompt/{{.ID}}">View</a></td>
+          <td><a href="/evaluation/response/{{.ID}}">View</a></td>
+          <td><a href="/evaluation/stdout/{{.ID}}">View</a></td>
+          <td><a href="/evaluation/stderr/{{.ID}}">View</a></td>
+        </tr>
         {{end}}
       </table>
+      <script>
+        function toggleAll(src){
+          const boxes = document.querySelectorAll('input[name="ids"]');
+          boxes.forEach(b => b.checked = src.checked);
+        }
+      </script>
     </div>
   </body>
 </html>`))
@@ -1071,42 +1103,89 @@ func modelHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func failedHandler(w http.ResponseWriter, r *http.Request) {
-	if !strings.HasPrefix(r.URL.Path, "/failed/") {
-		http.NotFound(w, r)
-		return
-	}
-	modelName := strings.TrimPrefix(r.URL.Path, "/failed/")
-	if modelName == "" {
-		http.NotFound(w, r)
-		return
-	}
-	type Eval struct {
-		ID        int
-		RunID     string
-		ProblemID int
-		ContestID int
-		IndexName string
-		Rating    int
-		Timestamp string
-	}
-	var evals []Eval
-	rows, err := db.Query(`SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), e.timestamp
-                               FROM evaluations e
-                               JOIN problems p ON e.problem_id = p.id
-                               WHERE e.model = ? AND e.success = 0 ORDER BY e.timestamp DESC`, modelName)
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var e Eval
-			if err = rows.Scan(&e.ID, &e.RunID, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Rating, &e.Timestamp); err == nil {
-				evals = append(evals, e)
-			}
-		}
-	}
-	failedTmpl.Execute(w, map[string]interface{}{
-		"Model": modelName,
-		"Evals": evals,
-	})
+    if !strings.HasPrefix(r.URL.Path, "/failed/") {
+        http.NotFound(w, r)
+        return
+    }
+    modelName := strings.TrimPrefix(r.URL.Path, "/failed/")
+    if modelName == "" {
+        http.NotFound(w, r)
+        return
+    }
+    onlyUnreviewed := r.URL.Query().Get("unreviewed") == "1"
+    type Eval struct {
+        ID        int
+        RunID     string
+        ProblemID int
+        ContestID int
+        IndexName string
+        Rating    int
+        Reviewed  int
+        Timestamp string
+    }
+    var evals []Eval
+    cond := "WHERE e.model = ? AND e.success = 0"
+    var args []interface{}
+    args = append(args, modelName)
+    if onlyUnreviewed {
+        cond += " AND COALESCE(e.reviewied, 0) = 0"
+    }
+    q := `SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), COALESCE(e.reviewied, 0), e.timestamp
+            FROM evaluations e
+            JOIN problems p ON e.problem_id = p.id ` + cond + ` ORDER BY e.timestamp DESC`
+    rows, err := db.Query(q, args...)
+    if err == nil {
+        defer rows.Close()
+        for rows.Next() {
+            var e Eval
+            if err = rows.Scan(&e.ID, &e.RunID, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Rating, &e.Reviewed, &e.Timestamp); err == nil {
+                evals = append(evals, e)
+            }
+        }
+    }
+    failedTmpl.Execute(w, map[string]interface{}{
+        "Model": modelName,
+        "Evals": evals,
+        "Unreviewed": onlyUnreviewed,
+    })
+}
+
+func markReviewedHandler(w http.ResponseWriter, r *http.Request) {
+    if r.URL.Path != "/evaluation/mark-reviewed" || r.Method != http.MethodPost {
+        http.NotFound(w, r)
+        return
+    }
+    ids := r.FormValue("ids")
+    // Also support multiple ids values
+    idVals := r.Form["ids"]
+    if ids != "" && len(idVals) == 0 {
+        idVals = []string{ids}
+    }
+    if len(idVals) == 0 {
+        http.Redirect(w, r, "/", http.StatusSeeOther)
+        return
+    }
+    // Build IN clause safely
+    var placeholders []string
+    var args []interface{}
+    for _, s := range idVals {
+        if s == "" { continue }
+        if _, err := strconv.Atoi(s); err != nil { continue }
+        placeholders = append(placeholders, "?")
+        args = append(args, s)
+    }
+    if len(placeholders) > 0 {
+        q := "UPDATE evaluations SET reviewied = 1 WHERE id IN (" + strings.Join(placeholders, ",") + ")"
+        if _, err := db.Exec(q, args...); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+    }
+    redirect := r.FormValue("redirect")
+    if redirect == "" {
+        redirect = "/"
+    }
+    http.Redirect(w, r, redirect, http.StatusSeeOther)
 }
 
 func failedJSONHandler(w http.ResponseWriter, r *http.Request) {
@@ -1127,6 +1206,7 @@ func failedJSONHandler(w http.ResponseWriter, r *http.Request) {
         ContestID int    `json:"contest_id"`
         IndexName string `json:"index_name"`
         Rating    int    `json:"rating"`
+        Reviewed  int    `json:"reviewied"`
         Timestamp string `json:"timestamp"`
     }
     var evals []Eval
@@ -1137,7 +1217,7 @@ func failedJSONHandler(w http.ResponseWriter, r *http.Request) {
         cond += " AND e.lang = ?"
         args = append(args, langFilter)
     }
-    q := `SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), e.timestamp
+    q := `SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), COALESCE(e.reviewied,0), e.timestamp
             FROM evaluations e
             JOIN problems p ON e.problem_id = p.id ` + cond + ` ORDER BY e.timestamp DESC`
     rows, err := db.Query(q, args...)
@@ -1145,7 +1225,7 @@ func failedJSONHandler(w http.ResponseWriter, r *http.Request) {
         defer rows.Close()
         for rows.Next() {
             var e Eval
-            if err = rows.Scan(&e.ID, &e.RunID, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Rating, &e.Timestamp); err == nil {
+            if err = rows.Scan(&e.ID, &e.RunID, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Rating, &e.Reviewed, &e.Timestamp); err == nil {
                 evals = append(evals, e)
             }
         }
@@ -1323,6 +1403,18 @@ func main() {
        `); err != nil {
 		panic(err)
 	}
+	// Ensure evaluations table has reviewied column
+	if _, err = db.Exec(`ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS reviewied TINYINT DEFAULT 0`); err != nil {
+		// Fallback for MySQL versions without IF NOT EXISTS
+		if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+			// Try without IF NOT EXISTS and ignore duplicate error
+			if _, err2 := db.Exec(`ALTER TABLE evaluations ADD COLUMN reviewied TINYINT DEFAULT 0`); err2 != nil {
+				if !strings.Contains(strings.ToLower(err2.Error()), "duplicate column") {
+					fmt.Println("warning: could not ensure reviewied column:", err2)
+				}
+			}
+		}
+	}
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/path", pathHandler)
 	http.HandleFunc("/addproblem", addProblemHandler)
@@ -1337,6 +1429,7 @@ func main() {
 	http.HandleFunc("/leaderboard", leaderboardHandler)
 	http.HandleFunc("/model", modelHandler)
 	http.HandleFunc("/failed/", failedHandler)
+    http.HandleFunc("/evaluation/mark-reviewed", markReviewedHandler)
     http.HandleFunc("/failed/json", failedJSONHandler)
 	http.HandleFunc("/submission", submissionsHandler)
 	http.HandleFunc("/submission/generate/fix/prompt/", submissionFixPromptHandler)

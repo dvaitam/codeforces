@@ -114,6 +114,7 @@ func main() {
                         success BOOL,
                         stdout TEXT,
                         stderr TEXT,
+                        reviewied TINYINT DEFAULT 0,
                         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
        `)
