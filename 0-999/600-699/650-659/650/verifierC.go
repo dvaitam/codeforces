@@ -32,7 +32,7 @@ func runBinary(bin, input string) (string, error) {
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	return strings.TrimSpace(out.String()), nil
+	return normalize(out.String()), nil
 }
 
 type Case struct{ input string }
@@ -69,10 +69,18 @@ func runCase(bin, ref string, c Case) error {
 	if err != nil {
 		return err
 	}
-	if expected != strings.TrimSpace(got) {
+	if expected != got {
 		return fmt.Errorf("expected %s got %s", expected, got)
 	}
 	return nil
+}
+
+func normalize(s string) string {
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimSpace(line)
+	}
+	return strings.Join(lines, "\n")
 }
 
 func main() {
