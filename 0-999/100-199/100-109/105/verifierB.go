@@ -63,9 +63,15 @@ func main() {
 		}
 		g := strings.TrimSpace(got)
 		w := strings.TrimSpace(want)
-		gf, errG := strconv.ParseFloat(g, 64)
-		wf, errW := strconv.ParseFloat(w, 64)
-		if errG != nil || errW != nil || math.Abs(gf-wf) > 1e-6 {
+		gFields := strings.Fields(g)
+		wFields := strings.Fields(w)
+		if len(gFields) != 1 || len(wFields) != 1 {
+			fmt.Fprintf(os.Stderr, "case %d failed:\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", i+1, input, want, got)
+			os.Exit(1)
+		}
+		gf, errG := strconv.ParseFloat(gFields[0], 64)
+		wf, errW := strconv.ParseFloat(wFields[0], 64)
+		if errG != nil || errW != nil || math.IsNaN(gf) || math.IsNaN(wf) || math.Abs(gf-wf) > 1e-6 {
 			fmt.Fprintf(os.Stderr, "case %d failed:\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", i+1, input, want, got)
 			os.Exit(1)
 		}
