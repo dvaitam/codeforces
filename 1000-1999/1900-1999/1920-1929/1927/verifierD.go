@@ -6,23 +6,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
-
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleD")
-	cmd := exec.Command("go", "build", "-o", oracle, "1927D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
-}
 
 func runProg(bin, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -48,12 +34,6 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
 	f, err := os.Open("testcasesD.txt")
 	if err != nil {
@@ -82,6 +62,7 @@ func main() {
 			fmt.Printf("test %d short array\n", idx)
 			os.Exit(1)
 		}
+		a := make([]int, n)
 		var sb strings.Builder
 		sb.WriteString("1\n")
 		sb.WriteString(fmt.Sprintf("%d\n", n))
@@ -89,6 +70,8 @@ func main() {
 			if i > 0 {
 				sb.WriteByte(' ')
 			}
+			v, _ := strconv.Atoi(fields[pos+i])
+			a[i] = v
 			sb.WriteString(fields[pos+i])
 		}
 		sb.WriteByte('\n')
@@ -104,25 +87,70 @@ func main() {
 			fmt.Printf("test %d wrong query count\n", idx)
 			os.Exit(1)
 		}
+		queries := make([][2]int, q)
 		for i := 0; i < q; i++ {
-			l := fields[pos+2*i]
-			r := fields[pos+2*i+1]
-			sb.WriteString(fmt.Sprintf("%s %s\n", l, r))
+			l, _ := strconv.Atoi(fields[pos+2*i])
+			r, _ := strconv.Atoi(fields[pos+2*i+1])
+			queries[i] = [2]int{l, r}
+			sb.WriteString(fmt.Sprintf("%d %d\n", l, r))
 		}
 		input := sb.String()
-		expect, err := runProg(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on test %d: %v\n", idx, err)
-			os.Exit(1)
-		}
 		got, err := runProg(bin, input)
 		if err != nil {
 			fmt.Printf("test %d: %v\n", idx, err)
 			os.Exit(1)
 		}
-		if got != expect {
-			fmt.Printf("test %d failed\nexpected:\n%s\ngot:\n%s\n", idx, expect, got)
+		outScanner := bufio.NewScanner(strings.NewReader(got))
+		answers := make([]string, 0, q)
+		for outScanner.Scan() {
+			line := strings.TrimSpace(outScanner.Text())
+			if line != "" {
+				answers = append(answers, line)
+			}
+		}
+		if err := outScanner.Err(); err != nil {
+			fmt.Printf("test %d output scan error: %v\n", idx, err)
 			os.Exit(1)
+		}
+		if len(answers) != q {
+			fmt.Printf("test %d expected %d lines, got %d\n", idx, q, len(answers))
+			os.Exit(1)
+		}
+		for i := 0; i < q; i++ {
+			parts := strings.Fields(answers[i])
+			if len(parts) != 2 {
+				fmt.Printf("test %d line %d invalid output\n", idx, i+1)
+				os.Exit(1)
+			}
+			x, err1 := strconv.Atoi(parts[0])
+			y, err2 := strconv.Atoi(parts[1])
+			if err1 != nil || err2 != nil {
+				fmt.Printf("test %d line %d non-integer output\n", idx, i+1)
+				os.Exit(1)
+			}
+			l, r := queries[i][0], queries[i][1]
+			if x == -1 && y == -1 {
+				same := true
+				for k := l; k < r; k++ {
+					if a[k-1] != a[k] {
+						same = false
+						break
+					}
+				}
+				if !same {
+					fmt.Printf("test %d line %d incorrect -1 -1\n", idx, i+1)
+					os.Exit(1)
+				}
+			} else {
+				if x < l || x > r || y < l || y > r {
+					fmt.Printf("test %d line %d indices out of range\n", idx, i+1)
+					os.Exit(1)
+				}
+				if a[x-1] == a[y-1] {
+					fmt.Printf("test %d line %d values not distinct\n", idx, i+1)
+					os.Exit(1)
+				}
+			}
 		}
 	}
 	if err := scanner.Err(); err != nil {
