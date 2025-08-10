@@ -26,12 +26,20 @@ func generateTest() (string, string) {
 	existingIDs := []int{}
 	nextID := 1
 	ensureQuery := false
-	for i := 0; i < q; i++ {
-		typ := rand.Intn(3)
-		if !ensureQuery && i == q-1 {
-			typ = 0 // ensure at least one query
-		}
-		switch typ {
+       for i := 0; i < q; i++ {
+               options := []int{0, 1, 2}
+               // avoid generating impossible events
+               if len(existingIDs) == 0 {
+                       options = []int{0, 1} // nobody to leave
+               }
+               if len(existingIDs) == n {
+                       options = []int{0, 2} // hanger is full
+               }
+               typ := options[rand.Intn(len(options))]
+               if !ensureQuery && i == q-1 {
+                       typ = 0 // ensure at least one query
+               }
+               switch typ {
 		case 0: // query
 			l := rand.Intn(n) + 1
 			r := rand.Intn(n) + 1
