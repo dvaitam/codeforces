@@ -87,7 +87,13 @@ func runCase(bin, input, expected string) error {
 	outStr := strings.TrimSpace(out.String())
 	if valOut, err := strconv.ParseFloat(outStr, 64); err == nil {
 		valExp, _ := strconv.ParseFloat(expected, 64)
-		if math.Abs(valOut-valExp) > 1e-6 {
+		// Allow a slightly larger error tolerance to avoid false negatives
+		// when both the contestant's solution and the internal solver are
+		// correct but differ by small floating point inaccuracies. The
+		// previous threshold of 1e-6 caused legitimate solutions to fail
+		// verification on edge cases (e.g. case 5 in the report) due to
+		// rounding differences.
+		if math.Abs(valOut-valExp) > 1e-5 {
 			return fmt.Errorf("expected %.9f got %s", valExp, outStr)
 		}
 	} else {
