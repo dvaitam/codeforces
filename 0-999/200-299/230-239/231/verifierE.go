@@ -1,38 +1,52 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
-	"fmt"
-	"os"
-	"os/exec"
-	"strconv"
-	"strings"
+        "bufio"
+        "bytes"
+        "fmt"
+        "os"
+        "os/exec"
+        "sort"
+        "strconv"
+        "strings"
 )
 
 const MOD = 1000000007
 
+type Edge struct{ to, id int }
+
 // enumeration DFS of simple paths without repeating edges
-func countPaths(n int, adj [][]int, start, target int) int {
-	used := make(map[[2]int]bool)
-	var dfs func(u int) int
-	dfs = func(u int) int {
-		if u == target {
-			return 1
-		}
-		total := 0
-		for _, v := range adj[u] {
-			e := edge(u, v)
-			if used[e] {
-				continue
-			}
-			used[e] = true
-			total = (total + dfs(v)) % MOD
-			used[e] = false
-		}
-		return total
-	}
-	return dfs(start) % MOD
+// paths are considered distinct if their edge sets differ
+func countPaths(adj [][]Edge, start, target int) int {
+        used := make(map[int]bool)
+        var path []int
+        sets := make(map[string]struct{})
+
+        var dfs func(u int)
+        dfs = func(u int) {
+                if u == target {
+                        ids := append([]int(nil), path...)
+                        sort.Ints(ids)
+                        var sb strings.Builder
+                        for _, id := range ids {
+                                sb.WriteString(strconv.Itoa(id))
+                                sb.WriteByte(',')
+                        }
+                        sets[sb.String()] = struct{}{}
+                }
+                for _, e := range adj[u] {
+                        if used[e.id] {
+                                continue
+                        }
+                        used[e.id] = true
+                        path = append(path, e.id)
+                        dfs(e.to)
+                        path = path[:len(path)-1]
+                        used[e.id] = false
+                }
+        }
+        dfs(start)
+        return len(sets) % MOD
 }
 
 func edge(a, b int) [2]int {
@@ -43,17 +57,17 @@ func edge(a, b int) [2]int {
 }
 
 func solveCaseE(n int, edges [][2]int, queries [][2]int) []int {
-	adj := make([][]int, n)
-	for _, e := range edges {
-		u, v := e[0]-1, e[1]-1
-		adj[u] = append(adj[u], v)
-		adj[v] = append(adj[v], u)
-	}
-	res := make([]int, len(queries))
-	for i, q := range queries {
-		res[i] = countPaths(n, adj, q[0]-1, q[1]-1)
-	}
-	return res
+        adj := make([][]Edge, n)
+        for i, e := range edges {
+                u, v := e[0]-1, e[1]-1
+                adj[u] = append(adj[u], Edge{to: v, id: i})
+                adj[v] = append(adj[v], Edge{to: u, id: i})
+        }
+        res := make([]int, len(queries))
+        for i, q := range queries {
+                res[i] = countPaths(adj, q[0]-1, q[1]-1)
+        }
+        return res
 }
 
 type TestCaseE struct {
