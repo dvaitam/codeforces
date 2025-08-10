@@ -3,89 +3,66 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math/bits"
 	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
 )
 
-type Edge struct {
-	to int
-	wF int
-	wB int
-}
-
 func solveCase(n int, edges [][2]int) string {
 	if n == 0 {
 		return "0"
 	}
-	adj := make([][]Edge, n)
-	for _, e := range edges {
-		a := e[0] - 1
-		b := e[1] - 1
-		adj[a] = append(adj[a], Edge{to: b, wF: 0, wB: 1})
-		adj[b] = append(adj[b], Edge{to: a, wF: 1, wB: 0})
-	}
-	cost := make([]int, n)
-	var dfs1 func(u, p int) int
-	dfs1 = func(u, p int) int {
-		sum := 0
-		for _, e := range adj[u] {
-			v := e.to
-			if v == p {
-				continue
+	m := len(edges)
+	best := m + 5
+	for mask := 0; mask < (1 << m); mask++ {
+		adj := make([][]int, n)
+		for i, e := range edges {
+			a := e[0] - 1
+			b := e[1] - 1
+			if (mask>>uint(i))&1 == 0 {
+				adj[a] = append(adj[a], b)
+			} else {
+				adj[b] = append(adj[b], a)
 			}
-			sum += e.wF
-			sum += dfs1(v, u)
 		}
-		return sum
-	}
-	var dfs2 func(u, p int)
-	dfs2 = func(u, p int) {
-		for _, e := range adj[u] {
-			v := e.to
-			if v == p {
-				continue
+		ok := false
+		for s1 := 0; s1 < n && !ok; s1++ {
+			for s2 := s1; s2 < n && !ok; s2++ {
+				vis := make([]bool, n)
+				var dfs func(int)
+				dfs = func(u int) {
+					if vis[u] {
+						return
+					}
+					vis[u] = true
+					for _, v := range adj[u] {
+						dfs(v)
+					}
+				}
+				dfs(s1)
+				dfs(s2)
+				all := true
+				for i := 0; i < n; i++ {
+					if !vis[i] {
+						all = false
+						break
+					}
+				}
+				if all {
+					ok = true
+				}
 			}
-			cost[v] = cost[u] - e.wF + e.wB
-			dfs2(v, u)
 		}
-	}
-	cost[0] = dfs1(0, -1)
-	dfs2(0, -1)
-	prefix := make([]int, n+1)
-	answer := cost[0]
-	var dfsDelta func(u, p, depth, s1 int, best *int)
-	dfsDelta = func(u, p, depth, s1 int, best *int) {
-		d := depth
-		mid := (d + 1) / 2
-		delta := prefix[d] - prefix[mid]
-		cur := cost[s1] + delta
-		if cur < *best {
-			*best = cur
-		}
-		for _, e := range adj[u] {
-			v := e.to
-			if v == p {
-				continue
+		if ok {
+			flips := bits.OnesCount(uint(mask))
+			if flips < best {
+				best = flips
 			}
-			diff := -1
-			if e.wF == 0 {
-				diff = 1
-			}
-			prefix[d+1] = prefix[d] + diff
-			dfsDelta(v, u, d+1, s1, best)
 		}
 	}
-	for s1 := 0; s1 < n; s1++ {
-		best := cost[s1]
-		prefix[0] = 0
-		dfsDelta(s1, -1, 0, s1, &best)
-		if best < answer {
-			answer = best
-		}
-	}
-	return fmt.Sprintf("%d", answer)
+	return fmt.Sprintf("%d", best)
 }
 
 type test struct{ input, expected string }
