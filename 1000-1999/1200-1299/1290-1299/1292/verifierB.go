@@ -39,8 +39,13 @@ func runProg(bin, input string) (string, error) {
 func genCase() string {
 	x0 := rand.Int63n(5) + 1
 	y0 := rand.Int63n(5) + 1
-	ax := rand.Int63n(3) + 1
-	ay := rand.Int63n(3) + 1
+	// ax and ay must be at least 2 to guarantee the sequence grows.
+	// With ax or ay equal to 1 and bx/by equal to 0, the generated
+	// coordinates would stay constant, causing the solution (and oracle)
+	// to loop indefinitely. The problem constraints also require
+	// ax, ay >= 2, so we mirror that here.
+	ax := rand.Int63n(2) + 2
+	ay := rand.Int63n(2) + 2
 	bx := rand.Int63n(4)
 	by := rand.Int63n(4)
 	xs := rand.Int63n(15)
