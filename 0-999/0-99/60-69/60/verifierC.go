@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -182,6 +183,70 @@ func generateCaseC(rng *rand.Rand) string {
 	return sb.String()
 }
 
+// parse the test case input and validate solver output
+type checkEdge struct {
+	u, v int
+	g, l *big.Int
+}
+
+func parseInput(tc string) (int, []checkEdge, error) {
+	r := bufio.NewReader(strings.NewReader(tc))
+	var n, m int
+	if _, err := fmt.Fscan(r, &n, &m); err != nil {
+		return 0, nil, err
+	}
+	edges := make([]checkEdge, m)
+	for i := 0; i < m; i++ {
+		var x, y int
+		var g, l int64
+		if _, err := fmt.Fscan(r, &x, &y, &g, &l); err != nil {
+			return 0, nil, err
+		}
+		edges[i] = checkEdge{u: x, v: y, g: big.NewInt(g), l: big.NewInt(l)}
+	}
+	return n, edges, nil
+}
+
+func checkSolution(tc, out string) error {
+	n, edges, err := parseInput(tc)
+	if err != nil {
+		return fmt.Errorf("invalid test case: %v", err)
+	}
+	fields := strings.Fields(out)
+	if len(fields) == 0 {
+		return fmt.Errorf("empty output")
+	}
+	if fields[0] != "YES" {
+		return fmt.Errorf("expected YES, got %s", fields[0])
+	}
+	if len(fields) != n+1 {
+		return fmt.Errorf("expected %d numbers, got %d", n, len(fields)-1)
+	}
+	vals := make([]*big.Int, n+1)
+	for i := 1; i <= n; i++ {
+		v, ok := new(big.Int).SetString(fields[i], 10)
+		if !ok {
+			return fmt.Errorf("invalid integer value")
+		}
+		if v.Sign() <= 0 {
+			return fmt.Errorf("non-positive value")
+		}
+		vals[i] = v
+	}
+	for _, e := range edges {
+		g := new(big.Int).GCD(nil, nil, vals[e.u], vals[e.v])
+		if g.Cmp(e.g) != 0 {
+			return fmt.Errorf("gcd mismatch on edge %d-%d", e.u, e.v)
+		}
+		l := new(big.Int).Mul(vals[e.u], vals[e.v])
+		l.Div(l, g)
+		if l.Cmp(e.l) != 0 {
+			return fmt.Errorf("lcm mismatch on edge %d-%d", e.u, e.v)
+		}
+	}
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierC.go /path/to/binary")
@@ -197,8 +262,20 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, tc)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, expect, got, tc)
+		expFields := strings.Fields(expect)
+		if len(expFields) == 0 {
+			fmt.Fprintf(os.Stderr, "internal error on case %d\n", i+1)
+			os.Exit(1)
+		}
+		if expFields[0] == "NO" {
+			if strings.TrimSpace(got) != "NO" {
+				fmt.Fprintf(os.Stderr, "case %d failed: expected NO got %s\ninput:\n%s", i+1, got, tc)
+				os.Exit(1)
+			}
+			continue
+		}
+		if err := checkSolution(tc, got); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%soutput:\n%s", i+1, err, tc, got)
 			os.Exit(1)
 		}
 	}
