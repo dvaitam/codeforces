@@ -66,7 +66,7 @@ func main() {
 			continue
 		}
 		cur := int64(p)
-		if prev != INF && cur <= prev {
+		if prev != INF && cur < prev {
 			cur += ((prev-cur)/lb64 + 1) * lb64
 		}
 		arr[i] = cur
