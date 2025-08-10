@@ -44,24 +44,29 @@ type edge struct {
 func expected(n, m, k int, c []int, edges []edge) string {
 	typeOf := make([]int, n+1)
 	idx := 1
-	for i := 1; i <= k; i++ {
-		cnt := c[i-1]
+	for i := 0; i < k; i++ {
+		cnt := c[i]
 		for j := 0; j < cnt; j++ {
-			typeOf[idx] = i
+			typeOf[idx] = i + 1
 			idx++
 		}
 	}
+
 	dsu := newDSU(n)
 	for _, e := range edges {
 		if e.w == 0 {
 			dsu.union(e.u, e.v)
 		}
 	}
+
+	// verify each type is in a single zero-cost component
 	idx = 1
-	for i := 1; i <= k; i++ {
-		cnt := c[i-1]
+	typeRoot := make([]int, k)
+	for i := 0; i < k; i++ {
+		cnt := c[i]
 		if cnt > 0 {
 			root := dsu.find(idx)
+			typeRoot[i] = root
 			for j := 0; j < cnt; j++ {
 				if dsu.find(idx+j) != root {
 					return "No"
@@ -70,29 +75,32 @@ func expected(n, m, k int, c []int, edges []edge) string {
 		}
 		idx += cnt
 	}
+
 	const INF = int(1e9)
 	dist := make([][]int, k)
 	for i := 0; i < k; i++ {
 		dist[i] = make([]int, k)
 		for j := 0; j < k; j++ {
-			if i == j {
+			if i == j || typeRoot[i] == typeRoot[j] {
 				dist[i][j] = 0
 			} else {
 				dist[i][j] = INF
 			}
 		}
 	}
+
 	for _, e := range edges {
 		if e.w == 0 {
 			continue
 		}
 		ti := typeOf[e.u] - 1
 		tj := typeOf[e.v] - 1
-		if ti != tj {
-			if e.w < dist[ti][tj] {
-				dist[ti][tj] = e.w
-				dist[tj][ti] = e.w
-			}
+		if ti == tj || typeRoot[ti] == typeRoot[tj] {
+			continue
+		}
+		if e.w < dist[ti][tj] {
+			dist[ti][tj] = e.w
+			dist[tj][ti] = e.w
 		}
 	}
 	for p := 0; p < k; p++ {
