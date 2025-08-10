@@ -109,8 +109,18 @@ func runCase(bin string, a00, a01, a10, a11 int64) error {
 	}
 	got := strings.TrimSpace(out.String())
 	expect := solve(a00, a01, a10, a11)
-	if got != expect {
+	if expect == "Impossible" {
+		if got != "Impossible" {
+			return fmt.Errorf("expected %q got %q", expect, got)
+		}
+		return nil
+	}
+	if got == "Impossible" {
 		return fmt.Errorf("expected %q got %q", expect, got)
+	}
+	g00, g01, g10, g11 := computeCounts(got)
+	if g00 != a00 || g01 != a01 || g10 != a10 || g11 != a11 {
+		return fmt.Errorf("mismatched counts for %q: got %d %d %d %d", got, g00, g01, g10, g11)
 	}
 	return nil
 }
