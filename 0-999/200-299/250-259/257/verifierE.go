@@ -72,142 +72,119 @@ func solve(input string) string {
 	in := bufio.NewReader(strings.NewReader(input))
 	var n, m int
 	fmt.Fscan(in, &n, &m)
-	persons := make([]Person, n)
+
+	ti := make([]int64, n)
+	si := make([]int, n)
+	fi := make([]int, n)
 	for i := 0; i < n; i++ {
-		fmt.Fscan(in, &persons[i].t, &persons[i].s, &persons[i].f)
-		persons[i].idx = i
+		fmt.Fscan(in, &ti[i], &si[i], &fi[i])
 	}
-	events := make([]Person, n)
-	copy(events, persons)
-	sort.Slice(events, func(i, j int) bool { return events[i].t < events[j].t })
 
-	waitingBIT := NewBIT(m)
-	insideBIT := NewBIT(m)
-	waitingQ := make([][]int, m+1)
-	insideQ := make([][]int, m+1)
-	dest := make([]int, n)
-	for i := range persons {
-		dest[persons[i].idx] = persons[i].f
+	ord := make([]int, n)
+	for i := range ord {
+		ord[i] = i
 	}
-	ans := make([]int64, n)
+	sort.Slice(ord, func(i, j int) bool {
+		if ti[ord[i]] == ti[ord[j]] {
+			return ord[i] < ord[j]
+		}
+		return ti[ord[i]] < ti[ord[j]]
+	})
 
-	t := int64(0)
+	waiters := make([][]int, m+2)
+	onDest := make([][]int, m+2)
+	fen := NewBIT(m)
+
+	active := 0
 	x := 1
-	ptr := 0
-	delivered := 0
+	var t int64
+	p := 0
+	ans := make([]int64, n)
+	done := 0
 
-	dir := func() int {
-		up := waitingBIT.Sum(x+1, m) + insideBIT.Sum(x+1, m)
-		down := waitingBIT.Sum(1, x-1) + insideBIT.Sum(1, x-1)
-		if up+down == 0 {
-			return 0
+	for done < n {
+		if active == 0 && p < n && t < ti[ord[p]] {
+			t = ti[ord[p]]
 		}
-		if up >= down {
-			return 1
-		}
-		return -1
-	}
 
-	for delivered < n {
-		d := dir()
-		if d == 0 {
-			if ptr < n {
-				t = max64(t, events[ptr].t)
-				for ptr < n && events[ptr].t == t {
-					e := &events[ptr]
-					waitingQ[e.s] = append(waitingQ[e.s], e.idx)
-					waitingBIT.Add(e.s, 1)
-					ptr++
-				}
-				continue
-			} else {
+		for p < n && ti[ord[p]] == t {
+			id := ord[p]
+			s := si[id]
+			waiters[s] = append(waiters[s], id)
+			fen.Add(s, 1)
+			active++
+			p++
+		}
+
+		if len(onDest[x]) > 0 {
+			k := len(onDest[x])
+			fen.Add(x, -k)
+			for _, id := range onDest[x] {
+				ans[id] = t
+				done++
+			}
+			onDest[x] = onDest[x][:0]
+			active -= k
+		}
+
+		if len(waiters[x]) > 0 {
+			k := len(waiters[x])
+			fen.Add(x, -k)
+			for _, id := range waiters[x] {
+				dest := fi[id]
+				onDest[dest] = append(onDest[dest], id)
+				fen.Add(dest, 1)
+			}
+			waiters[x] = waiters[x][:0]
+		}
+
+		if done == n {
+			break
+		}
+		if active == 0 {
+			if p >= n {
 				break
 			}
+			continue
 		}
-		tNextArr := int64(1 << 62)
-		if ptr < n {
-			tNextArr = events[ptr].t
+
+		less := fen.Sum(1, x-1)
+		greater := active - less
+		dir := 1
+		if greater < less {
+			dir = -1
 		}
-		var fExit, dExit int64
-		if d == 1 && insideBIT.Sum(x+1, m) > 0 {
-			s0 := insideBIT.Sum1(x)
-			fExit = int64(insideBIT.Select(s0 + 1))
-			dExit = fExit - int64(x)
-		} else if d == -1 && insideBIT.Sum(1, x-1) > 0 {
-			s1 := insideBIT.Sum1(x - 1)
-			fExit = int64(insideBIT.Select(s1))
-			dExit = int64(x) - fExit
+
+		var dtArr int64
+		if p < n {
+			dtArr = ti[ord[p]] - t
 		} else {
-			dExit = int64(1 << 62)
+			dtArr = int64(1 << 62)
 		}
-		var fEntry, dEntry int64
-		if d == 1 && waitingBIT.Sum(x+1, m) > 0 {
-			s0 := waitingBIT.Sum1(x)
-			fEntry = int64(waitingBIT.Select(s0 + 1))
-			dEntry = fEntry - int64(x)
-		} else if d == -1 && waitingBIT.Sum(1, x-1) > 0 {
-			s1 := waitingBIT.Sum1(x - 1)
-			fEntry = int64(waitingBIT.Select(s1))
-			dEntry = int64(x) - fEntry
+
+		var y int
+		if dir == 1 {
+			k := fen.Sum1(x) + 1
+			y = fen.Select(k)
 		} else {
-			dEntry = int64(1 << 62)
+			k := fen.Sum1(x - 1)
+			y = fen.Select(k)
 		}
-		dEvent := dExit
-		fEvent := fExit
-		if dEntry < dEvent {
-			dEvent = dEntry
-			fEvent = fEntry
+		dist := y - x
+		if dist < 0 {
+			dist = -dist
 		}
-		tEvent := t + dEvent
-		if tNextArr <= tEvent {
-			dt := tNextArr - t
-			x += d * int(dt)
-			t = tNextArr
-			for ptr < n && events[ptr].t == t {
-				e := &events[ptr]
-				waitingQ[e.s] = append(waitingQ[e.s], e.idx)
-				waitingBIT.Add(e.s, 1)
-				ptr++
-			}
-			if len(insideQ[x]) > 0 {
-				for _, id := range insideQ[x] {
-					ans[id] = t
-					delivered++
-				}
-				insideBIT.Add(x, -len(insideQ[x]))
-				insideQ[x] = nil
-			}
-			if len(waitingQ[x]) > 0 {
-				for _, id := range waitingQ[x] {
-					f := dest[id]
-					insideQ[f] = append(insideQ[f], id)
-					insideBIT.Add(f, 1)
-				}
-				waitingBIT.Add(x, -len(waitingQ[x]))
-				waitingQ[x] = nil
-			}
+		dist64 := int64(dist)
+
+		if dtArr < dist64 {
+			x += dir * int(dtArr)
+			t += dtArr
 		} else {
-			t = tEvent
-			x = int(fEvent)
-			if len(insideQ[x]) > 0 {
-				for _, id := range insideQ[x] {
-					ans[id] = t
-					delivered++
-				}
-				insideBIT.Add(x, -len(insideQ[x]))
-				insideQ[x] = nil
-			}
-			if len(waitingQ[x]) > 0 {
-				for _, id := range waitingQ[x] {
-					f := dest[id]
-					insideQ[f] = append(insideQ[f], id)
-					insideBIT.Add(f, 1)
-				}
-				waitingBIT.Add(x, -len(waitingQ[x]))
-				waitingQ[x] = nil
-			}
+			x = y
+			t += dist64
 		}
 	}
+
 	var sb strings.Builder
 	for i := 0; i < n; i++ {
 		fmt.Fprintln(&sb, ans[i])
