@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
@@ -104,6 +105,7 @@ func main() {
 		for i := range arr {
 			arr[i] = rng.Intn(1000)
 		}
+		sort.Ints(arr)
 		if err := runCase(bin, arr); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", total+1, err)
 			os.Exit(1)
