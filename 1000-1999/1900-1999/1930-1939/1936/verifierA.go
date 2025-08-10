@@ -95,7 +95,11 @@ func main() {
 	ns := make([]int, t)
 	perms := make([][]int, t)
 	for i := 0; i < t; i++ {
-		n := rng.Intn(10) + 1
+		// The problem statement guarantees n \ge 2.  Generating n = 1 causes
+		// some valid solutions to terminate unexpectedly (e.g. by panicking
+		// on empty candidate sets).  Ensure that the verifier only produces
+		// test cases within the specified constraints.
+		n := rng.Intn(9) + 2
 		perm := rng.Perm(n)
 		ns[i] = n
 		perms[i] = perm
