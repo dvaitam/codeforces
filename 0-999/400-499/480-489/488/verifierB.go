@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -64,10 +66,88 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != strings.TrimSpace(exp) {
-			fmt.Fprintf(os.Stderr, "case %d wrong answer\nexpected:\n%s\ngot:\n%s\ninput:\n%s", i+1, exp, out, in)
+		if err := verify(in, out, exp); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d wrong answer: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}
 	}
 	fmt.Println("All tests passed")
+}
+
+func chk(b []int) bool {
+	dif := (b[3] - b[0]) * 4
+	mid := (b[1] + b[2]) * 2
+	if mid != dif {
+		return false
+	}
+	sum := 0
+	for _, v := range b {
+		sum += v
+	}
+	return sum == dif
+}
+
+func verify(input, output, expected string) error {
+	tokensIn := strings.Fields(input)
+	if len(tokensIn) == 0 {
+		return fmt.Errorf("empty input")
+	}
+	n, err := strconv.Atoi(tokensIn[0])
+	if err != nil {
+		return fmt.Errorf("bad input: %v", err)
+	}
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		a[i], err = strconv.Atoi(tokensIn[i+1])
+		if err != nil {
+			return fmt.Errorf("bad input number: %v", err)
+		}
+	}
+
+	tokensOut := strings.Fields(output)
+	if len(tokensOut) == 0 {
+		return fmt.Errorf("empty output")
+	}
+
+	tokensExp := strings.Fields(expected)
+	if len(tokensExp) == 0 {
+		return fmt.Errorf("empty reference output")
+	}
+
+	if tokensExp[0] == "NO" {
+		if tokensOut[0] != "NO" {
+			return fmt.Errorf("expected NO but got %s", tokensOut[0])
+		}
+		if len(tokensOut) > 1 {
+			return fmt.Errorf("unexpected extra output after NO")
+		}
+		return nil
+	}
+
+	if tokensOut[0] != "YES" {
+		return fmt.Errorf("expected YES but got %s", tokensOut[0])
+	}
+
+	need := 4 - n
+	if len(tokensOut)-1 != need {
+		return fmt.Errorf("expected %d numbers after YES, got %d", need, len(tokensOut)-1)
+	}
+
+	b := make([]int, 0, 4)
+	b = append(b, a...)
+	for i := 1; i < len(tokensOut); i++ {
+		v, err := strconv.Atoi(tokensOut[i])
+		if err != nil {
+			return fmt.Errorf("invalid number %q", tokensOut[i])
+		}
+		b = append(b, v)
+	}
+	if len(b) != 4 {
+		return fmt.Errorf("total numbers != 4")
+	}
+	sort.Ints(b)
+	if !chk(b) {
+		return fmt.Errorf("output numbers invalid: %v", b)
+	}
+	return nil
 }
