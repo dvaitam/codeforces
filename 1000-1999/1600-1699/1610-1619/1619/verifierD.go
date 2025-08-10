@@ -78,7 +78,7 @@ func generateCase(rng *rand.Rand) (string, string) {
 	n := rng.Intn(5) + 2
 	matrix := make([][]int, m)
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "1\n%d %d\n", m, n)
+	fmt.Fprintf(&sb, "1\n\n%d %d\n", m, n)
 	for i := 0; i < m; i++ {
 		matrix[i] = make([]int, n)
 		for j := 0; j < n; j++ {
