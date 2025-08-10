@@ -18,35 +18,37 @@ type person struct {
 }
 
 func solve(n, S int, arr []person) int64 {
-	people := make([]struct{ s, diff int }, n)
+	type item struct{ diff, s int }
+	items := make([]item, 0, n+1)
 	total := 0
 	var base int64
-	for i, p := range arr {
-		people[i] = struct{ s, diff int }{p.s, p.a - p.b}
+	for _, p := range arr {
+		items = append(items, item{diff: p.b - p.a, s: p.s})
 		total += p.s
-		base += int64(p.s) * int64(p.b)
-	}
-	sort.Slice(people, func(i, j int) bool { return people[i].diff > people[j].diff })
-	ps := make([]int64, n+1)
-	pg := make([]int64, n+1)
-	for i := 0; i < n; i++ {
-		ps[i+1] = ps[i] + int64(people[i].s)
-		pg[i+1] = pg[i] + int64(people[i].s)*int64(people[i].diff)
+		base += int64(p.s) * int64(p.a)
 	}
 	pizzas := (total + S - 1) / S
+	if rem := pizzas*S - total; rem > 0 {
+		items = append(items, item{diff: 0, s: rem})
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].diff > items[j].diff })
+	ps := make([]int, len(items)+1)
+	pg := make([]int64, len(items)+1)
+	for i := 0; i < len(items); i++ {
+		ps[i+1] = ps[i] + items[i].s
+		pg[i+1] = pg[i] + int64(items[i].s)*int64(items[i].diff)
+	}
 	ans := base
 	for x := 0; x <= pizzas; x++ {
-		t1 := int64(x * S)
-		if t1 > int64(total) {
-			t1 = int64(total)
-		}
-		idx := sort.Search(n, func(i int) bool { return ps[i+1] >= t1 })
+		t := x * S
+		idx := sort.Search(len(items), func(i int) bool { return ps[i+1] >= t })
 		gain := pg[idx]
-		if idx < n && t1 > ps[idx] {
-			gain += (t1 - ps[idx]) * int64(people[idx].diff)
+		if idx < len(items) && t > ps[idx] {
+			gain += int64(t-ps[idx]) * int64(items[idx].diff)
 		}
-		if base+gain > ans {
-			ans = base + gain
+		cur := base + gain
+		if cur > ans {
+			ans = cur
 		}
 	}
 	return ans
