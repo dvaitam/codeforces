@@ -36,7 +36,10 @@ func runBinary(bin string, input []byte) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-type Case struct{ input []byte }
+type Case struct {
+	input []byte
+	s     string
+}
 
 func genCases() []Case {
 	rng := rand.New(rand.NewSource(1468))
@@ -48,11 +51,34 @@ func genCases() []Case {
 		for j := 0; j < n; j++ {
 			sb.WriteByte(moves[rng.Intn(4)])
 		}
+		s := sb.String()
 		var buf strings.Builder
-		fmt.Fprintf(&buf, "1\n%s\n", sb.String())
-		cases[i] = Case{[]byte(buf.String())}
+		fmt.Fprintf(&buf, "1\n%s\n", s)
+		cases[i] = Case{[]byte(buf.String()), s}
 	}
 	return cases
+}
+
+func check(s string, ox, oy int) bool {
+	cx, cy := 0, 0
+	for _, ch := range s {
+		nx, ny := cx, cy
+		switch ch {
+		case 'L':
+			nx--
+		case 'R':
+			nx++
+		case 'U':
+			ny++
+		case 'D':
+			ny--
+		}
+		if nx == ox && ny == oy {
+			continue
+		}
+		cx, cy = nx, ny
+	}
+	return cx == 0 && cy == 0
 }
 
 func main() {
@@ -80,8 +106,20 @@ func main() {
 			fmt.Fprintf(os.Stderr, "runtime error on case %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(string(out)) != strings.TrimSpace(string(exp)) {
-			fmt.Printf("wrong answer on case %d\ninput:\n%sexpected:\n%s\ngot:\n%s", i+1, string(c.input), string(exp), string(out))
+		if strings.TrimSpace(string(exp)) == "0 0" {
+			if strings.TrimSpace(string(out)) != "0 0" {
+				fmt.Printf("wrong answer on case %d\ninput:\n%sexpected:\n%s\ngot:\n%s", i+1, string(c.input), string(exp), string(out))
+				os.Exit(1)
+			}
+			continue
+		}
+		var ox, oy int
+		if _, err := fmt.Fscan(strings.NewReader(string(out)), &ox, &oy); err != nil {
+			fmt.Printf("failed to parse output on case %d\ninput:\n%soutput:\n%s", i+1, string(c.input), string(out))
+			os.Exit(1)
+		}
+		if !check(c.s, ox, oy) {
+			fmt.Printf("wrong answer on case %d\ninput:\n%sexpected (e.g.):\n%s\ngot:\n%s", i+1, string(c.input), string(exp), string(out))
 			os.Exit(1)
 		}
 	}
