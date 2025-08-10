@@ -52,8 +52,15 @@ func main() {
 			fmt.Printf("missing test case %d\n", i)
 			os.Exit(1)
 		}
-		line := strings.TrimSpace(scanner.Text())
-		input := fmt.Sprintf("1\n%s\n", line)
+                line := strings.TrimSpace(scanner.Text())
+                fields := strings.Fields(line)
+                if len(fields) == 0 {
+                        fmt.Printf("empty test case %d\n", i)
+                        os.Exit(1)
+                }
+                n := fields[0]
+                arr := strings.Join(fields[1:], " ")
+                input := fmt.Sprintf("1\n%s\n%s\n", n, arr)
 		want, err := run(ref, input)
 		if err != nil {
 			fmt.Printf("reference runtime error on test %d: %v\n", i, err)
