@@ -70,19 +70,19 @@ func solve(n, m int, A, B []int) string {
 	}
 	sort.Ints(onlyA)
 	for i, d := range onlyA {
-		if A[i] < d {
+		if A[k-len(onlyA)+i] < d {
 			return "NO"
 		}
 	}
 	sort.Ints(onlyB)
 	for i, d := range onlyB {
-		if B[i] < d {
+		if B[l-len(onlyB)+i] < d {
 			return "NO"
 		}
 	}
 	remA := k - len(onlyA)
-	Arem := A[len(onlyA):]
-	Brem := B[len(onlyB):]
+	Arem := A[:remA]
+	Brem := B[:l-len(onlyB)]
 	sort.Slice(both, func(i, j int) bool { return both[i][0] < both[j][0] })
 	assignA := make([]int, 0, remA)
 	assignB := make([]int, 0, len(both)-remA)
