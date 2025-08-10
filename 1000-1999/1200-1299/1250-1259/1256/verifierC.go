@@ -6,43 +6,84 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
-func solveCase(n, m, d int, c []int) (bool, []int) {
+// isPossible reports whether a valid placement of platforms exists.
+func isPossible(n, m, d int, c []int) bool {
 	sum := 0
 	for _, v := range c {
 		sum += v
 	}
 	rem := n - sum
-	if rem > (m+1)*d {
-		return false, nil
-	}
-	gaps := make([]int, m+1)
-	for i := 0; i <= m; i++ {
-		if rem > d {
-			gaps[i] = d
-			rem -= d
-		} else {
-			gaps[i] = rem
-			rem = 0
-		}
-	}
-	ans := make([]int, 0, n)
-	for i := 0; i <= m; i++ {
-		for j := 0; j < gaps[i]; j++ {
-			ans = append(ans, 0)
-		}
-		if i < m {
-			for j := 0; j < c[i]; j++ {
-				ans = append(ans, i+1)
-			}
-		}
-	}
-	return true, ans
+	return rem <= (m+1)*(d-1)
 }
 
-func generateCase() (string, string) {
+// validateOutput checks the candidate output for correctness.
+func validateOutput(out string, n, m, d int, c []int, ok bool) error {
+	tokens := strings.Fields(out)
+	if len(tokens) == 0 {
+		return fmt.Errorf("empty output")
+	}
+	if tokens[0] == "NO" {
+		if ok {
+			return fmt.Errorf("expected YES but got NO")
+		}
+		if len(tokens) > 1 {
+			return fmt.Errorf("unexpected extra tokens after NO")
+		}
+		return nil
+	}
+	if tokens[0] != "YES" {
+		return fmt.Errorf("first token must be YES or NO")
+	}
+	if !ok {
+		return fmt.Errorf("expected NO but got YES")
+	}
+	if len(tokens) != n+1 {
+		return fmt.Errorf("expected %d numbers, got %d", n, len(tokens)-1)
+	}
+	river := make([]int, n)
+	for i := 0; i < n; i++ {
+		v, err := strconv.Atoi(tokens[i+1])
+		if err != nil {
+			return fmt.Errorf("invalid integer %q", tokens[i+1])
+		}
+		river[i] = v
+	}
+	pos := 0
+	for idx := 0; idx < m; idx++ {
+		cnt := 0
+		for pos < n && river[pos] == 0 {
+			cnt++
+			pos++
+		}
+		if cnt >= d {
+			return fmt.Errorf("gap before platform %d too large", idx+1)
+		}
+		for j := 0; j < c[idx]; j++ {
+			if pos >= n || river[pos] != idx+1 {
+				return fmt.Errorf("platform %d incorrect", idx+1)
+			}
+			pos++
+		}
+	}
+	cnt := 0
+	for pos < n {
+		if river[pos] != 0 {
+			return fmt.Errorf("unexpected value %d after platforms", river[pos])
+		}
+		cnt++
+		pos++
+	}
+	if cnt >= d {
+		return fmt.Errorf("too many zeros after last platform")
+	}
+	return nil
+}
+
+func generateCase() (string, int, int, int, []int, bool) {
 	m := rand.Intn(5) + 1
 	c := make([]int, m)
 	sum := 0
@@ -53,11 +94,11 @@ func generateCase() (string, string) {
 	d := rand.Intn(3) + 1
 	var n int
 	if rand.Intn(2) == 0 {
-		n = sum + rand.Intn(d*(m+1)+1)
+		n = sum + rand.Intn((m+1)*(d-1)+1)
 	} else {
-		n = sum + (m+1)*d + rand.Intn(5) + 1
+		n = sum + (m+1)*(d-1) + rand.Intn(5) + 1
 	}
-	ok, ans := solveCase(n, m, d, c)
+	ok := isPossible(n, m, d, c)
 	var in strings.Builder
 	fmt.Fprintf(&in, "%d %d %d\n", n, m, d)
 	for i := 0; i < m; i++ {
@@ -67,19 +108,7 @@ func generateCase() (string, string) {
 			fmt.Fprintf(&in, "%d ", c[i])
 		}
 	}
-	if !ok {
-		return in.String(), "NO\n"
-	}
-	var out strings.Builder
-	fmt.Fprintln(&out, "YES")
-	for i := 0; i < len(ans); i++ {
-		if i+1 == len(ans) {
-			fmt.Fprintf(&out, "%d\n", ans[i])
-		} else {
-			fmt.Fprintf(&out, "%d ", ans[i])
-		}
-	}
-	return in.String(), out.String()
+	return in.String(), n, m, d, c, ok
 }
 
 func runCandidate(bin, input string) (string, error) {
@@ -107,14 +136,14 @@ func main() {
 	bin := os.Args[1]
 	rand.Seed(3)
 	for i := 0; i < 100; i++ {
-		in, exp := generateCase()
+		in, n, m, d, c, ok := generateCase()
 		got, err := runCandidate(bin, in)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(exp) {
-			fmt.Fprintf(os.Stderr, "case %d failed\nexpected:\n%s\ngot:\n%s\n", i+1, exp, got)
+		if err := validateOutput(strings.TrimSpace(got), n, m, d, append([]int(nil), c...), ok); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed\ninput:\n%s\nerror: %v\noutput:\n%s\n", i+1, in, err, got)
 			os.Exit(1)
 		}
 	}
