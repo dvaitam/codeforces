@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -38,7 +40,7 @@ func runProg(bin string, input []byte) (string, error) {
 }
 
 func genCase(rng *rand.Rand) []byte {
-	n := rng.Intn(5) + 1
+	n := rng.Intn(4) + 2 // ensure at least two cities
 	// ensure at least one edge to form a path
 	edges := make(map[[2]int]struct{})
 	for i := 1; i < n; i++ {
@@ -88,7 +90,14 @@ func main() {
 			fmt.Fprintf(os.Stderr, "runtime error on test %d: %v\ninput:\n%s", i, err, string(input))
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(want) {
+		wg, err1 := strconv.ParseFloat(strings.TrimSpace(want), 64)
+		gg, err2 := strconv.ParseFloat(strings.TrimSpace(got), 64)
+		if err1 != nil || err2 != nil {
+			fmt.Printf("failed to parse output on test %d\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i, string(input), want, got)
+			os.Exit(1)
+		}
+		diff := math.Abs(wg - gg)
+		if diff > 1e-9*math.Max(1, math.Abs(wg)) {
 			fmt.Printf("wrong answer on test %d\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i, string(input), want, got)
 			os.Exit(1)
 		}
