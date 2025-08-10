@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 type edge struct {
@@ -120,45 +121,60 @@ func main() {
 		os.Exit(1)
 	}
 	t, _ := strconv.Atoi(scan.Text())
-	expected := make([]string, t)
+	type test struct {
+		input    string
+		expected string
+	}
+	tests := make([]test, t)
 	for caseIdx := 0; caseIdx < t; caseIdx++ {
-		scan.Scan()
+		if !scan.Scan() {
+			fmt.Println("bad test file")
+			os.Exit(1)
+		}
 		n, _ := strconv.Atoi(scan.Text())
 		d := make([][]int64, n)
+		var buf bytes.Buffer
+		fmt.Fprintln(&buf, n)
 		for i := 0; i < n; i++ {
 			row := make([]int64, n)
 			for j := 0; j < n; j++ {
-				scan.Scan()
+				if !scan.Scan() {
+					fmt.Println("bad test file")
+					os.Exit(1)
+				}
 				val, _ := strconv.ParseInt(scan.Text(), 10, 64)
 				row[j] = val
+				if j > 0 {
+					buf.WriteByte(' ')
+				}
+				buf.WriteString(strconv.FormatInt(val, 10))
 			}
+			buf.WriteByte('\n')
 			d[i] = row
 		}
-		expected[caseIdx] = solveCase(n, d)
+		tests[caseIdx] = test{input: buf.String(), expected: solveCase(n, d)}
 	}
-	cmd := exec.Command(bin)
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.Output()
-	if err != nil {
-		fmt.Println("execution failed:", err)
-		os.Exit(1)
-	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
-	for i := 0; i < t; i++ {
-		if !outScan.Scan() {
+	for i, tc := range tests {
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(tc.input)
+		out, err := cmd.Output()
+		if err != nil {
+			fmt.Println("execution failed:", err)
+			os.Exit(1)
+		}
+		fields := strings.Fields(string(out))
+		if len(fields) == 0 {
 			fmt.Printf("missing output for test %d\n", i+1)
 			os.Exit(1)
 		}
-		got := outScan.Text()
-		if got != expected[i] {
-			fmt.Printf("test %d failed: expected %s got %s\n", i+1, expected[i], got)
+		if fields[0] != tc.expected {
+			fmt.Printf("test %d failed: expected %s got %s\n", i+1, tc.expected, fields[0])
 			os.Exit(1)
 		}
-	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
-		os.Exit(1)
+		if len(fields) > 1 {
+			fmt.Println("extra output detected")
+			os.Exit(1)
+		}
 	}
 	fmt.Println("All tests passed!")
 }
