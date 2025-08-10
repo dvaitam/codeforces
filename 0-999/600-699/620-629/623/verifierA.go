@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -8,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -42,6 +44,29 @@ func generateCase(rng *rand.Rand) string {
 }
 
 func runCase(bin, ref, input string) error {
+	// parse input graph
+	sc := bufio.NewScanner(strings.NewReader(input))
+	sc.Split(bufio.ScanWords)
+	sc.Scan()
+	n, _ := strconv.Atoi(sc.Text())
+	sc.Scan()
+	m, _ := strconv.Atoi(sc.Text())
+	adj := make([][]bool, n)
+	for i := 0; i < n; i++ {
+		adj[i] = make([]bool, n)
+	}
+	for i := 0; i < m; i++ {
+		sc.Scan()
+		u, _ := strconv.Atoi(sc.Text())
+		sc.Scan()
+		v, _ := strconv.Atoi(sc.Text())
+		u--
+		v--
+		adj[u][v] = true
+		adj[v][u] = true
+	}
+
+	// run reference to know correct verdict
 	cmdRef := exec.Command(ref)
 	cmdRef.Stdin = strings.NewReader(input)
 	var refOut bytes.Buffer
@@ -50,7 +75,8 @@ func runCase(bin, ref, input string) error {
 	if err := cmdRef.Run(); err != nil {
 		return fmt.Errorf("reference runtime error: %v\n%s", err, refOut.String())
 	}
-	expected := strings.TrimSpace(refOut.String())
+	refLines := strings.Split(strings.TrimSpace(refOut.String()), "\n")
+	refAns := refLines[0]
 
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
@@ -60,9 +86,46 @@ func runCase(bin, ref, input string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	got := strings.TrimSpace(out.String())
-	if got != expected {
-		return fmt.Errorf("expected %q got %q", expected, got)
+	gotLines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	ans := gotLines[0]
+	if refAns == "No" {
+		if ans != "No" {
+			return fmt.Errorf("expected No got %q", strings.Join(gotLines, "\n"))
+		}
+		return nil
+	}
+	if ans != "Yes" {
+		return fmt.Errorf("expected Yes got %q", strings.Join(gotLines, "\n"))
+	}
+	if len(gotLines) < 2 {
+		return fmt.Errorf("missing labeling line")
+	}
+	lab := gotLines[1]
+	if len(lab) != n {
+		return fmt.Errorf("labeling has wrong length")
+	}
+	for i := 0; i < n; i++ {
+		c := lab[i]
+		if c != 'a' && c != 'b' && c != 'c' {
+			return fmt.Errorf("invalid character %q", c)
+		}
+	}
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			diff := int(lab[i]) - int(lab[j])
+			if diff < 0 {
+				diff = -diff
+			}
+			if diff > 1 {
+				if adj[i][j] {
+					return fmt.Errorf("edge between %d and %d not allowed", i+1, j+1)
+				}
+			} else {
+				if !adj[i][j] {
+					return fmt.Errorf("missing edge between %d and %d", i+1, j+1)
+				}
+			}
+		}
 	}
 	return nil
 }
