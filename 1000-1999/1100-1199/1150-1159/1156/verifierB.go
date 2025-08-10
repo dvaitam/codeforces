@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -81,10 +82,63 @@ func main() {
 			fmt.Fprintf(os.Stderr, "test %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if want != got {
+
+		inLines := strings.Split(strings.TrimSpace(input), "\n")
+		wantLines := strings.Split(want, "\n")
+		gotLines := strings.Split(got, "\n")
+		t, _ := strconv.Atoi(inLines[0])
+		if len(wantLines) != t || len(gotLines) != t {
 			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input, want, got)
 			os.Exit(1)
 		}
+		for caseIdx := 0; caseIdx < t; caseIdx++ {
+			s := inLines[caseIdx+1]
+			w := wantLines[caseIdx]
+			g := gotLines[caseIdx]
+			if w == "No answer" {
+				if g != "No answer" {
+					fmt.Printf("test %d case %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, caseIdx+1, input, w, g)
+					os.Exit(1)
+				}
+				continue
+			}
+			if g == "No answer" || !validOutput(s, g) {
+				fmt.Printf("test %d case %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, caseIdx+1, input, w, g)
+				os.Exit(1)
+			}
+		}
 	}
 	fmt.Printf("All %d tests passed\n", 100)
+}
+
+func validOutput(in, out string) bool {
+	if len(in) != len(out) {
+		return false
+	}
+	freq := make([]int, 26)
+	for i := 0; i < len(in); i++ {
+		freq[in[i]-'a']++
+	}
+	for i := 0; i < len(out); i++ {
+		idx := out[i] - 'a'
+		if idx < 0 || idx >= 26 {
+			return false
+		}
+		freq[idx]--
+		if freq[idx] < 0 {
+			return false
+		}
+		if i > 0 {
+			diff := int(out[i]) - int(out[i-1])
+			if diff == 1 || diff == -1 {
+				return false
+			}
+		}
+	}
+	for _, v := range freq {
+		if v != 0 {
+			return false
+		}
+	}
+	return true
 }
