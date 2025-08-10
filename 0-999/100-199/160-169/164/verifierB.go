@@ -16,70 +16,66 @@ func atoi(s string) int {
 }
 
 func solve(la, lb int, a, b []int) int {
-	// Build map from element value to its position in b
+	// map each value in b to its position
 	posB := make(map[int]int, lb)
 	for i, v := range b {
 		posB[v] = i
 	}
 
-	// Duplicate a to handle its circular nature
-	aPrime := make([]int, 2*la)
-	copy(aPrime, a)
-	copy(aPrime[la:], a)
+	// map values of a to positions in b (or -1 if absent)
+	pos := make([]int, la)
+	for i, v := range a {
+		if p, ok := posB[v]; ok {
+			pos[i] = p
+		} else {
+			pos[i] = -1
+		}
+	}
 
-	m := lb
-	var currentSum int
-	l := 0
-	best := 0
+	// handle rotation of a by doubling the array
+	pos2 := make([]int, 2*la)
+	copy(pos2, pos)
+	copy(pos2[la:], pos)
 
-	for r := 0; r < len(aPrime); r++ {
-		valR := aPrime[r]
-		posR, ok := posB[valR]
-		if !ok {
-			// element not present in b, reset window
-			l = r + 1
-			currentSum = 0
+	const INF int64 = -1
+	arr := make([]int64, len(pos2)) // unwrapped positions in b
+	var prev int64 = INF
+	lb64 := int64(lb)
+	for i, p := range pos2 {
+		if p == -1 {
+			arr[i] = INF
+			prev = INF
 			continue
 		}
-
-		if r > l {
-			prevVal := aPrime[r-1]
-			posPrev := posB[prevVal]
-			dist := posR - posPrev
-			dist %= m
-			if dist < 0 {
-				dist += m
-			}
-			currentSum += dist
+		cur := int64(p)
+		if prev != INF && cur <= prev {
+			cur += ((prev-cur)/lb64 + 1) * lb64
 		}
+		arr[i] = cur
+		prev = cur
+	}
 
-		for currentSum >= m || r-l+1 > la {
-			if l < r {
-				valL := aPrime[l]
-				valNext := aPrime[l+1]
-				posL := posB[valL]
-				posNext := posB[valNext]
-				dist := posNext - posL
-				dist %= m
-				if dist < 0 {
-					dist += m
-				}
-				currentSum -= dist
-			} else {
-				currentSum = 0
-			}
+	best := 0
+	l := 0
+	for r := 0; r < len(arr); r++ {
+		if arr[r] == INF {
+			l = r + 1
+			continue
+		}
+		for l <= r && (arr[r]-arr[l] >= lb64 || r-l+1 > la) {
 			l++
-			if l > r {
-				currentSum = 0
-				break
-			}
 		}
-
 		if r-l+1 > best {
 			best = r - l + 1
 		}
 	}
 
+	if best > la {
+		best = la
+	}
+	if best > lb {
+		best = lb
+	}
 	return best
 }
 
