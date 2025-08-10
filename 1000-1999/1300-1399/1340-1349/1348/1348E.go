@@ -6,12 +6,6 @@ import (
 	"os"
 )
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
 func main() {
 	in := bufio.NewReader(os.Stdin)
 	out := bufio.NewWriter(os.Stdout)
@@ -20,38 +14,54 @@ func main() {
 	fmt.Fscan(in, &n, &k)
 	a := make([]int, n)
 	b := make([]int, n)
-	sumR := 0
-	sumB := 0
+	var sumR, sumB int64
 	for i := 0; i < n; i++ {
 		fmt.Fscan(in, &a[i], &b[i])
-		sumR += a[i]
-		sumB += b[i]
+		sumR += int64(a[i])
+		sumB += int64(b[i])
+	}
+	total := (sumR + sumB) / int64(k)
+	if total == 0 {
+		fmt.Fprintln(out, 0)
+		return
 	}
 	dp := make([]bool, k)
 	dp[0] = true
 	for i := 0; i < n; i++ {
-		ndp := make([]bool, k)
+		possible := make([]int, 0, k)
 		for r := 0; r < k; r++ {
-			if !dp[r] {
-				continue
-			}
-			maxx := min(a[i], k-1)
-			for x := 0; x <= maxx; x++ {
-				y := (k - ((r + x) % k)) % k
-				if y <= b[i] && x+y <= a[i]+b[i] {
-					ndp[(r+x)%k] = true
-				}
+			if r <= a[i] && (k-r)%k <= b[i] {
+				possible = append(possible, r)
 			}
 		}
-		dp = ndp
+		next := make([]bool, k)
+		for prev := 0; prev < k; prev++ {
+			if !dp[prev] {
+				continue
+			}
+			for _, r := range possible {
+				next[(prev+r)%k] = true
+			}
+		}
+		dp = next
 	}
-	total := sumR + sumB
-	res := total / k
-	if !dp[sumR%k] {
-		res--
+	remR := int(sumR % int64(k))
+	remB := int(sumB % int64(k))
+	can := false
+	for remX := 0; remX < k; remX++ {
+		if dp[remX] {
+			remY := (k - remX) % k
+			remRPool := (remR - remX + k) % k
+			remBPool := (remB - remY + k) % k
+			if remRPool+remBPool < k {
+				can = true
+				break
+			}
+		}
 	}
-	if res < 0 {
-		res = 0
+	if can {
+		fmt.Fprintln(out, total)
+	} else {
+		fmt.Fprintln(out, total-1)
 	}
-	fmt.Fprintln(out, res)
 }
