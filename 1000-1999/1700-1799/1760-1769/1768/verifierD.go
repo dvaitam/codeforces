@@ -73,28 +73,29 @@ func main() {
 	}
 
 	var cases []test
-	cases = append(cases, test{n: 2, p: []int{1, 2}})
-	cases = append(cases, test{n: 2, p: []int{2, 1}})
-	cases = append(cases, test{n: 3, p: []int{2, 3, 1}})
+	cases = append(cases, test{n: 2, p: []int{0, 1, 2}})
+	cases = append(cases, test{n: 2, p: []int{0, 2, 1}})
+	cases = append(cases, test{n: 3, p: []int{0, 2, 3, 1}})
 
 	for len(cases) < 100 {
 		n := rng.Intn(10) + 2
 		perm := rand.Perm(n)
-		for i := range perm {
-			perm[i]++
+		p := make([]int, n+1)
+		for i, v := range perm {
+			p[i+1] = v + 1
 		}
-		cases = append(cases, test{n: n, p: perm})
+		cases = append(cases, test{n: n, p: p})
 	}
 
 	for i, tc := range cases {
 		var sb strings.Builder
 		sb.WriteString("1\n")
 		sb.WriteString(fmt.Sprintf("%d\n", tc.n))
-		for j, v := range tc.p {
-			if j > 0 {
+		for j := 1; j <= tc.n; j++ {
+			if j > 1 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(strconv.Itoa(v))
+			sb.WriteString(strconv.Itoa(tc.p[j]))
 		}
 		sb.WriteByte('\n')
 		expected := solveD(tc.n, tc.p)
