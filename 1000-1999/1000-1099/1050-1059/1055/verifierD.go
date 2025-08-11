@@ -53,14 +53,28 @@ func genCase(r *rand.Rand) string {
 	n := r.Intn(3) + 1
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d\n", n)
+	s1 := make([]string, n)
+	s2 := make([]string, n)
+	diff := false
 	for i := 0; i < n; i++ {
-		s := randStr(r, r.Intn(3)+1)
-		fmt.Fprintf(&sb, "%s ", s)
+		m := r.Intn(3) + 1
+		s1[i] = randStr(r, m)
+		s2[i] = randStr(r, m)
+		if s1[i] != s2[i] {
+			diff = true
+		}
+	}
+	if !diff {
+		b := []byte(s2[0])
+		b[0] = byte('a' + (int(b[0]-'a')+1)%3)
+		s2[0] = string(b)
+	}
+	for i := 0; i < n; i++ {
+		fmt.Fprintf(&sb, "%s ", s1[i])
 	}
 	sb.WriteByte('\n')
 	for i := 0; i < n; i++ {
-		s := randStr(r, r.Intn(3)+1)
-		fmt.Fprintf(&sb, "%s ", s)
+		fmt.Fprintf(&sb, "%s ", s2[i])
 	}
 	sb.WriteByte('\n')
 	return sb.String()
