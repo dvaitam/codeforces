@@ -1,49 +1,53 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
-	"fmt"
-	"math/rand"
-	"os"
-	"os/exec"
-	"strings"
+        "bufio"
+        "bytes"
+        "fmt"
+        "math/rand"
+        "os"
+        "os/exec"
+        "sort"
+        "strings"
 )
 
 func solveD(input string) string {
-	in := bufio.NewReader(strings.NewReader(input))
-	var t int
-	fmt.Fscan(in, &t)
-	var out strings.Builder
-	for ; t > 0; t-- {
-		var n int
-		fmt.Fscan(in, &n)
-		b := make([]int, n)
-		for i := 0; i < n; i++ {
-			fmt.Fscan(in, &b[i])
-		}
-		c := []int{}
-		for _, v := range b {
-			if len(c) == 0 || c[len(c)-1] != v {
-				c = append(c, v)
-			}
-		}
-		inc, dec := true, true
-		for i := 1; i < len(c); i++ {
-			if c[i] < c[i-1] {
-				inc = false
-			}
-			if c[i] > c[i-1] {
-				dec = false
-			}
-		}
-		if inc || dec {
-			out.WriteString("YES\n")
-		} else {
-			out.WriteString("NO\n")
-		}
-	}
-	return strings.TrimSpace(out.String())
+        in := bufio.NewReader(strings.NewReader(input))
+        var t int
+        fmt.Fscan(in, &t)
+        var out strings.Builder
+        for ; t > 0; t-- {
+                var n int
+                fmt.Fscan(in, &n)
+                b := make([]int, n)
+                for i := 0; i < n; i++ {
+                        fmt.Fscan(in, &b[i])
+                }
+                const INF = int(2_000_000_000)
+                set := []int{-INF, INF}
+                l, r := -INF, INF
+                ok := true
+                for _, x := range b {
+                        if x < l || x > r {
+                                ok = false
+                                break
+                        }
+                        idx := sort.SearchInts(set, x)
+                        if idx == len(set) || set[idx] != x {
+                                set = append(set, 0)
+                                copy(set[idx+1:], set[idx:])
+                                set[idx] = x
+                        }
+                        l = set[idx-1]
+                        r = set[idx+1]
+                }
+                if ok {
+                        out.WriteString("YES\n")
+                } else {
+                        out.WriteString("NO\n")
+                }
+        }
+        return strings.TrimSpace(out.String())
 }
 
 func runBinary(bin, input string) (string, error) {
