@@ -687,10 +687,18 @@ func sendPrompt(provider, model, apiKey, prompt string) string {
 			time.Sleep(time.Second * time.Duration(attempt))
 			continue
 		}
-		defer resp.Body.Close()
+		bodyBytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			fmt.Printf("Error reading response (attempt %d): %v\n", attempt, err)
+			if attempt == maxRetries {
+				return ""
+			}
+			time.Sleep(time.Second * time.Duration(attempt))
+			continue
+		}
 
 		if resp.StatusCode != http.StatusOK {
-			bodyBytes, _ := io.ReadAll(resp.Body)
 			fmt.Printf("API error (attempt %d): %s\n", attempt, string(bodyBytes))
 			if attempt == maxRetries {
 				return ""
@@ -709,7 +717,7 @@ func sendPrompt(provider, model, apiKey, prompt string) string {
 					} `json:"content"`
 				} `json:"candidates"`
 			}
-			if err = json.NewDecoder(resp.Body).Decode(&gResp); err != nil {
+			if err = json.Unmarshal(bodyBytes, &gResp); err != nil {
 				fmt.Printf("Error decoding response (attempt %d): %v\n", attempt, err)
 				if attempt == maxRetries {
 					return ""
@@ -728,8 +736,33 @@ func sendPrompt(provider, model, apiKey, prompt string) string {
 			return gResp.Candidates[0].Content.Parts[0].Text
 		}
 
+		if strings.ToLower(provider) == "claude" {
+			var cResp struct {
+				Content []struct {
+					Text string `json:"text"`
+				} `json:"content"`
+			}
+			if err = json.Unmarshal(bodyBytes, &cResp); err != nil {
+				fmt.Printf("Error decoding response (attempt %d): %v\n", attempt, err)
+				if attempt == maxRetries {
+					return ""
+				}
+				time.Sleep(time.Second * time.Duration(attempt))
+				continue
+			}
+			if len(cResp.Content) == 0 {
+				fmt.Printf("No response from API (attempt %d)\n", attempt)
+				if attempt == maxRetries {
+					return ""
+				}
+				time.Sleep(time.Second * time.Duration(attempt))
+				continue
+			}
+			return cResp.Content[0].Text
+		}
+
 		var apiResp Response
-		if err = json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		if err = json.Unmarshal(bodyBytes, &apiResp); err != nil {
 			fmt.Printf("Error decoding response (attempt %d): %v\n", attempt, err)
 			if attempt == maxRetries {
 				return ""
