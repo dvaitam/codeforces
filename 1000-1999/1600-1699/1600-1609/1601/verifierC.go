@@ -56,10 +56,14 @@ func main() {
 
 	f, err := os.Open("testcasesC.txt")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to open problemC.txt:", err)
+		// The file name was reported incorrectly in the previous
+		// implementation which made debugging harder when the file
+		// was missing.  Use the actual file name here.
+		fmt.Fprintln(os.Stderr, "failed to open testcasesC.txt:", err)
 		os.Exit(1)
 	}
 	defer f.Close()
+
 	scanner := bufio.NewScanner(f)
 	idx := 0
 	for scanner.Scan() {
@@ -68,7 +72,12 @@ func main() {
 			continue
 		}
 		idx++
-		input := line + "\n"
+		// Every line in the testcase file corresponds to a single
+		// test case.  The solutions expect the number of test cases
+		// to be provided as the first integer in the input, so we
+		// need to prefix the line with "1" to indicate a single
+		// test case.
+		input := "1 " + line + "\n"
 		exp, err := run(oracle, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", idx, err)
