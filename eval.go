@@ -28,8 +28,9 @@ type Message struct {
 }
 
 type Request struct {
-	Model    string    `json:"model"`
-	Messages []Message `json:"messages"`
+	Model     string    `json:"model"`
+	Messages  []Message `json:"messages"`
+	MaxTokens int       `json:"max_tokens,omitempty"`
 }
 
 type Response struct {
@@ -626,6 +627,9 @@ func sendPrompt(provider, model, apiKey, prompt string) string {
 	} else {
 		messages := []Message{{Role: "user", Content: prompt}}
 		reqBody := Request{Model: model, Messages: messages}
+		if lowerProvider == "claude" {
+			reqBody.MaxTokens = 4096
+		}
 		body, err = json.Marshal(reqBody)
 	}
 	if err != nil {
