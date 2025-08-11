@@ -19,6 +19,7 @@ func compute(grid [][]byte) int {
 	m := len(grid[0])
 	size := n * m
 	dist := make([]int, size)
+	root := make([]int, size)
 	queue := make([]int, 0, size)
 	for i := 0; i < n; i++ {
 		for j := 0; j < m; j++ {
@@ -38,6 +39,7 @@ func compute(grid [][]byte) int {
 				if grid[ni][nj] == '#' {
 					idx := i*m + j
 					dist[idx] = 1
+					root[idx] = idx
 					queue = append(queue, idx)
 				}
 			}
@@ -49,12 +51,14 @@ func compute(grid [][]byte) int {
 		head++
 		vi := v / m
 		vj := v % m
+		r := root[v]
 		if vi > 0 {
 			ui, uj := vi-1, vj
 			if grid[ui][uj] == 'v' {
 				u := ui*m + uj
 				if dist[u] == 0 {
 					dist[u] = dist[v] + 1
+					root[u] = r
 					queue = append(queue, u)
 				}
 			}
@@ -65,6 +69,7 @@ func compute(grid [][]byte) int {
 				u := ui*m + uj
 				if dist[u] == 0 {
 					dist[u] = dist[v] + 1
+					root[u] = r
 					queue = append(queue, u)
 				}
 			}
@@ -75,6 +80,7 @@ func compute(grid [][]byte) int {
 				u := ui*m + uj
 				if dist[u] == 0 {
 					dist[u] = dist[v] + 1
+					root[u] = r
 					queue = append(queue, u)
 				}
 			}
@@ -85,30 +91,43 @@ func compute(grid [][]byte) int {
 				u := ui*m + uj
 				if dist[u] == 0 {
 					dist[u] = dist[v] + 1
+					root[u] = r
 					queue = append(queue, u)
 				}
 			}
 		}
 	}
-	max1, max2 := 0, 0
+	maxPerRoot := make(map[int]int)
 	for i := 0; i < n; i++ {
 		for j := 0; j < m; j++ {
 			c := grid[i][j]
 			if c == '<' || c == '>' || c == '^' || c == 'v' {
-				d := dist[i*m+j]
+				idx := i*m + j
+				d := dist[idx]
 				if d == 0 {
 					return -1
 				}
-				if d > max1 {
-					max2 = max1
-					max1 = d
-				} else if d > max2 {
-					max2 = d
+				r := root[idx]
+				if d > maxPerRoot[r] {
+					maxPerRoot[r] = d
 				}
 			}
 		}
 	}
-	return max1 + max2
+	max1, max2 := 0, 0
+	for _, d := range maxPerRoot {
+		if d > max1 {
+			max2 = max1
+			max1 = d
+		} else if d > max2 {
+			max2 = d
+		}
+	}
+	second := max2
+	if max1-1 > second {
+		second = max1 - 1
+	}
+	return max1 + second
 }
 
 func genCase(r *rand.Rand) Test {
