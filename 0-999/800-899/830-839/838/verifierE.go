@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -54,7 +55,12 @@ func runCase(exe, ref, input string) error {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
 	got := strings.TrimSpace(out.String())
-	if got != expected {
+	expVal, err1 := strconv.ParseFloat(expected, 64)
+	gotVal, err2 := strconv.ParseFloat(got, 64)
+	if err1 != nil || err2 != nil {
+		return fmt.Errorf("parsing error: expected=%v got=%v", err1, err2)
+	}
+	if math.Abs(expVal-gotVal) > 1e-9 {
 		return fmt.Errorf("expected\n%s\ngot\n%s", expected, got)
 	}
 	return nil
