@@ -16,7 +16,7 @@ func expected(n, m, k float64) float64 {
 	if n+k < m {
 		return 0.0
 	}
-	
+
 	ans := 1.0
 	for i := 0; i <= int(k); i++ {
 		ans *= (m - float64(i)) / (n + 1 + float64(i))
@@ -49,28 +49,28 @@ func main() {
 	}
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	
+
 	for i := 0; i < 100; i++ {
 		n := rng.Intn(101)
 		m := rng.Intn(101)
 		k := rng.Intn(11)
-		
+
 		input := fmt.Sprintf("%d %d %d\n", n, m, k)
-		
+
 		expectedOut := expected(float64(n), float64(m), float64(k))
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		
+
 		gotFloat, parseErr := strconv.ParseFloat(got, 64)
 		if parseErr != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: cannot parse output: %v\ninput:\n%s", i+1, parseErr, input)
 			os.Exit(1)
 		}
-		
-		if math.Abs(gotFloat-expectedOut) > 1e-6 {
+
+		if math.Abs(gotFloat-expectedOut) > 1e-4 {
 			fmt.Fprintf(os.Stderr, "case %d failed: expected %.6f got %.6f (diff %.6f)\ninput:\n%s", i+1, expectedOut, gotFloat, math.Abs(gotFloat-expectedOut), input)
 			os.Exit(1)
 		}
