@@ -422,20 +422,21 @@ var leaderboardTmpl = template.Must(template.New("leaderboard").Parse(`
       </div>
       <h1>Leaderboard</h1>
       <table>
-        <tr><th>Run ID</th><th>Model</th><th>Rating</th><th>Timestamp</th></tr>
+        <tr><th>Run ID</th><th>Model</th><th>Lang</th><th>Rating</th><th>Timestamp</th></tr>
         {{range .Leaders}}
-        <tr><td><a href="/leaderboard?run={{.RunID}}">{{.RunID}}</a></td><td>{{.Model}}</td><td>{{.Rating}}</td><td>{{.Timestamp}}</td></tr>
+        <tr><td><a href="/leaderboard?run={{.RunID}}">{{.RunID}}</a></td><td>{{.Model}}</td><td>{{.Lang}}</td><td>{{.Rating}}</td><td>{{.Timestamp}}</td></tr>
         {{end}}
       </table>
       {{if .Evals}}
       <h2 style="margin-top:24px;">Evaluation History for {{.RunID}}</h2>
       <table>
-        <tr><th>Eval ID</th><th>Run ID</th><th>Model</th><th>Problem</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
+        <tr><th>Eval ID</th><th>Run ID</th><th>Model</th><th>Lang</th><th>Problem</th><th>Rating</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
         {{range .Evals}}
         <tr>
           <td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td>
           <td>{{.RunID}}</td>
           <td>{{.Model}}</td>
+          <td>{{.Lang}}</td>
           <td><a href="/contest/{{.ContestID}}/problem/{{.IndexName}}">{{.ContestID}}{{.IndexName}}</a> (<a href="https://codeforces.com/contest/{{.ContestID}}/problem/{{.IndexName}}" target="_blank" rel="noopener">CF</a>)</td>
           <td>{{.Rating}}</td>
           <td>{{.Success}}</td>
@@ -998,16 +999,17 @@ func leaderboardHandler(w http.ResponseWriter, r *http.Request) {
 	type Leader struct {
 		RunID     string
 		Model     string
+		Lang      string
 		Rating    int
 		Timestamp string
 	}
 	var leaders []Leader
-	rows, err := db.Query("SELECT run_id, model, rating, timestamp FROM leaderboard ORDER BY rating DESC")
+	rows, err := db.Query("SELECT run_id, model, lang, rating, timestamp FROM leaderboard ORDER BY rating DESC")
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {
 			var l Leader
-			if err = rows.Scan(&l.RunID, &l.Model, &l.Rating, &l.Timestamp); err == nil {
+			if err = rows.Scan(&l.RunID, &l.Model, &l.Lang, &l.Rating, &l.Timestamp); err == nil {
 				leaders = append(leaders, l)
 			}
 		}
@@ -1017,6 +1019,7 @@ func leaderboardHandler(w http.ResponseWriter, r *http.Request) {
 		ID        int
 		RunID     string
 		Model     string
+		Lang      string
 		ProblemID int
 		ContestID int
 		IndexName string
@@ -1027,7 +1030,7 @@ func leaderboardHandler(w http.ResponseWriter, r *http.Request) {
 	var evals []Eval
 	runIDFilter := r.URL.Query().Get("run")
 	if runIDFilter != "" {
-		rows, err = db.Query(`SELECT e.id, e.run_id, e.model, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), e.success, e.timestamp
+		rows, err = db.Query(`SELECT e.id, e.run_id, e.model, e.lang, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), e.success, e.timestamp
                        FROM evaluations e
                        JOIN problems p ON e.problem_id = p.id
                        WHERE e.run_id = ? ORDER BY e.timestamp DESC`, runIDFilter)
@@ -1035,7 +1038,7 @@ func leaderboardHandler(w http.ResponseWriter, r *http.Request) {
 			defer rows.Close()
 			for rows.Next() {
 				var e Eval
-				if err = rows.Scan(&e.ID, &e.RunID, &e.Model, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Rating, &e.Success, &e.Timestamp); err == nil {
+				if err = rows.Scan(&e.ID, &e.RunID, &e.Model, &e.Lang, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Rating, &e.Success, &e.Timestamp); err == nil {
 					evals = append(evals, e)
 				}
 			}
@@ -1103,139 +1106,143 @@ func modelHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func failedHandler(w http.ResponseWriter, r *http.Request) {
-    if !strings.HasPrefix(r.URL.Path, "/failed/") {
-        http.NotFound(w, r)
-        return
-    }
-    modelName := strings.TrimPrefix(r.URL.Path, "/failed/")
-    if modelName == "" {
-        http.NotFound(w, r)
-        return
-    }
-    onlyUnreviewed := r.URL.Query().Get("unreviewed") == "1"
-    type Eval struct {
-        ID        int
-        RunID     string
-        ProblemID int
-        ContestID int
-        IndexName string
-        Rating    int
-        Reviewed  int
-        Timestamp string
-    }
-    var evals []Eval
-    cond := "WHERE e.model = ? AND e.success = 0"
-    var args []interface{}
-    args = append(args, modelName)
-    if onlyUnreviewed {
-        cond += " AND COALESCE(e.reviewied, 0) = 0"
-    }
-    q := `SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), COALESCE(e.reviewied, 0), e.timestamp
+	if !strings.HasPrefix(r.URL.Path, "/failed/") {
+		http.NotFound(w, r)
+		return
+	}
+	modelName := strings.TrimPrefix(r.URL.Path, "/failed/")
+	if modelName == "" {
+		http.NotFound(w, r)
+		return
+	}
+	onlyUnreviewed := r.URL.Query().Get("unreviewed") == "1"
+	type Eval struct {
+		ID        int
+		RunID     string
+		ProblemID int
+		ContestID int
+		IndexName string
+		Rating    int
+		Reviewed  int
+		Timestamp string
+	}
+	var evals []Eval
+	cond := "WHERE e.model = ? AND e.success = 0"
+	var args []interface{}
+	args = append(args, modelName)
+	if onlyUnreviewed {
+		cond += " AND COALESCE(e.reviewied, 0) = 0"
+	}
+	q := `SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), COALESCE(e.reviewied, 0), e.timestamp
             FROM evaluations e
             JOIN problems p ON e.problem_id = p.id ` + cond + ` ORDER BY e.timestamp DESC`
-    rows, err := db.Query(q, args...)
-    if err == nil {
-        defer rows.Close()
-        for rows.Next() {
-            var e Eval
-            if err = rows.Scan(&e.ID, &e.RunID, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Rating, &e.Reviewed, &e.Timestamp); err == nil {
-                evals = append(evals, e)
-            }
-        }
-    }
-    failedTmpl.Execute(w, map[string]interface{}{
-        "Model": modelName,
-        "Evals": evals,
-        "Unreviewed": onlyUnreviewed,
-    })
+	rows, err := db.Query(q, args...)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var e Eval
+			if err = rows.Scan(&e.ID, &e.RunID, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Rating, &e.Reviewed, &e.Timestamp); err == nil {
+				evals = append(evals, e)
+			}
+		}
+	}
+	failedTmpl.Execute(w, map[string]interface{}{
+		"Model":      modelName,
+		"Evals":      evals,
+		"Unreviewed": onlyUnreviewed,
+	})
 }
 
 func markReviewedHandler(w http.ResponseWriter, r *http.Request) {
-    if r.URL.Path != "/evaluation/mark-reviewed" || r.Method != http.MethodPost {
-        http.NotFound(w, r)
-        return
-    }
-    ids := r.FormValue("ids")
-    // Also support multiple ids values
-    idVals := r.Form["ids"]
-    if ids != "" && len(idVals) == 0 {
-        idVals = []string{ids}
-    }
-    if len(idVals) == 0 {
-        http.Redirect(w, r, "/", http.StatusSeeOther)
-        return
-    }
-    // Build IN clause safely
-    var placeholders []string
-    var args []interface{}
-    for _, s := range idVals {
-        if s == "" { continue }
-        if _, err := strconv.Atoi(s); err != nil { continue }
-        placeholders = append(placeholders, "?")
-        args = append(args, s)
-    }
-    if len(placeholders) > 0 {
-        q := "UPDATE evaluations SET reviewied = 1 WHERE id IN (" + strings.Join(placeholders, ",") + ")"
-        if _, err := db.Exec(q, args...); err != nil {
-            http.Error(w, err.Error(), http.StatusInternalServerError)
-            return
-        }
-    }
-    redirect := r.FormValue("redirect")
-    if redirect == "" {
-        redirect = "/"
-    }
-    http.Redirect(w, r, redirect, http.StatusSeeOther)
+	if r.URL.Path != "/evaluation/mark-reviewed" || r.Method != http.MethodPost {
+		http.NotFound(w, r)
+		return
+	}
+	ids := r.FormValue("ids")
+	// Also support multiple ids values
+	idVals := r.Form["ids"]
+	if ids != "" && len(idVals) == 0 {
+		idVals = []string{ids}
+	}
+	if len(idVals) == 0 {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	// Build IN clause safely
+	var placeholders []string
+	var args []interface{}
+	for _, s := range idVals {
+		if s == "" {
+			continue
+		}
+		if _, err := strconv.Atoi(s); err != nil {
+			continue
+		}
+		placeholders = append(placeholders, "?")
+		args = append(args, s)
+	}
+	if len(placeholders) > 0 {
+		q := "UPDATE evaluations SET reviewied = 1 WHERE id IN (" + strings.Join(placeholders, ",") + ")"
+		if _, err := db.Exec(q, args...); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	redirect := r.FormValue("redirect")
+	if redirect == "" {
+		redirect = "/"
+	}
+	http.Redirect(w, r, redirect, http.StatusSeeOther)
 }
 
 func failedJSONHandler(w http.ResponseWriter, r *http.Request) {
-    if r.URL.Path != "/failed/json" {
-        http.NotFound(w, r)
-        return
-    }
-    modelName := r.URL.Query().Get("model")
-    if modelName == "" {
-        http.Error(w, "missing model query parameter", http.StatusBadRequest)
-        return
-    }
-    langFilter := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("lang")))
-    type Eval struct {
-        ID        int    `json:"id"`
-        RunID     string `json:"run_id"`
-        ProblemID int    `json:"problem_id"`
-        ContestID int    `json:"contest_id"`
-        IndexName string `json:"index_name"`
-        Rating    int    `json:"rating"`
-        Reviewed  int    `json:"reviewied"`
-        Timestamp string `json:"timestamp"`
-    }
-    var evals []Eval
-    cond := "WHERE e.model = ? AND e.success = 0"
-    var args []interface{}
-    args = append(args, modelName)
-    if langFilter != "" {
-        cond += " AND e.lang = ?"
-        args = append(args, langFilter)
-    }
-    q := `SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), COALESCE(e.reviewied,0), e.timestamp
+	if r.URL.Path != "/failed/json" {
+		http.NotFound(w, r)
+		return
+	}
+	modelName := r.URL.Query().Get("model")
+	if modelName == "" {
+		http.Error(w, "missing model query parameter", http.StatusBadRequest)
+		return
+	}
+	langFilter := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("lang")))
+	type Eval struct {
+		ID        int    `json:"id"`
+		RunID     string `json:"run_id"`
+		ProblemID int    `json:"problem_id"`
+		ContestID int    `json:"contest_id"`
+		IndexName string `json:"index_name"`
+		Rating    int    `json:"rating"`
+		Reviewed  int    `json:"reviewied"`
+		Timestamp string `json:"timestamp"`
+	}
+	var evals []Eval
+	cond := "WHERE e.model = ? AND e.success = 0"
+	var args []interface{}
+	args = append(args, modelName)
+	if langFilter != "" {
+		cond += " AND e.lang = ?"
+		args = append(args, langFilter)
+	}
+	q := `SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), COALESCE(e.reviewied,0), e.timestamp
             FROM evaluations e
             JOIN problems p ON e.problem_id = p.id ` + cond + ` ORDER BY e.timestamp DESC`
-    rows, err := db.Query(q, args...)
-    if err == nil {
-        defer rows.Close()
-        for rows.Next() {
-            var e Eval
-            if err = rows.Scan(&e.ID, &e.RunID, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Rating, &e.Reviewed, &e.Timestamp); err == nil {
-                evals = append(evals, e)
-            }
-        }
-    }
-    w.Header().Set("Content-Type", "application/json; charset=utf-8")
-    _ = json.NewEncoder(w).Encode(map[string]interface{}{
-        "model": modelName,
-        "lang":  langFilter,
-        "evals": evals,
-    })
+	rows, err := db.Query(q, args...)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var e Eval
+			if err = rows.Scan(&e.ID, &e.RunID, &e.ProblemID, &e.ContestID, &e.IndexName, &e.Rating, &e.Reviewed, &e.Timestamp); err == nil {
+				evals = append(evals, e)
+			}
+		}
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"model": modelName,
+		"lang":  langFilter,
+		"evals": evals,
+	})
 }
 
 func submissionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -1346,29 +1353,29 @@ func evaluationContentHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func evaluationRawResponseHandler(w http.ResponseWriter, r *http.Request) {
-    path := r.URL.Path
-    idStr := strings.TrimPrefix(path, "/evaluation/raw/response/")
-    id, err := strconv.Atoi(idStr)
-    if err != nil {
-        http.NotFound(w, r)
-        return
-    }
-    var resp string
-    if err := db.QueryRow("SELECT response FROM evaluations WHERE id = ?", id).Scan(&resp); err != nil {
-        http.NotFound(w, r)
-        return
-    }
-    // Extract code block only if fenced with go or rust
-    code := ""
-    if m := regexp.MustCompile(`(?s)\x60\x60\x60go\s*(.*?)\x60\x60\x60`).FindStringSubmatch(resp); len(m) > 1 {
-        code = strings.TrimSpace(m[1])
-    } else if m := regexp.MustCompile(`(?s)\x60\x60\x60rust\s*(.*?)\x60\x60\x60`).FindStringSubmatch(resp); len(m) > 1 {
-        code = strings.TrimSpace(m[1])
-    } else {
-        code = resp
-    }
-    w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-    _, _ = w.Write([]byte(code))
+	path := r.URL.Path
+	idStr := strings.TrimPrefix(path, "/evaluation/raw/response/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	var resp string
+	if err := db.QueryRow("SELECT response FROM evaluations WHERE id = ?", id).Scan(&resp); err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	// Extract code block only if fenced with go or rust
+	code := ""
+	if m := regexp.MustCompile(`(?s)\x60\x60\x60go\s*(.*?)\x60\x60\x60`).FindStringSubmatch(resp); len(m) > 1 {
+		code = strings.TrimSpace(m[1])
+	} else if m := regexp.MustCompile(`(?s)\x60\x60\x60rust\s*(.*?)\x60\x60\x60`).FindStringSubmatch(resp); len(m) > 1 {
+		code = strings.TrimSpace(m[1])
+	} else {
+		code = resp
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = w.Write([]byte(code))
 }
 
 func main() {
@@ -1429,14 +1436,14 @@ func main() {
 	http.HandleFunc("/leaderboard", leaderboardHandler)
 	http.HandleFunc("/model", modelHandler)
 	http.HandleFunc("/failed/", failedHandler)
-    http.HandleFunc("/evaluation/mark-reviewed", markReviewedHandler)
-    http.HandleFunc("/failed/json", failedJSONHandler)
+	http.HandleFunc("/evaluation/mark-reviewed", markReviewedHandler)
+	http.HandleFunc("/failed/json", failedJSONHandler)
 	http.HandleFunc("/submission", submissionsHandler)
 	http.HandleFunc("/submission/generate/fix/prompt/", submissionFixPromptHandler)
 	http.HandleFunc("/submission/", submissionContentHandler)
 	http.HandleFunc("/evaluation/generate/fix/prompt/", evaluationFixPromptHandler)
 	http.HandleFunc("/evaluation/", evaluationContentHandler)
-    // raw code response
-    http.HandleFunc("/evaluation/raw/response/", evaluationRawResponseHandler)
+	// raw code response
+	http.HandleFunc("/evaluation/raw/response/", evaluationRawResponseHandler)
 	http.ListenAndServe(":8081", nil)
 }

@@ -124,15 +124,20 @@ func main() {
 	}
 
 	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS leaderboard (
-			id INT AUTO_INCREMENT PRIMARY KEY,
-			run_id VARCHAR(255),
-			model VARCHAR(255),
-			rating INT,
-			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-		)
-	`)
+                CREATE TABLE IF NOT EXISTS leaderboard (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        run_id VARCHAR(255),
+                        model VARCHAR(255),
+                        lang VARCHAR(255),
+                        rating INT,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+        `)
 	if err != nil {
+		panic(err)
+	}
+	// Ensure lang column exists for older deployments
+	if _, err = db.Exec(`ALTER TABLE leaderboard ADD COLUMN lang VARCHAR(255)`); err != nil && !strings.Contains(err.Error(), "Duplicate column") {
 		panic(err)
 	}
 
@@ -225,8 +230,8 @@ func main() {
 
 	// Insert into leaderboard
 	_, err = db.Exec(
-		"INSERT INTO leaderboard (run_id, model, rating) VALUES (?, ?, ?)",
-		runID, *model, estimatedRating,
+		"INSERT INTO leaderboard (run_id, model, lang, rating) VALUES (?, ?, ?, ?)",
+		runID, *model, lang, estimatedRating,
 	)
 	if err != nil {
 		panic(err)
