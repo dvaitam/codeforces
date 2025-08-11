@@ -50,8 +50,9 @@ func genTest() []byte {
 	sb.WriteString("\n")
 	for i := 0; i < q; i++ {
 		s := rand.Intn(n) + 1
-		d := rand.Intn(3) + 1
-		k := rand.Intn(3) + 1
+		d := rand.Intn(n) + 1
+		maxK := (n-s)/d + 1
+		k := rand.Intn(maxK) + 1
 		sb.WriteString(fmt.Sprintf("%d %d %d\n", s, d, k))
 	}
 	return []byte(sb.String())
