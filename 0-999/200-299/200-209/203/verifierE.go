@@ -12,16 +12,16 @@ import (
 )
 
 func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleE")
-	cmd := exec.Command("go", "build", "-o", oracle, "203E.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
+        dir, err := os.Getwd()
+        if err != nil {
+                return "", err
+        }
+        oracle := filepath.Join(dir, "oracleE")
+        cmd := exec.Command("rustc", "203E.rs", "-O", "-o", oracle)
+        if out, err := cmd.CombinedOutput(); err != nil {
+                return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+        }
+        return oracle, nil
 }
 
 func main() {
