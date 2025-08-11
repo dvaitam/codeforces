@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -51,7 +52,28 @@ func main() {
 			continue
 		}
 		idx++
-		input := line + "\n"
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			fmt.Fprintf(os.Stderr, "test %d: invalid test case\n", idx)
+			os.Exit(1)
+		}
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: invalid n: %v\n", idx, err)
+			os.Exit(1)
+		}
+		var builder strings.Builder
+		builder.WriteString(fmt.Sprintf("%s %s %s\n", fields[0], fields[1], fields[2]))
+		pos := 3
+		for i := 0; i < n; i++ {
+			if pos+2 >= len(fields) {
+				fmt.Fprintf(os.Stderr, "test %d: not enough robot data\n", idx)
+				os.Exit(1)
+			}
+			builder.WriteString(fmt.Sprintf("%s %s %s\n", fields[pos], fields[pos+1], fields[pos+2]))
+			pos += 3
+		}
+		input := builder.String()
 		cmdO := exec.Command(oracle)
 		cmdO.Stdin = strings.NewReader(input)
 		var outO bytes.Buffer
@@ -68,7 +90,7 @@ func main() {
 		var stderr bytes.Buffer
 		cmd.Stdout = &out
 		cmd.Stderr = &stderr
-		err := cmd.Run()
+		err = cmd.Run()
 		if err != nil {
 			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
 			os.Exit(1)
