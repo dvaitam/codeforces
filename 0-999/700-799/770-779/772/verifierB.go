@@ -14,6 +14,15 @@ import (
 
 type point struct{ x, y float64 }
 
+func pointLineDistance(p, a, b point) float64 {
+	num := math.Abs((p.x-a.x)*(b.y-a.y) - (p.y-a.y)*(b.x-a.x))
+	den := math.Hypot(b.x-a.x, b.y-a.y)
+	if den == 0 {
+		return math.Hypot(p.x-a.x, p.y-a.y)
+	}
+	return num / den
+}
+
 func solveCase(pts []point) string {
 	n := len(pts)
 	ans := math.MaxFloat64
@@ -21,10 +30,12 @@ func solveCase(pts []point) string {
 		a := pts[(i-1+n)%n]
 		b := pts[i]
 		c := pts[(i+1)%n]
-		cross := math.Abs((b.x-a.x)*(c.y-a.y) - (b.y-a.y)*(c.x-a.x))
-		base := math.Hypot(c.x-a.x, c.y-a.y)
-		h := cross / base
-		d := h / 2
+
+		altA := pointLineDistance(a, b, c)
+		altB := pointLineDistance(b, a, c)
+		altC := pointLineDistance(c, a, b)
+
+		d := math.Min(altA, math.Min(altB, altC)) / 2
 		if d < ans {
 			ans = d
 		}
@@ -46,8 +57,10 @@ func genCase(rng *rand.Rand) (string, string) {
 		r := rng.Float64()*10 + 1
 		x := r * math.Cos(ang)
 		y := r * math.Sin(ang)
-		pts[i] = point{x, y}
-		fmt.Fprintf(&sb, "%d %d\n", int(x), int(y))
+		xi := int(x)
+		yi := int(y)
+		pts[i] = point{float64(xi), float64(yi)}
+		fmt.Fprintf(&sb, "%d %d\n", xi, yi)
 	}
 	exp := solveCase(pts)
 	return sb.String(), exp
