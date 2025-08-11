@@ -171,7 +171,7 @@ func parsePath(line string) ([]int, error) {
 
 func runCase(bin string, tc testCaseD) error {
 	input := formatInput(tc)
-	expectedType, expectedPath := solveD(tc)
+	expectedType, _ := solveD(tc)
 	gotStr, err := run(bin, input)
 	if err != nil {
 		return err
@@ -192,13 +192,28 @@ func runCase(bin string, tc testCaseD) error {
 		if err != nil {
 			return fmt.Errorf("bad path: %v", err)
 		}
-		if len(path) != len(expectedPath) {
-			return fmt.Errorf("expected path %v got %v", expectedPath, path)
+		if len(path) == 0 || path[0] != tc.start {
+			return fmt.Errorf("path must start at %d, got %v", tc.start, path)
 		}
-		for i := range path {
-			if path[i] != expectedPath[i] {
-				return fmt.Errorf("expected path %v got %v", expectedPath, path)
+		if len(path)%2 != 0 {
+			return fmt.Errorf("path length must be even, got %d", len(path))
+		}
+		for i := 0; i < len(path)-1; i++ {
+			u, v := path[i], path[i+1]
+			ok := false
+			for _, w := range tc.edges[u] {
+				if w == v {
+					ok = true
+					break
+				}
 			}
+			if !ok {
+				return fmt.Errorf("edge %d -> %d not present", u, v)
+			}
+		}
+		last := path[len(path)-1]
+		if len(tc.edges[last]) != 0 {
+			return fmt.Errorf("last vertex %d has outgoing edges", last)
 		}
 	}
 	return nil
