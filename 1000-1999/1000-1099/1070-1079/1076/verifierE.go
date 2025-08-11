@@ -10,11 +10,9 @@ import (
 	"time"
 )
 
-func bfs(n int, adj [][]int, start, maxD int, add int64, res []int64) {
+func bfs(n int, adj [][]int, parent []int, start, maxD int, add int64, res []int64) {
 	type node struct{ v, d int }
 	q := []node{{start, 0}}
-	vis := make([]bool, n+1)
-	vis[start] = true
 	for len(q) > 0 {
 		cur := q[0]
 		q = q[1:]
@@ -23,10 +21,10 @@ func bfs(n int, adj [][]int, start, maxD int, add int64, res []int64) {
 			continue
 		}
 		for _, to := range adj[cur.v] {
-			if !vis[to] {
-				vis[to] = true
-				q = append(q, node{to, cur.d + 1})
+			if to == parent[cur.v] {
+				continue
 			}
+			q = append(q, node{to, cur.d + 1})
 		}
 	}
 }
@@ -38,12 +36,23 @@ func solve(n int, edges [][2]int, queries [][3]int64) string {
 		adj[a] = append(adj[a], b)
 		adj[b] = append(adj[b], a)
 	}
+	parent := make([]int, n+1)
+	var build func(int, int)
+	build = func(v, p int) {
+		parent[v] = p
+		for _, to := range adj[v] {
+			if to != p {
+				build(to, v)
+			}
+		}
+	}
+	build(1, 0)
 	res := make([]int64, n+1)
 	for _, q := range queries {
 		v := int(q[0])
 		d := int(q[1])
 		x := q[2]
-		bfs(n, adj, v, d, x, res)
+		bfs(n, adj, parent, v, d, x, res)
 	}
 	var sb strings.Builder
 	for i := 1; i <= n; i++ {
