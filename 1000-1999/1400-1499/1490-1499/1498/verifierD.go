@@ -44,7 +44,11 @@ func run(bin, input string) (string, error) {
 
 func generateCase(rng *rand.Rand) string {
 	n := rng.Intn(5) + 1
-	m := rng.Intn(30) + 1
+	// m must be at least 2, otherwise generating x' for type 2 operations
+	// (which requires x' > 1e5) would result in an empty range and cause
+	// rng.Intn to panic. Ensure m >= 2 here to mirror the problem
+	// constraints and keep the random generator valid.
+	m := rng.Intn(29) + 2
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
 	for i := 0; i < n; i++ {
