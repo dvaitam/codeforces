@@ -606,10 +606,12 @@ var submissionsTmpl = template.Must(template.New("submissions").Parse(`
       </div>
       <h1>Submissions</h1>
       <table>
-        <tr><th>ID</th><th>Language</th><th>Exit Code</th><th>Timestamp</th><th>Code</th><th>Stdout</th><th>Stderr</th></tr>
+        <tr><th>ID</th><th>Problem</th><th>Language</th><th>Exit Code</th><th>Timestamp</th><th>Code</th><th>Stdout</th><th>Stderr</th></tr>
         {{range .}}
         <tr>
-          <td><a href="/submission/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td><td>{{.Lang}}</td><td>{{.ExitCode}}</td><td>{{.Timestamp}}</td>
+          <td><a href="/submission/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td>
+          <td><a href="/contest/{{.ContestID}}/problem/{{.Letter}}">{{.ContestID}}{{.Letter}}</a> (<a href="https://codeforces.com/contest/{{.ContestID}}/problem/{{.Letter}}" target="_blank" rel="noopener">CF</a>)</td>
+          <td>{{.Lang}}</td><td>{{.ExitCode}}</td><td>{{.Timestamp}}</td>
           <td><a href="/submission/code/{{.ID}}">View</a></td><td><a href="/submission/stdout/{{.ID}}">View</a></td><td><a href="/submission/stderr/{{.ID}}">View</a></td>
         </tr>
         {{end}}
@@ -1250,24 +1252,26 @@ func submissionsHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	type Sub struct {
-		ID        int
-		Lang      string
-		ExitCode  int
-		Timestamp string
-	}
-	var subs []Sub
-	rows, err := db.Query("SELECT id, lang, exit_code, timestamp FROM submissions ORDER BY id DESC")
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var s Sub
-			if err = rows.Scan(&s.ID, &s.Lang, &s.ExitCode, &s.Timestamp); err == nil {
-				subs = append(subs, s)
-			}
-		}
-	}
-	submissionsTmpl.Execute(w, subs)
+    type Sub struct {
+        ID        int
+        ContestID string
+        Letter    string
+        Lang      string
+        ExitCode  int
+        Timestamp string
+    }
+    var subs []Sub
+    rows, err := db.Query("SELECT id, contest_id, problem_letter, lang, exit_code, timestamp FROM submissions ORDER BY id DESC")
+    if err == nil {
+        defer rows.Close()
+        for rows.Next() {
+            var s Sub
+            if err = rows.Scan(&s.ID, &s.ContestID, &s.Letter, &s.Lang, &s.ExitCode, &s.Timestamp); err == nil {
+                subs = append(subs, s)
+            }
+        }
+    }
+    submissionsTmpl.Execute(w, subs)
 }
 
 func submissionFixPromptHandler(w http.ResponseWriter, r *http.Request) {
