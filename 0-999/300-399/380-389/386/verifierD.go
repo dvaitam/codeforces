@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -87,7 +86,6 @@ func main() {
 	cases := []string{}
 	// simple deterministic case
 	cases = append(cases, func() string {
-		n := 3
 		var sb strings.Builder
 		sb.WriteString("3\n1 2 3\n")
 		sb.WriteString("*aa\n")
