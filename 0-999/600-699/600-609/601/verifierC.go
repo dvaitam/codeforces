@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -70,7 +72,13 @@ func runCase(bin, ref string, c Case) error {
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(expected) != strings.TrimSpace(got) {
+	e, err1 := strconv.ParseFloat(strings.TrimSpace(expected), 64)
+	g, err2 := strconv.ParseFloat(strings.TrimSpace(got), 64)
+	if err1 != nil || err2 != nil {
+		return fmt.Errorf("failed to parse output: expected %s got %s", expected, got)
+	}
+	const eps = 1e-6
+	if math.Abs(e-g) > eps {
 		return fmt.Errorf("expected %s got %s", expected, got)
 	}
 	return nil
