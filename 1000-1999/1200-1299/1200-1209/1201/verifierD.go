@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -45,8 +47,15 @@ func runExe(path, input string) (string, error) {
 }
 
 func buildRef() (string, error) {
-	ref := "./refD.bin"
+	ref := filepath.Join(os.TempDir(), "refD.bin")
+	// locate the reference source relative to this verifier file
+	_, src, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", fmt.Errorf("cannot locate verifier source path")
+	}
+	dir := filepath.Dir(src)
 	cmd := exec.Command("go", "build", "-o", ref, "1201D.go")
+	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build reference failed: %v: %s", err, string(out))
 	}
