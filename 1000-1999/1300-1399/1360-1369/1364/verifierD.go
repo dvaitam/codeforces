@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -19,19 +20,17 @@ func run(bin string, input string) (string, error) {
 	return strings.TrimSpace(out.String()), err
 }
 
+func fail(idx int, line, msg string) {
+	fmt.Printf("case %d failed\ninput: %s\n%s\n", idx, line, msg)
+	os.Exit(1)
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierD.go /path/to/binary")
 		return
 	}
 	bin := os.Args[1]
-
-	ref := "./refD.bin"
-	if err := exec.Command("go", "build", "-o", ref, "1364D.go").Run(); err != nil {
-		fmt.Println("failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 
 	f, err := os.Open("testcasesD.txt")
 	if err != nil {
@@ -49,19 +48,103 @@ func main() {
 		}
 		idx++
 		input := line + "\n"
-		want, err := run(ref, input)
-		if err != nil {
-			fmt.Printf("reference runtime error on case %d: %v\n", idx, err)
-			os.Exit(1)
+
+		tokens := strings.Fields(line)
+		if len(tokens) < 3 {
+			fail(idx, line, "invalid testcase header")
 		}
-		got, err := run(bin, input)
-		if err != nil {
-			fmt.Printf("candidate runtime error on case %d: %v\n", idx, err)
-			os.Exit(1)
+		n, _ := strconv.Atoi(tokens[0])
+		m, _ := strconv.Atoi(tokens[1])
+		k, _ := strconv.Atoi(tokens[2])
+		if len(tokens) != 3+2*m {
+			fail(idx, line, "invalid number of tokens in testcase")
 		}
-		if want != got {
-			fmt.Printf("case %d failed\ninput: %s\nexpected: %s\ngot: %s\n", idx, line, want, got)
-			os.Exit(1)
+
+		adj := make([]map[int]bool, n+1)
+		for i := 0; i < m; i++ {
+			u, _ := strconv.Atoi(tokens[3+2*i])
+			v, _ := strconv.Atoi(tokens[4+2*i])
+			if adj[u] == nil {
+				adj[u] = map[int]bool{}
+			}
+			if adj[v] == nil {
+				adj[v] = map[int]bool{}
+			}
+			adj[u][v] = true
+			adj[v][u] = true
+		}
+
+		out, err := run(bin, input)
+		if err != nil {
+			fail(idx, line, fmt.Sprintf("candidate runtime error: %v", err))
+		}
+		fields := strings.Fields(out)
+		if len(fields) == 0 {
+			fail(idx, line, "empty output")
+		}
+
+		typ := fields[0]
+		if typ == "1" {
+			need := (k + 1) / 2
+			if len(fields) != 1+need {
+				fail(idx, line, fmt.Sprintf("expected %d vertices, got %d", need, len(fields)-1))
+			}
+			seen := map[int]bool{}
+			verts := make([]int, need)
+			for i := 0; i < need; i++ {
+				v, err := strconv.Atoi(fields[1+i])
+				if err != nil || v < 1 || v > n {
+					fail(idx, line, "invalid vertex in independent set")
+				}
+				if seen[v] {
+					fail(idx, line, "duplicate vertex in independent set")
+				}
+				seen[v] = true
+				verts[i] = v
+			}
+			for i := 0; i < need; i++ {
+				for j := i + 1; j < need; j++ {
+					if adj[verts[i]][verts[j]] {
+						fail(idx, line, "set is not independent")
+					}
+				}
+			}
+		} else if typ == "2" {
+			if len(fields) < 2 {
+				fail(idx, line, "missing cycle length")
+			}
+			c, err := strconv.Atoi(fields[1])
+			if err != nil {
+				fail(idx, line, "invalid cycle length")
+			}
+			if c > k {
+				fail(idx, line, "cycle length exceeds k")
+			}
+			if len(fields) != 2+c {
+				fail(idx, line, "wrong number of vertices in cycle")
+			}
+			cycle := make([]int, c)
+			used := map[int]bool{}
+			for i := 0; i < c; i++ {
+				v, err := strconv.Atoi(fields[2+i])
+				if err != nil || v < 1 || v > n {
+					fail(idx, line, "invalid vertex in cycle")
+				}
+				if used[v] {
+					fail(idx, line, "cycle contains duplicate vertex")
+				}
+				used[v] = true
+				cycle[i] = v
+			}
+			for i := 0; i < c; i++ {
+				u := cycle[i]
+				v := cycle[(i+1)%c]
+				if adj[u] == nil || !adj[u][v] {
+					fail(idx, line, "cycle uses non-existent edge")
+				}
+			}
+		} else {
+			fail(idx, line, "first token must be 1 or 2")
 		}
 	}
 	if err := scanner.Err(); err != nil {
