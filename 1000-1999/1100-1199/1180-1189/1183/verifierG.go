@@ -11,8 +11,8 @@ import (
 )
 
 func buildOracle() (string, error) {
-	oracle := "oracleG"
-	cmd := exec.Command("go", "build", "-o", oracle, "1183G.go")
+        oracle := "./oracleG"
+        cmd := exec.Command("go", "build", "-o", oracle, "1183G.go")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}
