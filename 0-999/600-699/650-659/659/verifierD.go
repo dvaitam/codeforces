@@ -51,8 +51,18 @@ func rectTest(w, h int) string {
 	return fmt.Sprintf("4\n0 0\n0 %d\n%d %d\n%d 0\n0 0\n", h, w, h, w)
 }
 
+// lShapeTest constructs an L-shaped simple polygon composed of
+// 6 edges.  The previous implementation forgot to output the
+// vertex at the inner corner where the horizontal segment turns
+// into the final vertical drop, resulting in only 6 points being
+// emitted.  The solver expects n+1 points, so missing this vertex
+// caused the verifier to panic when reading input.  We now include
+// the "w1+w2 cut" coordinate to provide all 7 required points.
 func lShapeTest(w1, w2, h, cut int) string {
-	return fmt.Sprintf("6\n0 0\n0 %d\n%d %d\n%d %d\n%d 0\n0 0\n", h, w1, h, w1, cut, w1+w2)
+	return fmt.Sprintf(
+		"6\n0 0\n0 %d\n%d %d\n%d %d\n%d %d\n%d 0\n0 0\n",
+		h, w1, h, w1, cut, w1+w2, cut, w1+w2,
+	)
 }
 
 func generateTests() []string {
