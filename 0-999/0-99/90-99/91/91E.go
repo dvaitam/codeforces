@@ -61,10 +61,10 @@ func cmp(i, j int) bool {
 }
 
 func cmp3(x, y, t int) bool {
-	// return true if line x gives a strictly smaller value than line y at time t
-	// using a strict comparison ensures ties are resolved in favor of the line
-	// that appears earlier, matching the problem's requirements
-	return a[x]+b[x]*int64(t) < a[y]+b[y]*int64(t)
+	// return true if line x gives a value less than or equal to line y at time t
+	// this mirrors the behaviour of the original solution and ensures that when
+	// two lines produce the same value we advance to the later one in the hull.
+	return a[x]+b[x]*int64(t) <= a[y]+b[y]*int64(t)
 }
 
 func cmps(i, j, k int) bool {
@@ -114,16 +114,7 @@ func query(p, d, L, R, l, r, t int) int {
 		for tz[p] < tp[p] && cmp3(Tr[d][tz[p]], Tr[d][tz[p]+1], t) {
 			tz[p]++
 		}
-		best := Tr[d][tz[p]]
-		if tz[p] < tp[p] {
-			next := Tr[d][tz[p]+1]
-			valBest := a[best] + b[best]*int64(t)
-			valNext := a[next] + b[next]*int64(t)
-			if valNext == valBest && next < best {
-				best = next
-			}
-		}
-		return best
+		return Tr[d][tz[p]]
 	}
 	mid := (L + R) >> 1
 	x := query(p<<1, d+1, L, mid, l, r, t)
