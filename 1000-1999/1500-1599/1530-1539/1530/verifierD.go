@@ -32,50 +32,86 @@ func genTestsD() []testD {
 func solveD(tc testD) (int, []int) {
 	n := tc.n
 	a := tc.a
-	ans := make([]int, n+1)
-	vis := make([]bool, n+1)
+	b := make([]int, n+1)
+	used := make([]bool, n+1)
+	rev := make([]int, n+1)
+
+	for i := 1; i <= n; i++ {
+		v := a[i]
+		if !used[v] {
+			b[i] = v
+			used[v] = true
+			rev[v] = i
+		}
+	}
+
+	remI := make([]int, 0)
+	remT := make([]int, 0)
+	for i := 1; i <= n; i++ {
+		if b[i] == 0 {
+			remI = append(remI, i)
+		}
+		if !used[i] {
+			remT = append(remT, i)
+		}
+	}
+
+	if len(remI) == 1 {
+		i0 := remI[0]
+		v0 := remT[0]
+		if i0 == v0 {
+			j := rev[a[i0]]
+			b[j] = v0
+			b[i0] = a[i0]
+		} else {
+			b[i0] = v0
+		}
+	} else if len(remI) > 0 {
+		arrT := append([]int(nil), remT...)
+		posConf := make([]int, 0)
+		for k := 0; k < len(remI); k++ {
+			if remI[k] == arrT[k] {
+				posConf = append(posConf, k)
+			}
+		}
+		if len(posConf) == 1 {
+			p := posConf[0]
+			q := 0
+			if p == q {
+				q = 1
+			}
+			arrT[p], arrT[q] = arrT[q], arrT[p]
+		} else if len(posConf) >= 2 {
+			first := posConf[0]
+			prev := arrT[first]
+			for _, pos := range posConf[1:] {
+				arrT[pos], prev = prev, arrT[pos]
+			}
+			arrT[first] = prev
+		}
+
+		for k := 0; k < len(remI); k++ {
+			if remI[k] == arrT[k] {
+				swapK := 0
+				if k == 0 {
+					swapK = 1
+				}
+				arrT[k], arrT[swapK] = arrT[swapK], arrT[k]
+			}
+		}
+
+		for k := 0; k < len(remI); k++ {
+			b[remI[k]] = arrT[k]
+		}
+	}
+
 	matched := 0
-	for i := 1; i <= n; i++ {
-		if !vis[a[i]] {
-			vis[a[i]] = true
-			ans[i] = a[i]
-			matched++
-		}
-	}
-	st := make([]int, 0, n)
-	for i := n; i >= 1; i-- {
-		if !vis[i] {
-			st = append(st, i)
-		}
-	}
-	for i := 1; i <= n; i++ {
-		if ans[i] == 0 {
-			last := st[len(st)-1]
-			st = st[:len(st)-1]
-			ans[i] = last
-		}
-	}
-	las := 0
-	for i := 1; i <= n; i++ {
-		if ans[i] == i {
-			if las == 0 {
-				las = i
-			} else {
-				ans[i], ans[las] = ans[las], ans[i]
-			}
-		}
-	}
-	if las != 0 {
-		for i := 1; i <= n; i++ {
-			if a[i] == a[las] {
-				ans[i], ans[las] = ans[las], ans[i]
-				break
-			}
-		}
-	}
 	res := make([]int, n)
 	for i := 1; i <= n; i++ {
-		res[i-1] = ans[i]
+		if b[i] == a[i] {
+			matched++
+		}
+		res[i-1] = b[i]
 	}
 	return matched, res
 }
