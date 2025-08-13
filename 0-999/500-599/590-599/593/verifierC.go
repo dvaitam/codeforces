@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strconv"
@@ -164,17 +165,21 @@ func main() {
 		}
 		outReader := bufio.NewReader(bytes.NewReader(out))
 		fLine, err := outReader.ReadString('\n')
-		if err != nil {
+		if err != nil && err != io.EOF {
 			fmt.Printf("missing output for test %d\n", idx+1)
 			os.Exit(1)
 		}
 		gLine, err := outReader.ReadString('\n')
-		if err != nil {
+		if err != nil && err != io.EOF {
 			fmt.Printf("missing output for test %d\n", idx+1)
 			os.Exit(1)
 		}
 		fLine = strings.TrimSpace(fLine)
 		gLine = strings.TrimSpace(gLine)
+		if fLine == "" || gLine == "" {
+			fmt.Printf("missing output for test %d\n", idx+1)
+			os.Exit(1)
+		}
 		fExpr, err := parseExpr(fLine)
 		if err != nil {
 			fmt.Printf("invalid function f in test %d: %v\n", idx+1, err)
