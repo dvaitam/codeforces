@@ -1,68 +1,39 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
+	"bufio"
+	"fmt"
+	"os"
 )
 
-// node stores a value for monotonic stack processing
-type node struct {
-   val  int64 // the charisma value
-   idx  int   // the earliest index this value applies to
-   best int64 // dp value prior to this segment
+func max(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func main() {
-   reader := bufio.NewReader(os.Stdin)
-   writer := bufio.NewWriter(os.Stdout)
-   defer writer.Flush()
+	in := bufio.NewReader(os.Stdin)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
 
-   var n int
-   fmt.Fscan(reader, &n)
-   a := make([]int64, n+1)
-   for i := 1; i <= n; i++ {
-       fmt.Fscan(reader, &a[i])
-   }
+	var n int
+	fmt.Fscan(in, &n)
 
-   dp := make([]int64, n+1)
-   stMax := make([]node, 0, n)
-   stMin := make([]node, 0, n)
-
-   for i := 1; i <= n; i++ {
-       x := a[i]
-       // start with no new group: extend previous grouping
-       dpi := dp[i-1]
-
-       // process max-stack: increasing stack for maxima
-       pre := i
-       for len(stMax) > 0 && stMax[len(stMax)-1].val <= x {
-           top := stMax[len(stMax)-1]
-           stMax = stMax[:len(stMax)-1]
-           // consider segment ending here with this max
-           if top.best + x - top.val > dpi {
-               dpi = top.best + x - top.val
-           }
-           pre = top.idx
-       }
-       // push new candidate for max
-       stMax = append(stMax, node{val: x, idx: pre, best: dp[pre-1]})
-
-       // process min-stack: decreasing stack for minima
-       pre2 := i
-       for len(stMin) > 0 && stMin[len(stMin)-1].val >= x {
-           top := stMin[len(stMin)-1]
-           stMin = stMin[:len(stMin)-1]
-           if top.best + top.val - x > dpi {
-               dpi = top.best + top.val - x
-           }
-           pre2 = top.idx
-       }
-       // push new candidate for min
-       stMin = append(stMin, node{val: x, idx: pre2, best: dp[pre2-1]})
-
-       dp[i] = dpi
-   }
-
-   fmt.Fprint(writer, dp[n])
+	var ans, u, v int64
+	const negInf int64 = -1e18
+	u, v = negInf, negInf
+	for i := 0; i < n; i++ {
+		var x int64
+		fmt.Fscan(in, &x)
+		if ans+x > u {
+			u = ans + x
+		}
+		if ans-x > v {
+			v = ans - x
+		}
+		ans = max(u-x, v+x)
+	}
+	fmt.Fprint(out, ans)
 }
