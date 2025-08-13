@@ -14,43 +14,27 @@ type test struct {
 	out string
 }
 
-type node struct {
-	val  int64
-	idx  int
-	best int64
+func max(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func solve(a []int64) int64 {
-	n := len(a)
-	dp := make([]int64, n+1)
-	stMax := make([]node, 0, n)
-	stMin := make([]node, 0, n)
-	for i := 1; i <= n; i++ {
-		x := a[i-1]
-		dpi := dp[i-1]
-		pre := i
-		for len(stMax) > 0 && stMax[len(stMax)-1].val <= x {
-			top := stMax[len(stMax)-1]
-			stMax = stMax[:len(stMax)-1]
-			if top.best+x-top.val > dpi {
-				dpi = top.best + x - top.val
-			}
-			pre = top.idx
+	var ans, u, v int64
+	const negInf int64 = -1e18
+	u, v = negInf, negInf
+	for _, x := range a {
+		if ans+x > u {
+			u = ans + x
 		}
-		stMax = append(stMax, node{val: x, idx: pre, best: dp[pre-1]})
-		pre2 := i
-		for len(stMin) > 0 && stMin[len(stMin)-1].val >= x {
-			top := stMin[len(stMin)-1]
-			stMin = stMin[:len(stMin)-1]
-			if top.best+top.val-x > dpi {
-				dpi = top.best + top.val - x
-			}
-			pre2 = top.idx
+		if ans-x > v {
+			v = ans - x
 		}
-		stMin = append(stMin, node{val: x, idx: pre2, best: dp[pre2-1]})
-		dp[i] = dpi
+		ans = max(u-x, v+x)
 	}
-	return dp[n]
+	return ans
 }
 
 func generateTests() []test {
