@@ -26,8 +26,18 @@ func getPos(m float64) float64 {
 func getExt(x0, y0 float64) (float64, float64) {
 	c := math.Hypot(x0, y0)
 	a := rrGlobal
-	b := math.Sqrt(c*c - a*a)
-	return b, math.Acos(a / c)
+	diff := c*c - a*a
+	if diff < 0 {
+		diff = 0
+	}
+	b := math.Sqrt(diff)
+	ratio := a / c
+	if ratio > 1 {
+		ratio = 1
+	} else if ratio < -1 {
+		ratio = -1
+	}
+	return b, math.Acos(ratio)
 }
 
 func check(t float64) float64 {
