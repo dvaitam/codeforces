@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -90,6 +91,67 @@ func expectedB(t testCaseB) string {
 	return solveB(bufio.NewReader(strings.NewReader(input)))
 }
 
+func isSolvableB(t testCaseB) bool {
+	exp := strings.TrimSpace(expectedB(t))
+	return strings.HasPrefix(exp, "YES")
+}
+
+func verifyOutputB(t testCaseB, output string) error {
+	output = strings.TrimSpace(output)
+	if output == "" {
+		return fmt.Errorf("empty output")
+	}
+	tokens := strings.Fields(output)
+	solvable := isSolvableB(t)
+	if tokens[0] == "NO" {
+		if solvable {
+			return fmt.Errorf("expected YES, got NO")
+		}
+		if len(tokens) != 1 {
+			return fmt.Errorf("unexpected tokens after NO")
+		}
+		return nil
+	}
+	if tokens[0] != "YES" {
+		return fmt.Errorf("first token should be YES or NO")
+	}
+	if !solvable {
+		return fmt.Errorf("expected NO, got YES")
+	}
+	if len(tokens) < 2 {
+		return fmt.Errorf("missing k")
+	}
+	k, err := strconv.Atoi(tokens[1])
+	if err != nil {
+		return fmt.Errorf("invalid k: %v", err)
+	}
+	if k < 0 || k > t.n {
+		return fmt.Errorf("k out of range")
+	}
+	if len(tokens) != 2+k {
+		return fmt.Errorf("expected %d operations, got %d", k, len(tokens)-2)
+	}
+	arr := append([]int(nil), t.arr...)
+	for _, opStr := range tokens[2:] {
+		op, err := strconv.Atoi(opStr)
+		if err != nil {
+			return fmt.Errorf("invalid operation index: %v", err)
+		}
+		if op < 1 || op > t.n-2 {
+			return fmt.Errorf("operation index out of range: %d", op)
+		}
+		idx := op - 1
+		x := arr[idx] ^ arr[idx+1] ^ arr[idx+2]
+		arr[idx], arr[idx+1], arr[idx+2] = x, x, x
+	}
+	for i, v := range arr {
+		if v != 0 {
+			return fmt.Errorf("array not zero at position %d", i+1)
+		}
+	}
+	return nil
+}
+
 func runBinary(bin, input string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -123,16 +185,13 @@ func main() {
 	for i := 0; i < 100; i++ {
 		tc := generateCaseB(rng)
 		input := buildInputB(tc)
-		expect := expectedB(tc)
 		out, err := runBinary(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\nOutput:%s", i+1, err, out)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out)
-		exp := strings.TrimSpace(expect)
-		if got != exp {
-			fmt.Fprintf(os.Stderr, "case %d failed:\nexpected:\n%s\ngot:\n%s\ninput:\n%s", i+1, exp, got, input)
+		if err := verifyOutputB(tc, out); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\noutput:%sinput:%s", i+1, err, out, input)
 			os.Exit(1)
 		}
 	}
