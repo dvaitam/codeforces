@@ -84,7 +84,11 @@ func genTestB() (string, int) {
 		p := rand.Intn(i)
 		edges = append(edges, pair{i, p})
 	}
-	extra := rand.Intn(n)
+	// at this point graph has n-1 edges (tree). the maximum number of
+	// additional edges we can add without duplicates is the number of
+	// edges in a complete graph minus the existing n-1 edges
+	maxExtra := n*(n-1)/2 - (n - 1)
+	extra := rand.Intn(maxExtra + 1)
 	edgeSet := map[pair]bool{}
 	for _, e := range edges {
 		if e.a > e.b {
