@@ -61,10 +61,10 @@ func cmp(i, j int) bool {
 }
 
 func cmp3(x, y, t int) bool {
-	// return true if line x gives a value less than or equal to line y at time t
-	// this mirrors the behaviour of the original solution and ensures that when
-	// two lines produce the same value we advance to the later one in the hull.
-	return a[x]+b[x]*int64(t) <= a[y]+b[y]*int64(t)
+        // return true if line x gives a value strictly less than line y at time t.
+        // When two lines yield the same value we keep the earlier index as the
+        // answer, matching the problem's tie-breaking requirement.
+        return a[x]+b[x]*int64(t) < a[y]+b[y]*int64(t)
 }
 
 func cmps(i, j, k int) bool {
