@@ -51,20 +51,27 @@ func run(bin, input string) (string, error) {
 
 func check(tc testCase, out string) error {
 	lines := strings.Split(strings.TrimSpace(out), "\n")
-	if len(lines) != 51 {
-		return fmt.Errorf("expected 51 lines, got %d", len(lines))
+	if len(lines) == 0 {
+		return fmt.Errorf("empty output")
 	}
-	if strings.TrimSpace(lines[0]) != "50 50" {
-		return fmt.Errorf("first line should be '50 50', got '%s'", lines[0])
+	var n, m int
+	if _, err := fmt.Sscanf(strings.TrimSpace(lines[0]), "%d %d", &n, &m); err != nil {
+		return fmt.Errorf("failed to parse dimensions: %v", err)
 	}
-	grid := make([][]byte, 50)
-	for i := 0; i < 50; i++ {
+	if n < 1 || n > 50 || m < 1 || m > 50 {
+		return fmt.Errorf("invalid dimensions %d %d", n, m)
+	}
+	if len(lines) != n+1 {
+		return fmt.Errorf("expected %d lines, got %d", n+1, len(lines))
+	}
+	grid := make([][]byte, n)
+	for i := 0; i < n; i++ {
 		line := strings.TrimSpace(lines[i+1])
-		if len(line) != 50 {
-			return fmt.Errorf("line %d length %d, expected 50", i+1, len(line))
+		if len(line) != m {
+			return fmt.Errorf("line %d length %d, expected %d", i+1, len(line), m)
 		}
 		row := []byte(line)
-		for j := 0; j < 50; j++ {
+		for j := 0; j < m; j++ {
 			ch := row[j]
 			if ch < 'A' || ch > 'D' {
 				return fmt.Errorf("invalid char %c at (%d,%d)", ch, i, j)
@@ -73,14 +80,14 @@ func check(tc testCase, out string) error {
 		grid[i] = row
 	}
 	dirs := [][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}
-	visited := make([][]bool, 50)
-	for i := 0; i < 50; i++ {
-		visited[i] = make([]bool, 50)
+	visited := make([][]bool, n)
+	for i := 0; i < n; i++ {
+		visited[i] = make([]bool, m)
 	}
 	count := map[byte]int{'A': 0, 'B': 0, 'C': 0, 'D': 0}
-	queue := make([][2]int, 0, 2500)
-	for i := 0; i < 50; i++ {
-		for j := 0; j < 50; j++ {
+	queue := make([][2]int, 0, n*m)
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
 			if visited[i][j] {
 				continue
 			}
@@ -94,7 +101,7 @@ func check(tc testCase, out string) error {
 				queue = queue[1:]
 				for _, d := range dirs {
 					ni, nj := p[0]+d[0], p[1]+d[1]
-					if ni >= 0 && ni < 50 && nj >= 0 && nj < 50 && !visited[ni][nj] && grid[ni][nj] == ch {
+					if ni >= 0 && ni < n && nj >= 0 && nj < m && !visited[ni][nj] && grid[ni][nj] == ch {
 						visited[ni][nj] = true
 						queue = append(queue, [2]int{ni, nj})
 					}
