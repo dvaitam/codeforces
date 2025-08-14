@@ -16,7 +16,7 @@ func main() {
 	for ; T > 0; T-- {
 		var n int64
 		fmt.Fscan(reader, &n)
-		ans := n*n + (n-2)*(n-2)
+		ans := n*(n+2) + 2
 		fmt.Fprintln(writer, ans)
 	}
 }
