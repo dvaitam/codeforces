@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -27,7 +28,12 @@ func compileRef(src string) (string, error) {
 }
 
 func runBinary(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -64,7 +70,9 @@ func main() {
 	}
 	candidate, _ := filepath.Abs(os.Args[1])
 	rand.Seed(time.Now().UnixNano())
-	refBin, err := compileRef("243D.go")
+	_, file, _, _ := runtime.Caller(0)
+	refSrc := filepath.Join(filepath.Dir(file), "243D.go")
+	refBin, err := compileRef(refSrc)
 	if err != nil {
 		fmt.Println("failed to compile reference:", err)
 		os.Exit(1)
