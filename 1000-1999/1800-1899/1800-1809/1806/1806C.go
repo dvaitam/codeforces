@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 )
 
 func absInt64(x int64) int64 {
@@ -27,39 +28,40 @@ func main() {
 		for i := 0; i < 2*n; i++ {
 			fmt.Fscan(in, &p[i])
 		}
+		sort.Slice(p, func(i, j int) bool { return p[i] < p[j] })
 		if n == 1 {
 			ans := absInt64(p[0] - p[1])
 			fmt.Fprintln(out, ans)
 			continue
 		}
+		const inf int64 = 1 << 60
+		ans := inf
 		if n == 2 {
-			var sum0, sum2, sumMinus int64
-			bestDelta := int64(1 << 62)
+			var tmp int64
 			for i := 0; i < 4; i++ {
-				x := p[i]
-				sum0 += absInt64(x)
-				sum2 += absInt64(x - 2)
-				sumMinus += absInt64(x + 1)
-				delta := absInt64(x-2) - absInt64(x+1)
-				if delta < bestDelta {
-					bestDelta = delta
-				}
+				tmp += absInt64(p[i] - 2)
 			}
-			cand3 := sumMinus + bestDelta
-			ans := sum0
-			if sum2 < ans {
-				ans = sum2
+			if tmp < ans {
+				ans = tmp
 			}
-			if cand3 < ans {
-				ans = cand3
-			}
-			fmt.Fprintln(out, ans)
-			continue
 		}
 		var sum int64
 		for _, v := range p {
 			sum += absInt64(v)
 		}
-		fmt.Fprintln(out, sum)
+		if sum < ans {
+			ans = sum
+		}
+		if n%2 == 0 {
+			var tmp int64
+			for i := 0; i < 2*n-1; i++ {
+				tmp += absInt64(p[i] + 1)
+			}
+			tmp += absInt64(int64(n) - p[2*n-1])
+			if tmp < ans {
+				ans = tmp
+			}
+		}
+		fmt.Fprintln(out, ans)
 	}
 }
