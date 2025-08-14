@@ -75,11 +75,21 @@ func solveCase(nv int, edges [][2]int) int64 {
 func genCase(rng *rand.Rand) (string, string) {
 	n := rng.Intn(6) + 2
 	m := n - 1 + rng.Intn(n) // up to around 2n-1
+	maxEdges := n * (n - 1) / 2
+	if m > maxEdges {
+		m = maxEdges
+	}
 	edges := make([][2]int, 0, m)
+	seen := make(map[[2]int]bool)
 	// build tree first
 	for i := 1; i < n; i++ {
 		p := rng.Intn(i)
-		edges = append(edges, [2]int{p, i})
+		u, v := p, i
+		if u > v {
+			u, v = v, u
+		}
+		edges = append(edges, [2]int{u, v})
+		seen[[2]int{u, v}] = true
 	}
 	for len(edges) < m {
 		u := rng.Intn(n)
@@ -87,8 +97,14 @@ func genCase(rng *rand.Rand) (string, string) {
 		if u == v {
 			continue
 		}
-		// avoid duplicates simple
+		if u > v {
+			u, v = v, u
+		}
+		if seen[[2]int{u, v}] {
+			continue
+		}
 		edges = append(edges, [2]int{u, v})
+		seen[[2]int{u, v}] = true
 	}
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "1\n%d %d\n", n, len(edges))
