@@ -28,33 +28,40 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+// get returns the minimum number of changes required to make the
+// four characters form two equal pairs. Only the first and third
+// characters (originally from string "a") can be changed.
 func get(a, b, c, d byte) int {
-	var cnt [256]int
-	cnt[a]++
-	cnt[b]++
-	cnt[c]++
-	cnt[d]++
-	freqs := make([]int, 0, 4)
-	for _, ch := range []byte{a, b, c, d} {
-		if f := cnt[ch]; f > 0 {
-			freqs = append(freqs, f)
-			cnt[ch] = 0
-		}
-	}
-	switch len(freqs) {
-	case 1:
-		return 0
-	case 2:
-		if freqs[0] == 2 && freqs[1] == 2 {
+	// If the characters from string "b" are the same, we only need to
+	// ensure the characters from string "a" match each other.
+	if b == d {
+		if a == c {
 			return 0
 		}
 		return 1
-	case 3:
-		return 1
-	case 4:
-		return 2
 	}
-	return 0
+	// Otherwise the characters of string "b" are different, so the final
+	// configuration must contain both b and d once in each string. We can
+	// choose which position gets which letter and minimise the number of
+	// modifications in "a".
+	cost1 := 0
+	if a != b {
+		cost1++
+	}
+	if c != d {
+		cost1++
+	}
+	cost2 := 0
+	if a != d {
+		cost2++
+	}
+	if c != b {
+		cost2++
+	}
+	if cost1 < cost2 {
+		return cost1
+	}
+	return cost2
 }
 
 func solve(s0, s1 string) int {
