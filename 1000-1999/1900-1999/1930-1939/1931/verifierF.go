@@ -63,16 +63,36 @@ func genCase(r *rand.Rand) string {
 		n := r.Intn(5) + 1
 		k := r.Intn(n) + 1
 		sb.WriteString(fmt.Sprintf("%d %d\n", n, k))
+
 		base := randPerm(r, n)
-		for i := 0; i < n; i++ {
-			if i > 0 {
-				sb.WriteByte(' ')
-			}
-			sb.WriteString(fmt.Sprintf("%d", base[i]))
+		authors := randPerm(r, n)[:k]
+
+		// randomly decide to corrupt one screenshot to produce a "NO" case
+		bad := -1
+		if k > 0 && n > 1 && r.Intn(2) == 0 {
+			bad = r.Intn(k)
 		}
-		sb.WriteByte('\n')
-		for s := 1; s < k; s++ {
-			arr := randPerm(r, n)
+
+		for idx, a := range authors {
+			start := 0
+			for i, v := range base {
+				if v == a {
+					start = i
+					break
+				}
+			}
+			arr := make([]int, n)
+			for i := 0; i < n; i++ {
+				arr[i] = base[(start+i)%n]
+			}
+			if idx == bad {
+				i := 1 + r.Intn(n-1)
+				j := 1 + r.Intn(n-1)
+				for j == i && n > 2 {
+					j = 1 + r.Intn(n-1)
+				}
+				arr[i], arr[j] = arr[j], arr[i]
+			}
 			for i := 0; i < n; i++ {
 				if i > 0 {
 					sb.WriteByte(' ')
