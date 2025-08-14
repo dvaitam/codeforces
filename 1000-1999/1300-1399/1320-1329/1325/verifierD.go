@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -55,16 +56,35 @@ func verifyCase(bin string, u, v int64) error {
 	}
 	fields := strings.Fields(out)
 	expected := solveD(u, v)
-	if int64(len(fields)) != int64(len(expected)) {
+	if len(fields) != len(expected) {
 		return fmt.Errorf("expected %d numbers got %d", len(expected), len(fields))
 	}
+
+	got := make([]int64, len(fields))
 	for i, f := range fields {
-		got, err := strconv.ParseInt(f, 10, 64)
+		v, err := strconv.ParseInt(f, 10, 64)
 		if err != nil {
 			return fmt.Errorf("invalid number %q", f)
 		}
-		if got != expected[i] {
-			return fmt.Errorf("expected %v got %v", expected, fields)
+		got[i] = v
+	}
+
+	if len(got) == 1 {
+		if got[0] != expected[0] {
+			return fmt.Errorf("expected %v got %v", expected, got)
+		}
+		return nil
+	}
+
+	if got[0] != expected[0] {
+		return fmt.Errorf("expected %v got %v", expected, got)
+	}
+
+	sort.Slice(got[1:], func(i, j int) bool { return got[i+1] < got[j+1] })
+	sort.Slice(expected[1:], func(i, j int) bool { return expected[i+1] < expected[j+1] })
+	for i := 1; i < len(expected); i++ {
+		if got[i] != expected[i] {
+			return fmt.Errorf("expected %v got %v", expected, got)
 		}
 	}
 	return nil
