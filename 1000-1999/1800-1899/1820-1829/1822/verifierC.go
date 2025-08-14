@@ -27,7 +27,7 @@ func runExe(path, input string) (string, error) {
 }
 
 func solveCase(n int64) string {
-	ans := n*n + (n-2)*(n-2)
+	ans := n*(n+2) + 2
 	return fmt.Sprintf("%d", ans)
 }
 
