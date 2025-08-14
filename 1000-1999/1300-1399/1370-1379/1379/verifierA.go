@@ -70,7 +70,7 @@ func runCase(bin, ref string, c Case) error {
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(got) != expect {
+	if !strings.EqualFold(strings.TrimSpace(got), expect) {
 		return fmt.Errorf("expected %q got %q", expect, got)
 	}
 	return nil
