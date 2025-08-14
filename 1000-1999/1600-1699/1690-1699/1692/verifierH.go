@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -35,37 +36,77 @@ func genTest() []byte {
 	return []byte(sb.String())
 }
 
+func check(input []byte, output string) error {
+	in := bufio.NewReader(bytes.NewReader(input))
+	out := bufio.NewReader(strings.NewReader(output))
+	var t int
+	if _, err := fmt.Fscan(in, &t); err != nil {
+		return fmt.Errorf("failed to read t: %v", err)
+	}
+	for tc := 1; tc <= t; tc++ {
+		var n int
+		if _, err := fmt.Fscan(in, &n); err != nil {
+			return fmt.Errorf("failed to read n in test %d: %v", tc, err)
+		}
+		arr := make([]int, n)
+		for i := 0; i < n; i++ {
+			fmt.Fscan(in, &arr[i])
+		}
+		// compute maximum possible gain
+		maxDiff := -1 << 60
+		for l := 0; l < n; l++ {
+			count := make(map[int]int)
+			for r := l; r < n; r++ {
+				count[arr[r]]++
+				for _, c := range count {
+					diff := 2*c - (r - l + 1)
+					if diff > maxDiff {
+						maxDiff = diff
+					}
+				}
+			}
+		}
+		var a, l, r int
+		if _, err := fmt.Fscan(out, &a, &l, &r); err != nil {
+			return fmt.Errorf("failed to read output for test %d: %v", tc, err)
+		}
+		if l < 1 || r < l || r > n {
+			return fmt.Errorf("invalid segment on test %d", tc)
+		}
+		cnt := 0
+		for i := l - 1; i < r; i++ {
+			if arr[i] == a {
+				cnt++
+			}
+		}
+		candDiff := 2*cnt - (r - l + 1)
+		if candDiff != maxDiff {
+			return fmt.Errorf("expected diff %d, got %d", maxDiff, candDiff)
+		}
+	}
+	// ensure no extra data? ignore
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierH.go <binary>")
 		os.Exit(1)
 	}
 	cand := os.Args[1]
-	ref := "./refH.bin"
-	if err := exec.Command("go", "build", "-o", ref, "1692H.go").Run(); err != nil {
-		fmt.Println("failed to build reference solution:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 	rand.Seed(time.Now().UnixNano())
 	for i := 0; i < 100; i++ {
 		input := genTest()
-		want, err := run(ref, input)
-		if err != nil {
-			fmt.Println("reference failed:", err)
-			os.Exit(1)
-		}
 		got, err := run(cand, input)
 		if err != nil {
 			fmt.Printf("candidate runtime error on test %d: %v\n", i+1, err)
 			fmt.Println("input:\n", string(input))
 			os.Exit(1)
 		}
-		if strings.TrimSpace(want) != strings.TrimSpace(got) {
-			fmt.Printf("wrong answer on test %d\n", i+1)
+		if err := check(input, got); err != nil {
+			fmt.Printf("wrong answer on test %d: %v\n", i+1, err)
 			fmt.Println("input:\n", string(input))
-			fmt.Println("expected:\n", want)
-			fmt.Println("got:\n", got)
+			fmt.Println("output:\n", got)
 			os.Exit(1)
 		}
 	}
