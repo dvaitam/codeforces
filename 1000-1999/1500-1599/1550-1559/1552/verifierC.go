@@ -85,7 +85,16 @@ func main() {
 		sb.WriteString("1\n")
 		sb.WriteString(fmt.Sprintf("%d %d\n", n, k))
 		pos := 2
+		used := make(map[int]bool)
 		for i := 0; i < k; i++ {
+			x, _ := strconv.Atoi(fields[pos])
+			y, _ := strconv.Atoi(fields[pos+1])
+			if x < 1 || x > 2*n || y < 1 || y > 2*n || used[x] || used[y] {
+				fmt.Printf("bad test %d\n", idx)
+				os.Exit(1)
+			}
+			used[x] = true
+			used[y] = true
 			sb.WriteString(fields[pos])
 			sb.WriteByte(' ')
 			sb.WriteString(fields[pos+1])
