@@ -6,17 +6,32 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
 func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+	absBin, err := filepath.Abs(bin)
+	if err != nil {
+		return "", err
 	}
+	dir := filepath.Dir(absBin)
+	inFile := filepath.Join(dir, "input.txt")
+	outFile := filepath.Join(dir, "output.txt")
+	if err := os.WriteFile(inFile, []byte(input), 0o644); err != nil {
+		return "", err
+	}
+	defer os.Remove(inFile)
+	defer os.Remove(outFile)
+
+	var cmd *exec.Cmd
+	if strings.HasSuffix(absBin, ".go") {
+		cmd = exec.Command("go", "run", absBin)
+	} else {
+		cmd = exec.Command(absBin)
+	}
+	cmd.Dir = dir
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -24,7 +39,13 @@ func run(bin, input string) (string, error) {
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	return strings.TrimSpace(out.String()), nil
+	res := strings.TrimSpace(out.String())
+	if res == "" {
+		if data, err := os.ReadFile(outFile); err == nil {
+			res = strings.TrimSpace(string(data))
+		}
+	}
+	return res, nil
 }
 
 func bfs(n, m int, starts [][2]int) (int, int) {
