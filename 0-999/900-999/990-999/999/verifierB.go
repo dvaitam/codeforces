@@ -11,7 +11,7 @@ import (
 )
 
 func buildRef() (string, error) {
-	ref := "refB.bin"
+	ref := "./refB.bin"
 	cmd := exec.Command("go", "build", "-o", ref, "999B.go")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
