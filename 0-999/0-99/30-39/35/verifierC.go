@@ -48,57 +48,72 @@ func run(bin, input string) (string, error) {
 	return res, nil
 }
 
-func bfs(n, m int, starts [][2]int) (int, int) {
+func bfsDistances(n, m int, starts [][2]int) ([]int, int) {
 	total := n * m
-	visited := make([]bool, total)
+	dist := make([]int, total)
+	for i := range dist {
+		dist[i] = -1
+	}
 	q := make([]int, 0, total)
-	var last int
 	for _, st := range starts {
 		x, y := st[0]-1, st[1]-1
 		idx := x*m + y
-		if !visited[idx] {
-			visited[idx] = true
+		if dist[idx] == -1 {
+			dist[idx] = 0
 			q = append(q, idx)
 		}
 	}
 	for head := 0; head < len(q); head++ {
 		idx := q[head]
-		last = idx
 		r := idx / m
 		c := idx % m
+		d := dist[idx] + 1
 		if r > 0 {
 			ni := (r-1)*m + c
-			if !visited[ni] {
-				visited[ni] = true
+			if dist[ni] == -1 {
+				dist[ni] = d
 				q = append(q, ni)
 			}
 		}
 		if r+1 < n {
 			ni := (r+1)*m + c
-			if !visited[ni] {
-				visited[ni] = true
+			if dist[ni] == -1 {
+				dist[ni] = d
 				q = append(q, ni)
 			}
 		}
 		if c > 0 {
 			ni := r*m + c - 1
-			if !visited[ni] {
-				visited[ni] = true
+			if dist[ni] == -1 {
+				dist[ni] = d
 				q = append(q, ni)
 			}
 		}
 		if c+1 < m {
 			ni := r*m + c + 1
-			if !visited[ni] {
-				visited[ni] = true
+			if dist[ni] == -1 {
+				dist[ni] = d
 				q = append(q, ni)
 			}
 		}
 	}
-	return last/m + 1, last%m + 1
+	maxDist := 0
+	for _, v := range dist {
+		if v > maxDist {
+			maxDist = v
+		}
+	}
+	return dist, maxDist
 }
 
-func generateCase(rng *rand.Rand) (string, string) {
+type testCase struct {
+	input   string
+	n, m    int
+	dist    []int
+	maxDist int
+}
+
+func generateCase(rng *rand.Rand) testCase {
 	n := rng.Intn(4) + 1
 	m := rng.Intn(4) + 1
 	k := rng.Intn(min(3, n*m)) + 1
@@ -125,10 +140,8 @@ func generateCase(rng *rand.Rand) (string, string) {
 		fmt.Fprintf(&sb, "%d %d", st[0], st[1])
 	}
 	sb.WriteByte('\n')
-	input := sb.String()
-	x, y := bfs(n, m, starts)
-	expected := fmt.Sprintf("%d %d", x, y)
-	return input, expected
+	dist, maxDist := bfsDistances(n, m, starts)
+	return testCase{input: sb.String(), n: n, m: m, dist: dist, maxDist: maxDist}
 }
 
 func min(a, b int) int {
@@ -145,20 +158,46 @@ func main() {
 	}
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	var cases [][2]string
-	cases = append(cases, [2]string{"1 1\n1\n1 1\n", "1 1"})
+	var cases []testCase
+	// simple deterministic case
+	cases = append(cases, testCase{
+		input:   "1 1\n1\n1 1\n",
+		n:       1,
+		m:       1,
+		dist:    []int{0},
+		maxDist: 0,
+	})
 	for i := 0; i < 100; i++ {
-		in, exp := generateCase(rng)
-		cases = append(cases, [2]string{in, exp})
+		cases = append(cases, generateCase(rng))
 	}
 	for i, tc := range cases {
-		out, err := run(bin, tc[0])
+		out, err := run(bin, tc.input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, tc[0])
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, tc.input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != tc[1] {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, tc[1], out, tc[0])
+		var x, y int
+		if _, err := fmt.Sscan(out, &x, &y); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: bad output format: %v\noutput: %q\ninput:\n%s", i+1, err, out, tc.input)
+			os.Exit(1)
+		}
+		if x < 1 || x > tc.n || y < 1 || y > tc.m {
+			fmt.Fprintf(os.Stderr, "case %d failed: coordinates out of range: %d %d\ninput:\n%s", i+1, x, y, tc.input)
+			os.Exit(1)
+		}
+		idx := (x-1)*tc.m + (y - 1)
+		if tc.dist[idx] != tc.maxDist {
+			// find one valid answer for message
+			expIdx := 0
+			for j, d := range tc.dist {
+				if d == tc.maxDist {
+					expIdx = j
+					break
+				}
+			}
+			ex := expIdx/tc.m + 1
+			ey := expIdx%tc.m + 1
+			fmt.Fprintf(os.Stderr, "case %d failed: expected distance %d (e.g., %d %d) got %d %d\ninput:\n%s", i+1, tc.maxDist, ex, ey, x, y, tc.input)
 			os.Exit(1)
 		}
 	}
