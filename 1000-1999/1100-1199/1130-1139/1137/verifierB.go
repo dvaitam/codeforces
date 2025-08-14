@@ -66,6 +66,29 @@ func genCase(r *rand.Rand) string {
 	return fmt.Sprintf("%s %s\n", s1, s2)
 }
 
+func countBits(s string) (int, int) {
+	z, o := 0, 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == '0' {
+			z++
+		} else if s[i] == '1' {
+			o++
+		}
+	}
+	return z, o
+}
+
+func countOcc(s, sub string) int {
+	cnt := 0
+	m := len(sub)
+	for i := 0; i+m <= len(s); i++ {
+		if s[i:i+m] == sub {
+			cnt++
+		}
+	}
+	return cnt
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
@@ -81,6 +104,8 @@ func main() {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input := genCase(r)
+		fields := strings.Fields(input)
+		s1, s2 := fields[0], fields[1]
 		want, err := run(oracle, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle failed on test %d: %v\ninput:\n%s", i+1, err, input)
@@ -91,7 +116,13 @@ func main() {
 			fmt.Fprintf(os.Stderr, "test %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if want != got {
+		z1, o1 := countBits(s1)
+		zg, og := countBits(got)
+		if z1 != zg || o1 != og || len(got) != len(s1) {
+			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input, want, got)
+			os.Exit(1)
+		}
+		if countOcc(got, s2) != countOcc(want, s2) {
 			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input, want, got)
 			os.Exit(1)
 		}
