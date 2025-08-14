@@ -11,8 +11,92 @@ import (
 )
 
 type op struct {
-	pos int
-	typ byte
+        pos int
+        typ byte
+}
+
+// parseInput reads a single test case input and returns the initial and final
+// queues.
+func parseInput(input string) (n int, a []int64, k int, b []int64, err error) {
+        reader := bufio.NewReader(strings.NewReader(input))
+        if _, err = fmt.Fscan(reader, &n); err != nil {
+                return
+        }
+        a = make([]int64, n)
+        for i := 0; i < n; i++ {
+                if _, err = fmt.Fscan(reader, &a[i]); err != nil {
+                        return
+                }
+        }
+        if _, err = fmt.Fscan(reader, &k); err != nil {
+                return
+        }
+        b = make([]int64, k)
+        for i := 0; i < k; i++ {
+                if _, err = fmt.Fscan(reader, &b[i]); err != nil {
+                        return
+                }
+        }
+        return
+}
+
+// checkSolution verifies that the contestant's output is a valid sequence of
+// operations producing the desired final queue.
+func checkSolution(out string, n int, a []int64, k int, b []int64) error {
+        lines := strings.Split(strings.TrimSpace(out), "\n")
+        if len(lines) == 0 || strings.TrimSpace(lines[0]) != "YES" {
+                return fmt.Errorf("expected YES got %q", out)
+        }
+        ops := lines[1:]
+        if len(ops) != n-k {
+                return fmt.Errorf("expected %d operations got %d", n-k, len(ops))
+        }
+        arr := append([]int64(nil), a...)
+        for _, line := range ops {
+                fields := strings.Fields(line)
+                if len(fields) != 2 {
+                        return fmt.Errorf("invalid operation %q", line)
+                }
+                pos, err := strconv.Atoi(fields[0])
+                if err != nil {
+                        return fmt.Errorf("invalid index in %q", line)
+                }
+                if pos < 1 || pos > len(arr) {
+                        return fmt.Errorf("index out of range in %q", line)
+                }
+                dir := fields[1]
+                switch dir {
+                case "L":
+                        if pos == 1 {
+                                return fmt.Errorf("cannot eat left from position %d", pos)
+                        }
+                        if arr[pos-1] <= arr[pos-2] {
+                                return fmt.Errorf("eater not heavier in %q", line)
+                        }
+                        arr[pos-2] += arr[pos-1]
+                        arr = append(arr[:pos-1], arr[pos:]...)
+                case "R":
+                        if pos == len(arr) {
+                                return fmt.Errorf("cannot eat right from position %d", pos)
+                        }
+                        if arr[pos-1] <= arr[pos] {
+                                return fmt.Errorf("eater not heavier in %q", line)
+                        }
+                        arr[pos-1] += arr[pos]
+                        arr = append(arr[:pos], arr[pos+1:]...)
+                default:
+                        return fmt.Errorf("unknown direction in %q", line)
+                }
+        }
+        if len(arr) != k {
+                return fmt.Errorf("expected %d monsters got %d", k, len(arr))
+        }
+        for i := 0; i < k; i++ {
+                if arr[i] != b[i] {
+                        return fmt.Errorf("final weights mismatch at %d: got %d expected %d", i, arr[i], b[i])
+                }
+        }
+        return nil
 }
 
 func expectedCase(input string) string {
@@ -143,20 +227,33 @@ func expectedCase(input string) string {
 }
 
 func runCase(exe string, input string, expected string) error {
-	cmd := exec.Command(exe)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
-	}
-	got := strings.TrimSpace(out.String())
-	exp := strings.TrimSpace(expected)
-	if got != exp {
-		return fmt.Errorf("expected %q got %q", exp, got)
-	}
-	return nil
+        cmd := exec.Command(exe)
+        cmd.Stdin = strings.NewReader(input)
+        var out bytes.Buffer
+        cmd.Stdout = &out
+        cmd.Stderr = &out
+        if err := cmd.Run(); err != nil {
+                return fmt.Errorf("runtime error: %v\n%s", err, out.String())
+        }
+        got := out.String()
+        // If our reference solver says NO, contestant must also say NO.
+        if strings.HasPrefix(strings.TrimSpace(expected), "NO") {
+                if strings.TrimSpace(got) != "NO" {
+                        return fmt.Errorf("expected NO got %q", strings.TrimSpace(got))
+                }
+                return nil
+        }
+        n, a, k, b, err := parseInput(input)
+        if err != nil {
+                return fmt.Errorf("failed to parse input: %v", err)
+        }
+        if strings.TrimSpace(got) == "NO" {
+                return fmt.Errorf("expected YES got NO")
+        }
+        if err := checkSolution(got, n, a, k, b); err != nil {
+                return err
+        }
+        return nil
 }
 
 func main() {
