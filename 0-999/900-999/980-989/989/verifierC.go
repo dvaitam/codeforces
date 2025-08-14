@@ -10,108 +10,8 @@ import (
 )
 
 type testCase struct {
-	in  string
-	out string
-}
-
-func expected(a, b, c, d int) string {
-	m := make([][]byte, 50)
-	for i := 0; i < 50; i++ {
-		m[i] = make([]byte, 50)
-		for j := 0; j < 50; j++ {
-			m[i][j] = '#'
-		}
-	}
-	f := func(x, y int, ch byte) {
-		w := 0
-		for i := 1; i <= x; i++ {
-			row := y - 1 + w%3
-			col := i
-			m[row][col] = ch
-			w++
-		}
-	}
-	ff := func(k, x, y int, ch byte) {
-		w := 0
-		for i := 1; i <= x; i++ {
-			row := y - 1 + w%3
-			col := i + k - 1
-			m[row][col] = ch
-			w++
-		}
-	}
-	for i := 1; i <= 5; i++ {
-		m[i-1][0] = 'A'
-	}
-	for i := 1; i <= 50; i++ {
-		m[0][i-1] = 'A'
-	}
-	for i := 1; i <= 40; i++ {
-		m[i-1][49] = 'A'
-	}
-	for i := 2; i <= 50; i++ {
-		m[30][i-1] = 'A'
-	}
-	for i := 31; i <= 45; i++ {
-		m[i-1][0] = 'D'
-	}
-	if a > 90 {
-		ff(3, a-90, 27, 'A')
-		a = 90
-	}
-	if b > 90 {
-		ff(14, b-90, 27, 'B')
-		b = 90
-	}
-	if c > 90 {
-		ff(25, c-90, 27, 'C')
-		c = 90
-	}
-	if a > 45 {
-		f(45, 7, 'A')
-		a -= 45
-	}
-	f(a, 3, 'A')
-	if b > 45 {
-		f(45, 11, 'B')
-		b -= 45
-	}
-	f(b, 15, 'B')
-	if c > 45 {
-		f(45, 19, 'C')
-		c -= 45
-	}
-	f(c, 23, 'C')
-	if d > 90 {
-		ff(3, d-90, 32, 'D')
-		d = 90
-	}
-	if d > 45 {
-		ff(3, 45, 36, 'D')
-		d -= 45
-	}
-	f(d, 45, 'D')
-	for i := 1; i <= 31; i++ {
-		for j := 1; j <= 50; j++ {
-			if m[i-1][j-1] == '#' {
-				m[i-1][j-1] = 'D'
-			}
-		}
-	}
-	for i := 31; i <= 50; i++ {
-		for j := 1; j <= 50; j++ {
-			if m[i-1][j-1] == '#' {
-				m[i-1][j-1] = 'A'
-			}
-		}
-	}
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "50 50\n")
-	for i := 0; i < 50; i++ {
-		sb.Write(m[i])
-		sb.WriteByte('\n')
-	}
-	return strings.TrimSpace(sb.String())
+	in         string
+	a, b, c, d int
 }
 
 func generate() []testCase {
@@ -124,8 +24,11 @@ func generate() []testCase {
 		c := rand.Intn(100) + 1
 		d := rand.Intn(100) + 1
 		cases[i] = testCase{
-			in:  fmt.Sprintf("%d %d %d %d\n", a, b, c, d),
-			out: expected(a, b, c, d),
+			in: fmt.Sprintf("%d %d %d %d\n", a, b, c, d),
+			a:  a,
+			b:  b,
+			c:  c,
+			d:  d,
 		}
 	}
 	return cases
@@ -146,6 +49,65 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), err
 }
 
+func check(tc testCase, out string) error {
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 51 {
+		return fmt.Errorf("expected 51 lines, got %d", len(lines))
+	}
+	if strings.TrimSpace(lines[0]) != "50 50" {
+		return fmt.Errorf("first line should be '50 50', got '%s'", lines[0])
+	}
+	grid := make([][]byte, 50)
+	for i := 0; i < 50; i++ {
+		line := strings.TrimSpace(lines[i+1])
+		if len(line) != 50 {
+			return fmt.Errorf("line %d length %d, expected 50", i+1, len(line))
+		}
+		row := []byte(line)
+		for j := 0; j < 50; j++ {
+			ch := row[j]
+			if ch < 'A' || ch > 'D' {
+				return fmt.Errorf("invalid char %c at (%d,%d)", ch, i, j)
+			}
+		}
+		grid[i] = row
+	}
+	dirs := [][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}
+	visited := make([][]bool, 50)
+	for i := 0; i < 50; i++ {
+		visited[i] = make([]bool, 50)
+	}
+	count := map[byte]int{'A': 0, 'B': 0, 'C': 0, 'D': 0}
+	queue := make([][2]int, 0, 2500)
+	for i := 0; i < 50; i++ {
+		for j := 0; j < 50; j++ {
+			if visited[i][j] {
+				continue
+			}
+			ch := grid[i][j]
+			count[ch]++
+			queue = queue[:0]
+			queue = append(queue, [2]int{i, j})
+			visited[i][j] = true
+			for len(queue) > 0 {
+				p := queue[0]
+				queue = queue[1:]
+				for _, d := range dirs {
+					ni, nj := p[0]+d[0], p[1]+d[1]
+					if ni >= 0 && ni < 50 && nj >= 0 && nj < 50 && !visited[ni][nj] && grid[ni][nj] == ch {
+						visited[ni][nj] = true
+						queue = append(queue, [2]int{ni, nj})
+					}
+				}
+			}
+		}
+	}
+	if count['A'] != tc.a || count['B'] != tc.b || count['C'] != tc.c || count['D'] != tc.d {
+		return fmt.Errorf("component counts mismatch: got A:%d B:%d C:%d D:%d", count['A'], count['B'], count['C'], count['D'])
+	}
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
@@ -154,13 +116,13 @@ func main() {
 	bin := os.Args[1]
 	cases := generate()
 	for idx, tc := range cases {
-		got, err := run(bin, tc.in)
+		out, err := run(bin, tc.in)
 		if err != nil {
 			fmt.Printf("case %d: runtime error: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != tc.out {
-			fmt.Printf("case %d failed\ninput:\n%s\nexpected:\n%s\n\ngot:\n%s\n", idx+1, tc.in, tc.out, got)
+		if err := check(tc, out); err != nil {
+			fmt.Printf("case %d failed\ninput:\n%s\nerror: %v\noutput:\n%s\n", idx+1, tc.in, err, out)
 			os.Exit(1)
 		}
 	}
