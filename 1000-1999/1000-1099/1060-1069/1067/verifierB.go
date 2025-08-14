@@ -83,7 +83,7 @@ func main() {
 			fmt.Printf("candidate runtime error on test %d: %v\n", caseNum+1, err)
 			os.Exit(1)
 		}
-		if want != got {
+		if !strings.EqualFold(want, got) {
 			fmt.Printf("test %d failed\nexpected: %s\ngot: %s\n", caseNum+1, want, got)
 			os.Exit(1)
 		}
