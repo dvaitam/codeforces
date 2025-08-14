@@ -74,16 +74,15 @@ func genCase(r *rand.Rand) string {
 		}
 
 		for idx, a := range authors {
-			start := 0
-			for i, v := range base {
-				if v == a {
-					start = i
-					break
-				}
-			}
 			arr := make([]int, n)
-			for i := 0; i < n; i++ {
-				arr[i] = base[(start+i)%n]
+			arr[0] = a
+			pos := 1
+			for _, v := range base {
+				if v == a {
+					continue
+				}
+				arr[pos] = v
+				pos++
 			}
 			if idx == bad {
 				i := 1 + r.Intn(n-1)
