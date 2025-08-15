@@ -82,23 +82,47 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for t := 0; t < 100; t++ {
 		n := rng.Intn(4) + 2
-		edges := make([]Edge, 0)
+		edges := make([]Edge, 0, n)
+		used := make(map[[2]int]struct{})
+		// build a random tree
 		for i := 2; i <= n; i++ {
 			p := rng.Intn(i-1) + 1
 			edges = append(edges, Edge{p, i})
-		}
-		if rng.Intn(2) == 0 {
-			u := rng.Intn(n) + 1
-			v := rng.Intn(n) + 1
-			for u == v {
-				v = rng.Intn(n) + 1
+			a, b := p, i
+			if a > b {
+				a, b = b, a
 			}
-			edges = append(edges, Edge{u, v})
+			used[[2]int{a, b}] = struct{}{}
+		}
+		// optionally add one extra edge that doesn't duplicate existing ones
+		if n > 2 && rng.Intn(2) == 0 {
+			for {
+				u := rng.Intn(n) + 1
+				v := rng.Intn(n) + 1
+				if u == v {
+					continue
+				}
+				a, b := u, v
+				if a > b {
+					a, b = b, a
+				}
+				if _, ok := used[[2]int{a, b}]; ok {
+					continue
+				}
+				edges = append(edges, Edge{u, v})
+				used[[2]int{a, b}] = struct{}{}
+				break
+			}
 		}
 		m := len(edges)
+		// assign odd weights so parity matches degree and sums stay within bounds
 		weights := make([]int, m)
 		for i := 0; i < m; i++ {
-			weights[i] = rng.Intn(21) - 10
+			if rng.Intn(2) == 0 {
+				weights[i] = 1
+			} else {
+				weights[i] = -1
+			}
 		}
 		c := make([]int, n)
 		for i := 0; i < m; i++ {
