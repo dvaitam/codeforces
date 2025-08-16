@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -16,7 +17,11 @@ func buildOracle() (string, error) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle: %v\n%s", err, out)
 	}
-	return oracle, nil
+	abs, err := filepath.Abs(oracle)
+	if err != nil {
+		return "", fmt.Errorf("abs path: %v", err)
+	}
+	return abs, nil
 }
 
 func run(bin, input string) (string, error) {
