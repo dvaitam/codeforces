@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -117,22 +118,37 @@ func main() {
 			sb.WriteString(fmt.Sprintf("%d", arr[i]))
 		}
 		sb.WriteByte('\n')
-		k, colors := solveD(arr)
-		expect := fmt.Sprintf("%d\n", k)
-		for i := 0; i < n; i++ {
-			if i > 0 {
-				expect += " "
-			}
-			expect += fmt.Sprintf("%d", colors[i])
-		}
+		k, _ := solveD(arr)
 		out, err := run(bin, sb.String())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "test %d failed: %v\ninput:\n%s", t, err, sb.String())
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != strings.TrimSpace(expect) {
-			fmt.Fprintf(os.Stderr, "test %d failed: expected\n%s\ngot\n%s\ninput:\n%s", t, expect, out, sb.String())
+		nums := strings.Fields(out)
+		if len(nums) != n+1 {
+			fmt.Fprintf(os.Stderr, "test %d failed: expected %d numbers, got %d\ninput:\n%s", t, n+1, len(nums), sb.String())
 			os.Exit(1)
+		}
+		kOut, err := strconv.Atoi(nums[0])
+		if err != nil || kOut != k {
+			fmt.Fprintf(os.Stderr, "test %d failed: expected k=%d, got %s\ninput:\n%s", t, k, nums[0], sb.String())
+			os.Exit(1)
+		}
+		colors := make([]int, n)
+		for i := 0; i < n; i++ {
+			val, err := strconv.Atoi(nums[i+1])
+			if err != nil || val < 1 || val > kOut {
+				fmt.Fprintf(os.Stderr, "test %d failed: invalid color %s\ninput:\n%s", t, nums[i+1], sb.String())
+				os.Exit(1)
+			}
+			colors[i] = val
+		}
+		for i := 0; i < n; i++ {
+			j := (i + 1) % n
+			if arr[i] != arr[j] && colors[i] == colors[j] {
+				fmt.Fprintf(os.Stderr, "test %d failed: different neighbors same color\ninput:\n%s", t, sb.String())
+				os.Exit(1)
+			}
 		}
 	}
 	fmt.Println("All tests passed")
