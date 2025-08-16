@@ -264,6 +264,37 @@ var problemTmpl = template.Must(template.New("problem").Parse(`
           if (copyTextFallback(text)) done();
         }
       }
+
+      function mapLang(l){
+        if(!l) return 'cpp';
+        l = (''+l).toLowerCase();
+        if(l === 'c++' || l === 'cpp') return 'cpp';
+        if(l === 'python' || l === 'py' || l === 'python3') return 'python';
+        if(l === 'golang' || l === 'go') return 'go';
+        if(l === 'rust' || l === 'rs') return 'rust';
+        if(l === 'c') return 'c';
+        if(l === 'java') return 'java';
+        return l;
+      }
+
+      async function retryFrom(kind, id, lang){
+        try{
+          const url = kind === 'evaluation' ? `/evaluation/raw/response/${id}` : `/submission/raw/code/${id}`;
+          const res = await fetch(url);
+          if(!res.ok){ alert('Failed to fetch code'); return; }
+          const code = await res.text();
+          const form = document.querySelector('form[action$="/submit"]');
+          if(!form){ alert('Submit form not found'); return; }
+          const sel = form.querySelector('select[name="lang"]');
+          const ta = form.querySelector('textarea[name="code"]');
+          if(sel) sel.value = mapLang(lang);
+          if(ta) ta.value = code;
+          form.submit();
+        }catch(e){
+          console.error(e);
+          alert('Retry failed: ' + e);
+        }
+      }
     </script>
   </head>
   <body>
@@ -308,7 +339,7 @@ var problemTmpl = template.Must(template.New("problem").Parse(`
       <h2>Submissions</h2>
       <div class="panel">
         <table>
-          <tr><th>ID</th><th>Language</th><th>Exit Code</th><th>Timestamp</th><th>Code</th><th>Stdout</th><th>Stderr</th></tr>
+          <tr><th>ID</th><th>Language</th><th>Exit Code</th><th>Timestamp</th><th>Code</th><th>Stdout</th><th>Stderr</th><th>Retry</th></tr>
           {{range .Submissions}}
           <tr>
             <td><a href="/submission/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td>
@@ -318,6 +349,7 @@ var problemTmpl = template.Must(template.New("problem").Parse(`
             <td><a href="/submission/code/{{.ID}}">View</a></td>
             <td><a href="/submission/stdout/{{.ID}}">View</a></td>
             <td><a href="/submission/stderr/{{.ID}}">View</a></td>
+            <td><a href="#" onclick="retryFrom('submission', {{.ID}}, {{printf "%q" .Lang}}); return false;">Retry</a></td>
           </tr>
           {{end}}
         </table>
@@ -328,7 +360,7 @@ var problemTmpl = template.Must(template.New("problem").Parse(`
       <h2 style="margin-top:24px;">Evaluations</h2>
       <div class="panel">
         <table>
-          <tr><th>Eval ID</th><th>Run ID</th><th>Provider</th><th>Model</th><th>Lang</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
+          <tr><th>Eval ID</th><th>Run ID</th><th>Provider</th><th>Model</th><th>Lang</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th><th>Retry</th></tr>
           {{range .Evals}}
           <tr>
             <td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td>
@@ -342,6 +374,7 @@ var problemTmpl = template.Must(template.New("problem").Parse(`
             <td><a href="/evaluation/response/{{.ID}}">View</a></td>
             <td><a href="/evaluation/stdout/{{.ID}}">View</a></td>
             <td><a href="/evaluation/stderr/{{.ID}}">View</a></td>
+            <td><a href="#" onclick="retryFrom('evaluation', {{.ID}}, {{printf "%q" .Lang}}); return false;">Retry</a></td>
           </tr>
           {{end}}
         </table>
@@ -1415,6 +1448,23 @@ func submissionContentHandler(w http.ResponseWriter, r *http.Request) {
 	textTmpl.Execute(w, content)
 }
 
+func submissionRawCodeHandler(w http.ResponseWriter, r *http.Request) {
+    idStr := strings.TrimPrefix(r.URL.Path, "/submission/raw/code/")
+    id, err := strconv.Atoi(idStr)
+    if err != nil {
+        http.NotFound(w, r)
+        return
+    }
+    var code string
+    err = db.QueryRow("SELECT code FROM submissions WHERE id = ?", id).Scan(&code)
+    if err != nil {
+        http.NotFound(w, r)
+        return
+    }
+    w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+    _, _ = w.Write([]byte(code))
+}
+
 func evaluationFixPromptHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimPrefix(r.URL.Path, "/evaluation/generate/fix/prompt/")
 	id, err := strconv.Atoi(idStr)
@@ -1551,6 +1601,7 @@ func main() {
 	http.HandleFunc("/evaluation/mark-reviewed", markReviewedHandler)
 	http.HandleFunc("/failed/json", failedJSONHandler)
 	http.HandleFunc("/submission", submissionsHandler)
+	http.HandleFunc("/submission/raw/code/", submissionRawCodeHandler)
 	http.HandleFunc("/submission/generate/fix/prompt/", submissionFixPromptHandler)
 	http.HandleFunc("/submission/", submissionContentHandler)
 	http.HandleFunc("/evaluation/generate/fix/prompt/", evaluationFixPromptHandler)
