@@ -267,7 +267,7 @@ var problemTmpl = template.Must(template.New("problem").Parse(`
 
       function mapLang(l){
         if(!l) return 'cpp';
-        l = (''+l).toLowerCase();
+        l = (''+l).trim().toLowerCase();
         if(l === 'c++' || l === 'cpp') return 'cpp';
         if(l === 'python' || l === 'py' || l === 'python3') return 'python';
         if(l === 'golang' || l === 'go') return 'go';
@@ -829,7 +829,19 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	lang := r.FormValue("lang")
+    lang := r.FormValue("lang")
+    // Normalize language variants from UI or retry helper
+    lang = strings.ToLower(strings.TrimSpace(lang))
+    switch lang {
+    case "c++":
+        lang = "cpp"
+    case "py", "python3":
+        lang = "python"
+    case "golang":
+        lang = "go"
+    case "rs":
+        lang = "rust"
+    }
 	var data []byte
 	file, _, err := r.FormFile("file")
 	if err == nil {
