@@ -763,7 +763,7 @@ func compileSource(srcPath, lang string) (string, string, error) {
 	switch lang {
 	case "c":
 		cmd = exec.Command("gcc", srcPath, "-O2", "-std=c11", "-o", exe)
-	case "cpp":
+	case "cpp", "c++":
 		cmd = exec.Command("g++", srcPath, "-O2", "-std=c++17", "-o", exe)
 	case "go":
 		cmd = exec.Command("go", "build", "-o", exe, srcPath)
@@ -850,7 +850,19 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 	} else {
 		data = []byte(r.FormValue("code"))
 	}
-	extMap := map[string]string{"c": ".c", "cpp": ".cpp", "java": ".java", "python": ".py", "go": ".go", "rust": ".rs"}
+	extMap := map[string]string{
+		"c": ".c",
+		"cpp": ".cpp",
+		"c++": ".cpp",
+		"java": ".java",
+		"python": ".py",
+		"python3": ".py",
+		"py": ".py",
+		"go": ".go",
+		"golang": ".go",
+		"rust": ".rs",
+		"rs": ".rs",
+	}
 	ext := extMap[lang]
 	if ext == "" {
 		http.Error(w, "unknown language", http.StatusBadRequest)
