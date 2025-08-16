@@ -268,12 +268,12 @@ var problemTmpl = template.Must(template.New("problem").Parse(`
       function mapLang(l){
         if(!l) return 'cpp';
         l = (''+l).trim().toLowerCase();
-        if(l === 'c++' || l === 'cpp') return 'cpp';
-        if(l === 'python' || l === 'py' || l === 'python3') return 'python';
+        if(l === 'c++' || l === 'cpp' || l.includes('cpp')) return 'cpp';
+        if(l === 'python' || l === 'py' || l === 'python3' || l.includes('python')) return 'python';
         if(l === 'golang' || l === 'go') return 'go';
-        if(l === 'rust' || l === 'rs') return 'rust';
+        if(l === 'rust' || l === 'rs' || l.includes('rust')) return 'rust';
         if(l === 'c') return 'c';
-        if(l === 'java') return 'java';
+        if(l === 'java' || l.includes('java')) return 'java';
         return l;
       }
 
@@ -831,17 +831,21 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 	}
     lang := r.FormValue("lang")
     // Normalize language variants from UI or retry helper
-    lang = strings.ToLower(strings.TrimSpace(lang))
-    switch lang {
-    case "c++":
-        lang = "cpp"
-    case "py", "python3":
-        lang = "python"
-    case "golang":
-        lang = "go"
-    case "rs":
-        lang = "rust"
+    l := strings.ToLower(strings.TrimSpace(lang))
+    if l == "c++" || strings.Contains(l, "cpp") {
+        l = "cpp"
+    } else if l == "py" || l == "python3" || strings.Contains(l, "python") {
+        l = "python"
+    } else if l == "golang" || l == "go" {
+        l = "go"
+    } else if l == "rs" || strings.Contains(l, "rust") {
+        l = "rust"
+    } else if l == "java" || strings.Contains(l, "java") {
+        l = "java"
+    } else if l == "c" {
+        l = "c"
     }
+    lang = l
 	var data []byte
 	file, _, err := r.FormFile("file")
 	if err == nil {
