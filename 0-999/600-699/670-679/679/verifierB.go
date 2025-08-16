@@ -6,21 +6,54 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+type pair struct {
+	cnt uint64
+	sum uint64
+}
+
+var memo = map[uint64]pair{0: {0, 0}}
+
+func icbrt(n uint64) uint64 {
+	lo, hi := uint64(0), uint64(1_000_001)
+	for lo+1 < hi {
+		mid := (lo + hi) / 2
+		mid3 := mid * mid * mid
+		if mid3 <= n {
+			lo = mid
+		} else {
+			hi = mid
+		}
 	}
-	oracle := filepath.Join(dir, "oracleB")
-	cmd := exec.Command("go", "build", "-o", oracle, "679B.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	return lo
+}
+
+func solve(m uint64) pair {
+	if res, ok := memo[m]; ok {
+		return res
 	}
-	return oracle, nil
+	t := icbrt(m)
+	t3 := t * t * t
+	a := m - t3
+	var b uint64
+	if t > 0 {
+		b = t3 - 1
+	}
+	alt1 := solve(a)
+	alt1.cnt++
+	alt1.sum += t3
+	alt2 := solve(b)
+	var res pair
+	if alt1.cnt > alt2.cnt || (alt1.cnt == alt2.cnt && alt1.sum >= alt2.sum) {
+		res = alt1
+	} else {
+		res = alt2
+	}
+	memo[m] = res
+	return res
 }
 
 func runBinary(bin, input string) (string, string, error) {
@@ -46,13 +79,6 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
 	file, err := os.Open("testcasesB.txt")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
@@ -69,12 +95,14 @@ func main() {
 		}
 		idx++
 		input := line + "\n"
-
-		exp, errStr, err := runBinary(oracle, input)
+		m, err := strconv.ParseUint(line, 10, 64)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n%s", idx, err, errStr)
+			fmt.Fprintf(os.Stderr, "failed to parse number on line %d: %v\n", idx, err)
 			os.Exit(1)
 		}
+		res := solve(m)
+		exp := fmt.Sprintf("%d %d", res.cnt, res.sum)
+
 		got, errStr2, err := runBinary(bin, input)
 		if err != nil {
 			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, errStr2)
