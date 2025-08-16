@@ -225,6 +225,10 @@ var problemTmpl = template.Must(template.New("problem").Parse(`
       .btn:hover { background:#243042; }
       .actions { display:flex; gap:8px; align-items:center; }
       .copy { float:right; font-size:12px; color:var(--muted); cursor:pointer; }
+      table { width:100%; border-collapse: collapse; background:var(--panel); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+      th, td { padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; }
+      th { color: var(--muted); font-weight:600; }
+      tr:hover td { background:#0f172a; }
       @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
     </style>
     <script>
@@ -300,6 +304,49 @@ var problemTmpl = template.Must(template.New("problem").Parse(`
         </div>
       </div>
       <div style="height:40px"></div>
+      {{if .Submissions}}
+      <h2>Submissions</h2>
+      <div class="panel">
+        <table>
+          <tr><th>ID</th><th>Language</th><th>Exit Code</th><th>Timestamp</th><th>Code</th><th>Stdout</th><th>Stderr</th></tr>
+          {{range .Submissions}}
+          <tr>
+            <td><a href="/submission/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td>
+            <td>{{.Lang}}</td>
+            <td>{{.ExitCode}}</td>
+            <td>{{.Timestamp}}</td>
+            <td><a href="/submission/code/{{.ID}}">View</a></td>
+            <td><a href="/submission/stdout/{{.ID}}">View</a></td>
+            <td><a href="/submission/stderr/{{.ID}}">View</a></td>
+          </tr>
+          {{end}}
+        </table>
+      </div>
+      {{end}}
+
+      {{if .Evals}}
+      <h2 style="margin-top:24px;">Evaluations</h2>
+      <div class="panel">
+        <table>
+          <tr><th>Eval ID</th><th>Run ID</th><th>Provider</th><th>Model</th><th>Lang</th><th>Success</th><th>Timestamp</th><th>Prompt</th><th>Response</th><th>Stdout</th><th>Stderr</th></tr>
+          {{range .Evals}}
+          <tr>
+            <td><a href="/evaluation/generate/fix/prompt/{{.ID}}">{{.ID}}</a></td>
+            <td>{{.RunID}}</td>
+            <td>{{.Provider}}</td>
+            <td>{{.Model}}</td>
+            <td>{{.Lang}}</td>
+            <td>{{.Success}}</td>
+            <td>{{.Timestamp}}</td>
+            <td><a href="/evaluation/prompt/{{.ID}}">View</a></td>
+            <td><a href="/evaluation/response/{{.ID}}">View</a></td>
+            <td><a href="/evaluation/stdout/{{.ID}}">View</a></td>
+            <td><a href="/evaluation/stderr/{{.ID}}">View</a></td>
+          </tr>
+          {{end}}
+        </table>
+      </div>
+      {{end}}
     </div>
   </body>
 </html>`))
@@ -845,17 +892,68 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 }
 
 func problemPage(w http.ResponseWriter, r *http.Request, c *contestInfo, letter string) {
-	stmtPath := filepath.Join(c.Path, "problem"+letter+".txt")
-	data, err := os.ReadFile(stmtPath)
-	if err != nil {
-		http.Error(w, "problem not found", http.StatusNotFound)
-		return
-	}
-	problemTmpl.Execute(w, map[string]string{
-		"Contest":   c.ID,
-		"Letter":    letter,
-		"Statement": string(data),
-	})
+    stmtPath := filepath.Join(c.Path, "problem"+letter+".txt")
+    data, err := os.ReadFile(stmtPath)
+    if err != nil {
+        http.Error(w, "problem not found", http.StatusNotFound)
+        return
+    }
+    // Load submissions for this problem
+    type Sub struct {
+        ID        int
+        Lang      string
+        ExitCode  int
+        Timestamp string
+    }
+    var subs []Sub
+    if db != nil {
+        rows, err := db.Query("SELECT id, lang, exit_code, timestamp FROM submissions WHERE contest_id = ? AND problem_letter = ? ORDER BY id DESC", c.ID, letter)
+        if err == nil {
+            defer rows.Close()
+            for rows.Next() {
+                var s Sub
+                if err = rows.Scan(&s.ID, &s.Lang, &s.ExitCode, &s.Timestamp); err == nil {
+                    subs = append(subs, s)
+                }
+            }
+        }
+    }
+
+    // Load evaluations for this problem (by joining problems)
+    type Eval struct {
+        ID        int
+        RunID     string
+        Provider  string
+        Model     string
+        Lang      string
+        Success   bool
+        Timestamp string
+    }
+    var evals []Eval
+    if db != nil {
+        rows, err := db.Query(`SELECT e.id, e.run_id, COALESCE(e.provider, ''), e.model, e.lang, e.success, e.timestamp
+                                FROM evaluations e
+                                JOIN problems p ON e.problem_id = p.id
+                                WHERE p.contest_id = ? AND p.index_name = ?
+                                ORDER BY e.timestamp DESC`, c.ID, letter)
+        if err == nil {
+            defer rows.Close()
+            for rows.Next() {
+                var e Eval
+                if err = rows.Scan(&e.ID, &e.RunID, &e.Provider, &e.Model, &e.Lang, &e.Success, &e.Timestamp); err == nil {
+                    evals = append(evals, e)
+                }
+            }
+        }
+    }
+
+    problemTmpl.Execute(w, map[string]interface{}{
+        "Contest":     c.ID,
+        "Letter":      letter,
+        "Statement":   string(data),
+        "Submissions": subs,
+        "Evals":       evals,
+    })
 }
 
 func contestPage(w http.ResponseWriter, r *http.Request, cid string) {
@@ -1422,6 +1520,16 @@ func main() {
 			if _, err2 := db.Exec(`ALTER TABLE evaluations ADD COLUMN reviewied TINYINT DEFAULT 0`); err2 != nil {
 				if !strings.Contains(strings.ToLower(err2.Error()), "duplicate column") {
 					fmt.Println("warning: could not ensure reviewied column:", err2)
+				}
+			}
+		}
+	}
+	// Ensure evaluations table has provider column
+	if _, err = db.Exec(`ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS provider VARCHAR(255)`); err != nil {
+		if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+			if _, err2 := db.Exec(`ALTER TABLE evaluations ADD COLUMN provider VARCHAR(255)`); err2 != nil {
+				if !strings.Contains(strings.ToLower(err2.Error()), "duplicate column") {
+					fmt.Println("warning: could not ensure provider column:", err2)
 				}
 			}
 		}

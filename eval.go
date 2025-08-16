@@ -98,15 +98,20 @@ func main() {
 	}
 
 	db, err := sql.Open("mysql", *dbDSN)
-	if err != nil {
-		panic(err)
-	}
+    if err != nil {
+        panic(err)
+    }
+    // Ensure provider column exists for older deployments
+    if _, err = db.Exec(`ALTER TABLE evaluations ADD COLUMN provider VARCHAR(255)`); err != nil && !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+        panic(err)
+    }
 	defer db.Close()
 
-	_, err = db.Exec(`
+    _, err = db.Exec(`
                 CREATE TABLE IF NOT EXISTS evaluations (
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         run_id VARCHAR(255),
+                        provider VARCHAR(255),
                         model VARCHAR(255),
                         lang VARCHAR(255),
                         problem_id INT,
@@ -213,13 +218,13 @@ func main() {
 			os.RemoveAll(filepath.Dir(tempBinAbs))
 		}
 
-		_, err = db.Exec(
-			"INSERT INTO evaluations (run_id, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			runID, *model, lang, problem.ID, prompt, finalResponse, success, verifierStdout, verifierStderr,
-		)
-		if err != nil {
-			panic(err)
-		}
+        _, err = db.Exec(
+            "INSERT INTO evaluations (run_id, provider, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            runID, strings.ToLower(*provider), *model, lang, problem.ID, prompt, finalResponse, success, verifierStdout, verifierStderr,
+        )
+        if err != nil {
+            panic(err)
+        }
 
 		if success {
 			estimatedRating += 100
