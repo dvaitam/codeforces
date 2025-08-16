@@ -29,13 +29,20 @@ func runCandidate(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func bitsOnes(x int) int {
-	cnt := 0
-	for x > 0 {
-		cnt++
-		x &= x - 1
+func lowerBoundGt(v []int, x int) int {
+	return sort.Search(len(v), func(i int) bool { return v[i] > x })
+}
+
+func advance(pos []int, last, length int) (int, bool) {
+	if length == 0 {
+		return last, true
 	}
-	return cnt
+	start := lowerBoundGt(pos, last)
+	idx := start + length - 1
+	if idx < len(pos) {
+		return pos[idx], true
+	}
+	return 0, false
 }
 
 func solveCaseE(n int, seq []int) int {
@@ -46,62 +53,54 @@ func solveCaseE(n int, seq []int) int {
 			pos[v] = append(pos[v], i+1)
 		}
 	}
-	ans1 := 0
+	minCnt := n
 	for i := 0; i < 8; i++ {
-		if len(pos[i]) > 0 {
-			ans1++
+		if len(pos[i]) < minCnt {
+			minCnt = len(pos[i])
 		}
 	}
-	ans := ans1
-	if ans1 == 8 {
+	ans := 0
+	allMask := (1 << 8) - 1
+	for base := 0; base <= minCnt; base++ {
 		INF := n + 1
 		dp := make([][9]int, 1<<8)
-		for m := range dp {
-			for d := range dp[m] {
-				dp[m][d] = INF
+		for i := range dp {
+			for j := 0; j <= 8; j++ {
+				dp[i][j] = INF
 			}
 		}
 		dp[0][0] = 0
 		for mask := 0; mask < (1 << 8); mask++ {
-			t := bitsOnes(mask)
-			for d := 0; d <= t; d++ {
-				cur := dp[mask][d]
-				if cur > n {
+			for p := 0; p <= 8; p++ {
+				last := dp[mask][p]
+				if last > n {
 					continue
 				}
-				for i := 0; i < 8; i++ {
-					if mask&(1<<i) != 0 {
+				for k := 0; k < 8; k++ {
+					if mask>>k&1 == 1 {
 						continue
 					}
-					arr := pos[i]
-					j := sort.Search(len(arr), func(k int) bool { return arr[k] > cur })
-					if j < len(arr) {
-						m2 := mask | (1 << i)
-						if arr[j] < dp[m2][d] {
-							dp[m2][d] = arr[j]
+					if npos, ok := advance(pos[k], last, base); ok {
+						nm := mask | (1 << k)
+						if npos < dp[nm][p] {
+							dp[nm][p] = npos
 						}
 					}
-					if len(arr) >= 2 {
-						j1 := sort.Search(len(arr), func(k int) bool { return arr[k] > cur })
-						if j1 < len(arr) {
-							j2 := sort.Search(len(arr), func(k int) bool { return arr[k] > arr[j1] })
-							if j2 < len(arr) {
-								m2 := mask | (1 << i)
-								if arr[j2] < dp[m2][d+1] {
-									dp[m2][d+1] = arr[j2]
-								}
+					if p < 8 {
+						if npos, ok := advance(pos[k], last, base+1); ok {
+							nm := mask | (1 << k)
+							if npos < dp[nm][p+1] {
+								dp[nm][p+1] = npos
 							}
 						}
 					}
 				}
 			}
 		}
-		full := (1 << 8) - 1
-		for d := 0; d <= 8; d++ {
-			if dp[full][d] <= n {
-				tot := 8 + d
-				if tot > ans {
-					ans = tot
+		for p := 0; p <= 8; p++ {
+			if dp[allMask][p] <= n {
+				if val := 8*base + p; val > ans {
+					ans = val
 				}
 			}
 		}
