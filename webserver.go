@@ -279,7 +279,7 @@ var problemTmpl = template.Must(template.New("problem").Parse(`
 
       async function retryFrom(kind, id, lang){
         try{
-          const url = kind === 'evaluation' ? `/evaluation/raw/response/${id}` : `/submission/raw/code/${id}`;
+          const url = kind === 'evaluation' ? '/evaluation/raw/response/' + id : '/submission/raw/code/' + id;
           const res = await fetch(url);
           if(!res.ok){ alert('Failed to fetch code'); return; }
           const code = await res.text();
