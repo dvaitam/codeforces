@@ -29,14 +29,20 @@ func genTestsE() []string {
 	tests := make([]string, 100)
 	for i := 0; i < 100; i++ {
 		n := rand.Intn(4) + 1
-		k := n + rand.Intn(4)
+		a := make([]int, n)
+		sum := 0
+		for j := 0; j < n; j++ {
+			a[j] = rand.Intn(9) + 1
+			sum += a[j]
+		}
+		k := n + rand.Intn(sum-n+1)
 		var sb strings.Builder
 		fmt.Fprintf(&sb, "%d %d\n", n, k)
 		for j := 0; j < n; j++ {
 			if j > 0 {
 				sb.WriteByte(' ')
 			}
-			fmt.Fprintf(&sb, "%d", rand.Intn(9)+1)
+			fmt.Fprintf(&sb, "%d", a[j])
 		}
 		sb.WriteByte('\n')
 		tests[i] = sb.String()
