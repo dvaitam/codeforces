@@ -72,19 +72,80 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for t := 0; t < 100; t++ {
 		input := genCase(rng)
+
+		// Parse input to get counts of each color.
+		in := strings.NewReader(input)
+		var n, m int
+		if _, err := fmt.Fscan(in, &n, &m); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to parse input: %v\n", err)
+			os.Exit(1)
+		}
+		cnt := make([]int, m+1)
+		for i := 0; i < n; i++ {
+			var x int
+			fmt.Fscan(in, &x)
+			cnt[x]++
+		}
+
 		exp, err := run(ref, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\n", t+1, err)
 			os.Exit(1)
 		}
+		expR := strings.NewReader(exp)
+		var expGood int
+		fmt.Fscan(expR, &expGood)
+
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", t+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(exp) {
-			fmt.Fprintf(os.Stderr, "case %d mismatch\nexpected:\n%s\n\ngot:\n%s\n", t+1, exp, got)
+
+		gr := strings.NewReader(got)
+		var gotGood int
+		if _, err := fmt.Fscan(gr, &gotGood); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: cannot read answer: %v\n", t+1, err)
 			os.Exit(1)
+		}
+		leftCnt := make([]int, m+1)
+		rightCnt := make([]int, m+1)
+		good := 0
+		for i := 0; i < n; i++ {
+			var l, r int
+			if _, err := fmt.Fscan(gr, &l, &r); err != nil {
+				fmt.Fprintf(os.Stderr, "case %d: not enough pairs\n", t+1)
+				os.Exit(1)
+			}
+			if l < 1 || l > m || r < 1 || r > m {
+				fmt.Fprintf(os.Stderr, "case %d: color out of range\n", t+1)
+				os.Exit(1)
+			}
+			leftCnt[l]++
+			rightCnt[r]++
+			if l != r {
+				good++
+			}
+		}
+		var extra int
+		if _, err := fmt.Fscan(gr, &extra); err == nil {
+			fmt.Fprintf(os.Stderr, "case %d: trailing data in output\n", t+1)
+			os.Exit(1)
+		}
+
+		if gotGood != expGood {
+			fmt.Fprintf(os.Stderr, "case %d: reported %d good, expected %d\n", t+1, gotGood, expGood)
+			os.Exit(1)
+		}
+		if good != gotGood {
+			fmt.Fprintf(os.Stderr, "case %d: mismatch count is %d but reported %d\n", t+1, good, gotGood)
+			os.Exit(1)
+		}
+		for c := 1; c <= m; c++ {
+			if leftCnt[c] != cnt[c] || rightCnt[c] != cnt[c] {
+				fmt.Fprintf(os.Stderr, "case %d: color %d count mismatch\n", t+1, c)
+				os.Exit(1)
+			}
 		}
 	}
 	fmt.Println("All tests passed")
