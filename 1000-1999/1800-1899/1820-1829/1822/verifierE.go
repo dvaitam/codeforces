@@ -95,7 +95,7 @@ func main() {
 			os.Exit(1)
 		}
 		s := scan.Text()
-		input := fmt.Sprintf("1\n%d %s\n", n, s)
+		input := fmt.Sprintf("1\n%d\n%s\n", n, s)
 		exp := solveCase(n, s)
 		got, err := runExe(bin, input)
 		if err != nil {
