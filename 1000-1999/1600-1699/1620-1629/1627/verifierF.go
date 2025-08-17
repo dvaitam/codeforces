@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"container/heap"
 	"fmt"
 	"math/rand"
 	"os"
@@ -11,26 +12,99 @@ import (
 	"time"
 )
 
-// solveF is a placeholder that matches the simple stub in 1627F.go.
+type node struct{ x, y, w int }
+
+// solveF implements the reference solution for problem 1627F used by the
+// verifier.  It mirrors the approach of the official solution: we model the
+// grid as nodes on the intersections of grid lines and run Dijkstra from the
+// centre to the boundary.  Each step costs the number of given pairs that would
+// be cut by moving across the corresponding edge and its symmetric counterpart.
+// The answer is the total number of pairs minus this minimal cut.
 func solveF(input string) string {
 	in := bufio.NewReader(strings.NewReader(input))
 	var t int
 	fmt.Fscan(in, &t)
 	var out strings.Builder
+	type edgeKey [4]int
+	dirs := [][2]int{{0, 1}, {0, -1}, {-1, 0}, {1, 0}}
 	for ; t > 0; t-- {
-		var n, k int
-		fmt.Fscan(in, &n, &k)
-		for i := 0; i < n; i++ {
-			var r1, c1, r2, c2 int
-			fmt.Fscan(in, &r1, &c1, &r2, &c2)
-			_ = r1
-			_ = c1
-			_ = r2
-			_ = c2
+		var m, k int
+		fmt.Fscan(in, &m, &k)
+
+		// map to count how many input pairs cross an edge between
+		// two grid intersections
+		mp := make(map[edgeKey]int)
+
+		for i := 0; i < m; i++ {
+			var a, b, c, d int
+			fmt.Fscan(in, &a, &b, &c, &d)
+			if a > c {
+				a, c = c, a
+			}
+			if b > d {
+				b, d = d, b
+			}
+			if a == c {
+				mp[edgeKey{a - 1, b, a, b}]++
+				mp[edgeKey{a, b, a - 1, b}]++
+			} else {
+				mp[edgeKey{a, b - 1, a, b}]++
+				mp[edgeKey{a, b, a, b - 1}]++
+			}
 		}
-		out.WriteString("0\n")
+
+		// visited matrix for intersections (0..k)
+		vis := make([][]bool, k+1)
+		for i := range vis {
+			vis[i] = make([]bool, k+1)
+		}
+
+		// priority queue for Dijkstra's algorithm
+		pq := &nodePQ{}
+		heap.Init(pq)
+		heap.Push(pq, node{k / 2, k / 2, 0})
+
+		for pq.Len() > 0 {
+			cur := heap.Pop(pq).(node)
+			x, y, w := cur.x, cur.y, cur.w
+			if vis[x][y] {
+				continue
+			}
+			vis[x][y] = true
+			vis[k-x][k-y] = true
+			if x == 0 || x == k || y == 0 || y == k {
+				out.WriteString(fmt.Sprintf("%d\n", m-w))
+				break
+			}
+			for _, d := range dirs {
+				nx, ny := x+d[0], y+d[1]
+				if nx < 0 || nx > k || ny < 0 || ny > k {
+					continue
+				}
+				if vis[nx][ny] {
+					continue
+				}
+				cost := mp[edgeKey{x, y, nx, ny}] + mp[edgeKey{k - x, k - y, k - nx, k - ny}]
+				heap.Push(pq, node{nx, ny, w + cost})
+			}
+		}
 	}
 	return strings.TrimSpace(out.String())
+}
+
+// nodePQ implements heap.Interface for nodes ordered by weight.
+type nodePQ []node
+
+func (pq nodePQ) Len() int            { return len(pq) }
+func (pq nodePQ) Less(i, j int) bool  { return pq[i].w < pq[j].w }
+func (pq nodePQ) Swap(i, j int)       { pq[i], pq[j] = pq[j], pq[i] }
+func (pq *nodePQ) Push(x interface{}) { *pq = append(*pq, x.(node)) }
+func (pq *nodePQ) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	x := old[n-1]
+	*pq = old[:n-1]
+	return x
 }
 
 func runProg(bin, input string) (string, error) {
