@@ -8,25 +8,25 @@ import (
 
 const MOD int = 1000000007
 
-// minusOne subtracts one from a non-negative decimal string.
+// minusOne subtracts one from a decimal string while keeping its length.
+// If the string represents zero, it returns a string of the same length
+// filled with '9' characters.
 func minusOne(s string) string {
-	if s == "0" {
-		return "0"
-	}
 	b := []byte(s)
-	i := len(b) - 1
-	for i >= 0 && b[i] == '0' {
+	n := len(b)
+	for i := n - 1; i >= 0; i-- {
+		if b[i] > '0' {
+			b[i]--
+			for j := i + 1; j < n; j++ {
+				b[j] = '9'
+			}
+			return string(b)
+		}
+	}
+	for i := 0; i < n; i++ {
 		b[i] = '9'
-		i--
 	}
-	if i >= 0 {
-		b[i]--
-	}
-	j := 0
-	for j < len(b)-1 && b[j] == '0' {
-		j++
-	}
-	return string(b[j:])
+	return string(b)
 }
 
 // count returns the number of valid numbers of the same length as s
@@ -103,13 +103,9 @@ func main() {
 	fmt.Fscan(in, &a)
 	fmt.Fscan(in, &b)
 
-	L := len(b)
 	resB := count(b, m, d)
 	aMinus := minusOne(a)
-	resA := 0
-	if len(aMinus) == L {
-		resA = count(aMinus, m, d)
-	}
+	resA := count(aMinus, m, d)
 	ans := resB - resA
 	if ans < 0 {
 		ans += MOD
