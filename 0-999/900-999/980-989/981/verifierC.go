@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -40,6 +41,51 @@ func run(bin, input string) (string, error) {
 		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
 	}
 	return strings.TrimSpace(out.String()), nil
+}
+
+func normalize(out string) (string, error) {
+	out = strings.TrimSpace(out)
+	lines := strings.Split(out, "\n")
+	for i := range lines {
+		lines[i] = strings.TrimSpace(lines[i])
+	}
+	if len(lines) == 0 {
+		return "", fmt.Errorf("empty output")
+	}
+	if lines[0] == "No" {
+		return "No", nil
+	}
+	if lines[0] != "Yes" {
+		return "", fmt.Errorf("first line must be Yes or No")
+	}
+	if len(lines) < 2 {
+		return "", fmt.Errorf("missing count line")
+	}
+	k, err := strconv.Atoi(lines[1])
+	if err != nil {
+		return "", err
+	}
+	pairs := lines[2:]
+	if len(pairs) != k {
+		return "", fmt.Errorf("expected %d pairs, got %d", k, len(pairs))
+	}
+	if k == 1 {
+		f := strings.Fields(pairs[0])
+		if len(f) != 2 {
+			return "", fmt.Errorf("invalid pair: %s", pairs[0])
+		}
+		a, err1 := strconv.Atoi(f[0])
+		b, err2 := strconv.Atoi(f[1])
+		if err1 != nil || err2 != nil {
+			return "", fmt.Errorf("invalid pair: %s", pairs[0])
+		}
+		if a > b {
+			a, b = b, a
+		}
+		pairs[0] = fmt.Sprintf("%d %d", a, b)
+	}
+	sort.Strings(pairs)
+	return "Yes\n" + fmt.Sprintln(k) + strings.Join(pairs, "\n"), nil
 }
 
 func main() {
@@ -92,7 +138,17 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
 			os.Exit(1)
 		}
-		if got != exp {
+		ne, err := normalize(exp)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "normalize oracle output on case %d: %v\n", idx, err)
+			os.Exit(1)
+		}
+		ng, err := normalize(got)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "normalize candidate output on case %d: %v\n", idx, err)
+			os.Exit(1)
+		}
+		if ne != ng {
 			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx, exp, got)
 			os.Exit(1)
 		}
