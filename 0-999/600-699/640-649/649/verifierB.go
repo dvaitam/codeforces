@@ -24,14 +24,20 @@ func abs(x int) int {
 }
 
 func generateCase(rng *rand.Rand) (string, string) {
-	n := rng.Intn(5) + 1
-	m := rng.Intn(5) + 1
-	k := rng.Intn(4) + 1
-	per := n * m * k
+	var n, m, k, per int
+	for {
+		n = rng.Intn(5) + 1
+		m = rng.Intn(5) + 1
+		k = rng.Intn(4) + 1
+		per = n * m * k
+		if per > 1 {
+			break
+		}
+	}
 	a := rng.Intn(per) + 1
-	b := rng.Intn(per-1) + 1
-	if b >= a {
-		b++
+	b := rng.Intn(per) + 1
+	for b == a {
+		b = rng.Intn(per) + 1
 	}
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d %d %d\n", n, m, k))
