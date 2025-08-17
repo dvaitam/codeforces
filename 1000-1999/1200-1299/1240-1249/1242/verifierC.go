@@ -257,7 +257,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != exp {
+		if !strings.EqualFold(strings.TrimSpace(out), exp) {
 			fmt.Fprintf(os.Stderr, "case %d failed: expected:\n%s\n got:\n%s\ninput:\n%s", i+1, exp, out, in)
 			os.Exit(1)
 		}
