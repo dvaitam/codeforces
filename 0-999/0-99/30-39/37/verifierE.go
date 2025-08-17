@@ -33,45 +33,78 @@ func generateCase(rng *rand.Rand) caseE {
 	return caseE{n, m, grid}
 }
 
-func countComp(grid [][]byte, color byte) int {
-	n := len(grid)
-	m := len(grid[0])
+// solveCase returns the minimal number of painting operations needed
+// to obtain the target grid from an all white board. It mimics the
+// official solution by running a 0-1 BFS from every starting cell and
+// taking the minimum over the maximum distance.
+func solveCase(tc caseE) int {
+	n, m := tc.n, tc.m
+	grid := tc.grid
+	dirs := [][2]int{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}
+	const inf = int(1e9)
+
+	dis := make([][]int, n)
 	vis := make([][]bool, n)
-	for i := range vis {
+	for i := range dis {
+		dis[i] = make([]int, m)
 		vis[i] = make([]bool, m)
 	}
-	dirs := [][2]int{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}
-	cnt := 0
-	var q [][2]int
-	for i := 0; i < n; i++ {
-		for j := 0; j < m; j++ {
-			if !vis[i][j] && grid[i][j] == color {
-				cnt++
-				vis[i][j] = true
-				q = q[:0]
-				q = append(q, [2]int{i, j})
-				for qi := 0; qi < len(q); qi++ {
-					x, y := q[qi][0], q[qi][1]
-					for _, d := range dirs {
-						nx, ny := x+d[0], y+d[1]
-						if nx >= 0 && nx < n && ny >= 0 && ny < m && !vis[nx][ny] && grid[nx][ny] == color {
+
+	type pair struct{ x, y int }
+	q := make([]pair, 0, n*m)
+
+	ans := inf
+	for sx := 0; sx < n; sx++ {
+		for sy := 0; sy < m; sy++ {
+			for i := 0; i < n; i++ {
+				for j := 0; j < m; j++ {
+					dis[i][j] = inf
+					vis[i][j] = false
+				}
+			}
+			q = q[:0]
+			dis[sx][sy] = 1
+			q = append(q, pair{sx, sy})
+			vis[sx][sy] = true
+
+			for h := 0; h < len(q); h++ {
+				x, y := q[h].x, q[h].y
+				vis[x][y] = false
+				for _, d := range dirs {
+					nx, ny := x+d[0], y+d[1]
+					if nx < 0 || nx >= n || ny < 0 || ny >= m {
+						continue
+					}
+					w := 0
+					if grid[nx][ny] != grid[x][y] {
+						w = 1
+					}
+					if dis[nx][ny] > dis[x][y]+w {
+						dis[nx][ny] = dis[x][y] + w
+						if !vis[nx][ny] {
+							q = append(q, pair{nx, ny})
 							vis[nx][ny] = true
-							q = append(q, [2]int{nx, ny})
 						}
 					}
 				}
 			}
-		}
-	}
-	return cnt
-}
 
-func solveCase(tc caseE) int {
-	b := countComp(tc.grid, 'B')
-	w := countComp(tc.grid, 'W')
-	ans := b
-	if w+1 < ans {
-		ans = w + 1
+			f := 0
+			for i := 0; i < n; i++ {
+				for j := 0; j < m; j++ {
+					cur := dis[i][j]
+					if grid[i][j] == 'W' {
+						cur--
+					}
+					if cur > f {
+						f = cur
+					}
+				}
+			}
+			if f < ans {
+				ans = f
+			}
+		}
 	}
 	return ans
 }
