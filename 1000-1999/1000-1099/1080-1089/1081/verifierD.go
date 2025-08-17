@@ -43,7 +43,8 @@ func run(bin, input string) (string, error) {
 
 func genCase(r *rand.Rand) string {
 	n := r.Intn(6) + 2
-	m := n - 1 + r.Intn(n)
+	maxEdges := n * (n - 1) / 2
+	m := n - 1 + r.Intn(maxEdges-(n-1)+1)
 	k := r.Intn(n-1) + 1
 	// ensure k unique specials
 	specials := make([]int, k)
