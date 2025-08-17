@@ -10,97 +10,61 @@ import (
 	"time"
 )
 
+// solveC computes the minimum cost to learn at least one character from each
+// string. For any column we may either learn a single character from some
+// string or learn the same character for a group of strings in that column with
+// the most expensive one being free. The straightforward solution is a DP over
+// subsets of strings.
 func solveC(n, m int, s []string, a [][]int) int {
-	cols := m * 26
-	cost := make([][]int, n)
-	for i := 0; i < n; i++ {
-		cost[i] = make([]int, cols)
+	const inf = int(1e9)
+	dp := make([]int, 1<<n)
+	for i := range dp {
+		dp[i] = inf
 	}
-	for j := 0; j < m; j++ {
-		for c := 0; c < 26; c++ {
-			fid := j*26 + c
-			sum := 0
-			cc := byte('a' + c)
-			for i := 0; i < n; i++ {
-				if s[i][j] == cc {
-					sum += a[i][j]
-				}
-			}
-			for i := 0; i < n; i++ {
-				cur := sum
-				if s[i][j] == cc {
-					cur -= a[i][j]
-				} else {
-					cur += a[i][j]
-				}
-				cost[i][fid] = cur
-			}
+	dp[0] = 0
+	for mask := 0; mask < (1 << n); mask++ {
+		if dp[mask] == inf {
+			continue
 		}
-	}
-	const INF = int(1 << 60)
-	u := make([]int, n+1)
-	v := make([]int, cols+1)
-	p := make([]int, cols+1)
-	way := make([]int, cols+1)
-	for i := 1; i <= n; i++ {
-		p[0] = i
-		j0 := 0
-		minv := make([]int, cols+1)
-		used := make([]bool, cols+1)
-		for j := 0; j <= cols; j++ {
-			minv[j] = INF
-		}
-		for {
-			used[j0] = true
-			i0 := p[j0]
-			delta := INF
-			j1 := 0
-			for j := 1; j <= cols; j++ {
-				if !used[j] {
-					cur := cost[i0-1][j-1] - u[i0] - v[j]
-					if cur < minv[j] {
-						minv[j] = cur
-						way[j] = j0
-					}
-					if minv[j] < delta {
-						delta = minv[j]
-						j1 = j
-					}
-				}
-			}
-			for j := 0; j <= cols; j++ {
-				if used[j] {
-					u[p[j]] += delta
-					v[j] -= delta
-				} else {
-					minv[j] -= delta
-				}
-			}
-			j0 = j1
-			if p[j0] == 0 {
+		// find the first string that is not yet covered
+		var l int
+		for l = 0; l < n; l++ {
+			if mask&(1<<l) == 0 {
 				break
 			}
 		}
-		for {
-			j1 := way[j0]
-			p[j0] = p[j1]
-			j0 = j1
-			if j0 == 0 {
-				break
+		if l == n {
+			continue
+		}
+		for c := 0; c < m; c++ {
+			// option 1: learn character only for string l
+			nmask := mask | (1 << l)
+			cost := dp[mask] + a[l][c]
+			if cost < dp[nmask] {
+				dp[nmask] = cost
+			}
+
+			// option 2: learn this character for all strings with the
+			// same letter in column c, keeping the most expensive free
+			nmask = mask
+			sum, mx := 0, 0
+			ch := s[l][c]
+			for i := 0; i < n; i++ {
+				if s[i][c] == ch {
+					nmask |= 1 << i
+					sum += a[i][c]
+					if a[i][c] > mx {
+						mx = a[i][c]
+					}
+				}
+			}
+			cost = dp[mask] + sum - mx
+			if cost < dp[nmask] {
+				dp[nmask] = cost
 			}
 		}
 	}
-	assignment := make([]int, n)
-	for j := 1; j <= cols; j++ {
-		if p[j] > 0 {
-			assignment[p[j]-1] = j - 1
-		}
-	}
-	ans := 0
-	for i := 0; i < n; i++ {
-		ans += cost[i][assignment[i]]
-	}
-	return ans
+	return dp[(1<<n)-1]
 }
 
 func genRandomString(m int) string {
