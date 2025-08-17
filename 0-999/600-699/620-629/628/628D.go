@@ -114,5 +114,14 @@ func main() {
 	if ans < 0 {
 		ans += MOD
 	}
+
+	// handle the case when the lower bound is 0
+	if a == "0" && L == 1 && d != 0 {
+		ans++
+		if ans >= MOD {
+			ans -= MOD
+		}
+	}
+
 	fmt.Fprintln(out, ans)
 }
