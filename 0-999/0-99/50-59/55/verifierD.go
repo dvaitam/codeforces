@@ -18,7 +18,8 @@ var (
 	totalMods = 2520
 	divCnt    int
 	dp        [][][]int64
-	used      [][][]bool
+	vis       [][][]int
+	visID     int
 	digits    []int
 )
 
@@ -55,13 +56,13 @@ func initPrecomp() {
 		}
 	}
 	dp = make([][][]int64, 20)
-	used = make([][][]bool, 20)
+	vis = make([][][]int, 20)
 	for i := 0; i < 20; i++ {
 		dp[i] = make([][]int64, divCnt)
-		used[i] = make([][]bool, divCnt)
+		vis[i] = make([][]int, divCnt)
 		for j := 0; j < divCnt; j++ {
 			dp[i][j] = make([]int64, totalMods)
-			used[i][j] = make([]bool, totalMods)
+			vis[i][j] = make([]int, totalMods)
 		}
 	}
 }
@@ -73,7 +74,7 @@ func dfs(pos, lidx, rem int, tight bool) int64 {
 		}
 		return 0
 	}
-	if !tight && used[pos][lidx][rem] {
+	if !tight && vis[pos][lidx][rem] == visID {
 		return dp[pos][lidx][rem]
 	}
 	var res int64
@@ -88,24 +89,18 @@ func dfs(pos, lidx, rem int, tight bool) int64 {
 		res += dfs(pos+1, nlidx, nrem, nt)
 	}
 	if !tight {
-		used[pos][lidx][rem] = true
+		vis[pos][lidx][rem] = visID
 		dp[pos][lidx][rem] = res
 	}
 	return res
 }
 
 func solveNumber(n uint64) int64 {
+	visID++
 	s := strconv.FormatUint(n, 10)
 	digits = make([]int, len(s))
 	for i, ch := range s {
 		digits[i] = int(ch - '0')
-	}
-	for i := 0; i <= len(digits); i++ {
-		for j := 0; j < divCnt; j++ {
-			for k := 0; k < totalMods; k++ {
-				used[i][j][k] = false
-			}
-		}
 	}
 	total := dfs(0, lcmIndex[1], 0, true)
 	return total - 1
