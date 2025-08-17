@@ -48,7 +48,7 @@ func generateCase(rng *rand.Rand) (string, int) {
 	n := rng.Intn(6) + 1
 	arr := make([]int, n)
 	for i := range arr {
-		arr[i] = rng.Intn(10) + 1
+		arr[i] = rng.Intn(n) + 1
 	}
 	var sb strings.Builder
 	sb.WriteString("1\n")
