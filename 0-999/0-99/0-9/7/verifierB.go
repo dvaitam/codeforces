@@ -138,7 +138,13 @@ func main() {
 			fmt.Printf("Test %d: runtime error: %v\n", idx, err)
 			os.Exit(1)
 		}
-		outLines := strings.Split(strings.TrimSpace(string(out)), "\n")
+		trimmed := strings.TrimSpace(string(out))
+		var outLines []string
+		if trimmed == "" {
+			outLines = []string{}
+		} else {
+			outLines = strings.Split(trimmed, "\n")
+		}
 		if len(outLines) != len(exp) {
 			fmt.Printf("Test %d failed: expected %d lines got %d\n", idx, len(exp), len(outLines))
 			os.Exit(1)
