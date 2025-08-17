@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+type point struct{ x, y int }
+
 func runCmd(path string, input []byte) (string, error) {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(path, ".go") {
@@ -23,14 +25,12 @@ func runCmd(path string, input []byte) (string, error) {
 	return string(out), err
 }
 
-func genTest() []byte {
+func genTest() (int, []byte) {
 	n := rand.Intn(50) + 1
-	return []byte(fmt.Sprintf("%d\n", n))
+	return n, []byte(fmt.Sprintf("%d\n", n))
 }
 
-type point struct{ x, y int }
-
-func parseOutput(out string) (int, map[point]int, error) {
+func parseOutput(out string) (int, []point, error) {
 	fields := strings.Fields(strings.TrimSpace(out))
 	if len(fields) == 0 {
 		return 0, nil, fmt.Errorf("empty output")
@@ -43,7 +43,7 @@ func parseOutput(out string) (int, map[point]int, error) {
 		return 0, nil, fmt.Errorf("incomplete coordinate pair")
 	}
 	cnt := (len(fields) - 1) / 2
-	pts := make(map[point]int, cnt)
+	pts := make([]point, cnt)
 	idx := 1
 	for i := 0; i < cnt; i++ {
 		x, err1 := strconv.Atoi(fields[idx])
@@ -51,13 +51,75 @@ func parseOutput(out string) (int, map[point]int, error) {
 		if err1 != nil || err2 != nil {
 			return 0, nil, fmt.Errorf("invalid integer")
 		}
-		pts[point{x, y}]++
+		pts[i] = point{x, y}
 		idx += 2
 	}
 	if k != cnt {
 		return 0, nil, fmt.Errorf("declared count %d but found %d", k, cnt)
 	}
 	return k, pts, nil
+}
+
+func check(n int, pts []point) error {
+	if len(pts) > 500000 {
+		return fmt.Errorf("too many points: %d", len(pts))
+	}
+	mp := make(map[point]struct{}, len(pts))
+	for _, p := range pts {
+		if p.x < -1e9 || p.x > 1e9 || p.y < -1e9 || p.y > 1e9 {
+			return fmt.Errorf("coordinate out of bounds: %v", p)
+		}
+		if _, ok := mp[p]; ok {
+			return fmt.Errorf("duplicate point: %v", p)
+		}
+		mp[p] = struct{}{}
+	}
+	if len(mp) == 0 {
+		return fmt.Errorf("no points provided")
+	}
+	dirs := []point{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}
+	// connectivity
+	visited := make(map[point]bool, len(mp))
+	queue := make([]point, 0, len(mp))
+	for p := range mp {
+		queue = append(queue, p)
+		visited[p] = true
+		break
+	}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		for _, d := range dirs {
+			np := point{cur.x + d.x, cur.y + d.y}
+			if _, ok := mp[np]; ok && !visited[np] {
+				visited[np] = true
+				queue = append(queue, np)
+			}
+		}
+	}
+	if len(visited) != len(mp) {
+		return fmt.Errorf("picture is not connected")
+	}
+	countDeg4 := 0
+	for p := range mp {
+		deg := 0
+		for _, d := range dirs {
+			np := point{p.x + d.x, p.y + d.y}
+			if _, ok := mp[np]; ok {
+				deg++
+			}
+		}
+		if deg%2 != 0 {
+			return fmt.Errorf("cell %v has odd number of neighbours %d", p, deg)
+		}
+		if deg == 4 {
+			countDeg4++
+		}
+	}
+	if countDeg4 != n {
+		return fmt.Errorf("expected %d cells with 4 neighbours, got %d", n, countDeg4)
+	}
+	return nil
 }
 
 func main() {
@@ -70,62 +132,27 @@ func main() {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		return
 	}
-	ref := "./refC.bin"
-	if err := exec.Command("go", "build", "-o", ref, "1368C.go").Run(); err != nil {
-		fmt.Println("failed to build reference solution:", err)
-		return
-	}
-	defer os.Remove(ref)
 	rand.Seed(time.Now().UnixNano())
 	for i := 0; i < 100; i++ {
-		input := genTest()
-		wantRaw, err := runCmd(ref, input)
-		if err != nil {
-			fmt.Println("reference failed:", err)
-			os.Exit(1)
-		}
+		n, input := genTest()
 		gotRaw, err := runCmd(cand, input)
 		if err != nil {
 			fmt.Printf("candidate runtime error on test %d: %v\n", i+1, err)
 			fmt.Println("input:\n", string(input))
 			os.Exit(1)
 		}
-
-		wantCount, wantPts, err := parseOutput(wantRaw)
-		if err != nil {
-			fmt.Printf("reference output parse error on test %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		gotCount, gotPts, err := parseOutput(gotRaw)
+		_, pts, err := parseOutput(gotRaw)
 		if err != nil {
 			fmt.Printf("candidate output parse error on test %d: %v\n", i+1, err)
+			fmt.Println("input:\n", string(input))
 			fmt.Println("output:\n", gotRaw)
 			os.Exit(1)
 		}
-		if wantCount != gotCount || len(wantPts) != len(gotPts) {
-			fmt.Printf("wrong answer on test %d\n", i+1)
+		if err := check(n, pts); err != nil {
+			fmt.Printf("wrong answer on test %d: %v\n", i+1, err)
 			fmt.Println("input:\n", string(input))
-			fmt.Println("expected:\n", wantRaw)
-			fmt.Println("got:\n", gotRaw)
+			fmt.Println("output:\n", gotRaw)
 			os.Exit(1)
-		}
-		for p := range wantPts {
-			if gotPts[p] == 0 {
-				fmt.Printf("wrong answer on test %d\n", i+1)
-				fmt.Println("input:\n", string(input))
-				fmt.Println("expected:\n", wantRaw)
-				fmt.Println("got:\n", gotRaw)
-				os.Exit(1)
-			}
-		}
-		for p := range gotPts {
-			if wantPts[p] == 0 {
-				fmt.Printf("wrong answer on test %d\n", i+1)
-				fmt.Println("input:\n", string(input))
-				fmt.Println("expected:\n", wantRaw)
-				fmt.Println("got:\n", gotRaw)
-				os.Exit(1)
-			}
 		}
 	}
 	fmt.Println("All tests passed.")
