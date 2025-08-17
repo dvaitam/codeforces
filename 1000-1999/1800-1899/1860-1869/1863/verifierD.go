@@ -19,17 +19,31 @@ type testCaseD struct {
 func generateTestsD(num int) []testCaseD {
 	rand.Seed(time.Now().UnixNano())
 	tests := make([]testCaseD, num)
-	chars := []byte{'U', 'D', 'L', 'R'}
 	for i := 0; i < num; i++ {
-		n := rand.Intn(6) + 1
-		m := rand.Intn(6) + 1
+		n := rand.Intn(3)*2 + 2
+		m := rand.Intn(3)*2 + 2
+		board := make([][]byte, n)
+		for r := 0; r < n; r++ {
+			board[r] = make([]byte, m)
+		}
+		for r := 0; r < n; r += 2 {
+			for c := 0; c < m; c += 2 {
+				if rand.Intn(2) == 0 {
+					board[r][c] = 'U'
+					board[r+1][c] = 'D'
+					board[r][c+1] = 'U'
+					board[r+1][c+1] = 'D'
+				} else {
+					board[r][c] = 'L'
+					board[r][c+1] = 'R'
+					board[r+1][c] = 'L'
+					board[r+1][c+1] = 'R'
+				}
+			}
+		}
 		grid := make([]string, n)
 		for r := 0; r < n; r++ {
-			b := make([]byte, m)
-			for c := 0; c < m; c++ {
-				b[c] = chars[rand.Intn(len(chars))]
-			}
-			grid[r] = string(b)
+			grid[r] = string(board[r])
 		}
 		tests[i] = testCaseD{n: n, m: m, grid: grid}
 	}
@@ -104,6 +118,84 @@ func solveD(tc testCaseD) []string {
 	return res
 }
 
+func validPainting(tc testCaseD, ans []string) bool {
+	n := tc.n
+	m := tc.m
+	if len(ans) != n {
+		return false
+	}
+	grid := tc.grid
+	for i := 0; i < n; i++ {
+		if len(ans[i]) != m {
+			return false
+		}
+	}
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			cell := grid[i][j]
+			switch cell {
+			case 'U':
+				if i+1 >= n || grid[i+1][j] != 'D' {
+					return false
+				}
+				a, b := ans[i][j], ans[i+1][j]
+				if !((a == 'B' && b == 'W') || (a == 'W' && b == 'B')) {
+					return false
+				}
+			case 'L':
+				if j+1 >= m || grid[i][j+1] != 'R' {
+					return false
+				}
+				a, b := ans[i][j], ans[i][j+1]
+				if !((a == 'B' && b == 'W') || (a == 'W' && b == 'B')) {
+					return false
+				}
+			case 'D':
+				if i == 0 || grid[i-1][j] != 'U' {
+					return false
+				}
+			case 'R':
+				if j == 0 || grid[i][j-1] != 'L' {
+					return false
+				}
+			case '.':
+				if ans[i][j] != '.' {
+					return false
+				}
+			}
+		}
+	}
+	for i := 0; i < n; i++ {
+		bcnt, wcnt := 0, 0
+		for j := 0; j < m; j++ {
+			if ans[i][j] == 'B' {
+				bcnt++
+			}
+			if ans[i][j] == 'W' {
+				wcnt++
+			}
+		}
+		if bcnt != wcnt {
+			return false
+		}
+	}
+	for j := 0; j < m; j++ {
+		bcnt, wcnt := 0, 0
+		for i := 0; i < n; i++ {
+			if ans[i][j] == 'B' {
+				bcnt++
+			}
+			if ans[i][j] == 'W' {
+				wcnt++
+			}
+		}
+		if bcnt != wcnt {
+			return false
+		}
+	}
+	return true
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("usage: go run verifierD.go /path/to/binary")
@@ -137,13 +229,19 @@ func main() {
 			}
 			idx++
 		} else {
-			for i := 0; i < tc.n; i++ {
-				if idx >= len(outputs) || strings.TrimSpace(outputs[idx]) != expected[i] {
-					fmt.Printf("test %d line %d mismatch\n", tnum+1, i+1)
-					os.Exit(1)
-				}
-				idx++
+			if idx+tc.n > len(outputs) {
+				fmt.Printf("test %d failed: insufficient output lines\n", tnum+1)
+				os.Exit(1)
 			}
+			cand := make([]string, tc.n)
+			for i := 0; i < tc.n; i++ {
+				cand[i] = strings.TrimSpace(outputs[idx+i])
+			}
+			if !validPainting(tc, cand) {
+				fmt.Printf("test %d produced invalid painting\n", tnum+1)
+				os.Exit(1)
+			}
+			idx += tc.n
 		}
 	}
 	if idx != len(outputs) {
