@@ -2,46 +2,53 @@ package main
 
 import (
 	"bytes"
+	"container/heap"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"sort"
 	"strings"
 	"time"
 )
 
+type maxHeap []int
+
+func (h maxHeap) Len() int           { return len(h) }
+func (h maxHeap) Less(i, j int) bool { return h[i] > h[j] }
+func (h maxHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *maxHeap) Push(x interface{}) {
+	*h = append(*h, x.(int))
+}
+func (h *maxHeap) Pop() interface{} {
+	old := *h
+	x := old[len(old)-1]
+	*h = old[:len(old)-1]
+	return x
+}
+
 func expected(a []int) int {
-	sort.Ints(a)
-	prev := -1
-	left, right := 0, len(a)-1
-	eaten := 0
-	for left <= right {
-		idx := -1
-		for i := left; i <= right; i++ {
-			if a[i] > prev {
-				idx = i
-				break
+	n := len(a)
+	freq := make([]int, n+1)
+	for _, v := range a {
+		freq[v]++
+	}
+	h := &maxHeap{}
+	heap.Init(h)
+	s := 0
+	sum := 0
+	for v := 1; v <= n; v++ {
+		f := freq[v]
+		if f > 0 {
+			heap.Push(h, f)
+			sum += f
+			for sum > s {
+				big := heap.Pop(h).(int)
+				sum -= big
+				s++
 			}
 		}
-		if idx == -1 {
-			break
-		}
-		prev = a[idx]
-		eaten++
-		if idx == left {
-			left++
-		} else if idx == right {
-			right--
-		} else {
-			copy(a[idx:right], a[idx+1:right+1])
-			right--
-		}
-		if left <= right {
-			right--
-		}
 	}
-	return eaten
+	return s
 }
 
 func generateCase(rng *rand.Rand) (string, int) {
