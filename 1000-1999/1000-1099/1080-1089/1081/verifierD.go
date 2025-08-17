@@ -46,7 +46,6 @@ func genCase(r *rand.Rand) string {
 	maxEdges := n * (n - 1) / 2
 	m := n - 1 + r.Intn(maxEdges-(n-1)+1)
 	k := r.Intn(n-1) + 1
-	// ensure k unique specials
 	specials := make([]int, k)
 	used := make(map[int]bool)
 	for i := 0; i < k; i++ {
@@ -59,6 +58,36 @@ func genCase(r *rand.Rand) string {
 			}
 		}
 	}
+	type edge struct{ u, v, w int }
+	edges := make([]edge, 0, m)
+	seen := make(map[[2]int]bool)
+	// build a random spanning tree to ensure connectivity
+	for v := 2; v <= n; v++ {
+		u := r.Intn(v-1) + 1
+		if u > v {
+			u, v = v, u
+		}
+		w := r.Intn(10) + 1
+		edges = append(edges, edge{u, v, w})
+		seen[[2]int{u, v}] = true
+	}
+	// add remaining edges
+	for len(edges) < m {
+		u := r.Intn(n) + 1
+		v := r.Intn(n) + 1
+		if u == v {
+			continue
+		}
+		if u > v {
+			u, v = v, u
+		}
+		if seen[[2]int{u, v}] {
+			continue
+		}
+		w := r.Intn(10) + 1
+		edges = append(edges, edge{u, v, w})
+		seen[[2]int{u, v}] = true
+	}
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d %d %d\n", n, m, k)
 	for i := 0; i < k; i++ {
@@ -68,24 +97,8 @@ func genCase(r *rand.Rand) string {
 		fmt.Fprintf(&sb, "%d", specials[i])
 	}
 	sb.WriteByte('\n')
-	edges := make(map[[2]int]bool)
-	for i := 0; i < m; i++ {
-		u := r.Intn(n) + 1
-		v := r.Intn(n) + 1
-		if u == v {
-			i--
-			continue
-		}
-		if u > v {
-			u, v = v, u
-		}
-		if edges[[2]int{u, v}] {
-			i--
-			continue
-		}
-		edges[[2]int{u, v}] = true
-		w := r.Intn(10) + 1
-		fmt.Fprintf(&sb, "%d %d %d\n", u, v, w)
+	for _, e := range edges {
+		fmt.Fprintf(&sb, "%d %d %d\n", e.u, e.v, e.w)
 	}
 	return sb.String()
 }
