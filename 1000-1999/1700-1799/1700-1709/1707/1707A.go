@@ -22,13 +22,13 @@ func main() {
 			fmt.Fscan(in, &a[i])
 		}
 		res := make([]byte, n)
-		iq := q
+		cur := 0
 		for i := n - 1; i >= 0; i-- {
-			if a[i] <= iq {
+			if a[i] <= cur {
 				res[i] = '1'
-			} else if iq > 0 {
+			} else if cur < q {
+				cur++
 				res[i] = '1'
-				iq--
 			} else {
 				res[i] = '0'
 			}
