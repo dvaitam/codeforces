@@ -1,146 +1,103 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
+	"bufio"
+	"fmt"
+	"os"
 )
 
+const N = 2005
+
+var (
+	a, b, up, dn [N][N]bool
+	n, m         int
+	ans          int64
+)
+
+func solve(grid *[N][N]bool, n, m, w int) {
+	for j := 1; j <= m; j++ {
+		up[0][j] = false
+	}
+	for i := 1; i <= n; i++ {
+		for j := 1; j <= m; j++ {
+			up[i][j] = up[i-1][j] || (*grid)[i][j]
+		}
+	}
+	for i := n; i >= 1; i-- {
+		for j := 1; j <= m; j++ {
+			if i == n {
+				dn[i][j] = (*grid)[i][j]
+			} else {
+				dn[i][j] = dn[i+1][j] || (*grid)[i][j]
+			}
+		}
+	}
+	for i := 2; i < n; i++ {
+		v := 0
+		if !(*grid)[i][1] && w == 1 {
+			v = 1
+		}
+		up[i][1] = true
+		dn[i][1] = true
+		for j := 2; j < m; j++ {
+			if (*grid)[i][j] {
+				v = 0
+				continue
+			}
+			if !up[i][j] {
+				ans += int64(v)
+			}
+			if !dn[i][j] {
+				ans += int64(v)
+			}
+			if !up[i][j] && !dn[i][j-1] {
+				ans++
+			}
+			if !dn[i][j] && !up[i][j-1] {
+				ans++
+			}
+			if !up[i][j-1] {
+				v++
+			}
+			if !dn[i][j-1] {
+				v++
+			}
+		}
+		if !(*grid)[i][m] && w == 1 {
+			ans += int64(v)
+			if !up[i][m-1] {
+				ans++
+			}
+			if !dn[i][m-1] {
+				ans++
+			}
+		}
+	}
+	if w == 1 {
+		for j := 2; j < m; j++ {
+			if !up[n][j] {
+				ans++
+			}
+		}
+	}
+}
+
 func main() {
-   reader := bufio.NewReader(os.Stdin)
-   var n, m int
-   if _, err := fmt.Fscan(reader, &n, &m); err != nil {
-       return
-   }
-   grid := make([][]byte, n)
-   for i := 0; i < n; i++ {
-       var line string
-       fmt.Fscan(reader, &line)
-       grid[i] = []byte(line)
-   }
-   // Precompute L, R, U, D
-   L := make([][]int, n)
-   R := make([][]int, n)
-   U := make([][]int, n)
-   D := make([][]int, n)
-   for i := 0; i < n; i++ {
-       L[i] = make([]int, m)
-       R[i] = make([]int, m)
-       U[i] = make([]int, m)
-       D[i] = make([]int, m)
-   }
-   for i := 0; i < n; i++ {
-       for j := 0; j < m; j++ {
-           if grid[i][j] == '.' {
-               if j > 0 {
-                   L[i][j] = L[i][j-1] + 1
-               } else {
-                   L[i][j] = 1
-               }
-               if i > 0 {
-                   U[i][j] = U[i-1][j] + 1
-               } else {
-                   U[i][j] = 1
-               }
-           }
-       }
-       for j := m - 1; j >= 0; j-- {
-           if grid[i][j] == '.' {
-               if j < m-1 {
-                   R[i][j] = R[i][j+1] + 1
-               } else {
-                   R[i][j] = 1
-               }
-           }
-       }
-   }
-   for j := 0; j < m; j++ {
-       for i := n - 1; i >= 0; i-- {
-           if grid[i][j] == '.' {
-               if i < n-1 {
-                   D[i][j] = D[i+1][j] + 1
-               } else {
-                   D[i][j] = 1
-               }
-           }
-       }
-   }
-   var total int64 = 0
-   // Straight segments
-   // Horizontal: rows 2..n-1 (1..n-2) fully empty
-   for i := 1; i < n-1; i++ {
-       if L[i][m-1] == m {
-           total++
-       }
-   }
-   // Vertical: cols 2..m-1 (1..m-2) fully empty
-   for j := 1; j < m-1; j++ {
-       if U[n-1][j] == n {
-           total++
-       }
-   }
-   // One-turn (L-shape)
-   for i := 1; i < n-1; i++ {
-       for j := 1; j < m-1; j++ {
-           if grid[i][j] != '.' {
-               continue
-           }
-           // left-up
-           if L[i][j] >= j+1 && U[i][j] >= i+1 {
-               total++
-           }
-           // left-down
-           if L[i][j] >= j+1 && D[i][j] >= n-i {
-               total++
-           }
-           // right-up
-           if R[i][j] >= m-j && U[i][j] >= i+1 {
-               total++
-           }
-           // right-down
-           if R[i][j] >= m-j && D[i][j] >= n-i {
-               total++
-           }
-       }
-   }
-   // Two-turn shapes: left-to-right via vertical
-   for j := 1; j < m-1; j++ {
-       var sumA int64 = 0
-       for i := 1; i < n-1; i++ {
-           if grid[i][j] == '.' {
-               // b: right arm
-               if R[i][j] >= m-j {
-                   total += sumA
-               }
-               // a: left arm
-               if L[i][j] >= j+1 {
-                   sumA++
-               }
-           } else {
-               sumA = 0
-           }
-       }
-   }
-   // Two-turn shapes: top-to-bottom via horizontal
-   for i := 1; i < n-1; i++ {
-       var sumA int64 = 0
-       for j := 1; j < m-1; j++ {
-           if grid[i][j] == '.' {
-               // b: down arm
-               if D[i][j] >= n-i {
-                   total += sumA
-               }
-               // a: up arm
-               if U[i][j] >= i+1 {
-                   sumA++
-               }
-           } else {
-               sumA = 0
-           }
-       }
-   }
-   // Output result
-   writer := bufio.NewWriter(os.Stdout)
-   defer writer.Flush()
-   fmt.Fprintln(writer, total)
+	in := bufio.NewReader(os.Stdin)
+	fmt.Fscan(in, &n, &m)
+	for i := 1; i <= n; i++ {
+		var s string
+		fmt.Fscan(in, &s)
+		for j := 1; j <= m; j++ {
+			if s[j-1] == '#' {
+				a[i][j] = true
+				b[j][i] = true
+			}
+		}
+	}
+	solve(&a, n, m, 1)
+	solve(&b, m, n, 0)
+	out := bufio.NewWriter(os.Stdout)
+	fmt.Fprintln(out, ans)
+	out.Flush()
 }
