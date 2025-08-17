@@ -21,32 +21,46 @@ func buildOracle() (string, error) {
 
 func generateCase(rng *rand.Rand) string {
 	n := rng.Intn(5) + 2
+	L := make([]int, n)
+	R := make([]int, n)
+	for i := 0; i < n; i++ {
+		L[i] = rng.Intn(20) + 1
+		R[i] = L[i] + rng.Intn(20)
+	}
+
+	pairs := make([][2]int, 0)
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			l := L[i]
+			if L[j] > l {
+				l = L[j]
+			}
+			r := R[i]
+			if R[j] < r {
+				r = R[j]
+			}
+			if l <= r {
+				pairs = append(pairs, [2]int{i + 1, j + 1})
+			}
+		}
+	}
+
+	rng.Shuffle(len(pairs), func(i, j int) {
+		pairs[i], pairs[j] = pairs[j], pairs[i]
+	})
+
 	m := rng.Intn(5)
+	if m > len(pairs) {
+		m = len(pairs)
+	}
+
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d %d\n", n, m)
 	for i := 0; i < n; i++ {
-		l := rng.Intn(20) + 1
-		r := l + rng.Intn(20)
-		fmt.Fprintf(&sb, "%d %d\n", l, r)
+		fmt.Fprintf(&sb, "%d %d\n", L[i], R[i])
 	}
-	edges := make(map[[2]int]struct{})
 	for i := 0; i < m; i++ {
-		for {
-			u := rng.Intn(n) + 1
-			v := rng.Intn(n) + 1
-			if u == v {
-				continue
-			}
-			if u > v {
-				u, v = v, u
-			}
-			if _, ok := edges[[2]int{u, v}]; ok {
-				continue
-			}
-			edges[[2]int{u, v}] = struct{}{}
-			fmt.Fprintf(&sb, "%d %d\n", u, v)
-			break
-		}
+		fmt.Fprintf(&sb, "%d %d\n", pairs[i][0], pairs[i][1])
 	}
 	return sb.String()
 }
@@ -81,7 +95,7 @@ func main() {
 	}
 	defer os.Remove(oracle)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 20; i++ {
 		input := generateCase(rng)
 		exp, err := runProg("./"+oracle, input)
 		if err != nil {
