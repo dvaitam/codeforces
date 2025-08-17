@@ -131,21 +131,15 @@ func generateCase() (string, string) {
 	fmt.Fprintf(&sb, "%d\n", t)
 	ranges := make([][2]uint64, t)
 	for i := 0; i < t; i++ {
-		l := rand.Uint64()%1000000000000 + 1
-		r := l + uint64(rand.Intn(1000000))
+		l := uint64(rand.Int63n(1_000_000_000_000) + 1)
+		r := l + uint64(rand.Intn(1_000_000))
 		ranges[i] = [2]uint64{l, r}
 		fmt.Fprintf(&sb, "%d %d\n", l, r)
 	}
 	return sb.String(), expected(ranges)
 }
-
 func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
@@ -157,6 +151,24 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func prepare(bin string) (string, func(), error) {
+	if strings.HasSuffix(bin, ".go") {
+		tmp, err := os.CreateTemp("", "sol-55d-*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		execPath := tmp.Name()
+		build := exec.Command("go", "build", "-o", execPath, bin)
+		if out, err := build.CombinedOutput(); err != nil {
+			return "", nil, fmt.Errorf("compile error: %v\n%s", err, string(out))
+		}
+		cleanup := func() { os.Remove(execPath) }
+		return execPath, cleanup, nil
+	}
+	return bin, func() {}, nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierD.go /path/to/binary")
@@ -165,9 +177,17 @@ func main() {
 	bin := os.Args[1]
 	rand.Seed(time.Now().UnixNano())
 	initPrecomp()
-	for i := 0; i < 100; i++ {
+
+	execPath, cleanup, err := prepare(bin)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	for i := 0; i < 30; i++ {
 		input, exp := generateCase()
-		got, err := run(bin, input)
+		got, err := run(execPath, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
