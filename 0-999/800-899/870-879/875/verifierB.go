@@ -50,7 +50,14 @@ func main() {
 			continue
 		}
 		idx++
-		input := line + "\n"
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
+		input := fields[0] + "\n"
+		if len(fields) > 1 {
+			input += strings.Join(fields[1:], " ") + "\n"
+		}
 		cmdO := exec.Command(oracle)
 		cmdO.Stdin = strings.NewReader(input)
 		var outO bytes.Buffer
