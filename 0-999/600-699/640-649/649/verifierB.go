@@ -46,8 +46,13 @@ func generateCase(rng *rand.Rand) (string, string) {
 	upB := min((floorB-1)*5, 10+(floorB-1))
 	diff := abs(entranceA - entranceB)
 	walk := min(diff, n-diff) * 15
-	exp := fmt.Sprintf("%d\n", downA+walk+upB)
-	return sb.String(), exp
+	via := downA + walk + upB
+	ans := via
+	if entranceA == entranceB {
+		direct := min(abs(floorA-floorB)*5, 10+abs(floorA-floorB))
+		ans = min(ans, direct)
+	}
+	return sb.String(), fmt.Sprintf("%d\n", ans)
 }
 
 func runCase(exe, input, expected string) error {

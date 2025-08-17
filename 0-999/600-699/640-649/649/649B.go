@@ -40,6 +40,12 @@ func main() {
 
 	diff := abs(entranceA - entranceB)
 	walk := min(diff, n-diff) * 15
+	via := downA + walk + upB
 
-	fmt.Println(downA + walk + upB)
+	if entranceA == entranceB {
+		direct := min(abs(floorA-floorB)*5, 10+abs(floorA-floorB))
+		fmt.Println(min(direct, via))
+	} else {
+		fmt.Println(via)
+	}
 }
