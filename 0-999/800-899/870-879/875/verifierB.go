@@ -7,16 +7,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
+func buildOracle(dir string) (string, error) {
 	oracle := filepath.Join(dir, "oracleB")
-	cmd := exec.Command("go", "build", "-o", oracle, "875B.go")
+	cmd := exec.Command("go", "build", "-o", oracle, filepath.Join(dir, "875B.go"))
+	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}
@@ -29,14 +27,22 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
+	// Locate the directory of this source file to find the oracle and testcases.
+	_, filePath, _, ok := runtime.Caller(0)
+	if !ok {
+		fmt.Fprintln(os.Stderr, "cannot get current file path")
+		os.Exit(1)
+	}
+	dir := filepath.Dir(filePath)
+
+	oracle, err := buildOracle(dir)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	defer os.Remove(oracle)
 
-	file, err := os.Open("testcasesB.txt")
+	file, err := os.Open(filepath.Join(dir, "testcasesB.txt"))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
 		os.Exit(1)
