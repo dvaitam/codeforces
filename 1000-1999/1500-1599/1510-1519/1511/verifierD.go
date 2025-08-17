@@ -3,36 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
-	"time"
 )
-
-func compileRef() (string, error) {
-	out := filepath.Join(os.TempDir(), fmt.Sprintf("refD_%d", time.Now().UnixNano()))
-	cmd := exec.Command("go", "build", "-o", out, "1511D.go")
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return "", err
-	}
-	return out, nil
-}
-
-func runBinary(path, input string) (string, error) {
-	cmd := exec.Command(path)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = io.Discard
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v", err)
-	}
-	return strings.TrimSpace(out.String()), nil
-}
 
 func runCandidate(bin, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -65,34 +40,49 @@ func generateTests() []string {
 	return tests
 }
 
+func verify(n, k int, out string) error {
+	out = strings.TrimSpace(out)
+	if len(out) != n {
+		return fmt.Errorf("expected length %d, got %d", n, len(out))
+	}
+	for i := 0; i < n; i++ {
+		c := out[i]
+		if c < 'a' || c >= byte('a'+k) {
+			return fmt.Errorf("invalid character '%c'", c)
+		}
+	}
+	seen := make(map[string]struct{})
+	for i := 0; i+1 < n; i++ {
+		seen[out[i:i+2]] = struct{}{}
+	}
+	expected := n - 1
+	kk := k * k
+	if expected > kk {
+		expected = kk
+	}
+	if len(seen) != expected {
+		return fmt.Errorf("expected %d unique pairs, got %d", expected, len(seen))
+	}
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierD.go /path/to/binary")
 		os.Exit(1)
 	}
 	candidate := os.Args[1]
-
-	ref, err := compileRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
 	tests := generateTests()
 	for i, t := range tests {
-		expect, err := runBinary(ref, t)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
 		got, err := runCandidate(candidate, t)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, t)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
-			fmt.Fprintf(os.Stderr, "case %d failed:\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", i+1, t, expect, got)
+		var n, k int
+		fmt.Sscanf(t, "%d %d", &n, &k)
+		if err := verify(n, k, got); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s\noutput:\n%s\n", i+1, err, t, got)
 			os.Exit(1)
 		}
 	}
