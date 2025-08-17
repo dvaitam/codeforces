@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -200,6 +201,75 @@ func formatOutput(status string, moves []move) string {
 	return strings.TrimSpace(sb.String())
 }
 
+func checkOutput(k int, boxes [][]int64, out string, status string) error {
+	out = strings.TrimSpace(out)
+	lines := strings.Split(out, "\n")
+	if len(lines) == 0 {
+		return fmt.Errorf("empty output")
+	}
+	header := strings.TrimSpace(lines[0])
+	if status == "NO" {
+		if !strings.EqualFold(header, "NO") {
+			return fmt.Errorf("expected NO, got %s", header)
+		}
+		if len(lines) > 1 {
+			return fmt.Errorf("unexpected extra output")
+		}
+		return nil
+	}
+	if !strings.EqualFold(header, "YES") {
+		return fmt.Errorf("expected YES, got %s", header)
+	}
+	if len(lines) != k+1 {
+		return fmt.Errorf("expected %d lines after YES, got %d", k, len(lines)-1)
+	}
+	whichbox := make(map[int64]int)
+	sums := make([]int64, k)
+	var total int64
+	for i := 0; i < k; i++ {
+		for _, v := range boxes[i] {
+			whichbox[v] = i
+			sums[i] += v
+			total += v
+		}
+	}
+	target := total / int64(k)
+	usedVal := make(map[int64]bool)
+	for i := 0; i < k; i++ {
+		parts := strings.Fields(lines[i+1])
+		if len(parts) != 2 {
+			return fmt.Errorf("line %d: expected two numbers", i+2)
+		}
+		val, err := strconv.ParseInt(parts[0], 10, 64)
+		if err != nil {
+			return fmt.Errorf("line %d: invalid number", i+2)
+		}
+		dest, err := strconv.Atoi(parts[1])
+		if err != nil || dest < 1 || dest > k {
+			return fmt.Errorf("line %d: invalid destination", i+2)
+		}
+		src, ok := whichbox[val]
+		if !ok {
+			return fmt.Errorf("line %d: number %d not found in any box", i+2, val)
+		}
+		if src != i {
+			return fmt.Errorf("line %d: number %d does not belong to box %d", i+2, val, i+1)
+		}
+		if usedVal[val] {
+			return fmt.Errorf("line %d: number %d used multiple times", i+2, val)
+		}
+		usedVal[val] = true
+		sums[src] -= val
+		sums[dest-1] += val
+	}
+	for i := 0; i < k; i++ {
+		if sums[i] != target {
+			return fmt.Errorf("box %d has sum %d, expected %d", i+1, sums[i], target)
+		}
+	}
+	return nil
+}
+
 func genCase(rng *rand.Rand) (int, [][]int64) {
 	k := rng.Intn(3) + 1
 	boxes := make([][]int64, k)
@@ -250,15 +320,14 @@ func main() {
 
 	for i, tc := range cases {
 		in := formatInput(tc.k, tc.boxes)
-		status, moves := solveC(tc.k, tc.boxes)
-		exp := formatOutput(status, moves)
+		status, _ := solveC(tc.k, tc.boxes)
 		out, err := run(bin, in)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}
-		if !strings.EqualFold(strings.TrimSpace(out), exp) {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected:\n%s\n got:\n%s\ninput:\n%s", i+1, exp, out, in)
+		if err := checkOutput(tc.k, tc.boxes, out, status); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\noutput:\n%s\ninput:\n%s", i+1, err, out, in)
 			os.Exit(1)
 		}
 	}
