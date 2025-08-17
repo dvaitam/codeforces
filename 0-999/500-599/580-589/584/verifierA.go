@@ -34,14 +34,33 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func solve(n, t int) string {
+func check(n, t int, out string) error {
 	if n == 1 && t == 10 {
-		return "-1"
+		if out == "-1" {
+			return nil
+		}
+		return fmt.Errorf("expected -1 got %s", out)
 	}
-	if t == 10 {
-		return "1" + strings.Repeat("0", n-1)
+	if out == "-1" {
+		return fmt.Errorf("unexpected -1")
 	}
-	return strings.Repeat(fmt.Sprint(t), n)
+	if len(out) != n {
+		return fmt.Errorf("wrong length: got %d want %d", len(out), n)
+	}
+	if out[0] == '0' {
+		return fmt.Errorf("leading zero")
+	}
+	mod := 0
+	for _, ch := range out {
+		if ch < '0' || ch > '9' {
+			return fmt.Errorf("invalid character %q", ch)
+		}
+		mod = (mod*10 + int(ch-'0')) % t
+	}
+	if mod != 0 {
+		return fmt.Errorf("not divisible by %d", t)
+	}
+	return nil
 }
 
 func main() {
@@ -63,14 +82,13 @@ func main() {
 	}
 	for idx, tc := range cases {
 		input := fmt.Sprintf("%d %d\n", tc.n, tc.t)
-		expect := solve(tc.n, tc.t)
 		out, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:%s", idx+1, err, input)
 			os.Exit(1)
 		}
-		if out != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:%s", idx+1, expect, out, input)
+		if err := check(tc.n, tc.t, out); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:%s", idx+1, err, input)
 			os.Exit(1)
 		}
 	}
