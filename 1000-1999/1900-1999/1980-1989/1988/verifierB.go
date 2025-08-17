@@ -30,13 +30,18 @@ func generate() (string, string) {
 				ones++
 			}
 		}
-		s := string(sb)
-		fmt.Fprintf(&in, "%d %s\n", n, s)
-		if ones > groups {
-			fmt.Fprintln(&out, "YES")
-		} else {
-			fmt.Fprintln(&out, "NO")
-		}
+               s := string(sb)
+               // According to the problem statement, the length and the string
+               // should be provided on separate lines. The previous implementation
+               // printed them on the same line, which caused solutions that
+               // expect the official format to fail with a parse error. Print
+               // `n` and `s` on individual lines to match the statement.
+               fmt.Fprintf(&in, "%d\n%s\n", n, s)
+               if ones > groups {
+                       fmt.Fprintln(&out, "YES")
+               } else {
+                       fmt.Fprintln(&out, "NO")
+               }
 	}
 	return in.String(), out.String()
 }
