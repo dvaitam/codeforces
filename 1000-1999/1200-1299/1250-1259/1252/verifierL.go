@@ -19,6 +19,9 @@ func buildRef() (string, error) {
 }
 
 func runExe(path, input string) (string, error) {
+	if !strings.Contains(path, "/") {
+		path = "./" + path
+	}
 	cmd := exec.Command(path)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
