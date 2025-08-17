@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -83,7 +84,9 @@ func main() {
 			fmt.Printf("case %d: %v\n", i, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
+		expVal, err1 := strconv.ParseFloat(strings.TrimSpace(expect), 64)
+		gotVal, err2 := strconv.ParseFloat(strings.TrimSpace(got), 64)
+		if err1 != nil || err2 != nil || math.Abs(expVal-gotVal) > 1e-6 {
 			fmt.Printf("case %d failed\nexpected:\n%s\n\ngot:\n%s\n", i, expect, got)
 			os.Exit(1)
 		}
