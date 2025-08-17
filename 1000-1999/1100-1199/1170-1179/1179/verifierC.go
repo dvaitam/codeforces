@@ -34,14 +34,16 @@ func genCase(r *rand.Rand) string {
 		if i > 0 {
 			sb.WriteByte(' ')
 		}
-		sb.WriteString(strconv.Itoa(r.Intn(6)))
+		// values must be at least 1 according to the problem constraints
+		sb.WriteString(strconv.Itoa(r.Intn(6) + 1))
 	}
 	sb.WriteByte('\n')
 	for i := 0; i < m; i++ {
 		if i > 0 {
 			sb.WriteByte(' ')
 		}
-		sb.WriteString(strconv.Itoa(r.Intn(6)))
+		// pupil money is also at least 1
+		sb.WriteString(strconv.Itoa(r.Intn(6) + 1))
 	}
 	sb.WriteByte('\n')
 	q := r.Intn(8) + 1
@@ -50,11 +52,13 @@ func genCase(r *rand.Rand) string {
 		tp := r.Intn(2) + 1
 		if tp == 1 {
 			idx := r.Intn(n) + 1
-			x := r.Intn(6)
+			// dish prices are in [1, 1e6]
+			x := r.Intn(6) + 1
 			sb.WriteString(fmt.Sprintf("1 %d %d\n", idx, x))
 		} else {
 			idx := r.Intn(m) + 1
-			x := r.Intn(6)
+			// pupils have at least 1 togrog
+			x := r.Intn(6) + 1
 			sb.WriteString(fmt.Sprintf("2 %d %d\n", idx, x))
 		}
 	}
