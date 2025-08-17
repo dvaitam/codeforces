@@ -10,12 +10,12 @@ import (
 )
 
 func buildRef() (string, error) {
-	ref := "refC.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1391C.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
-	}
-	return ref, nil
+        ref := "./refC.bin"
+        cmd := exec.Command("go", "build", "-o", ref, "1391C.go")
+        if out, err := cmd.CombinedOutput(); err != nil {
+                return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
+        }
+        return ref, nil
 }
 
 func runBinary(bin, input string) (string, string, error) {
