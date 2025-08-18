@@ -120,7 +120,21 @@ func main() {
 			fmt.Printf("runtime error on test %d: %v\ninput:\n%s\n", t+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != exp {
+		// Compare token-wise to allow any whitespace/newline formatting
+		expTok := strings.Fields(exp)
+		gotTok := strings.Fields(strings.TrimSpace(got))
+		if len(expTok) != len(gotTok) {
+			fmt.Printf("wrong answer on test %d (length mismatch)\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", t+1, input, exp, got)
+			os.Exit(1)
+		}
+		ok := true
+		for i := range expTok {
+			if expTok[i] != gotTok[i] {
+				ok = false
+				break
+			}
+		}
+		if !ok {
 			fmt.Printf("wrong answer on test %d\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", t+1, input, exp, got)
 			os.Exit(1)
 		}
