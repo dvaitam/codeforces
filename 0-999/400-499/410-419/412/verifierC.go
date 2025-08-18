@@ -52,7 +52,7 @@ func validateC(patterns []string, got string) error {
 				return fmt.Errorf("pos %d: expected lowercase letter for unconstrained position, got %q", j, gj)
 			}
 		} else {
-			if gj != rune(letter) {
+			if gj != letter {
 				return fmt.Errorf("pos %d: expected %q got %q", j, letter, gj)
 			}
 		}
