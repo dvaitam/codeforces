@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -27,7 +28,12 @@ func runExe(path, input string) (string, error) {
 }
 
 func buildRef() (string, error) {
-	ref := "refC.bin"
+	// Build the reference binary in the current working directory and return its absolute path
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	ref := filepath.Join(cwd, "refC.bin")
 	cmd := exec.Command("go", "build", "-o", ref, "1093C.go")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build reference failed: %v: %s", err, string(out))
