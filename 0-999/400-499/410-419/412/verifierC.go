@@ -10,36 +10,54 @@ import (
 	"time"
 )
 
-func expectedC(patterns []string) string {
+// validateC checks candidate output against constraints rather than a fixed expected string.
+// Rule per problem: at each position j, consider all non-'?' letters among patterns.
+// - If there are letters and all are the same letter L, output must be L.
+// - If there are at least two different letters, output must be '?'.
+// - If there are no letters (all '?'), output may be any lowercase letter 'a'..'z'.
+func validateC(patterns []string, got string) error {
 	if len(patterns) == 0 {
-		return ""
+		if strings.TrimSpace(got) != "" {
+			return fmt.Errorf("expected empty output for empty input")
+		}
+		return nil
 	}
 	k := len(patterns[0])
-	res := make([]rune, k)
+	if len(got) != k {
+		return fmt.Errorf("wrong length: expected %d got %d", k, len(got))
+	}
 	for j := 0; j < k; j++ {
-		ch := rune('?')
+		var letter byte = 0
 		conflict := false
 		for _, p := range patterns {
-			c := rune(p[j])
+			c := p[j]
 			if c == '?' {
 				continue
 			}
-			if ch == '?' {
-				ch = c
-			} else if ch != c {
+			if letter == 0 {
+				letter = c
+			} else if letter != c {
 				conflict = true
 				break
 			}
 		}
+		gj := got[j]
 		if conflict {
-			res[j] = '?'
-		} else if ch == '?' {
-			res[j] = 'x'
+			if gj != '?' {
+				return fmt.Errorf("pos %d: expected '?' due to conflict, got %q", j, gj)
+			}
+		} else if letter == 0 {
+			// Any lowercase letter allowed when unconstrained
+			if gj < 'a' || gj > 'z' {
+				return fmt.Errorf("pos %d: expected lowercase letter for unconstrained position, got %q", j, gj)
+			}
 		} else {
-			res[j] = ch
+			if gj != rune(letter) {
+				return fmt.Errorf("pos %d: expected %q got %q", j, letter, gj)
+			}
 		}
 	}
-	return string(res)
+	return nil
 }
 
 func runCase(bin string, patterns []string) error {
@@ -56,9 +74,8 @@ func runCase(bin string, patterns []string) error {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
 	got := strings.TrimSpace(out.String())
-	expect := strings.TrimSpace(expectedC(patterns))
-	if got != expect {
-		return fmt.Errorf("expected %q got %q", expect, got)
+	if err := validateC(patterns, got); err != nil {
+		return fmt.Errorf("%v", err)
 	}
 	return nil
 }
