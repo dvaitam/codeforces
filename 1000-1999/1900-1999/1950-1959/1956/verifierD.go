@@ -1,117 +1,113 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
-	"math/rand"
-	"os"
-	"os/exec"
-	"strings"
-	"time"
+    "bufio"
+    "bytes"
+    "fmt"
+    "math/rand"
+    "os"
+    "os/exec"
+    "strconv"
+    "strings"
+    "time"
 )
 
-type pair struct{ first, second int }
-
-var operations []pair
-
-func permuteRec(n, offset int) {
-	if n == 1 {
-		return
-	}
-	solveRec(n-1, offset)
-	if n > 2 {
-		operations = append(operations, pair{offset + 1, offset + n - 2})
-	}
-	permuteRec(n-1, offset+1)
+// Compute the best achievable sum via brute force over split positions.
+// For a bitmask M over positions [0..n-1], where a set bit at r indicates
+// we "take" a[r] and also end a zero-run just before r, the achieved sum is:
+//   sum(arr[r] for r where bit r is 1) + sum((lenGap)^2 over zero-runs)
+// where zero-runs are stretches between chosen positions and at ends.
+func bestSum(arr []int) int {
+    n := len(arr)
+    if n == 0 {
+        return 0
+    }
+    maxSum := -1
+    for M := 0; M < (1 << n); M++ {
+        sum := 0
+        l := 0
+        for r := 0; r < n; r++ {
+            if (M>>r)&1 == 1 {
+                // Close gap [l, r)
+                gap := r - l
+                sum += gap * gap
+                sum += arr[r]
+                l = r + 1
+            }
+        }
+        // trailing gap
+        gap := n - l
+        sum += gap * gap
+        if sum > maxSum {
+            maxSum = sum
+        }
+    }
+    return maxSum
 }
 
-func solveRec(n, offset int) {
-	permuteRec(n, offset)
-	operations = append(operations, pair{offset, offset + n - 1})
+// Apply candidate operations to the array and return resulting sum.
+// Each operation sets a[l..r] to mex of that subarray.
+func applyAndSum(a []int, ops [][2]int) (int, error) {
+    n := len(a)
+    b := append([]int(nil), a...)
+    for _, op := range ops {
+        l := op[0]
+        r := op[1]
+        if l < 0 || r < 0 || l >= n || r >= n || l > r {
+            return 0, fmt.Errorf("invalid op indices: %d %d", l+1, r+1)
+        }
+        // Compute mex within b[l..r]
+        size := r - l + 1
+        seen := make([]bool, size+2)
+        for i := l; i <= r; i++ {
+            v := b[i]
+            if 0 <= v && v <= size+1 {
+                if v < len(seen) {
+                    seen[v] = true
+                }
+            }
+        }
+        mex := 0
+        for mex < len(seen) && seen[mex] {
+            mex++
+        }
+        for i := l; i <= r; i++ {
+            b[i] = mex
+        }
+    }
+    s := 0
+    for _, v := range b {
+        s += v
+    }
+    return s, nil
 }
 
-func solveCase(arr []int) string {
-	n := len(arr)
-	mask := make([]int, n)
-	var maxMask []int
-	maxSum := -1
-	for mask[0] < 2 {
-		sum := 0
-		streak := 0
-		for i := 0; i < n; i++ {
-			if mask[i] == 0 {
-				streak++
-			} else {
-				sum += streak * streak
-				sum += arr[i]
-				streak = 0
-			}
-		}
-		sum += streak * streak
-		if sum > maxSum {
-			maxSum = sum
-			maxMask = append([]int(nil), mask...)
-		}
-		idx := n - 1
-		mask[idx]++
-		for idx > 0 && mask[idx] == 2 {
-			mask[idx] = 0
-			idx--
-			mask[idx]++
-		}
-	}
-	operations = operations[:0]
-	var out bytes.Buffer
-	fmt.Fprintf(&out, "%d ", maxSum)
-	prev := -1
-	for i := 0; i < n; i++ {
-		if maxMask[i] == 0 && arr[i] != 0 {
-			operations = append(operations, pair{i, i})
-		}
-		if maxMask[i] == 0 && prev == -1 {
-			prev = i
-		} else if maxMask[i] == 1 {
-			if prev != -1 {
-				solveRec(i-prev, prev)
-			}
-			prev = -1
-		}
-	}
-	if prev != -1 {
-		solveRec(n-prev, prev)
-	}
-	fmt.Fprintf(&out, "%d\n", len(operations))
-	for _, op := range operations {
-		fmt.Fprintf(&out, "%d %d\n", op.first+1, op.second+1)
-	}
-	return strings.TrimSpace(out.String())
-}
-
-func genCase(rng *rand.Rand) (string, string) {
-	n := rng.Intn(4) + 1
-	arr := make([]int, n)
-	var in bytes.Buffer
-	fmt.Fprintf(&in, "%d\n", n)
-	for i := 0; i < n; i++ {
-		arr[i] = rng.Intn(6)
-		if i > 0 {
-			in.WriteByte(' ')
-		}
-		fmt.Fprintf(&in, "%d", arr[i])
-	}
-	in.WriteByte('\n')
-	exp := solveCase(arr)
-	return in.String(), exp
+func genCase(rng *rand.Rand) (string, []int, int) {
+    n := rng.Intn(6) + 1
+    arr := make([]int, n)
+    var in bytes.Buffer
+    fmt.Fprintf(&in, "%d\n", n)
+    for i := 0; i < n; i++ {
+        // Random values including zeros and small positives
+        arr[i] = rng.Intn(10)
+        if i > 0 {
+            in.WriteByte(' ')
+        }
+        fmt.Fprintf(&in, "%d", arr[i])
+    }
+    in.WriteByte('\n')
+    bs := bestSum(arr)
+    return in.String(), arr, bs
 }
 
 func run(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+    cmd := exec.Command(bin)
+    cmd.Stdin = strings.NewReader(input)
+    var out bytes.Buffer
+    cmd.Stdout = &out
+    cmd.Stderr = &out
+    err := cmd.Run()
+    return out.String(), err
 }
 
 func main() {
@@ -120,18 +116,73 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 100; i++ {
-		in, exp := genCase(rng)
-		got, err := run(bin, in)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		if got != exp {
-			fmt.Fprintf(os.Stderr, "test %d failed\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", i+1, in, exp, got)
-			os.Exit(1)
-		}
-	}
-	fmt.Println("All tests passed")
+    rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+    for i := 0; i < 100; i++ {
+        in, arr, want := genCase(rng)
+        raw, err := run(bin, in)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n", i+1, err)
+            os.Exit(1)
+        }
+        // Parse candidate output
+        scanner := bufio.NewScanner(strings.NewReader(raw))
+        scanner.Split(bufio.ScanLines)
+        if !scanner.Scan() {
+            fmt.Fprintf(os.Stderr, "test %d failed: empty output\ninput:\n%s\n", i+1, in)
+            os.Exit(1)
+        }
+        first := strings.Fields(scanner.Text())
+        if len(first) < 2 {
+            fmt.Fprintf(os.Stderr, "test %d failed: malformed first line: %q\n", i+1, scanner.Text())
+            os.Exit(1)
+        }
+        sumGot, err1 := strconv.Atoi(first[0])
+        m, err2 := strconv.Atoi(first[1])
+        if err1 != nil || err2 != nil {
+            fmt.Fprintf(os.Stderr, "test %d failed: non-integer header: %q\n", i+1, scanner.Text())
+            os.Exit(1)
+        }
+        if m < 0 || m > 500000 {
+            fmt.Fprintf(os.Stderr, "test %d failed: invalid m=%d\n", i+1, m)
+            os.Exit(1)
+        }
+        var ops [][2]int
+        for j := 0; j < m; j++ {
+            if !scanner.Scan() {
+                fmt.Fprintf(os.Stderr, "test %d failed: insufficient operations lines (got %d)\n", i+1, j)
+                os.Exit(1)
+            }
+            f := strings.Fields(scanner.Text())
+            if len(f) < 2 {
+                fmt.Fprintf(os.Stderr, "test %d failed: malformed op line: %q\n", i+1, scanner.Text())
+                os.Exit(1)
+            }
+            l, er1 := strconv.Atoi(f[0])
+            r, er2 := strconv.Atoi(f[1])
+            if er1 != nil || er2 != nil {
+                fmt.Fprintf(os.Stderr, "test %d failed: non-integer op: %q\n", i+1, scanner.Text())
+                os.Exit(1)
+            }
+            // Convert to 0-based
+            l--
+            r--
+            ops = append(ops, [2]int{l, r})
+        }
+        // Validate sum first
+        if sumGot != want {
+            fmt.Fprintf(os.Stderr, "test %d failed\ninput:\n%s\nexpected sum:\n%d\ngot header sum:\n%d\n", i+1, in, want, sumGot)
+            os.Exit(1)
+        }
+        // Simulate operations
+        finalSum, err := applyAndSum(arr, ops)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "test %d failed: %v\n", i+1, err)
+            os.Exit(1)
+        }
+        if finalSum != want {
+            fmt.Fprintf(os.Stderr, "test %d failed\ninput:\n%s\nexpected final sum:\n%d\nobtained final sum:\n%d\noutput:\n%s\n", i+1, in, want, finalSum, strings.TrimSpace(raw))
+            os.Exit(1)
+        }
+    }
+    fmt.Println("All tests passed")
 }
