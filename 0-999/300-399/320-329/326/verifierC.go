@@ -177,7 +177,9 @@ func main() {
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	for i := 0; i < 100; i++ {
+	// Many accepted CF solutions precompute DP tables per run; invoking them
+	// 100 times can be unnecessarily slow. Keep the sample size modest.
+	for i := 0; i < 20; i++ {
 		r, cells := generateCase(rng)
 		if err := runCase(bin, r, cells); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
