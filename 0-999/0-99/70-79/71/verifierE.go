@@ -190,6 +190,11 @@ func runCase(bin, input, expected string) error {
 		tar[i] = elemIndex[s]
 	}
 
+	// Determine solvability via reference solver
+	ref := solveE(input)
+	refFirst := strings.Split(strings.TrimSpace(ref), "\n")[0]
+	solvable := strings.TrimSpace(refFirst) == "YES"
+
 	// Run candidate
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
@@ -206,6 +211,12 @@ func runCase(bin, input, expected string) error {
 	lines := strings.Split(out, "\n")
 	first := strings.TrimSpace(lines[0])
 	// Expected is always solvable (constructed), so require YES
+	if !solvable {
+		if first != "NO" {
+			return fmt.Errorf("expected NO, got %q", first)
+		}
+		return nil
+	}
 	if first != "YES" {
 		return fmt.Errorf("expected YES, got %q", first)
 	}
