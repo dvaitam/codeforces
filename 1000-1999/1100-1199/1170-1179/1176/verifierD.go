@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -128,7 +129,35 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i, err, input)
 			os.Exit(1)
 		}
-		if got != expect {
+		// Compare as multisets of integers since order of output is not constrained
+		expFields := strings.Fields(expect)
+		gotFields := strings.Fields(got)
+		if len(expFields) != len(gotFields) {
+			fmt.Fprintf(os.Stderr, "case %d failed: length mismatch expected %d got %d\ninput:\n%s\nexpected:%s\n   got:%s\n", i, len(expFields), len(gotFields), input, expect, got)
+			os.Exit(1)
+		}
+		expVals := make([]int, len(expFields))
+		gotVals := make([]int, len(gotFields))
+		for j, s := range expFields {
+			var v int
+			fmt.Sscanf(s, "%d", &v)
+			expVals[j] = v
+		}
+		for j, s := range gotFields {
+			var v int
+			fmt.Sscanf(s, "%d", &v)
+			gotVals[j] = v
+		}
+		sort.Ints(expVals)
+		sort.Ints(gotVals)
+		ok := true
+		for j := range expVals {
+			if expVals[j] != gotVals[j] {
+				ok = false
+				break
+			}
+		}
+		if !ok {
 			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i, expect, got, input)
 			os.Exit(1)
 		}
