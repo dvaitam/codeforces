@@ -130,110 +130,73 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	for i := 0; i < 100; i++ {
-		// Generate a graph with exactly n-1 edges, composed of several components,
-		// and exactly one cycle per component except one (so total cycles = components-1),
-		// which matches the problem's invariant and avoids degenerate cases for candidates.
+		// Robust generator: ensure exactly n-1 edges
 		n := rng.Intn(18) + 2 // 2..19
-		// Decide number of components c (at least 1, at most n)
-		c := rng.Intn(imin(n, 5)) + 1 // keep small number of components
-		// Split n nodes into c positive sizes
-		sizes := make([]int, c)
-		rem := n
-		for k := 0; k < c; k++ {
-			if k == c-1 {
-				sizes[k] = rem
-				break
-			}
-			// at least 1 node per remaining component
-			maxHere := rem - (c - 1 - k)
-			// choose s in [1, maxHere-1] if possible; if maxHere==1, s must be 1
-			var s int
-			if maxHere <= 1 {
-				s = 1
-			} else {
-				s = rng.Intn(maxHere-1) + 1
-			}
-			sizes[k] = s
-			rem -= s
+		cmax := imin(n, 5)
+		ccap := (n-1)/2 + 1
+		if cmax > ccap {
+			cmax = ccap
 		}
-		// Assign labels 1..n to components contiguously
+		if cmax < 1 {
+			cmax = 1
+		}
+		c := rng.Intn(cmax) + 1
+		// sizes: first c-1 have size 2, last gets the rest (>=1)
+		sizes := make([]int, c)
+		for k := 0; k < c-1; k++ {
+			sizes[k] = 2
+		}
+		sizes[c-1] = n - 2*(c-1)
 		edges := make([][2]int, 0, n-1)
 		base := 1
+		// build tree edges within each component
 		for k := 0; k < c; k++ {
 			s := sizes[k]
-			// build a tree on nodes [base..base+s-1]
 			for t := 1; t < s; t++ {
 				u := base + t
-				v := base + rng.Intn(t) // connect to some previous node
+				v := base + rng.Intn(t)
 				edges = append(edges, [2]int{u, v})
 			}
 			base += s
 		}
-		// add (c-1) extra edges, one within each of the first (c-1) components, to create a single cycle per component
+		// add (c-1) extra internal edges to create cycles
 		base = 1
 		for k := 0; k < c-1; k++ {
-			s := sizes[k]
-			if s >= 2 {
-				u := base + rng.Intn(s)
-				v := base + rng.Intn(s)
-				for v == u {
-					v = base + rng.Intn(s)
-				}
-				edges = append(edges, [2]int{u, v})
-			} else {
-				// If component size is 1, connect it to itself is invalid; instead, add extra edge in last component
-				// fallback: add inside last component (which must have size>=2 unless n==c)
-				lastBase := base
-				for kk := k + 1; kk < c; kk++ {
-					lastBase += sizes[kk-1]
-				}
-				s2 := sizes[c-1]
-				if s2 < 2 { // degenerate, adjust by linking into previous component
-					// connect two nodes from previous component (which had at least 2 because we built a tree on it if s>1)
-					prevBase := base - sizes[k]
-					sPrev := sizes[k]
-					if sPrev < 2 {
-						continue
-					}
-					u := prevBase + rng.Intn(sPrev)
-					v := prevBase + rng.Intn(sPrev)
-					for v == u {
-						v = prevBase + rng.Intn(sPrev)
-					}
-					edges = append(edges, [2]int{u, v})
-				} else {
-					u := lastBase + rng.Intn(s2)
-					v := lastBase + rng.Intn(s2)
-					for v == u {
-						v = lastBase + rng.Intn(s2)
-					}
-					edges = append(edges, [2]int{u, v})
-				}
+			s := sizes[k] // >=2
+			u := base + rng.Intn(s)
+			v := base + rng.Intn(s)
+			for v == u {
+				v = base + rng.Intn(s)
 			}
-			base += sizes[k]
+			edges = append(edges, [2]int{u, v})
+			base += s
 		}
-		// Now edges should be exactly n-1
+		// assert size
 		if len(edges) != n-1 {
-			// Trim or pad by connecting within the last component
+			// pad or trim within last component
 			for len(edges) > n-1 {
 				edges = edges[:len(edges)-1]
 			}
 			for len(edges) < n-1 {
-				// add within last component
 				lastStart := 1
 				for kk := 0; kk < c-1; kk++ {
 					lastStart += sizes[kk]
 				}
 				s := sizes[c-1]
-				if s < 2 {
-					break
+				if s >= 2 {
+					u := lastStart + rng.Intn(s)
+					v := lastStart + rng.Intn(s)
+					for v == u {
+						v = lastStart + rng.Intn(s)
+					}
+					edges = append(edges, [2]int{u, v})
+				} else {
+					if lastStart > 1 {
+						edges = append(edges, [2]int{lastStart, lastStart - 1})
+					} else {
+						edges = append(edges, [2]int{1, 2})
+					}
 				}
-				u := lastStart + rng.Intn(s)
-				v := lastStart + rng.Intn(s)
-				for v == u {
-					v = lastStart + rng.Intn(s)
-				}
-				edges = append(edges, [2]int{u, v})
 			}
 		}
 
