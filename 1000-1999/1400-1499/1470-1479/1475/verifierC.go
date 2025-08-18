@@ -10,12 +10,16 @@ import (
 	"time"
 )
 
+type pr struct{ x, y int }
+
 func solveC(a, b, k int, boys, girls []int) string {
 	cntBoy := make([]int, a+1)
 	cntGirl := make([]int, b+1)
+	cntPair := make(map[pr]int)
 	for i := 0; i < k; i++ {
 		cntBoy[boys[i]]++
 		cntGirl[girls[i]]++
+		cntPair[pr{boys[i], girls[i]}]++
 	}
 	total := int64(k) * int64(k-1) / 2
 	for i := 1; i <= a; i++ {
@@ -25,6 +29,10 @@ func solveC(a, b, k int, boys, girls []int) string {
 	for i := 1; i <= b; i++ {
 		x := cntGirl[i]
 		total -= int64(x) * int64(x-1) / 2
+	}
+	// Add back pairs counted twice when duplicates (same boy and girl) exist
+	for _, c := range cntPair {
+		total += int64(c) * int64(c-1) / 2
 	}
 	return fmt.Sprintf("%d", total)
 }
