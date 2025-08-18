@@ -22,14 +22,29 @@ func expected(n, m int, a []int, events []int) string {
 			}
 		} else {
 			L := len(seq)
-			k := sort.SearchInts(a, L+1)
-			for j := 0; j < k; j++ {
-				idx := a[j] - 1 - j
-				if idx < 0 || idx >= len(seq) {
-					continue
-				}
-				seq = append(seq[:idx], seq[idx+1:]...)
+			if L == 0 {
+				continue
 			}
+			k := sort.SearchInts(a, L+1)
+			if k == 0 {
+				continue
+			}
+			// Mark original 1-based positions to remove (handle duplicates correctly)
+			remove := make([]bool, L)
+			for j := 0; j < k; j++ {
+				pos := a[j] - 1
+				if pos >= 0 && pos < L {
+					remove[pos] = true
+				}
+			}
+			// Build the new sequence in one pass
+			ns := make([]byte, 0, L)
+			for i := 0; i < L; i++ {
+				if !remove[i] {
+					ns = append(ns, seq[i])
+				}
+			}
+			seq = ns
 		}
 	}
 	if len(seq) == 0 {
