@@ -168,6 +168,29 @@ func generateCase(rng *rand.Rand) (string, string) {
 }
 
 func runCase(bin, input, expected string) error {
+	// Parse input to get n, m, start sequence, and targets
+	in := bufio.NewReader(strings.NewReader(input))
+	var n, m int
+	if _, err := fmt.Fscan(in, &n, &m); err != nil {
+		return fmt.Errorf("bad input: %v", err)
+	}
+	elemIndex := make(map[string]int, len(elements))
+	for i, s := range elements {
+		elemIndex[s] = i + 1
+	}
+	seq := make([]int, n)
+	tar := make([]int, m)
+	var s string
+	for i := 0; i < n; i++ {
+		fmt.Fscan(in, &s)
+		seq[i] = elemIndex[s]
+	}
+	for i := 0; i < m; i++ {
+		fmt.Fscan(in, &s)
+		tar[i] = elemIndex[s]
+	}
+
+	// Run candidate
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var buf bytes.Buffer
@@ -176,8 +199,88 @@ func runCase(bin, input, expected string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("runtime error: %v\n%s", err, buf.String())
 	}
-	if strings.TrimSpace(buf.String()) != strings.TrimSpace(expected) {
-		return fmt.Errorf("expected\n%s\ngot\n%s", expected, buf.String())
+	out := strings.TrimSpace(buf.String())
+	if out == "" {
+		return fmt.Errorf("empty output")
+	}
+	lines := strings.Split(out, "\n")
+	first := strings.TrimSpace(lines[0])
+	// Expected is always solvable (constructed), so require YES
+	if first != "YES" {
+		return fmt.Errorf("expected YES, got %q", first)
+	}
+	// Validate remaining lines form a valid partition regardless of reactant order and line order
+	// Build multisets for start seq and targets
+	startCnt := make(map[int]int)
+	for _, v := range seq {
+		startCnt[v]++
+	}
+	tarCnt := make(map[int]int)
+	for _, v := range tar {
+		tarCnt[v]++
+	}
+
+	usedLines := 0
+	for _, line := range lines[1:] {
+		tline := strings.TrimSpace(line)
+		if tline == "" {
+			continue
+		}
+		// Expect format: A+B+...->C (no spaces needed; allow spaces)
+		parts := strings.Split(tline, "->")
+		if len(parts) != 2 {
+			return fmt.Errorf("malformed line: %q", line)
+		}
+		lhs := strings.ReplaceAll(strings.TrimSpace(parts[0]), " ", "")
+		rhs := strings.TrimSpace(parts[1])
+		// parse rhs element
+		rv, ok := elemIndex[rhs]
+		if !ok {
+			return fmt.Errorf("unknown element on RHS: %q", rhs)
+		}
+		// decrement target multiset
+		if tarCnt[rv] == 0 {
+			return fmt.Errorf("unexpected target product %s", rhs)
+		}
+		tarCnt[rv]--
+		// parse lhs tokens
+		sum := 0
+		if lhs == "" {
+			return fmt.Errorf("empty reactants for product %s", rhs)
+		}
+		for _, tok := range strings.Split(lhs, "+") {
+			if tok == "" {
+				return fmt.Errorf("empty token in LHS: %q", line)
+			}
+			v, ok := elemIndex[tok]
+			if !ok {
+				return fmt.Errorf("unknown element %q", tok)
+			}
+			// consume from start multiset
+			if startCnt[v] == 0 {
+				return fmt.Errorf("element %s overused", tok)
+			}
+			startCnt[v]--
+			sum += v
+		}
+		if sum != rv {
+			return fmt.Errorf("reactants sum %d != product %d (%s)", sum, rv, rhs)
+		}
+		usedLines++
+	}
+	// Ensure all targets used and all reactants consumed
+	for v, c := range tarCnt {
+		if c != 0 {
+			return fmt.Errorf("unused target %s x%d", elements[v-1], c)
+		}
+	}
+	for v, c := range startCnt {
+		if c != 0 {
+			return fmt.Errorf("unused reactant %s x%d", elements[v-1], c)
+		}
+	}
+	if usedLines != m {
+		return fmt.Errorf("expected %d reaction lines, got %d", m, usedLines)
 	}
 	return nil
 }
