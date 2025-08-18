@@ -42,6 +42,18 @@ func main() {
 			v, _ := strconv.Atoi(parts[i+1])
 			arr[i] = v
 		}
+		// Shift the entire array by a constant so all values are non-negative.
+		// This preserves the relation arr[0] < arr[n-1] used to compute expected.
+		shift := 0
+		minV := arr[0]
+		for i := 1; i < n; i++ {
+			if arr[i] < minV {
+				minV = arr[i]
+			}
+		}
+		if minV < 0 {
+			shift = -minV
+		}
 		var input strings.Builder
 		input.WriteString("1\n")
 		input.WriteString(fmt.Sprintf("%d\n", n))
@@ -49,7 +61,7 @@ func main() {
 			if i > 0 {
 				input.WriteByte(' ')
 			}
-			input.WriteString(fmt.Sprintf("%d", v))
+			input.WriteString(fmt.Sprintf("%d", v+shift))
 		}
 		input.WriteByte('\n')
 
