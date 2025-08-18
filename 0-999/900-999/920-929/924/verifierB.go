@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -57,7 +59,7 @@ func genTest(rng *rand.Rand) Test {
 	return Test{n: n, U: U, E: E, input: sb.String()}
 }
 
-func solve(t Test) string {
+func solve(t Test) (float64, bool) {
 	best := -1.0
 	k := 0
 	for i := 0; i < t.n; i++ {
@@ -75,9 +77,9 @@ func solve(t Test) string {
 		}
 	}
 	if best < 0 {
-		return "-1"
+		return 0, false
 	}
-	return fmt.Sprintf("%.12f", best)
+	return best, true
 }
 
 func main() {
@@ -89,15 +91,44 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		t := genTest(rng)
-		expected := solve(t)
+		expVal, ok := solve(t)
 		out, err := run(bin, t.input)
 		if err != nil {
 			fmt.Printf("test %d runtime error: %v\n%s", i+1, err, out)
 			os.Exit(1)
 		}
 		out = strings.TrimSpace(out)
-		if out != expected {
-			fmt.Printf("test %d failed\ninput:\n%s\nexpected:%s got:%s\n", i+1, t.input, expected, out)
+		if !ok {
+			// Expect -1 when no valid triple
+			if out != "-1" {
+				fmt.Printf("test %d failed\ninput:\n%s\nexpected:%s got:%s\n", i+1, t.input, "-1", out)
+				os.Exit(1)
+			}
+			continue
+		}
+		// Parse candidate float and compare with tolerance
+		gotVal, perr := strconv.ParseFloat(out, 64)
+		if perr != nil {
+			// Sometimes contestants print with extra whitespace or formatting; try first token
+			fields := strings.Fields(out)
+			if len(fields) > 0 {
+				if v, e := strconv.ParseFloat(fields[0], 64); e == nil {
+					gotVal = v
+					perr = nil
+				}
+			}
+		}
+		if perr != nil {
+			fmt.Printf("test %d failed: could not parse float from output\ninput:\n%s\noutput:%s\n", i+1, t.input, out)
+			os.Exit(1)
+		}
+		if math.IsNaN(gotVal) || math.IsInf(gotVal, 0) {
+			fmt.Printf("test %d failed: invalid numeric output\ninput:\n%s\noutput:%s\n", i+1, t.input, out)
+			os.Exit(1)
+		}
+		// Accept small absolute error
+		if math.Abs(gotVal-expVal) > 1e-9 {
+			fmt.Printf("test %d failed\ninput:\n%s\nexpected:%.12f got:%s (diff=%.3g)\n", i+1, t.input, expVal, out, math.Abs(gotVal-expVal))
 			os.Exit(1)
 		}
 	}
