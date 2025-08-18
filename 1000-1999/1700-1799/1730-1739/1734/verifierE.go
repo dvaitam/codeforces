@@ -13,15 +13,18 @@ import (
 func genTests() []string {
 	rand.Seed(5)
 	tests := make([]string, 0, 100)
+	// Small primes to respect the problem's requirement that n is prime
+	primes := []int{2, 3, 5, 7, 11, 13, 17, 19, 23, 29}
 	for i := 0; i < 100; i++ {
-		n := rand.Intn(8) + 1
+		n := primes[rand.Intn(len(primes))]
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d\n", n))
 		for j := 0; j < n; j++ {
 			if j > 0 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(fmt.Sprint(rand.Intn(10)))
+			// b_j must be in [0, n)
+			sb.WriteString(fmt.Sprint(rand.Intn(n)))
 		}
 		sb.WriteByte('\n')
 		tests = append(tests, sb.String())
