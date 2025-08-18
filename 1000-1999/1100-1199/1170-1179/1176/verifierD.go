@@ -53,6 +53,58 @@ func spf(limit int) []int {
 	return spf
 }
 
+// validateCandidate checks whether the candidate output represents a valid selection
+// of n numbers from b according to the problem pairing rules.
+func validateCandidate(out string, n int, b []int, primes []int, spf []int) error {
+	toks := strings.Fields(strings.TrimSpace(out))
+	if len(toks) != n {
+		return fmt.Errorf("wrong number of outputs: expected %d got %d", n, len(toks))
+	}
+	// frequency map of b values
+	freq := make(map[int]int, len(b))
+	for _, v := range b {
+		freq[v]++
+	}
+	// Helper to check small-prime using spf
+	isSmallPrime := func(x int) bool {
+		if x <= 1 || x >= len(spf) {
+			return false
+		}
+		return spf[x] == x
+	}
+	// Process each output value
+	for _, s := range toks {
+		var v int
+		fmt.Sscanf(s, "%d", &v)
+		used := false
+		// Try composite case first if available and consistent
+		if v < len(spf) && v >= 2 && !isSmallPrime(v) {
+			if freq[v] > 0 {
+				y := v / spf[v]
+				if freq[y] > 0 {
+					freq[v]--
+					freq[y]--
+					used = true
+				}
+			}
+		}
+		if !used {
+			// Try prime-index case
+			if v >= 1 && v <= len(primes) {
+				p := primes[v-1]
+				if freq[p] > 0 {
+					freq[p]--
+					used = true
+				}
+			}
+		}
+		if !used {
+			return fmt.Errorf("cannot validate value %d against remaining multiset", v)
+		}
+	}
+	return nil
+}
+
 func genCase(r *rand.Rand, primes []int, spf []int) string {
 	n := r.Intn(50) + 1
 	a := make([]int, n)
@@ -129,36 +181,23 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i, err, input)
 			os.Exit(1)
 		}
-		// Compare as multisets of integers since order of output is not constrained
-		expFields := strings.Fields(expect)
-		gotFields := strings.Fields(got)
-		if len(expFields) != len(gotFields) {
-			fmt.Fprintf(os.Stderr, "case %d failed: length mismatch expected %d got %d\ninput:\n%s\nexpected:%s\n   got:%s\n", i, len(expFields), len(gotFields), input, expect, got)
+		// Validate candidate output by simulating removals from the multiset according to rules
+		// Parse input into b list
+		lines := strings.Split(strings.TrimSpace(input), "\n")
+		if len(lines) < 2 {
+			fmt.Fprintf(os.Stderr, "case %d failed: malformed input fed to candidate\n", i)
 			os.Exit(1)
 		}
-		expVals := make([]int, len(expFields))
-		gotVals := make([]int, len(gotFields))
-		for j, s := range expFields {
+		// second line has 2*n numbers
+		parts := strings.Fields(lines[1])
+		b := make([]int, 0, len(parts))
+		for _, s := range parts {
 			var v int
 			fmt.Sscanf(s, "%d", &v)
-			expVals[j] = v
+			b = append(b, v)
 		}
-		for j, s := range gotFields {
-			var v int
-			fmt.Sscanf(s, "%d", &v)
-			gotVals[j] = v
-		}
-		sort.Ints(expVals)
-		sort.Ints(gotVals)
-		ok := true
-		for j := range expVals {
-			if expVals[j] != gotVals[j] {
-				ok = false
-				break
-			}
-		}
-		if !ok {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i, expect, got, input)
+		if err := validateCandidate(got, n, b, primes, spfArr); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed validation: %v\ninput:\n%s\nexpected example:%s\n   got:%s\n", i, err, input, expect, got)
 			os.Exit(1)
 		}
 	}
