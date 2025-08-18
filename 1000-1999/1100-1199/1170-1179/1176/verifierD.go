@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 )
@@ -188,6 +187,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: malformed input fed to candidate\n", i)
 			os.Exit(1)
 		}
+		// first line has n
+		var nVal int
+		fmt.Sscanf(strings.TrimSpace(lines[0]), "%d", &nVal)
 		// second line has 2*n numbers
 		parts := strings.Fields(lines[1])
 		b := make([]int, 0, len(parts))
@@ -196,7 +198,7 @@ func main() {
 			fmt.Sscanf(s, "%d", &v)
 			b = append(b, v)
 		}
-		if err := validateCandidate(got, n, b, primes, spfArr); err != nil {
+		if err := validateCandidate(got, nVal, b, primes, spfArr); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed validation: %v\ninput:\n%s\nexpected example:%s\n   got:%s\n", i, err, input, expect, got)
 			os.Exit(1)
 		}
