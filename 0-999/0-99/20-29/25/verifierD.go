@@ -11,6 +11,13 @@ import (
 	"time"
 )
 
+func imin(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 type UnionFind struct {
 	parent []int
 }
@@ -128,7 +135,7 @@ func main() {
 		// which matches the problem's invariant and avoids degenerate cases for candidates.
 		n := rng.Intn(18) + 2 // 2..19
 		// Decide number of components c (at least 1, at most n)
-		c := rng.Intn(min(n, 5)) + 1 // keep small number of components
+		c := rng.Intn(imin(n, 5)) + 1 // keep small number of components
 		// Split n nodes into c positive sizes
 		sizes := make([]int, c)
 		rem := n
@@ -139,7 +146,13 @@ func main() {
 			}
 			// at least 1 node per remaining component
 			maxHere := rem - (c - 1 - k)
-			s := rng.Intn(maxHere-1) + 1
+			// choose s in [1, maxHere-1] if possible; if maxHere==1, s must be 1
+			var s int
+			if maxHere <= 1 {
+				s = 1
+			} else {
+				s = rng.Intn(maxHere-1) + 1
+			}
 			sizes[k] = s
 			rem -= s
 		}
