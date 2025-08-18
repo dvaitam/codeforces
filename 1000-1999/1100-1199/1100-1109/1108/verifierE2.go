@@ -136,7 +136,7 @@ func main() {
 			os.Exit(1)
 		}
 		// Validate candidate output
-		n, m, a, segs, perr := parseInput(tc.input)
+		_, m, a, segs, perr := parseInput(tc.input)
 		if perr != nil {
 			fmt.Printf("internal parse error on test %d: %v\n", i+1, perr)
 			os.Exit(1)
