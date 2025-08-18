@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -47,11 +46,23 @@ func genCase(rng *rand.Rand) string {
 	for i := 0; i < t; i++ {
 		n := rng.Intn(6) + 1
 		sb.WriteString(fmt.Sprintf("%d\n", n))
+		// Generate a random permutation a of 1..n
+		a := make([]int, n)
+		for j := 0; j < n; j++ {
+			a[j] = j + 1
+		}
+		// Fisher-Yates shuffle
+		for j := n - 1; j > 0; j-- {
+			k := rng.Intn(j + 1)
+			a[j], a[k] = a[k], a[j]
+		}
+		// Compute b[i] = floor((i+1)/a[i]) to ensure a is a valid restoration
 		for j := 0; j < n; j++ {
 			if j > 0 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(strconv.Itoa(rng.Intn(n + 1)))
+			bi := (j + 1) / a[j]
+			sb.WriteString(fmt.Sprintf("%d", bi))
 		}
 		sb.WriteByte('\n')
 	}
