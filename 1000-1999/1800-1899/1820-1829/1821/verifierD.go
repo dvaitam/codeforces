@@ -11,16 +11,40 @@ import (
 )
 
 func solveD(l, r []int64, k int64) int64 {
-	var pref int64
-	for i := 0; i < len(l); i++ {
-		seg := r[i] - l[i] + 1
-		if pref+seg >= k {
-			q := l[i] + (k - pref) - 1
-			return q + 2
-		}
-		pref += seg
-	}
-	return -1
+    // Port of the known correct solution logic:
+    // Iterate segments, track total covered length (sum) and count of singletons (sun).
+    // When cumulative length reaches k at segment i (1-based), compute:
+    //   cur = r[i] - (sum - k) + 2*i - min(sun, sum-k)
+    // and take the minimum over all such i. If never reached, return -1.
+    const INF int64 = 2_000_000_000
+    var sum int64
+    var sun int64
+    ans := INF
+    for i := 0; i < len(l); i++ {
+        if l[i] == r[i] {
+            sun++
+        }
+        seg := r[i] - l[i] + 1
+        sum += seg
+        if sum >= k {
+            extra := sum - k
+            cur := r[i] - extra + int64(2*(i+1)) - min64(sun, extra)
+            if cur < ans {
+                ans = cur
+            }
+        }
+    }
+    if ans == INF {
+        return -1
+    }
+    return ans
+}
+
+func min64(a, b int64) int64 {
+    if a < b {
+        return a
+    }
+    return b
 }
 
 func genCaseD(rng *rand.Rand) (int, []int64, []int64, int64) {
