@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -36,26 +37,86 @@ func gcd(a, b int64) int64 {
 	return a
 }
 
-func solve(arr []int64) string {
+func isValidInput(arr []int64) bool {
 	if len(arr) == 0 {
-		return "-1"
+		return false
 	}
 	g := arr[0]
 	for _, v := range arr[1:] {
 		g = gcd(g, v)
 	}
-	if g != arr[0] {
-		return "-1"
+	return g == arr[0]
+}
+
+func validateOutput(arr []int64, out string) error {
+	valid := isValidInput(arr)
+	out = strings.TrimSpace(out)
+	if !valid {
+		if out != "-1" {
+			return fmt.Errorf("expected -1 for invalid case, got %q", out)
+		}
+		return nil
 	}
-	var sb strings.Builder
-	n := int64(len(arr))
-	fmt.Fprintf(&sb, "%d\n", 2*n-1)
-	sb.WriteString(fmt.Sprintf("%d", arr[0]))
-	for i := 1; i < len(arr); i++ {
-		sb.WriteString(fmt.Sprintf(" %d %d", arr[i], arr[0]))
+	// valid case: parse header length and sequence
+	lines := strings.Split(out, "\n")
+	if len(lines) == 0 {
+		return fmt.Errorf("empty output")
 	}
-	sb.WriteByte('\n')
-	return strings.TrimSpace(sb.String())
+	header := strings.Fields(lines[0])
+	if len(header) == 0 {
+		return fmt.Errorf("empty header line")
+	}
+	L, err := strconv.Atoi(header[0])
+	if err != nil {
+		return fmt.Errorf("cannot parse length: %v", err)
+	}
+	n := len(arr)
+	if !(L == 2*n-1 || L == 2*(n-1)) {
+		return fmt.Errorf("invalid length %d for n=%d", L, n)
+	}
+	seqFields := []string{}
+	for i := 1; i < len(lines); i++ {
+		seqFields = append(seqFields, strings.Fields(lines[i])...)
+	}
+	if len(seqFields) != L {
+		return fmt.Errorf("expected %d numbers, got %d", L, len(seqFields))
+	}
+	base := arr[0]
+	cntBase := 0
+	other := make(map[int64]int)
+	for _, s := range seqFields {
+		v, e := strconv.ParseInt(s, 10, 64)
+		if e != nil {
+			return fmt.Errorf("non-integer token %q", s)
+		}
+		if v == base {
+			cntBase++
+		} else {
+			other[v]++
+		}
+	}
+	// base count check
+	if L == 2*n-1 {
+		if cntBase != n {
+			return fmt.Errorf("base %d count %d != %d", base, cntBase, n)
+		}
+	} else { // 2(n-1)
+		if cntBase != n-1 {
+			return fmt.Errorf("base %d count %d != %d", base, cntBase, n-1)
+		}
+	}
+	// other numbers must match arr[1..] exactly once each
+	for i := 1; i < n; i++ {
+		v := arr[i]
+		if other[v] != 1 {
+			return fmt.Errorf("value %d appears %d times (expected 1)", v, other[v])
+		}
+		delete(other, v)
+	}
+	if len(other) != 0 {
+		return fmt.Errorf("unexpected values present: %v", other)
+	}
+	return nil
 }
 
 func genValidCase(rng *rand.Rand) []int64 {
@@ -116,14 +177,13 @@ func main() {
 			arr = genInvalidCase(rng)
 		}
 		input := buildInput(arr)
-		expected := solve(arr)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:%s", t+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != expected {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:%s", t+1, expected, got, input)
+		if err := validateOutput(arr, got); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:%s\noutput:%s", t+1, err, input, got)
 			os.Exit(1)
 		}
 	}
