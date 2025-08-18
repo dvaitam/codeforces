@@ -40,29 +40,41 @@ func solveC(a, b, k int, boys, girls []int) string {
 func generateC(rng *rand.Rand) (string, string) {
 	a := rng.Intn(10) + 1
 	b := rng.Intn(10) + 1
-	k := rng.Intn(a * b)
+	maxPairs := a * b
+	k := rng.Intn(maxPairs)
 	if k < 2 {
 		k = 2
 	}
-	boys := make([]int, k)
-	girls := make([]int, k)
+	boys := make([]int, 0, k)
+	girls := make([]int, 0, k)
+	used := make(map[pr]bool)
+	// Ensure unique (boy, girl) pairs to avoid duplicate-edge corner cases
+	for len(boys) < k {
+		x := rng.Intn(a) + 1
+		y := rng.Intn(b) + 1
+		p := pr{x, y}
+		if used[p] {
+			continue
+		}
+		used[p] = true
+		boys = append(boys, x)
+		girls = append(girls, y)
+	}
 	var sb strings.Builder
 	sb.WriteString("1\n")
 	sb.WriteString(fmt.Sprintf("%d %d %d\n", a, b, k))
-	for i := 0; i < k; i++ {
-		boys[i] = rng.Intn(a) + 1
+	for i, v := range boys {
 		if i > 0 {
 			sb.WriteByte(' ')
 		}
-		sb.WriteString(fmt.Sprintf("%d", boys[i]))
+		sb.WriteString(fmt.Sprintf("%d", v))
 	}
 	sb.WriteByte('\n')
-	for i := 0; i < k; i++ {
-		girls[i] = rng.Intn(b) + 1
+	for i, v := range girls {
 		if i > 0 {
 			sb.WriteByte(' ')
 		}
-		sb.WriteString(fmt.Sprintf("%d", girls[i]))
+		sb.WriteString(fmt.Sprintf("%d", v))
 	}
 	sb.WriteByte('\n')
 	out := solveC(a, b, k, boys, girls)
