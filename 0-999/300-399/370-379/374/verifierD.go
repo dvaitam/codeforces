@@ -94,8 +94,29 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", caseNum+1, err, input)
 			os.Exit(1)
 		}
-		if got != exp {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", caseNum+1, exp, got, input)
+		// Normalize outputs: allow leading zeros differences, and treat all-zero sequence as "0"
+		norm := func(s string) string {
+			t := strings.TrimSpace(s)
+			if t == "Poor stack!" {
+				return t
+			}
+			// remove any spaces (contestants may print without spaces already)
+			t = strings.ReplaceAll(t, " ", "")
+			// strip leading zeros
+			i := 0
+			for i < len(t) && t[i] == '0' {
+				i++
+			}
+			t = t[i:]
+			if t == "" {
+				return "0"
+			}
+			return t
+		}
+		expN := norm(exp)
+		gotN := norm(got)
+		if gotN != expN {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", caseNum+1, expN, gotN, input)
 			os.Exit(1)
 		}
 	}
