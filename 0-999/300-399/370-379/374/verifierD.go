@@ -25,26 +25,15 @@ func expected(n, m int, a []int, events []int) string {
 			if L == 0 {
 				continue
 			}
+			// number of deletions to perform is count of a[j] <= L
 			k := sort.SearchInts(a, L+1)
-			if k == 0 {
-				continue
-			}
-			// Mark original 1-based positions to remove (handle duplicates correctly)
-			remove := make([]bool, L)
 			for j := 0; j < k; j++ {
-				pos := a[j] - 1
-				if pos >= 0 && pos < L {
-					remove[pos] = true
+				idx := a[j] - 1 - j
+				if idx < 0 || idx >= len(seq) {
+					continue
 				}
+				seq = append(seq[:idx], seq[idx+1:]...)
 			}
-			// Build the new sequence in one pass
-			ns := make([]byte, 0, L)
-			for i := 0; i < L; i++ {
-				if !remove[i] {
-					ns = append(ns, seq[i])
-				}
-			}
-			seq = ns
 		}
 	}
 	if len(seq) == 0 {
@@ -82,10 +71,12 @@ func main() {
 		n := rng.Intn(20) + 1
 		m := rng.Intn(4) + 1
 		a := make([]int, m)
+		// generate strictly increasing positions to avoid ambiguous duplicate removal
+		cur := 1
 		for i := 0; i < m; i++ {
-			a[i] = i + 1 + rng.Intn(3)
+			cur += rng.Intn(3) + 1
+			a[i] = cur
 		}
-		sort.Ints(a)
 		events := make([]int, n)
 		for i := 0; i < n; i++ {
 			events[i] = []int{-1, 0, 1}[rng.Intn(3)]
