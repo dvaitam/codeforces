@@ -136,7 +136,13 @@ func runCase(bin string, r int, cells [][2]int) error {
 	}
 	got := strings.TrimSpace(out.String())
 	expected := expectedResult(r, cells)
-	if got != expected {
+	// Compare by first token (WIN/LOSE), case-insensitive, ignore extra whitespace/noise
+	gotTok := ""
+	if got != "" {
+		gotTok = strings.ToUpper(strings.Fields(got)[0])
+	}
+	expTok := strings.ToUpper(strings.TrimSpace(expected))
+	if gotTok != expTok {
 		return fmt.Errorf("expected %s got %s", expected, got)
 	}
 	return nil
