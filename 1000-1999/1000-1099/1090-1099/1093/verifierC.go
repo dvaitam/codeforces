@@ -81,7 +81,9 @@ func main() {
 	for i := 0; i < 100; i++ {
 		tc := genCase(rng)
 		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("1\n%d\n", tc.n))
+		// CF 1093C expects a single test: first line n, second line b[1..n/2].
+		// Do not prefix with a test count.
+		sb.WriteString(fmt.Sprintf("%d\n", tc.n))
 		for j, v := range tc.b {
 			if j > 0 {
 				sb.WriteByte(' ')
