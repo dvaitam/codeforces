@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -69,8 +70,18 @@ func runCase(bin, ref string, c Case) error {
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(expected) != strings.TrimSpace(got) {
-		return fmt.Errorf("expected %s got %s", expected, got)
+	expTok := strings.Fields(strings.TrimSpace(expected))
+	gotTok := strings.Fields(strings.TrimSpace(got))
+	if len(expTok) == 0 || len(gotTok) == 0 {
+		return fmt.Errorf("empty output: expected %q got %q", expected, got)
+	}
+	expVal, e1 := strconv.ParseFloat(expTok[0], 64)
+	gotVal, e2 := strconv.ParseFloat(gotTok[0], 64)
+	if e1 != nil || e2 != nil {
+		return fmt.Errorf("parse error: expected %q got %q", expected, got)
+	}
+	if math.Abs(expVal-gotVal) > 1e-9 {
+		return fmt.Errorf("expected %.12f got %s (diff=%.3g)", expVal, got, math.Abs(expVal-gotVal))
 	}
 	return nil
 }
