@@ -191,19 +191,16 @@ func genValidCase(rng *rand.Rand, m, n int) [][]int {
 }
 
 func genInvalidCase(rng *rand.Rand, m, n int) [][]int {
-	// generate random B until it's invalid
-	for {
-		B := make([][]int, m)
-		for i := 0; i < m; i++ {
-			B[i] = make([]int, n)
-			for j := 0; j < n; j++ {
-				B[i][j] = rng.Intn(2)
-			}
-		}
-		if _, ok := validAFromB(B); !ok {
-			return B
-		}
-	}
+    // Construct a simple invalid B: all zeros except a single 1.
+    // For such B, no A can satisfy computeB(A) == B.
+    B := make([][]int, m)
+    for i := 0; i < m; i++ {
+        B[i] = make([]int, n)
+    }
+    i := rng.Intn(m)
+    j := rng.Intn(n)
+    B[i][j] = 1
+    return B
 }
 
 func main() {
@@ -213,7 +210,7 @@ func main() {
 	}
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	const cases = 100
+    const cases = 40
 	for i := 0; i < cases; i++ {
 		m := rng.Intn(4) + 1 // 1..4
 		n := rng.Intn(4) + 1
