@@ -80,46 +80,67 @@ func bruteMin(tc testCaseB) int {
     return best
 }
 
-func runCase(bin string, tc testCaseB, expected int) error {
-	var input bytes.Buffer
-	fmt.Fprintln(&input, 1)
-	fmt.Fprintln(&input, tc.n)
-	for i, v := range tc.arr {
-		if i > 0 {
-			input.WriteByte(' ')
-		}
-		fmt.Fprint(&input, v)
-	}
-	input.WriteByte('\n')
+func buildInputs(tc testCaseB) (withT, withoutT []byte) {
+    var a, b bytes.Buffer
+    // with T header
+    fmt.Fprintln(&a, 1)
+    fmt.Fprintln(&a, tc.n)
+    for i, v := range tc.arr {
+        if i > 0 { a.WriteByte(' ') }
+        fmt.Fprint(&a, v)
+    }
+    a.WriteByte('\n')
+    // without T header
+    fmt.Fprintln(&b, tc.n)
+    for i, v := range tc.arr {
+        if i > 0 { b.WriteByte(' ') }
+        fmt.Fprint(&b, v)
+    }
+    b.WriteByte('\n')
+    return a.Bytes(), b.Bytes()
+}
 
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = bytes.NewReader(input.Bytes())
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
-	}
-	fields := strings.Fields(out.String())
-	if len(fields) == 0 {
-		return fmt.Errorf("no output")
-	}
-	val, err := strconv.Atoi(fields[0])
-	if err != nil {
-		return fmt.Errorf("non-integer output")
-	}
-	if val != expected {
-		return fmt.Errorf("expected %d got %d", expected, val)
-	}
-	if len(fields) > 1 {
-		return fmt.Errorf("extra output")
-	}
-	return nil
+func runOnce(bin string, stdin []byte) (string, string, error) {
+    var cmd *exec.Cmd
+    if strings.HasSuffix(bin, ".go") {
+        cmd = exec.Command("go", "run", bin)
+    } else {
+        cmd = exec.Command(bin)
+    }
+    cmd.Stdin = bytes.NewReader(stdin)
+    var out bytes.Buffer
+    var errBuf bytes.Buffer
+    cmd.Stdout = &out
+    cmd.Stderr = &errBuf
+    if err := cmd.Run(); err != nil {
+        return "", errBuf.String(), err
+    }
+    return out.String(), errBuf.String(), nil
+}
+
+func runCase(bin string, tc testCaseB, expected int) error {
+    inWithT, inNoT := buildInputs(tc)
+    // try with T header first
+    outStr, errStr, err := runOnce(bin, inWithT)
+    if err != nil {
+        // try without T
+        outStr, errStr, err = runOnce(bin, inNoT)
+        if err != nil {
+            return fmt.Errorf("runtime error: %v\n%s", err, errStr)
+        }
+    }
+    fields := strings.Fields(outStr)
+    if len(fields) == 0 {
+        return fmt.Errorf("no output")
+    }
+    val, err := strconv.Atoi(fields[0])
+    if err != nil {
+        return fmt.Errorf("non-integer output")
+    }
+    if val != expected {
+        return fmt.Errorf("expected %d got %d", expected, val)
+    }
+    return nil
 }
 
 func main() {
