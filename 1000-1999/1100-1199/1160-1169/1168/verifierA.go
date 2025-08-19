@@ -28,19 +28,29 @@ func ok(a []int, n, m, x int) bool {
     cur := 0
     for i := 0; i < n; i++ {
         ai := a[i]
-        if ai+x < m {
-            if ai < cur {
-                return false
+        if ai <= cur {
+            // can we raise to cur without wrap?
+            if cur-ai <= x {
+                continue
             }
-            cur = ai
-        } else {
-            wrap := (ai + x) % m
-            if wrap < cur {
-                if ai < cur {
-                    return false
+            // try wrapping: after wrap we can reach [0..wrap]
+            if ai+x >= m {
+                wrap := (ai + x) - m
+                if wrap >= cur {
+                    continue
                 }
-                cur = ai
             }
+            return false
+        } else { // ai > cur
+            // if wrapping allows keeping cur, prefer it
+            if ai+x >= m {
+                wrap := (ai + x) - m
+                if wrap >= cur {
+                    continue
+                }
+            }
+            // otherwise we must set this element to ai, moving cur up
+            cur = ai
         }
     }
     return true
