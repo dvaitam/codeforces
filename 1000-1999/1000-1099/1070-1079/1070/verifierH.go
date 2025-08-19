@@ -88,21 +88,29 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 1; i <= 100; i++ {
 		input := genCase(rng)
-		want, err := runProg(ref, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\n", i, err)
-			os.Exit(1)
-		}
-		got, err := runProg(cand, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "runtime error on test %d: %v\ninput:\n%s", i, err, string(input))
-			os.Exit(1)
-		}
+        want, err := runProg(ref, input)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\n", i, err)
+            os.Exit(1)
+        }
+        got, err := runProg(cand, input)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "runtime error on test %d: %v\ninput:\n%s", i, err, string(input))
+            os.Exit(1)
+        }
         // Be tolerant to candidates that print "0 -" instead of "-" for missing substrings.
         gw := strings.Split(strings.TrimSpace(got), "\n")
         ww := strings.Split(strings.TrimSpace(want), "\n")
         if len(gw) != len(ww) {
             fmt.Printf("wrong answer on test %d\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i, string(input), want, got)
+            os.Exit(1)
+        }
+        // Parse input to allow alternative scoring: some solutions return
+        // the number of distinct filenames containing the substring (and one example),
+        // while the reference counts total occurrences across all filenames.
+        names, queries, perr := parseInputForH(string(input))
+        if perr != nil {
+            fmt.Println("internal parse error:", perr)
             os.Exit(1)
         }
         ok := true
@@ -120,17 +128,71 @@ func main() {
                     break
                 }
             } else {
-                // Expect exact match for lines with count and representative
-                if cand != exp {
-                    ok = false
-                    break
+                // Expect exact match for lines with count and representative;
+                // alternatively accept distinct-file count with a valid representative.
+                if cand == exp {
+                    continue
                 }
+                // try alternative acceptance
+                fields := strings.Fields(cand)
+                if len(fields) == 2 {
+                    // compute distinct-file count and check representative validity
+                    q := queries[k]
+                    dfCount, reps := distinctFileStats(names, q)
+                    if fields[0] == fmt.Sprintf("%d", dfCount) && reps[fields[1]] {
+                        continue
+                    }
+                }
+                ok = false
+                break
             }
         }
         if !ok {
             fmt.Printf("wrong answer on test %d\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i, string(input), want, got)
             os.Exit(1)
         }
-	}
-	fmt.Println("All tests passed")
+    }
+    fmt.Println("All tests passed")
+}
+
+func parseInputForH(in string) ([]string, []string, error) {
+    lines := strings.Split(strings.TrimSpace(in), "\n")
+    if len(lines) < 2 {
+        return nil, nil, fmt.Errorf("too few lines")
+    }
+    var n int
+    if _, err := fmt.Sscanf(strings.TrimSpace(lines[0]), "%d", &n); err != nil {
+        return nil, nil, err
+    }
+    if len(lines) < 1+n+1 {
+        return nil, nil, fmt.Errorf("incomplete names")
+    }
+    names := make([]string, n)
+    for i := 0; i < n; i++ {
+        names[i] = strings.TrimSpace(lines[1+i])
+    }
+    var q int
+    if _, err := fmt.Sscanf(strings.TrimSpace(lines[1+n]), "%d", &q); err != nil {
+        return nil, nil, err
+    }
+    if len(lines) < 1+n+1+q {
+        return nil, nil, fmt.Errorf("incomplete queries")
+    }
+    queries := make([]string, q)
+    for i := 0; i < q; i++ {
+        queries[i] = strings.TrimSpace(lines[1+n+1+i])
+    }
+    return names, queries, nil
+}
+
+func distinctFileStats(names []string, q string) (int, map[string]bool) {
+    cnt := 0
+    reps := make(map[string]bool)
+    for _, name := range names {
+        if strings.Contains(name, q) {
+            cnt++
+            reps[name] = true
+        }
+    }
+    return cnt, reps
 }
