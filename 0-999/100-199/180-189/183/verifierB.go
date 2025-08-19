@@ -109,11 +109,21 @@ func generateCase(rng *rand.Rand) (string, string) {
 	ys := make([]int64, m)
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d %d\n", n, m)
-	for i := 0; i < m; i++ {
-		xs[i] = int64(rng.Intn(n) + 1)
-		ys[i] = int64(rng.Intn(20) + 1)
-		fmt.Fprintf(&sb, "%d %d\n", xs[i], ys[i])
-	}
+    used := make(map[[2]int64]bool)
+    for i := 0; i < m; i++ {
+        for {
+            xi := int64(rng.Intn(n) + 1)
+            yi := int64(rng.Intn(20) + 1)
+            key := [2]int64{xi, yi}
+            if !used[key] {
+                used[key] = true
+                xs[i] = xi
+                ys[i] = yi
+                fmt.Fprintf(&sb, "%d %d\n", xs[i], ys[i])
+                break
+            }
+        }
+    }
 	ans := computeExpected(n, xs, ys)
 	return sb.String(), fmt.Sprintf("%d", ans)
 }
