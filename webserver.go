@@ -270,7 +270,7 @@ var problemTmpl = template.Must(template.New("problem").Parse(`
         l = (''+l).trim().toLowerCase();
         if(l === 'c++' || l === 'cpp' || l.includes('cpp')) return 'cpp';
         if(l === 'python' || l === 'py' || l === 'python3' || l.includes('python')) return 'python';
-        if(l === 'golang' || l === 'go') return 'go';
+        if(l === 'golang' || l === 'go' || l.includes('golang') || l.startsWith('go')) return 'go';
         if(l === 'rust' || l === 'rs' || l.includes('rust')) return 'rust';
         if(l === 'c') return 'c';
         if(l === 'java' || l.includes('java')) return 'java';
@@ -836,7 +836,8 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
         l = "cpp"
     } else if l == "py" || l == "python3" || strings.Contains(l, "python") {
         l = "python"
-    } else if l == "golang" || l == "go" {
+    } else if l == "golang" || l == "go" || strings.Contains(l, "golang") || strings.HasPrefix(l, "go") {
+        // Accept variants like "Go (Golang)"
         l = "go"
     } else if l == "rs" || strings.Contains(l, "rust") {
         l = "rust"
