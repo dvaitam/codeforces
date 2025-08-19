@@ -51,24 +51,51 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	ref := "1428B.go"
-	tests := genTestsB()
-	for i, input := range tests {
-		expect, err := run(ref, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		out, err := run(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		if strings.TrimSpace(out) != strings.TrimSpace(expect) {
-			fmt.Fprintf(os.Stderr, "test %d: expected %s got %s\n", i+1, expect, out)
-			os.Exit(1)
-		}
-	}
-	fmt.Printf("All %d tests passed\n", len(tests))
+    bin := os.Args[1]
+    tests := genTestsB()
+    for i, input := range tests {
+        out, err := run(bin, input)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "test %d: %v\n", i+1, err)
+            os.Exit(1)
+        }
+        // Compute expected directly from input
+        lines := strings.Split(strings.TrimSpace(input), "\n")
+        if len(lines) < 3 {
+            fmt.Fprintf(os.Stderr, "malformed test %d\n", i+1)
+            os.Exit(1)
+        }
+        s := strings.TrimSpace(lines[2])
+        exp := expected1428B(s)
+        got := strings.TrimSpace(out)
+        if got != fmt.Sprintf("%d", exp) {
+            fmt.Fprintf(os.Stderr, "test %d: expected %d got %s\n", i+1, exp, got)
+            os.Exit(1)
+        }
+    }
+    fmt.Printf("All %d tests passed\n", len(tests))
+}
+
+func expected1428B(s string) int {
+    n := len(s)
+    hasL, hasR := false, false
+    for i := 0; i < n; i++ {
+        if s[i] == '<' { hasL = true }
+        if s[i] == '>' { hasR = true }
+    }
+    if !hasL || !hasR {
+        return n
+    }
+    ok := make([]bool, n)
+    for i := 0; i < n; i++ {
+        if s[i] == '-' {
+            ok[i] = true
+            ok[(i+1)%n] = true
+        }
+    }
+    cnt := 0
+    for i := 0; i < n; i++ {
+        if ok[i] { cnt++ }
+    }
+    return cnt
 }
