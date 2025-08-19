@@ -104,17 +104,18 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}
-		gotLines := strings.Split(strings.TrimSpace(got), "\n")
-		if len(gotLines) != len(exp) {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %d lines got %d\ninput:\n%s", i+1, len(exp), len(gotLines), in)
-			os.Exit(1)
-		}
-		for j := range exp {
-			if strings.TrimSpace(gotLines[j]) != exp[j] {
-				fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, exp[j], gotLines[j], in)
-				os.Exit(1)
-			}
-		}
+        // Accept both line-separated and space-separated outputs by tokenizing
+        tokens := strings.Fields(strings.TrimSpace(got))
+        if len(tokens) != len(exp) {
+            fmt.Fprintf(os.Stderr, "case %d failed: expected %d outputs got %d\ninput:\n%s", i+1, len(exp), len(tokens), in)
+            os.Exit(1)
+        }
+        for j := range exp {
+            if strings.TrimSpace(tokens[j]) != exp[j] {
+                fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, exp[j], tokens[j], in)
+                os.Exit(1)
+            }
+        }
 	}
 	fmt.Println("All tests passed")
 }
