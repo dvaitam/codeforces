@@ -1,13 +1,14 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
-	"fmt"
-	"os"
-	"os/exec"
-	"strconv"
-	"strings"
+    "bufio"
+    "bytes"
+    "fmt"
+    "os"
+    "os/exec"
+    "strconv"
+    "strings"
+    "sync"
 )
 
 func solveD(n int, a, b []int) (int, []int) {
@@ -49,30 +50,70 @@ func solveD(n int, a, b []int) (int, []int) {
 	return count, ans
 }
 
-func runCase(exe, input string, expect string) error {
-	cmd := exec.Command(exe)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
-	}
-	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
-	filtered := make([]string, 0, len(lines))
-	for _, ln := range lines {
-		ln = strings.TrimSpace(ln)
-		if strings.HasPrefix(ln, "?") || ln == "" {
-			continue
-		}
-		filtered = append(filtered, ln)
-	}
-	got := strings.Join(filtered, "\n")
-	exp := strings.TrimSpace(expect)
-	if got != exp {
-		return fmt.Errorf("expected %q got %q", exp, got)
-	}
-	return nil
+// Run candidate interactively: respond to lines like "? i j" with a[i]^b[j].
+func runCaseInteractive(exe string, n int, a, b []int, expect string) error {
+    cmd := exec.Command(exe)
+    stdin, err := cmd.StdinPipe()
+    if err != nil { return err }
+    stdout, err := cmd.StdoutPipe()
+    if err != nil { return err }
+    var stderr bytes.Buffer
+    cmd.Stderr = &stderr
+    if err := cmd.Start(); err != nil { return err }
+
+    // Feed initial n
+    if _, err := fmt.Fprintf(stdin, "%d\n", n); err != nil {
+        return fmt.Errorf("failed to write n: %v", err)
+    }
+
+    gotBuf := &bytes.Buffer{}
+    scanner := bufio.NewScanner(stdout)
+    scanner.Buffer(make([]byte, 0, 64*1024), 1<<20)
+    var wg sync.WaitGroup
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        for scanner.Scan() {
+            ln := strings.TrimSpace(scanner.Text())
+            if strings.HasPrefix(ln, "?") {
+                // parse indices
+                parts := strings.Fields(ln)
+                if len(parts) == 3 {
+                    i, _ := strconv.Atoi(parts[1])
+                    j, _ := strconv.Atoi(parts[2])
+                    // guard indices
+                    if i >= 0 && i < n && j >= 0 && j < n {
+                        ans := a[i] ^ b[j]
+                        fmt.Fprintf(stdin, "%d\n", ans)
+                    } else {
+                        // invalid query; respond 0 to avoid deadlock
+                        fmt.Fprintln(stdin, 0)
+                    }
+                } else {
+                    // malformed; respond 0
+                    fmt.Fprintln(stdin, 0)
+                }
+                continue
+            }
+            if ln == "" {
+                continue
+            }
+            // record non-query output
+            if gotBuf.Len() > 0 { gotBuf.WriteByte('\n') }
+            gotBuf.WriteString(ln)
+        }
+    }()
+
+    wg.Wait()
+    if err := cmd.Wait(); err != nil {
+        return fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+    }
+    got := strings.TrimSpace(gotBuf.String())
+    exp := strings.TrimSpace(expect)
+    if got != exp {
+        return fmt.Errorf("expected %q got %q", exp, got)
+    }
+    return nil
 }
 
 func main() {
@@ -109,29 +150,21 @@ func main() {
 			scan.Scan()
 			b[i], _ = strconv.Atoi(scan.Text())
 		}
-		inputBuilder := &strings.Builder{}
-		fmt.Fprintf(inputBuilder, "%d\n", n)
-		for i := 0; i < n; i++ {
-			fmt.Fprintf(inputBuilder, "%d\n", a[i])
-		}
-		for i := 0; i < n; i++ {
-			fmt.Fprintf(inputBuilder, "%d\n", b[i])
-		}
-		cnt, perm := solveD(n, a, b)
-		expectBuilder := &strings.Builder{}
-		fmt.Fprintln(expectBuilder, "!")
-		fmt.Fprintln(expectBuilder, cnt)
-		for i := 0; i < n; i++ {
-			if i > 0 {
-				expectBuilder.WriteByte(' ')
-			}
-			fmt.Fprintf(expectBuilder, "%d", perm[i])
-		}
-		expectBuilder.WriteByte('\n')
-		if err := runCase(exe, inputBuilder.String(), expectBuilder.String()); err != nil {
-			fmt.Printf("case %d failed: %v\n", caseNum, err)
-			os.Exit(1)
-		}
+        cnt, perm := solveD(n, a, b)
+        expectBuilder := &strings.Builder{}
+        fmt.Fprintln(expectBuilder, "!")
+        fmt.Fprintln(expectBuilder, cnt)
+        for i := 0; i < n; i++ {
+            if i > 0 {
+                expectBuilder.WriteByte(' ')
+            }
+            fmt.Fprintf(expectBuilder, "%d", perm[i])
+        }
+        expectBuilder.WriteByte('\n')
+        if err := runCaseInteractive(exe, n, a, b, expectBuilder.String()); err != nil {
+            fmt.Printf("case %d failed: %v\n", caseNum, err)
+            os.Exit(1)
+        }
 	}
 	fmt.Println("All tests passed")
 }
