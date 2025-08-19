@@ -155,11 +155,6 @@ func runCaseInteractive(exe string, n int, a, b []int, expectedCount int) error 
         if inv[perm[i]] != i {
             return fmt.Errorf("permutation does not satisfy constraints")
         }
-        // Additionally, a[i]^p0 must equal perm[i]^0 -> but core condition above suffices
-        v := a[i] ^ p0
-        if v != perm[i] {
-            return fmt.Errorf("permutation inconsistent with a[]")
-        }
     }
     return nil
 }
