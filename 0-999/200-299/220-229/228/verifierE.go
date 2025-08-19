@@ -10,6 +10,8 @@ import (
     "strings"
 )
 
+type edge struct{ u, v, c int }
+
 func runBinary(path, input string) (string, error) {
     cmd := exec.Command(path)
     cmd.Stdin = strings.NewReader(input)
@@ -54,7 +56,6 @@ func validateSelection(input, output string) error {
     lines := strings.Split(strings.TrimSpace(input), "\n")
     var n, m int
     fmt.Sscanf(lines[0], "%d %d", &n, &m)
-    type edge struct{ u, v, c int }
     es := make([]edge, m)
     for i := 0; i < m; i++ {
         var a, b, c int
@@ -110,7 +111,7 @@ func validateSelection(input, output string) error {
 }
 
 // DSU with parity to test satisfiability
-func satisfiable(n int, es []struct{ u, v, c int }) bool {
+func satisfiable(n int, es []edge) bool {
     par := make([]int, n+1)
     d := make([]int, n+1)
     for i := 1; i <= n; i++ { par[i] = i }
