@@ -32,7 +32,7 @@ func shortestPath(n int, edges [][3]int) []int {
 	}
 	dist[1] = 0
 	pq := &itemPQ{}
-	heap.Push(pq, &item{1, 0})
+    heap.Push(pq, &item{v: 1, d: 0})
 	for pq.Len() > 0 {
 		it := heap.Pop(pq).(*item)
 		if it.d != dist[it.v] {
@@ -46,7 +46,7 @@ func shortestPath(n int, edges [][3]int) []int {
 			if nd < dist[e.to] {
 				dist[e.to] = nd
 				prev[e.to] = it.v
-				heap.Push(pq, &item{e.to, nd})
+                heap.Push(pq, &item{v: e.to, d: nd})
 			}
 		}
 	}
