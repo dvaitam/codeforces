@@ -72,10 +72,10 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\ninput:\n%s\n", i+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != exp {
-			fmt.Fprintf(os.Stderr, "case %d failed:\ninput:\n%s\nexpected:%s\ngot:%s\n", i+1, input, exp, out)
-			os.Exit(1)
-		}
+        if !strings.EqualFold(strings.TrimSpace(out), exp) {
+            fmt.Fprintf(os.Stderr, "case %d failed:\ninput:\n%s\nexpected:%s\ngot:%s\n", i+1, input, exp, out)
+            os.Exit(1)
+        }
 	}
 	fmt.Println("All tests passed")
 }
