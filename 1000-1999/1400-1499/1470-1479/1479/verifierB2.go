@@ -12,8 +12,8 @@ import (
 )
 
 type testCaseB struct {
-	n   int
-	arr []int
+    n   int
+    arr []int
 }
 
 func genTestsB() []testCaseB {
@@ -43,24 +43,41 @@ func segments(a []int) int {
 	return cnt
 }
 
+func compress(a []int) []int {
+    if len(a) == 0 {
+        return a
+    }
+    out := make([]int, 0, len(a))
+    prev := a[0]
+    out = append(out, prev)
+    for i := 1; i < len(a); i++ {
+        if a[i] != prev {
+            out = append(out, a[i])
+            prev = a[i]
+        }
+    }
+    return out
+}
+
 func bruteMin(tc testCaseB) int {
-	n := tc.n
-	best := 1<<31 - 1
-	for mask := 0; mask < 1<<n; mask++ {
-		var w, b []int
-		for i := 0; i < n; i++ {
-			if mask>>i&1 == 1 {
-				b = append(b, tc.arr[i])
-			} else {
-				w = append(w, tc.arr[i])
-			}
-		}
-		val := segments(w) + segments(b)
-		if val < best {
-			best = val
-		}
-	}
-	return best
+    arr := compress(tc.arr)
+    n := len(arr)
+    best := 1<<31 - 1
+    for mask := 0; mask < 1<<n; mask++ {
+        var w, b []int
+        for i := 0; i < n; i++ {
+            if mask>>i&1 == 1 {
+                b = append(b, arr[i])
+            } else {
+                w = append(w, arr[i])
+            }
+        }
+        val := segments(w) + segments(b)
+        if val < best {
+            best = val
+        }
+    }
+    return best
 }
 
 func runCase(bin string, tc testCaseB, expected int) error {
