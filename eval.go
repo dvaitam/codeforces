@@ -162,10 +162,23 @@ func main() {
 		problem, verifierFile := getRandomProblem(db, actualRating)
 		plainStatement := latexToPlain(problem.Statement)
 		prompt := fmt.Sprintf("write a %s solution for %s. Output only the code with no comments, explanation, or additional text.", lang, plainStatement)
-		fmt.Printf("Sending prompt for Problem ID: %d, Contest ID: %d, Index: %s\n", problem.ID, problem.ContestID, problem.IndexName)
-		fmt.Println("Sending prompt...")
-		response := sendPrompt(*provider, *model, apiKey, prompt)
-		fmt.Println("Response received.")
+        fmt.Printf("Sending prompt for Problem ID: %d, Contest ID: %d, Index: %s\n", problem.ID, problem.ContestID, problem.IndexName)
+        fmt.Println("Sending prompt...")
+        response := sendPrompt(*provider, *model, apiKey, prompt)
+        if strings.TrimSpace(response) == "" {
+            fmt.Println("No response after retries; skipping build/fix.")
+            // Record the failed attempt and move to the next problem without invoking fixer.
+            _, err = db.Exec(
+                "INSERT INTO evaluations (run_id, provider, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                runID, strings.ToLower(*provider), *model, lang, problem.ID, prompt, response, false, "", "No response from API",
+            )
+            if err != nil {
+                panic(err)
+            }
+            estimatedRating -= 100
+            continue
+        }
+        fmt.Println("Response received.")
 
 		code := extractCode(response, lang)
 		fmt.Printf("Solution code:\n%s\n", code)
