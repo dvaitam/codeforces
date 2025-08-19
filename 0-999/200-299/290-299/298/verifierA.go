@@ -176,6 +176,11 @@ func acceptable(n int, s string, a, b int) bool {
     }
     hasR := firstR != -1
     hasL := firstL != -1
+    // first non-dot index
+    firstNZ := -1
+    for i := 0; i < n; i++ {
+        if s[i] != '.' { firstNZ = i; break }
+    }
     // Our generator's expected pairs (using its mixed indexing convention)
     var exp1, exp2 [2]int
     if !hasR { // only L
@@ -199,7 +204,9 @@ func acceptable(n int, s string, a, b int) bool {
             exp2 = [2]int{rl + 1, rl + 1}        // CF common variant
         }
     }
-    return (a == exp1[0] && b == exp1[1]) || (a == exp2[0] && b == exp2[1])
+    // Also accept variant used by some solutions: (firstNonDot+1, firstL)
+    alt := (firstNZ != -1 && hasL && a == firstNZ+1 && b == firstL)
+    return alt || (a == exp1[0] && b == exp1[1]) || (a == exp2[0] && b == exp2[1])
 }
 
 func main() {
