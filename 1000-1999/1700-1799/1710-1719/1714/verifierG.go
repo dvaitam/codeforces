@@ -88,8 +88,8 @@ func main() {
 	}
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 100; i++ {
-		input, n, edges, ans := genCase(rng)
+    for i := 0; i < 100; i++ {
+        input, n, _, ans := genCase(rng)
 		out, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
