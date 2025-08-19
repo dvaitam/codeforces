@@ -1,14 +1,13 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
-	"math/rand"
-	"os"
-	"os/exec"
-	"strconv"
-	"strings"
-	"time"
+    "bytes"
+    "fmt"
+    "math/rand"
+    "os"
+    "os/exec"
+    "strconv"
+    "strings"
 )
 
 type testCase struct {
