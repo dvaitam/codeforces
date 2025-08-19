@@ -847,32 +847,55 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
         l = "c"
     }
     lang = l
-	var data []byte
-	file, _, err := r.FormFile("file")
-	if err == nil {
-		defer file.Close()
-		data, _ = io.ReadAll(file)
-	} else {
-		data = []byte(r.FormValue("code"))
-	}
-	extMap := map[string]string{
-		"c": ".c",
-		"cpp": ".cpp",
-		"c++": ".cpp",
-		"java": ".java",
-		"python": ".py",
-		"python3": ".py",
-		"py": ".py",
-		"go": ".go",
-		"golang": ".go",
-		"rust": ".rs",
-		"rs": ".rs",
-	}
-	ext := extMap[lang]
-	if ext == "" {
-		http.Error(w, "unknown language", http.StatusBadRequest)
-		return
-	}
+    var data []byte
+    file, _, err := r.FormFile("file")
+    if err == nil {
+        defer file.Close()
+        data, _ = io.ReadAll(file)
+    } else {
+        data = []byte(r.FormValue("code"))
+    }
+    extMap := map[string]string{
+        "c": ".c",
+        "cpp": ".cpp",
+        "c++": ".cpp",
+        "java": ".java",
+        "python": ".py",
+        "python3": ".py",
+        "py": ".py",
+        "go": ".go",
+        "golang": ".go",
+        "rust": ".rs",
+        "rs": ".rs",
+    }
+    ext := extMap[lang]
+    if ext == "" {
+        // Heuristic fallback: detect language from code contents (helps retries with odd labels)
+        code := strings.ToLower(string(data))
+        switch {
+        case strings.Contains(code, "package main") && strings.Contains(code, "func main"):
+            lang, ext = "go", ".go"
+        case strings.Contains(code, "#include") || strings.Contains(code, "int main("):
+            // Try to disambiguate C++ from C using common C++ markers
+            if strings.Contains(code, "std::") || strings.Contains(code, "using namespace std") || strings.Contains(code, "<iostream>") {
+                lang, ext = "cpp", ".cpp"
+            } else {
+                lang, ext = "c", ".c"
+            }
+        case strings.Contains(code, "using namespace std") || strings.Contains(code, "std::") || strings.Contains(code, "#include <iostream>"):
+            lang, ext = "cpp", ".cpp"
+        case strings.Contains(code, "public class") && strings.Contains(code, "static void main"):
+            lang, ext = "java", ".java"
+        case strings.Contains(code, "def main(") || strings.Contains(code, "#!/usr/bin/env python") || strings.Contains(code, "print("):
+            lang, ext = "python", ".py"
+        case strings.Contains(code, "fn main()") || strings.Contains(code, "use std::"):
+            lang, ext = "rust", ".rs"
+        }
+        if ext == "" {
+            http.Error(w, "unknown language", http.StatusBadRequest)
+            return
+        }
+    }
 	srcPath := filepath.Join(c.Path, "user"+strings.ToUpper(letter)+ext)
 	if err := os.WriteFile(srcPath, data, 0644); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
