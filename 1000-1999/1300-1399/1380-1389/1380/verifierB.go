@@ -118,12 +118,54 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d runtime error: %v\n%s\n", idx+1, err, errStr)
 			os.Exit(1)
 		}
-		ans := strings.TrimSpace(outStr)
-		expected := expectedAnswer(tc.s)
-		if ans != expected {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, expected, ans)
-			os.Exit(1)
-		}
-	}
-	fmt.Printf("All %d tests passed\n", len(cases))
+        ans := strings.TrimSpace(outStr)
+        expected := expectedAnswer(tc.s)
+        if ans != expected {
+            // Also accept uniform answers using a best-response move to any most frequent symbol
+            if !acceptUniformBest(tc.s, ans) {
+                fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, expected, ans)
+                os.Exit(1)
+            }
+        }
+    }
+    fmt.Printf("All %d tests passed\n", len(cases))
+}
+
+func acceptUniformBest(s, ans string) bool {
+    if len(ans) != len(s) || len(ans) == 0 {
+        return false
+    }
+    // Ensure ans is uniform and consists of valid chars
+    ch := ans[0]
+    if ch != 'R' && ch != 'P' && ch != 'S' {
+        return false
+    }
+    for i := 1; i < len(ans); i++ {
+        if ans[i] != ch {
+            return false
+        }
+    }
+    // Count frequencies in s
+    cntR, cntP, cntS := 0, 0, 0
+    for i := 0; i < len(s); i++ {
+        switch s[i] {
+        case 'R':
+            cntR++
+        case 'P':
+            cntP++
+        case 'S':
+            cntS++
+        default:
+            return false
+        }
+    }
+    maxc := cntR
+    if cntP > maxc { maxc = cntP }
+    if cntS > maxc { maxc = cntS }
+    // Allowed uniform plays are counters to any symbol achieving max frequency
+    allowed := map[byte]bool{}
+    if cntR == maxc { allowed['P'] = true }
+    if cntP == maxc { allowed['S'] = true }
+    if cntS == maxc { allowed['R'] = true }
+    return allowed[ch]
 }
