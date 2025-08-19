@@ -51,7 +51,7 @@ func solveD(n int, a, b []int) (int, []int) {
 }
 
 // Run candidate interactively: respond to lines like "? i j" with a[i]^b[j].
-func runCaseInteractive(exe string, n int, a, b []int, expect string) error {
+func runCaseInteractive(exe string, n int, a, b []int, expectedCount int) error {
     cmd := exec.Command(exe)
     stdin, err := cmd.StdinPipe()
     if err != nil { return err }
@@ -109,9 +109,57 @@ func runCaseInteractive(exe string, n int, a, b []int, expect string) error {
         return fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
     }
     got := strings.TrimSpace(gotBuf.String())
-    exp := strings.TrimSpace(expect)
-    if got != exp {
-        return fmt.Errorf("expected %q got %q", exp, got)
+    // Parse candidate output: expect '!' line, then count, then permutation line
+    lines := []string{}
+    for _, ln := range strings.Split(got, "\n") {
+        t := strings.TrimSpace(ln)
+        if t != "" {
+            lines = append(lines, t)
+        }
+    }
+    if len(lines) < 3 {
+        return fmt.Errorf("insufficient output: %q", got)
+    }
+    if lines[0] != "!" {
+        return fmt.Errorf("expected '!' line, got %q", lines[0])
+    }
+    cnt, err := strconv.Atoi(lines[1])
+    if err != nil {
+        return fmt.Errorf("invalid count: %v", err)
+    }
+    if cnt != expectedCount {
+        return fmt.Errorf("wrong count: expected %d got %d", expectedCount, cnt)
+    }
+    // Parse permutation
+    nums := strings.Fields(lines[2])
+    if len(nums) != n {
+        return fmt.Errorf("expected %d permutation entries, got %d", n, len(nums))
+    }
+    perm := make([]int, n)
+    seen := make([]bool, n)
+    for i := 0; i < n; i++ {
+        v, err := strconv.Atoi(nums[i])
+        if err != nil || v < 0 || v >= n || seen[v] {
+            return fmt.Errorf("invalid permutation")
+        }
+        perm[i] = v
+        seen[v] = true
+    }
+    // Validate permutation against a, b according to problem constraints
+    p0 := perm[0]
+    inv := make([]int, n)
+    for j := 0; j < n; j++ {
+        inv[j] = b[j] ^ p0
+    }
+    for i := 0; i < n; i++ {
+        if inv[perm[i]] != i {
+            return fmt.Errorf("permutation does not satisfy constraints")
+        }
+        // Additionally, a[i]^p0 must equal perm[i]^0 -> but core condition above suffices
+        v := a[i] ^ p0
+        if v != perm[i] {
+            return fmt.Errorf("permutation inconsistent with a[]")
+        }
     }
     return nil
 }
@@ -150,18 +198,8 @@ func main() {
 			scan.Scan()
 			b[i], _ = strconv.Atoi(scan.Text())
 		}
-        cnt, perm := solveD(n, a, b)
-        expectBuilder := &strings.Builder{}
-        fmt.Fprintln(expectBuilder, "!")
-        fmt.Fprintln(expectBuilder, cnt)
-        for i := 0; i < n; i++ {
-            if i > 0 {
-                expectBuilder.WriteByte(' ')
-            }
-            fmt.Fprintf(expectBuilder, "%d", perm[i])
-        }
-        expectBuilder.WriteByte('\n')
-        if err := runCaseInteractive(exe, n, a, b, expectBuilder.String()); err != nil {
+        cnt, _ := solveD(n, a, b)
+        if err := runCaseInteractive(exe, n, a, b, cnt); err != nil {
             fmt.Printf("case %d failed: %v\n", caseNum, err)
             os.Exit(1)
         }
