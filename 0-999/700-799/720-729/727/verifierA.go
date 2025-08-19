@@ -1,31 +1,45 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
-	"math/rand"
-	"os"
-	"os/exec"
-	"strings"
-	"time"
+    "bytes"
+    "fmt"
+    "math/rand"
+    "os"
+    "os/exec"
+    "path/filepath"
+    "strings"
+    "time"
 )
 
 func buildRef() (string, error) {
-	ref := "refA.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "727A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
-	}
-	return ref, nil
+    // Build the reference binary and return its absolute path so we don't
+    // rely on the current directory being in $PATH when executing it.
+    wd, err := os.Getwd()
+    if err != nil {
+        return "", fmt.Errorf("failed to get working directory: %v", err)
+    }
+    ref := filepath.Join(wd, "refA.bin")
+    cmd := exec.Command("go", "build", "-o", ref, "727A.go")
+    if out, err := cmd.CombinedOutput(); err != nil {
+        return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
+    }
+    return ref, nil
 }
 
 func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+    var cmd *exec.Cmd
+    if strings.HasSuffix(bin, ".go") {
+        cmd = exec.Command("go", "run", bin)
+    } else {
+        // If the binary path doesn't contain a slash and exists in the
+        // current directory, prefix with "./" so we don't rely on $PATH.
+        if !strings.Contains(bin, string(os.PathSeparator)) {
+            if _, err := os.Stat(bin); err == nil {
+                bin = "." + string(os.PathSeparator) + bin
+            }
+        }
+        cmd = exec.Command(bin)
+    }
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
