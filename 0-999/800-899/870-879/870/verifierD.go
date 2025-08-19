@@ -50,8 +50,21 @@ func solveD(n int, a, b []int) (int, []int) {
 	return count, ans
 }
 
-// Run candidate interactively: respond to lines like "? i j" with a[i]^b[j].
+// Run candidate interactively.
+// We first reconstruct one valid hidden pair (perm, inv) consistent with the
+// provided a, b arrays, then answer queries "? i j" with perm[i] ^ inv[j].
 func runCaseInteractive(exe string, n int, a, b []int, expectedCount int) error {
+    // Reconstruct one valid solution to use as the hidden permutation.
+    // solveD returns a valid permutation 'perm' consistent with (a, b).
+    _, perm := solveD(n, a, b)
+    if perm == nil {
+        return fmt.Errorf("internal: could not reconstruct hidden permutation")
+    }
+    inv := make([]int, n)
+    // For a valid solution, inverse can be derived as inv[j] = b[j] ^ perm[0].
+    for j := 0; j < n; j++ {
+        inv[j] = b[j] ^ perm[0]
+    }
     cmd := exec.Command(exe)
     stdin, err := cmd.StdinPipe()
     if err != nil { return err }
@@ -83,7 +96,7 @@ func runCaseInteractive(exe string, n int, a, b []int, expectedCount int) error 
                     j, _ := strconv.Atoi(parts[2])
                     // guard indices
                     if i >= 0 && i < n && j >= 0 && j < n {
-                        ans := a[i] ^ b[j]
+                        ans := perm[i] ^ inv[j]
                         fmt.Fprintf(stdin, "%d\n", ans)
                     } else {
                         // invalid query; respond 0 to avoid deadlock
@@ -135,24 +148,24 @@ func runCaseInteractive(exe string, n int, a, b []int, expectedCount int) error 
     if len(nums) != n {
         return fmt.Errorf("expected %d permutation entries, got %d", n, len(nums))
     }
-    perm := make([]int, n)
+    candPerm := make([]int, n)
     seen := make([]bool, n)
     for i := 0; i < n; i++ {
         v, err := strconv.Atoi(nums[i])
         if err != nil || v < 0 || v >= n || seen[v] {
             return fmt.Errorf("invalid permutation")
         }
-        perm[i] = v
+        candPerm[i] = v
         seen[v] = true
     }
     // Validate permutation against a, b according to problem constraints
-    p0 := perm[0]
-    inv := make([]int, n)
+    p0 := candPerm[0]
+    candInv := make([]int, n)
     for j := 0; j < n; j++ {
-        inv[j] = b[j] ^ p0
+        candInv[j] = b[j] ^ p0
     }
     for i := 0; i < n; i++ {
-        if inv[perm[i]] != i {
+        if candInv[candPerm[i]] != i {
             return fmt.Errorf("permutation does not satisfy constraints")
         }
     }
