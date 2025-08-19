@@ -73,8 +73,8 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	bin := os.Args[1]
 	var cases []testCase
-	// simple deterministic
-	cases = append(cases, testCase{input: "1 0 0 0\n", expected: "1"})
+    // simple deterministic sanity case: no bottles available -> 0 ways
+    cases = append(cases, testCase{input: "1 0 0 0\n", expected: "0"})
 	for i := 0; i < 100; i++ {
 		cases = append(cases, generateRandomCase(rng))
 	}
