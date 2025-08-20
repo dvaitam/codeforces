@@ -32,31 +32,36 @@ func generateCase(rng *rand.Rand) string {
     return fmt.Sprintf("%d %d\n", n, m)
 }
 
-func parsePoints(out string, n int) ([]Point, error) {
+func parsePoints(out string, n, m int) ([]Point, bool, error) {
     fields := strings.Fields(out)
     if len(fields) == 1 && fields[0] == "-1" {
-        return nil, fmt.Errorf("output -1 for feasible case")
+        // Known impossible case: by Erdos–Szekeres, any 5 points in general position
+        // contain a convex quadrilateral, so convexity cannot be exactly 3 when n>=5.
+        if m == 3 && n >= 5 {
+            return nil, true, nil
+        }
+        return nil, false, fmt.Errorf("output -1 for feasible case")
     }
     if len(fields) < 2*n {
-        return nil, fmt.Errorf("expected %d integers, got %d", 2*n, len(fields))
+        return nil, false, fmt.Errorf("expected %d integers, got %d", 2*n, len(fields))
     }
     if len(fields) > 2*n {
         // be strict to catch extra output
-        return nil, fmt.Errorf("got extra output: %d integers (need %d)", len(fields), 2*n)
+        return nil, false, fmt.Errorf("got extra output: %d integers (need %d)", len(fields), 2*n)
     }
     pts := make([]Point, 0, n)
     for i := 0; i < 2*n; i += 2 {
         xi, err := strconv.ParseInt(fields[i], 10, 64)
         if err != nil {
-            return nil, fmt.Errorf("invalid int: %v", err)
+            return nil, false, fmt.Errorf("invalid int: %v", err)
         }
         yi, err := strconv.ParseInt(fields[i+1], 10, 64)
         if err != nil {
-            return nil, fmt.Errorf("invalid int: %v", err)
+            return nil, false, fmt.Errorf("invalid int: %v", err)
         }
         pts = append(pts, Point{xi, yi})
     }
-    return pts, nil
+    return pts, false, nil
 }
 
 func withinBounds(pts []Point) error {
@@ -127,10 +132,14 @@ func main() {
         // parse input to get n,m
         var n, m int
         fmt.Sscanf(input, "%d %d", &n, &m)
-        pts, err := parsePoints(out, n)
+        pts, impossible, err := parsePoints(out, n, m)
         if err != nil {
             fmt.Fprintf(os.Stderr, "case %d failed to parse output: %v\ninput:%soutput:%s\n", i, err, input, out)
             os.Exit(1)
+        }
+        if impossible {
+            // Accept -1 for the known impossible configuration
+            continue
         }
         if err := withinBounds(pts); err != nil {
             fmt.Fprintf(os.Stderr, "case %d bounds error: %v\ninput:%soutput:%s\n", i, err, input, out)
