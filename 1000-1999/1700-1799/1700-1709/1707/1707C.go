@@ -32,7 +32,7 @@ func main(){
     dsu:=NewDSU(n)
     tree:=make([][]int,n+1)
     extra:=make([]P,0)
-    for i,e:=range edges{
+    for _,e:=range edges{
         u,v:=e.u,e.v
         if dsu.union(u,v){ tree[u]=append(tree[u],v); tree[v]=append(tree[v],u) } else { extra=append(extra,P{u,v}) }
     }
