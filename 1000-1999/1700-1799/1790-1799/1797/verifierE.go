@@ -54,43 +54,30 @@ func seq(x int) []int {
 	return s
 }
 
+func depthPhi(x int) int {
+    d := 0
+    for x > 1 {
+        x = phi(x)
+        d++
+    }
+    return d
+}
+
+func lcaPhi(u, v int) int {
+    du, dv := depthPhi(u), depthPhi(v)
+    for du > dv { u = phi(u); du-- }
+    for dv > du { v = phi(v); dv-- }
+    for u != v { u = phi(u); v = phi(v) }
+    return u
+}
+
 func minChanges(arr []int) int {
-    lists := make([][]int, len(arr))
-    for i, v := range arr {
-        lists[i] = seq(v)
-    }
-    // Use a large sentinel and int64 to avoid overflow
-    const INF int64 = 1<<60
-    best := INF
-    for _, l := range lists {
-        for idx, val := range l {
-            cost := int64(idx)
-            for _, other := range lists {
-                pos := -1
-                for k, vv := range other {
-                    if vv == val {
-                        pos = k
-                        break
-                    }
-                }
-                if pos == -1 {
-                    cost = INF
-                    break
-                }
-                cost += int64(pos)
-                if cost >= best { // early prune
-                    break
-                }
-            }
-            if cost < best {
-                best = cost
-            }
-        }
-    }
-    if best == INF {
-        return 0
-    }
-    return int(best)
+    sum := 0
+    for _, v := range arr { sum += depthPhi(v) }
+    if len(arr) == 0 { return 0 }
+    l := arr[0]
+    for i := 1; i < len(arr); i++ { l = lcaPhi(l, arr[i]) }
+    return sum - len(arr)*depthPhi(l)
 }
 
 func naive(n, m int, arr []int, ops [][3]int) []int {
@@ -150,23 +137,23 @@ func main() {
 		}
 
 		expected := naive(n, m, append([]int(nil), arr...), ops)
-		out, err := runBinary(bin, input.String())
-		if err != nil {
-			fmt.Printf("test %d binary error: %v\n", tc+1, err)
-			os.Exit(1)
-		}
-		fields := strings.Fields(out)
-		if len(fields) != len(expected) {
-			fmt.Printf("test %d wrong number of outputs\n", tc+1)
-			os.Exit(1)
-		}
-		for i, exp := range expected {
-			got, err := strconv.Atoi(fields[i])
-			if err != nil || got != exp {
-				fmt.Printf("test %d failed at output %d: expected %d got %s\n", tc+1, i+1, exp, fields[i])
-				os.Exit(1)
-			}
-		}
+        out, err := runBinary(bin, input.String())
+        if err != nil {
+            fmt.Printf("test %d binary error: %v\n", tc+1, err)
+            os.Exit(1)
+        }
+        fields := strings.Fields(out)
+        if len(fields) != len(expected) {
+            fmt.Printf("test %d wrong number of outputs\ninput:\n%s", tc+1, input.String())
+            os.Exit(1)
+        }
+        for i, exp := range expected {
+            got, err := strconv.Atoi(fields[i])
+            if err != nil || got != exp {
+                fmt.Printf("test %d failed at output %d: expected %d got %s\ninput:\n%s", tc+1, i+1, exp, fields[i], input.String())
+                os.Exit(1)
+            }
+        }
 	}
 	fmt.Println("All tests passed")
 }
