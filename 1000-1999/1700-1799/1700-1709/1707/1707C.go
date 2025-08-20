@@ -1,121 +1,86 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"os"
+    "bufio"
+    "fmt"
+    "os"
 )
 
-type Edge struct {
-	to int
-	id int
+type DSU struct{
+    p []int
 }
 
-type DSU struct {
-	parent []int
-	rank   []int
+func NewDSU(n int)*DSU{
+    d:=&DSU{p:make([]int,n+1)}
+    for i:=1;i<=n;i++{d.p[i]=i}
+    return d
 }
+func (d*DSU) find(x int) int{ if d.p[x]==x {return x}; d.p[x]=d.find(d.p[x]); return d.p[x] }
+func (d*DSU) union(a,b int) bool{ a=d.find(a); b=d.find(b); if a==b {return false}; d.p[a]=b; return true }
 
-func NewDSU(n int) *DSU {
-	d := &DSU{parent: make([]int, n+1), rank: make([]int, n+1)}
-	for i := 0; i <= n; i++ {
-		d.parent[i] = i
-	}
-	return d
-}
+func main(){
+    in:=bufio.NewReader(os.Stdin)
+    out:=bufio.NewWriter(os.Stdout)
+    defer out.Flush()
+    var n,m int
+    fmt.Fscan(in,&n,&m)
+    type P struct{u,v int}
+    edges:=make([]P,m)
+    for i:=0;i<m;i++{ fmt.Fscan(in,&edges[i].u,&edges[i].v) }
 
-func (d *DSU) find(x int) int {
-	for d.parent[x] != x {
-		d.parent[x] = d.parent[d.parent[x]]
-		x = d.parent[x]
-	}
-	return x
-}
+    // Build MST by Kruskal in edge id order; collect tree and non-tree edges
+    dsu:=NewDSU(n)
+    tree:=make([][]int,n+1)
+    extra:=make([]P,0)
+    for i,e:=range edges{
+        u,v:=e.u,e.v
+        if dsu.union(u,v){ tree[u]=append(tree[u],v); tree[v]=append(tree[v],u) } else { extra=append(extra,P{u,v}) }
+    }
 
-func (d *DSU) union(a, b int) bool {
-	a = d.find(a)
-	b = d.find(b)
-	if a == b {
-		return false
-	}
-	if d.rank[a] < d.rank[b] {
-		a, b = b, a
-	}
-	d.parent[b] = a
-	if d.rank[a] == d.rank[b] {
-		d.rank[a]++
-	}
-	return true
-}
+    // Depth array using DFS from 1
+    depth:=make([]int,n+1)
+    var dfs1 func(int,int)
+    dfs1=func(x,fa int){ depth[x]=depth[fa]+1; for _,y:=range tree[x]{ if y!=fa { dfs1(y,x) } } }
+    dfs1(1,0)
 
-func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
-	defer out.Flush()
+    // Build directed edges from deeper node to ancestor
+    up:=make([][]int,n+1)
+    for _,e:=range extra{
+        u,v:=e.u,e.v
+        if depth[u]<depth[v]{ u,v=v,u }
+        up[u]=append(up[u],v)
+    }
 
-	var n, m int
-	fmt.Fscan(in, &n, &m)
-	edges := make([][2]int, m)
-	adj := make([][]Edge, n+1)
-	for i := 0; i < m; i++ {
-		var u, v int
-		fmt.Fscan(in, &u, &v)
-		edges[i] = [2]int{u, v}
-		id := i + 1
-		adj[u] = append(adj[u], Edge{v, id})
-		adj[v] = append(adj[v], Edge{u, id})
-	}
+    // Difference array logic as in accepted solutions
+    a:=make([]int,n+2)
+    vis:=make([]bool,n+1)
+    stk:=make([]int,n+2) // s[depth] mapping
 
-	dsu := NewDSU(n)
-	mst := make(map[int]struct{})
-	for i, e := range edges {
-		if dsu.union(e[0], e[1]) {
-			mst[i+1] = struct{}{}
-		}
-	}
+    var dfs2 func(int,int)
+    dfs2=func(x,fa int){
+        stk[depth[x]]=x
+        vis[x]=true
+        for _,y:=range up[x]{
+            a[x]++
+            if vis[y]{
+                a[1]++
+                dNext:=depth[y]+1
+                if dNext<=n{ a[stk[dNext]]-- }
+            }else{
+                a[y]++
+            }
+        }
+        for _,y:=range tree[x]{ if y!=fa { dfs2(y,x) } }
+        vis[x]=false
+    }
+    dfs2(1,0)
 
-	ans := make([]byte, n)
-	for r := 1; r <= n; r++ {
-		visited := make([]bool, n+1)
-		selected := make(map[int]struct{})
-		type item struct{ v, idx int }
-		st := []item{{r, 0}}
-		visited[r] = true
-		for len(st) > 0 {
-			top := &st[len(st)-1]
-			v := top.v
-			if top.idx >= len(adj[v]) {
-				st = st[:len(st)-1]
-				continue
-			}
-			e := adj[v][top.idx]
-			top.idx++
-			if !visited[e.to] {
-				visited[e.to] = true
-				selected[e.id] = struct{}{}
-				st = append(st, item{e.to, 0})
-			}
-		}
-		if len(selected) != n-1 {
-			ans[r-1] = '0'
-			continue
-		}
-		if len(selected) != len(mst) {
-			ans[r-1] = '0'
-			continue
-		}
-		ok := true
-		for id := range selected {
-			if _, ok2 := mst[id]; !ok2 {
-				ok = false
-				break
-			}
-		}
-		if ok {
-			ans[r-1] = '1'
-		} else {
-			ans[r-1] = '0'
-		}
-	}
-	fmt.Fprintln(out, string(ans))
+    var dfs3 func(int,int)
+    dfs3=func(x,fa int){ a[x]+=a[fa]; for _,y:=range tree[x]{ if y!=fa { dfs3(y,x) } } }
+    dfs3(1,0)
+
+    need:=len(extra)
+    ans:=make([]byte,n)
+    for i:=1;i<=n;i++{ if a[i]==need { ans[i-1]='1' } else { ans[i-1]='0' } }
+    fmt.Fprintln(out,string(ans))
 }

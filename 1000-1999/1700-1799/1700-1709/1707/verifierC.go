@@ -25,35 +25,38 @@ func buildOracle() (string, error) {
 }
 
 func genCase(r *rand.Rand) string {
-	n := r.Intn(5) + 2
-	// ensure at least n-1 edges and at most n*(n-1)/2
-	maxM := n * (n - 1) / 2
-	m := r.Intn(maxM-n+2) + (n - 1) // choose between n-1 and maxM
-	type pair struct{ u, v int }
-	edges := make([]pair, 0, m)
-	used := make(map[pair]bool)
-	for len(edges) < m {
-		u := r.Intn(n) + 1
-		v := r.Intn(n) + 1
-		if u == v {
-			continue
-		}
-		if u > v {
-			u, v = v, u
-		}
-		p := pair{u, v}
-		if used[p] {
-			continue
-		}
-		used[p] = true
-		edges = append(edges, p)
-	}
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
-	for _, e := range edges {
-		sb.WriteString(fmt.Sprintf("%d %d\n", e.u, e.v))
-	}
-	return sb.String()
+    n := r.Intn(9) + 2 // 2..10
+    maxM := n * (n - 1) / 2
+    m := r.Intn(maxM-n+2) + (n - 1) // in [n-1, maxM]
+    type pair struct{ u, v int }
+    edges := make([]pair, 0, m)
+    used := make(map[pair]bool)
+    // First, generate a random tree to ensure connectivity
+    for v := 2; v <= n; v++ {
+        u := r.Intn(v-1) + 1
+        a, b := u, v
+        if a > b { a, b = b, a }
+        p := pair{a, b}
+        used[p] = true
+        edges = append(edges, p)
+    }
+    // Add remaining edges
+    for len(edges) < m {
+        u := r.Intn(n) + 1
+        v := r.Intn(n) + 1
+        if u == v { continue }
+        if u > v { u, v = v, u }
+        p := pair{u, v}
+        if used[p] { continue }
+        used[p] = true
+        edges = append(edges, p)
+    }
+    var sb strings.Builder
+    sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
+    for _, e := range edges {
+        sb.WriteString(fmt.Sprintf("%d %d\n", e.u, e.v))
+    }
+    return sb.String()
 }
 
 func run(bin, input string) (string, error) {
@@ -80,7 +83,9 @@ func main() {
 		os.Exit(1)
 	}
 	defer os.Remove(oracle)
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+    seed := time.Now().UnixNano()
+    fmt.Fprintf(os.Stderr, "seed: %d\n", seed)
+    rng := rand.New(rand.NewSource(seed))
 	for i := 1; i <= 100; i++ {
 		input := genCase(rng)
 		expect, err := run(oracle, input)
