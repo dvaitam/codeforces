@@ -88,7 +88,9 @@ func main() {
 	}
 	defer os.Remove(oracle)
 
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	seed := time.Now().UnixNano()
+	fmt.Fprintf(os.Stderr, "seed: %d\n", seed)
+	rng := rand.New(rand.NewSource(seed))
 	const cases = 100
 	for i := 1; i <= cases; i++ {
 		input := genCase(rng)
@@ -103,7 +105,7 @@ func main() {
 			os.Exit(1)
 		}
 		if strings.TrimSpace(got) != expect {
-			fmt.Printf("case %d failed\nexpected:\n%s\n\ngot:\n%s\n", i, expect, got)
+			fmt.Printf("case %d failed\ninput:\n%s\nexpected:\n%s\n\ngot:\n%s\n", i, input, expect, got)
 			os.Exit(1)
 		}
 	}
