@@ -38,15 +38,24 @@ func randString(r *rand.Rand, n int) string {
 }
 
 func generateTests() []string {
-	r := rand.New(rand.NewSource(5))
-	tests := make([]string, 0, 100)
-	for t := 0; t < 100; t++ {
-		n := r.Intn(6) + 1
-		s := randString(r, n)
-		tstr := randString(r, n)
-		tests = append(tests, fmt.Sprintf("%d\n%s\n%s\n", n, s, tstr))
-	}
-	return tests
+    r := rand.New(rand.NewSource(5))
+    tests := make([]string, 0, 100)
+    for t := 0; t < 100; t++ {
+        n := r.Intn(6) + 1
+        s := randString(r, n)
+        tstr := randString(r, n)
+        // Ensure S and T are distinct as per problem statement
+        for tstr == s {
+            // tweak one character deterministically within small alphabet
+            b := []byte(tstr)
+            pos := r.Intn(n)
+            // rotate among 'a','b','c'
+            if b[pos] == 'a' { b[pos] = 'b' } else if b[pos] == 'b' { b[pos] = 'c' } else { b[pos] = 'a' }
+            tstr = string(b)
+        }
+        tests = append(tests, fmt.Sprintf("%d\n%s\n%s\n", n, s, tstr))
+    }
+    return tests
 }
 
 func main() {
