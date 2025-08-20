@@ -93,12 +93,13 @@ func runCase(bin, input, expected string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	outStr := strings.TrimSpace(out.String())
-	exp := strings.TrimSpace(expected)
-	if outStr != exp {
-		return fmt.Errorf("expected %q got %q", exp, outStr)
-	}
-	return nil
+    outStr := strings.TrimSpace(out.String())
+    exp := strings.TrimSpace(expected)
+    // accept case-insensitive YES/NO
+    if !strings.EqualFold(outStr, exp) {
+        return fmt.Errorf("expected %q got %q", exp, outStr)
+    }
+    return nil
 }
 
 func main() {
