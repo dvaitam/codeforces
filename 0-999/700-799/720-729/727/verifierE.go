@@ -1,22 +1,27 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
-	"math/rand"
-	"os"
-	"os/exec"
-	"strings"
-	"time"
+    "bytes"
+    "fmt"
+    "math/rand"
+    "os"
+    "os/exec"
+    "path/filepath"
+    "strings"
+    "time"
 )
 
 func buildRef() (string, error) {
-	ref := "refE.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "727E.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
-	}
-	return ref, nil
+    dir, err := os.Getwd()
+    if err != nil {
+        return "", err
+    }
+    ref := filepath.Join(dir, "refE.bin")
+    cmd := exec.Command("go", "build", "-o", ref, "727E.go")
+    if out, err := cmd.CombinedOutput(); err != nil {
+        return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
+    }
+    return ref, nil
 }
 
 func run(bin, input string) (string, error) {
