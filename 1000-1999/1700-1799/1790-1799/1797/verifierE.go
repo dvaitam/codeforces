@@ -55,37 +55,42 @@ func seq(x int) []int {
 }
 
 func minChanges(arr []int) int {
-	lists := make([][]int, len(arr))
-	for i, v := range arr {
-		lists[i] = seq(v)
-	}
-	best := int(^uint(0) >> 1)
-	for _, l := range lists {
-		for idx, val := range l {
-			cost := idx
-			for j, other := range lists {
-				if j == 0 {
-					continue
-				}
-				pos := -1
-				for k, vv := range other {
-					if vv == val {
-						pos = k
-						break
-					}
-				}
-				if pos == -1 {
-					cost = best + 1
-					break
-				}
-				cost += pos
-			}
-			if cost < best {
-				best = cost
-			}
-		}
-	}
-	return best
+    lists := make([][]int, len(arr))
+    for i, v := range arr {
+        lists[i] = seq(v)
+    }
+    // Use a large sentinel and int64 to avoid overflow
+    const INF int64 = 1<<60
+    best := INF
+    for _, l := range lists {
+        for idx, val := range l {
+            cost := int64(idx)
+            for _, other := range lists {
+                pos := -1
+                for k, vv := range other {
+                    if vv == val {
+                        pos = k
+                        break
+                    }
+                }
+                if pos == -1 {
+                    cost = INF
+                    break
+                }
+                cost += int64(pos)
+                if cost >= best { // early prune
+                    break
+                }
+            }
+            if cost < best {
+                best = cost
+            }
+        }
+    }
+    if best == INF {
+        return 0
+    }
+    return int(best)
 }
 
 func naive(n, m int, arr []int, ops [][3]int) []int {
