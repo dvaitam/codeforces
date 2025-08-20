@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"container/heap"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -132,16 +133,31 @@ func main() {
 	for i := 0; i < 100; i++ {
 		n, m, r, k := generateCase(rng)
 		input := fmt.Sprintf("%d %d %d %d\n", n, m, r, k)
-		expect := solveCase(n, m, r, k)
-		out, err := runCandidate(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
-			os.Exit(1)
-		}
-		if out != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, expect, out, input)
-			os.Exit(1)
-		}
-	}
+        expect := solveCase(n, m, r, k)
+        out, err := runCandidate(bin, input)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
+            os.Exit(1)
+        }
+        // Compare as floats with tolerance
+        var ef, gf float64
+        _, e1 := fmt.Sscanf(expect, "%f", &ef)
+        _, e2 := fmt.Sscanf(out, "%f", &gf)
+        if e1 != nil || e2 != nil {
+            if out != expect {
+                fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, expect, out, input)
+                os.Exit(1)
+            }
+        } else {
+            if math.IsNaN(gf) || math.IsInf(gf, 0) {
+                fmt.Fprintf(os.Stderr, "case %d failed: got invalid float %s\ninput:\n%s", i+1, out, input)
+                os.Exit(1)
+            }
+            if math.Abs(ef-gf) > 1e-9 {
+                fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s (|diff|=%.12g)\ninput:\n%s", i+1, expect, out, math.Abs(ef-gf), input)
+                os.Exit(1)
+            }
+        }
+    }
 	fmt.Println("All tests passed")
 }
