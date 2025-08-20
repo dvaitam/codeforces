@@ -3,7 +3,6 @@ package main
 import (
     "bufio"
     "fmt"
-    "math"
     "os"
 )
 
@@ -20,44 +19,62 @@ func main() {
         fmt.Fscan(in, &s1)
         fmt.Fscan(in, &s2)
 
-        // Collect chip positions
-        type pt struct{ r, c int }
-        chips := make([]pt, 0)
-        for i := 0; i < n; i++ {
-            if s1[i] == '*' {
-                chips = append(chips, pt{0, i})
+        // Build grid as ints and locate span [l, r]
+        g := make([][2]int, n+2) // 1-based indexing for convenience
+        l, r := 1, n
+        for j := 1; j <= n; j++ {
+            if s1[j-1] == '*' {
+                g[j][0] = 1
             }
-            if s2[i] == '*' {
-                chips = append(chips, pt{1, i})
+            if s2[j-1] == '*' {
+                g[j][1] = 1
             }
         }
-
-        if len(chips) <= 1 {
+        // Check if there is any chip
+        any := false
+        for j := 1; j <= n; j++ {
+            if g[j][0] == 1 || g[j][1] == 1 {
+                any = true
+                break
+            }
+        }
+        if !any {
             fmt.Fprintln(out, 0)
             continue
         }
-
-        // Exact oracle: try all target cells (2 * n) and take minimal sum of L1 distances
-        best := math.MaxInt32
-        for r := 0; r < 2; r++ {
-            for c := 0; c < n; c++ {
-                cur := 0
-                for _, p := range chips {
-                    dr := p.r - r
-                    if dr < 0 {
-                        dr = -dr
-                    }
-                    dc := p.c - c
-                    if dc < 0 {
-                        dc = -dc
-                    }
-                    cur += dr + dc
-                }
-                if cur < best {
-                    best = cur
-                }
+        for l <= n && g[l][0] == 0 && g[l][1] == 0 {
+            l++
+        }
+        for r >= 1 && g[r][0] == 0 && g[r][1] == 0 {
+            r--
+        }
+        // DP over columns l..r
+        f0 := make([]int, n+2)
+        f1 := make([]int, n+2)
+        // Defaults are 0, matching the common CF solution with final -1
+        for i := l; i <= r; i++ {
+            // end at top row
+            a := f0[i-1] + g[i][1] + 1
+            b := f1[i-1] + 2
+            if a < b {
+                f0[i] = a
+            } else {
+                f0[i] = b
+            }
+            // end at bottom row
+            c := f1[i-1] + g[i][0] + 1
+            d := f0[i-1] + 2
+            if c < d {
+                f1[i] = c
+            } else {
+                f1[i] = d
             }
         }
-        fmt.Fprintln(out, best)
+        // subtract 1 to remove the initial extra move counted at l
+        ans := f0[r]
+        if f1[r] < ans {
+            ans = f1[r]
+        }
+        fmt.Fprintln(out, ans-1)
     }
 }
