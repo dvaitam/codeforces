@@ -15,135 +15,45 @@ type testCase struct {
 }
 
 func solveD(a, b, k, t int) int64 {
-	mod := int64(1e9 + 7)
-	d := b - a
-	N := 4*k*t + 1
-	base := 2 * k * t
-	dp := make([]int64, N)
-	newdp := make([]int64, N)
-	s0 := make([]int64, N)
-	s1 := make([]int64, N)
-	dp[base] = 1
-	twok1 := int64(2*k + 1)
+    mod := int64(1e9 + 7)
+    d := b - a
+    // single player's sum distribution over [-k*t, k*t]
+    offset := k * t
+    maxDim := 2*offset + 1
+    dp := make([]int64, maxDim)
+    dp[offset] = 1
     for step := 1; step <= t; step++ {
-        // valid range of previous dp
-        prevLow := base - 2*k*(step-1)
-        prevHigh := base + 2*k*(step-1)
-        if prevLow < 0 { prevLow = 0 }
-        if prevHigh >= N { prevHigh = N-1 }
-        // zero out values outside the valid previous range to avoid stale contributions
-        for i := 0; i < prevLow; i++ { dp[i] = 0 }
-        for i := prevHigh+1; i < N; i++ { dp[i] = 0 }
-
-        currLow := base - 2*k*step
-        currHigh := base + 2*k*step
-        s0[0] = dp[0]
-        s1[0] = 0
-        for i := 1; i < N; i++ {
-            s0[i] = s0[i-1] + dp[i]
-            if s0[i] >= mod {
-                s0[i] -= mod
-            }
-            s1[i] = s1[i-1] + dp[i]*int64(i)%mod
-            if s1[i] >= mod {
-                s1[i] -= mod
-            }
+        // prefix sums of dp
+        ps := make([]int64, maxDim+1)
+        for i := 0; i < maxDim; i++ { ps[i+1] = (ps[i] + dp[i]) % mod }
+        next := make([]int64, maxDim)
+        maxS := step * k
+        for s := -maxS; s <= maxS; s++ {
+            idx := s + offset
+            L := s - k + offset
+            if L < 0 { L = 0 }
+            R1 := s + k + offset + 1
+            if R1 > maxDim { R1 = maxDim }
+            next[idx] = (ps[R1] - ps[L] + mod) % mod
         }
-        // clear newdp across the current valid range
-        if currLow < 0 { currLow = 0 }
-        if currHigh >= N { currHigh = N-1 }
-        for i := currLow; i <= currHigh; i++ { newdp[i] = 0 }
-        for dIdx := currLow; dIdx <= currHigh; dIdx++ {
-            L := dIdx - 2*k
-            if L < 0 {
-                L = 0
-            }
-			R := dIdx + 2*k
-			if R >= N {
-				R = N - 1
-			}
-			var sumPrev int64
-			if L > 0 {
-				sumPrev = s0[R] - s0[L-1]
-			} else {
-				sumPrev = s0[R]
-			}
-			if sumPrev < 0 {
-				sumPrev += mod
-			}
-			Rleft := dIdx
-			if Rleft > R {
-				Rleft = R
-			}
-			Lleft := L
-			var sumLeft, sumS1Left int64
-			if Rleft >= Lleft {
-				if Lleft > 0 {
-					sumLeft = s0[Rleft] - s0[Lleft-1]
-					sumS1Left = s1[Rleft] - s1[Lleft-1]
-				} else {
-					sumLeft = s0[Rleft]
-					sumS1Left = s1[Rleft]
-				}
-				if sumLeft < 0 {
-					sumLeft += mod
-				}
-				if sumS1Left < 0 {
-					sumS1Left += mod
-				}
-			}
-			Lright := dIdx + 1
-			if Lright > R {
-				newdp[dIdx] = twok1 * sumPrev % mod
-			} else {
-				sumPrevRight := s0[R] - s0[dIdx]
-				sumS1Right := s1[R] - s1[dIdx]
-				if sumPrevRight < 0 {
-					sumPrevRight += mod
-				}
-				if sumS1Right < 0 {
-					sumS1Right += mod
-				}
-				part1 := (sumLeft*int64(dIdx)%mod - sumS1Left) % mod
-				if part1 < 0 {
-					part1 += mod
-				}
-				part2 := (sumS1Right - sumPrevRight*int64(dIdx)%mod) % mod
-				if part2 < 0 {
-					part2 += mod
-				}
-				W1 := part1 + part2
-				if W1 >= mod {
-					W1 -= mod
-				}
-				val := twok1*sumPrev%mod - W1
-				if val < 0 {
-					val += mod
-				}
-				newdp[dIdx] = val
-			}
-		}
-		dp, newdp = newdp, dp
-	}
-	s0[0] = dp[0]
-	for i := 1; i < N; i++ {
-		s0[i] = s0[i-1] + dp[i]
-		if s0[i] >= mod {
-			s0[i] -= mod
-		}
-	}
-	start := base + d + 1
-	if start < 0 {
-		start = 0
-	}
-	if start > N-1 {
-		return 0
-	}
-	res := s0[N-1]
-	if start > 0 {
-		res = (res - s0[start-1] + mod) % mod
-	}
-	return res
+        dp = next
+    }
+    // prefix of final dp for quick sums
+    ps := make([]int64, maxDim+1)
+    for i := 0; i < maxDim; i++ { ps[i+1] = (ps[i] + dp[i]) % mod }
+    // sum over s_M and s_L with s_M - s_L > d  => s_L <= s_M - d - 1
+    var total int64
+    maxS := k * t
+    for sM := -maxS; sM <= maxS; sM++ {
+        idxM := sM + offset
+        if dp[idxM] == 0 { continue }
+        limit := sM - d - 1
+        if limit < -maxS { continue }
+        if limit > maxS { limit = maxS }
+        sumL := ps[limit+offset+1]
+        total = (total + dp[idxM]*sumL) % mod
+    }
+    return total
 }
 
 func generateTests() []testCase {
