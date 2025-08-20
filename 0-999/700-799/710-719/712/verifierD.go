@@ -25,29 +25,39 @@ func solveD(a, b, k, t int) int64 {
 	s1 := make([]int64, N)
 	dp[base] = 1
 	twok1 := int64(2*k + 1)
-	for step := 1; step <= t; step++ {
-		currLow := base - 2*k*step
-		currHigh := base + 2*k*step
-		s0[0] = dp[0]
-		s1[0] = 0
-		for i := 1; i < N; i++ {
-			s0[i] = s0[i-1] + dp[i]
-			if s0[i] >= mod {
-				s0[i] -= mod
-			}
-			s1[i] = s1[i-1] + dp[i]*int64(i)%mod
-			if s1[i] >= mod {
-				s1[i] -= mod
-			}
-		}
-		for i := currLow; i <= currHigh; i++ {
-			newdp[i] = 0
-		}
-		for dIdx := currLow; dIdx <= currHigh; dIdx++ {
-			L := dIdx - 2*k
-			if L < 0 {
-				L = 0
-			}
+    for step := 1; step <= t; step++ {
+        // valid range of previous dp
+        prevLow := base - 2*k*(step-1)
+        prevHigh := base + 2*k*(step-1)
+        if prevLow < 0 { prevLow = 0 }
+        if prevHigh >= N { prevHigh = N-1 }
+        // zero out values outside the valid previous range to avoid stale contributions
+        for i := 0; i < prevLow; i++ { dp[i] = 0 }
+        for i := prevHigh+1; i < N; i++ { dp[i] = 0 }
+
+        currLow := base - 2*k*step
+        currHigh := base + 2*k*step
+        s0[0] = dp[0]
+        s1[0] = 0
+        for i := 1; i < N; i++ {
+            s0[i] = s0[i-1] + dp[i]
+            if s0[i] >= mod {
+                s0[i] -= mod
+            }
+            s1[i] = s1[i-1] + dp[i]*int64(i)%mod
+            if s1[i] >= mod {
+                s1[i] -= mod
+            }
+        }
+        // clear newdp across the current valid range
+        if currLow < 0 { currLow = 0 }
+        if currHigh >= N { currHigh = N-1 }
+        for i := currLow; i <= currHigh; i++ { newdp[i] = 0 }
+        for dIdx := currLow; dIdx <= currHigh; dIdx++ {
+            L := dIdx - 2*k
+            if L < 0 {
+                L = 0
+            }
 			R := dIdx + 2*k
 			if R >= N {
 				R = N - 1
