@@ -1,12 +1,13 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
-	"math/rand"
-	"os"
-	"os/exec"
-	"strings"
+    "bytes"
+    "fmt"
+    "math/rand"
+    "os"
+    "os/exec"
+    "strconv"
+    "strings"
 )
 
 type Test struct {
@@ -21,15 +22,6 @@ func runExe(path, input string) (string, error) {
 	cmd.Stderr = &out
 	err := cmd.Run()
 	return out.String(), err
-}
-
-func buildRef() (string, error) {
-	ref := "./refA.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "739A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build reference failed: %v: %s", err, string(out))
-	}
-	return ref, nil
 }
 
 func genTests() []Test {
@@ -52,34 +44,67 @@ func genTests() []Test {
 }
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("Usage: go run verifierA.go /path/to/binary")
-		return
-	}
-	bin := os.Args[1]
-	ref, err := buildRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
+    if len(os.Args) != 2 {
+        fmt.Println("Usage: go run verifierA.go /path/to/binary")
+        return
+    }
+    bin := os.Args[1]
 
-	tests := genTests()
-	for i, tc := range tests {
-		exp, err := runExe(ref, tc.input)
-		if err != nil {
-			fmt.Printf("reference runtime error on test %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		got, err := runExe(bin, tc.input)
-		if err != nil {
-			fmt.Printf("candidate runtime error on test %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		if strings.TrimSpace(exp) != strings.TrimSpace(got) {
-			fmt.Printf("Test %d failed\nInput:\n%sExpected:\n%sGot:\n%s\n", i+1, tc.input, exp, got)
-			os.Exit(1)
-		}
-	}
-	fmt.Println("all tests passed")
+    tests := genTests()
+    for i, tc := range tests {
+        got, err := runExe(bin, tc.input)
+        if err != nil {
+            fmt.Printf("candidate runtime error on test %d: %v\n", i+1, err)
+            os.Exit(1)
+        }
+        // Validate candidate output instead of string-matching reference
+        if err := validate(tc.input, got); err != nil {
+            fmt.Printf("Test %d failed\nInput:\n%sError: %v\nOutput:\n%s\n", i+1, tc.input, err, got)
+            os.Exit(1)
+        }
+    }
+    fmt.Println("all tests passed")
+}
+
+func validate(input, output string) error {
+    // parse input
+    lines := strings.Split(strings.TrimSpace(input), "\n")
+    header := strings.Fields(lines[0])
+    if len(header) < 2 { return fmt.Errorf("invalid input header") }
+    n, _ := strconv.Atoi(header[0])
+    m, _ := strconv.Atoi(header[1])
+    segs := make([][2]int, m)
+    minLen := n
+    for i := 0; i < m; i++ {
+        parts := strings.Fields(lines[1+i])
+        if len(parts) < 2 { return fmt.Errorf("invalid segment line") }
+        l, _ := strconv.Atoi(parts[0])
+        r, _ := strconv.Atoi(parts[1])
+        segs[i] = [2]int{l, r}
+        if r-l+1 < minLen { minLen = r-l+1 }
+    }
+    // parse output ints
+    fields := strings.Fields(output)
+    if len(fields) < 1+n { return fmt.Errorf("not enough numbers in output") }
+    k, err := strconv.Atoi(fields[0])
+    if err != nil || k <= 0 || k > n { return fmt.Errorf("invalid k") }
+    if k != minLen { return fmt.Errorf("k=%d does not equal min segment length %d", k, minLen) }
+    a := make([]int, n)
+    for i := 0; i < n; i++ {
+        v, err := strconv.Atoi(fields[1+i])
+        if err != nil { return fmt.Errorf("invalid label at pos %d", i+1) }
+        if v < 0 || v >= k { return fmt.Errorf("label out of range at pos %d", i+1) }
+        a[i] = v
+    }
+    // Check that in every segment [l,r], all residues 0..k-1 appear at least once
+    for _, seg := range segs {
+        l, r := seg[0]-1, seg[1]-1
+        seen := make([]bool, k)
+        cnt := 0
+        for i := l; i <= r; i++ {
+            if !seen[a[i]] { seen[a[i]] = true; cnt++ }
+        }
+        if cnt < k { return fmt.Errorf("segment [%d,%d] does not contain all labels", seg[0], seg[1]) }
+    }
+    return nil
 }
