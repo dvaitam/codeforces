@@ -1,10 +1,10 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"os"
-	"sort"
+    "bufio"
+    "fmt"
+    "math"
+    "os"
 )
 
 func main() {
@@ -16,40 +16,48 @@ func main() {
 	for ; t > 0; t-- {
 		var n int
 		fmt.Fscan(in, &n)
-		var s1, s2 string
-		fmt.Fscan(in, &s1)
-		fmt.Fscan(in, &s2)
-		cols := make([]int, 0)
-		cnt0, cnt1 := 0, 0
-		for i := 0; i < n; i++ {
-			if s1[i] == '*' {
-				cols = append(cols, i)
-				cnt0++
-			}
-			if s2[i] == '*' {
-				cols = append(cols, i)
-				cnt1++
-			}
-		}
-		if len(cols) == 1 {
-			fmt.Fprintln(out, 0)
-			continue
-		}
-		sort.Ints(cols)
-		median := cols[len(cols)/2]
-		hor := 0
-		for _, c := range cols {
-			if c > median {
-				hor += c - median
-			} else {
-				hor += median - c
-			}
-		}
-		if cnt0 < cnt1 {
-			hor += cnt0
-		} else {
-			hor += cnt1
-		}
-		fmt.Fprintln(out, hor)
-	}
+        var s1, s2 string
+        fmt.Fscan(in, &s1)
+        fmt.Fscan(in, &s2)
+
+        // Collect chip positions
+        type pt struct{ r, c int }
+        chips := make([]pt, 0)
+        for i := 0; i < n; i++ {
+            if s1[i] == '*' {
+                chips = append(chips, pt{0, i})
+            }
+            if s2[i] == '*' {
+                chips = append(chips, pt{1, i})
+            }
+        }
+
+        if len(chips) <= 1 {
+            fmt.Fprintln(out, 0)
+            continue
+        }
+
+        // Exact oracle: try all target cells (2 * n) and take minimal sum of L1 distances
+        best := math.MaxInt32
+        for r := 0; r < 2; r++ {
+            for c := 0; c < n; c++ {
+                cur := 0
+                for _, p := range chips {
+                    dr := p.r - r
+                    if dr < 0 {
+                        dr = -dr
+                    }
+                    dc := p.c - c
+                    if dc < 0 {
+                        dc = -dc
+                    }
+                    cur += dr + dc
+                }
+                if cur < best {
+                    best = cur
+                }
+            }
+        }
+        fmt.Fprintln(out, best)
+    }
 }
