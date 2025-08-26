@@ -1,22 +1,28 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
-	"math/rand"
-	"os"
-	"os/exec"
-	"strings"
-	"time"
+    "bytes"
+    "fmt"
+    "math/rand"
+    "os"
+    "os/exec"
+    "path/filepath"
+    "strings"
+    "time"
 )
 
 func buildOracle() (string, error) {
-	oracle := "oracleF"
-	cmd := exec.Command("go", "build", "-o", oracle, "1346F.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle: %v\n%s", err, out)
-	}
-	return oracle, nil
+    // Build oracle to an absolute path so exec doesn't rely on $PATH
+    cwd, err := os.Getwd()
+    if err != nil {
+        return "", err
+    }
+    oracle := filepath.Join(cwd, "oracleF")
+    cmd := exec.Command("go", "build", "-o", oracle, "1346F.go")
+    if out, err := cmd.CombinedOutput(); err != nil {
+        return "", fmt.Errorf("build oracle: %v\n%s", err, out)
+    }
+    return oracle, nil
 }
 
 func run(bin, input string) (string, error) {
