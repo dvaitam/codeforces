@@ -1,55 +1,142 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
-	"math/rand"
-	"os"
-	"os/exec"
-	"sort"
-	"strings"
+    "bytes"
+    "fmt"
+    "math/rand"
+    "os"
+    "os/exec"
+    "sort"
+    "strconv"
+    "strings"
 )
 
 type testCase struct {
-	arr []int64
+    arr []int64
 }
 
-func solve(arr []int64) string {
-	m := make(map[int64]bool, len(arr))
-	for _, v := range arr {
-		m[v] = true
-	}
-	sort.Slice(arr, func(i, j int) bool { return arr[i] < arr[j] })
-	uniq := arr[:0]
-	for _, v := range arr {
-		if len(uniq) == 0 || uniq[len(uniq)-1] != v {
-			uniq = append(uniq, v)
-		}
-	}
-	arr = uniq
-	last := arr[len(arr)-1]
-	found2 := false
-	var ansX, ansY int64
-	for _, x := range arr {
-		var prevDiff int64 = -1
-		for diff := int64(1); x+diff <= last; diff <<= 1 {
-			if m[x+diff] {
-				if prevDiff != -1 && diff == prevDiff*2 {
-					return fmt.Sprintf("3\n%d %d %d\n", x, x+prevDiff, x+diff)
-				}
-				prevDiff = diff
-			}
-		}
-		if prevDiff != -1 && !found2 {
-			found2 = true
-			ansX = x
-			ansY = x + prevDiff
-		}
-	}
-	if found2 {
-		return fmt.Sprintf("2\n%d %d\n", ansX, ansY)
-	}
-	return fmt.Sprintf("1\n%d\n", arr[0])
+func isPow2(x int64) bool {
+    return x > 0 && (x&(x-1)) == 0
+}
+
+func hasTriple(arr []int64, m map[int64]int) bool {
+    // check existence of x, x+d, x+2d for some power-of-two d
+    if len(arr) == 0 {
+        return false
+    }
+    sort.Slice(arr, func(i, j int) bool { return arr[i] < arr[j] })
+    uniq := arr[:0]
+    for _, v := range arr {
+        if len(uniq) == 0 || uniq[len(uniq)-1] != v {
+            uniq = append(uniq, v)
+        }
+    }
+    arr = uniq
+    last := arr[len(arr)-1]
+    for _, x := range arr {
+        for d := int64(1); x+2*d <= last; d <<= 1 {
+            if m[x+d] > 0 && m[x+2*d] > 0 {
+                return true
+            }
+        }
+    }
+    return false
+}
+
+func hasPair(arr []int64, m map[int64]int) bool {
+    if len(arr) == 0 {
+        return false
+    }
+    sort.Slice(arr, func(i, j int) bool { return arr[i] < arr[j] })
+    uniq := arr[:0]
+    for _, v := range arr {
+        if len(uniq) == 0 || uniq[len(uniq)-1] != v {
+            uniq = append(uniq, v)
+        }
+    }
+    arr = uniq
+    last := arr[len(arr)-1]
+    for _, x := range arr {
+        for d := int64(1); x+d <= last; d <<= 1 {
+            if m[x+d] > 0 {
+                return true
+            }
+        }
+    }
+    return false
+}
+
+func checkOutput(arr []int64, out string) error {
+    // Build multiset counts for presence checks
+    cnt := make(map[int64]int, len(arr))
+    for _, v := range arr {
+        cnt[v]++
+    }
+
+    fields := strings.Fields(out)
+    if len(fields) == 0 {
+        return fmt.Errorf("empty output")
+    }
+    c, err := strconv.Atoi(fields[0])
+    if err != nil {
+        return fmt.Errorf("first token not an integer: %v", err)
+    }
+    if c < 1 || c > 3 {
+        return fmt.Errorf("invalid count %d", c)
+    }
+    if len(fields) < 1+c {
+        return fmt.Errorf("expected %d numbers got %d", c, len(fields)-1)
+    }
+    vals := make([]int64, c)
+    for i := 0; i < c; i++ {
+        v, err := strconv.ParseInt(fields[1+i], 10, 64)
+        if err != nil {
+            return fmt.Errorf("invalid number: %v", err)
+        }
+        vals[i] = v
+    }
+    // Validate presence and constraints
+    // presence: ensure each selected number exists at least once in arr
+    // Use a temp copy of counts to handle duplicates robustly
+    tmp := make(map[int64]int, len(cnt))
+    for k, v := range cnt {
+        tmp[k] = v
+    }
+    for _, v := range vals {
+        if tmp[v] == 0 {
+            return fmt.Errorf("value %d not present in input", v)
+        }
+        tmp[v]--
+    }
+
+    // Determine maximum possible size for this arr
+    max := 1
+    if hasPair(arr, cnt) {
+        max = 2
+    }
+    if hasTriple(arr, cnt) {
+        max = 3
+    }
+    if c != max {
+        return fmt.Errorf("reported size %d but maximum is %d", c, max)
+    }
+    if c == 1 {
+        return nil
+    }
+    // For pair/triple, validate power-of-two differences
+    sort.Slice(vals, func(i, j int) bool { return vals[i] < vals[j] })
+    if c == 2 {
+        d := vals[1] - vals[0]
+        if !isPow2(d) {
+            return fmt.Errorf("pair difference %d is not power of two", d)
+        }
+        return nil
+    }
+    // c == 3
+    if !(isPow2(vals[1]-vals[0]) && vals[1]-vals[0] == vals[2]-vals[1]) {
+        return fmt.Errorf("triple must be equally spaced by power of two")
+    }
+    return nil
 }
 
 func buildInput(tc testCase) string {
@@ -66,21 +153,20 @@ func buildInput(tc testCase) string {
 }
 
 func runCase(bin string, tc testCase) error {
-	input := buildInput(tc)
-	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
-	}
-	expected := strings.TrimSpace(solve(append([]int64(nil), tc.arr...)))
-	got := strings.TrimSpace(out.String())
-	if expected != got {
-		return fmt.Errorf("expected:\n%s\n-- got:\n%s", expected, got)
-	}
-	return nil
+    input := buildInput(tc)
+    cmd := exec.Command(bin)
+    cmd.Stdin = strings.NewReader(input)
+    var out bytes.Buffer
+    cmd.Stdout = &out
+    cmd.Stderr = &out
+    if err := cmd.Run(); err != nil {
+        return fmt.Errorf("runtime error: %v\n%s", err, out.String())
+    }
+    got := strings.TrimSpace(out.String())
+    if err := checkOutput(append([]int64(nil), tc.arr...), got); err != nil {
+        return err
+    }
+    return nil
 }
 
 func main() {
