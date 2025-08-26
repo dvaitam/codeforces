@@ -139,6 +139,7 @@ func impossibleOriginal(n int, u, v []int) bool {
             adj[b][a]++
         }
     }
+    // Compute degrees ignoring loops
     deg := make([]int, n)
     for i := 0; i < n; i++ {
         s := 0
@@ -147,6 +148,7 @@ func impossibleOriginal(n int, u, v []int) bool {
         }
         deg[i] = s
     }
+    // Peel leaves to find non-loop cycle core
     inQueue := make([]bool, n)
     queue := []int{}
     for i := 0; i < n; i++ {
@@ -172,6 +174,7 @@ func impossibleOriginal(n int, u, v []int) bool {
         }
         deg[x] = 0
     }
+    // Basic impossibility checks: vertex already belongs to >1 cycles
     for i := 0; i < n; i++ {
         if loops[i] > 1 {
             return true
@@ -182,6 +185,46 @@ func impossibleOriginal(n int, u, v []int) bool {
         if deg[i] > 2 {
             return true
         }
+    }
+    // If there is already a cycle in some component and more than one component overall,
+    // accept NO as valid (candidate may avoid adding loops to other components).
+    // Determine components via adjacency (non-loop edges). Isolated vertices are separate comps.
+    comp := make([]int, n)
+    for i := range comp { comp[i] = -1 }
+    compCnt := 0
+    var stack []int
+    for i := 0; i < n; i++ {
+        if comp[i] != -1 { continue }
+        // start new component
+        stack = stack[:0]
+        stack = append(stack, i)
+        comp[i] = compCnt
+        for len(stack) > 0 {
+            x := stack[len(stack)-1]
+            stack = stack[:len(stack)-1]
+            for y, c := range adj[x] {
+                if c == 0 { continue }
+                if comp[y] == -1 {
+                    comp[y] = compCnt
+                    stack = append(stack, y)
+                }
+            }
+        }
+        compCnt++
+    }
+    // A component has a cycle if any vertex in it has loop or deg_core>0
+    hasCycleComp := make([]bool, compCnt)
+    for i := 0; i < n; i++ {
+        if loops[i] > 0 || deg[i] > 0 {
+            hasCycleComp[comp[i]] = true
+        }
+    }
+    anyCycle := false
+    for _, v := range hasCycleComp {
+        if v { anyCycle = true; break }
+    }
+    if anyCycle && compCnt > 1 {
+        return true
     }
     return false
 }
