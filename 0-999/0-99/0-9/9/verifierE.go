@@ -114,17 +114,16 @@ func validateFinal(n int, baseU, baseV []int, addEdges []pair) error {
 // belongs to more than one cycle). If impossible, only NO is acceptable.
 func impossibleOriginal(n int, u, v []int) bool {
     m := len(u)
-    // If current edges exceed n, cannot reach a union of cycles (which has exactly n edges)
+    // Final "interesting" graph has exactly n edges.
     if m > n {
         return true
     }
-    // If edges equal n, it's possible only if the graph is already interesting
+    // If already at n edges, must already be interesting.
     if m == n {
-        if err := validateFinal(n, u, v, nil); err != nil {
-            return true
-        }
-        return false
+        return validateFinal(n, u, v, nil) != nil
     }
+
+    // Count loops and build multigraph for non-loop edges.
     loops := make([]int, n)
     adj := make([]map[int]int, n)
     for i := 0; i < n; i++ {
@@ -139,7 +138,8 @@ func impossibleOriginal(n int, u, v []int) bool {
             adj[b][a]++
         }
     }
-    // Compute degrees ignoring loops
+
+    // Compute degrees ignoring loops, then leaf-trim to obtain the cycle core.
     deg := make([]int, n)
     for i := 0; i < n; i++ {
         s := 0
@@ -148,7 +148,6 @@ func impossibleOriginal(n int, u, v []int) bool {
         }
         deg[i] = s
     }
-    // Peel leaves to find non-loop cycle core
     inQueue := make([]bool, n)
     queue := []int{}
     for i := 0; i < n; i++ {
@@ -174,7 +173,8 @@ func impossibleOriginal(n int, u, v []int) bool {
         }
         deg[x] = 0
     }
-    // Basic impossibility checks: vertex already belongs to >1 cycles
+
+    // Impossibility if any vertex is already in >1 cycles or loop+cycle.
     for i := 0; i < n; i++ {
         if loops[i] > 1 {
             return true
@@ -186,47 +186,21 @@ func impossibleOriginal(n int, u, v []int) bool {
             return true
         }
     }
-    // If there is already a cycle in some component and more than one component overall,
-    // accept NO as valid (candidate may avoid adding loops to other components).
-    // Determine components via adjacency (non-loop edges). Isolated vertices are separate comps.
-    comp := make([]int, n)
-    for i := range comp { comp[i] = -1 }
-    compCnt := 0
-    var stack []int
+
+    // Each vertex must belong to exactly one cycle in the end.
+    // Vertices with deg[i]==0 and no loop must each consume exactly one added edge (a loop
+    // or an edge in a newly created non-loop cycle). Any non-loop cycle covering k such
+    // vertices also consumes k added edges, so the total number of required added edges is
+    // exactly the count below.
+    need := 0
     for i := 0; i < n; i++ {
-        if comp[i] != -1 { continue }
-        // start new component
-        stack = stack[:0]
-        stack = append(stack, i)
-        comp[i] = compCnt
-        for len(stack) > 0 {
-            x := stack[len(stack)-1]
-            stack = stack[:len(stack)-1]
-            for y, c := range adj[x] {
-                if c == 0 { continue }
-                if comp[y] == -1 {
-                    comp[y] = compCnt
-                    stack = append(stack, y)
-                }
-            }
-        }
-        compCnt++
-    }
-    // A component has a cycle if any vertex in it has loop or deg_core>0
-    hasCycleComp := make([]bool, compCnt)
-    for i := 0; i < n; i++ {
-        if loops[i] > 0 || deg[i] > 0 {
-            hasCycleComp[comp[i]] = true
+        if loops[i] == 0 && deg[i] == 0 {
+            need++
         }
     }
-    anyCycle := false
-    for _, v := range hasCycleComp {
-        if v { anyCycle = true; break }
-    }
-    if anyCycle && compCnt > 1 {
-        return true
-    }
-    return false
+
+    // We can only add exactly (n - m) edges.
+    return need != n-m
 }
 
 // Parse candidate output and validate construction.
