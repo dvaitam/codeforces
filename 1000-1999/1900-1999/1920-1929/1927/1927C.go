@@ -37,7 +37,10 @@ func main() {
 				cntB++
 			}
 		}
-		ok := cntA >= k/2 && cntB >= k/2
+    // We need at least ceil(k/2) distinct values from [1..k] in each array
+    // so that we can assign at most floor(k/2) values exclusively to the other array.
+    need := (k + 1) / 2
+    ok := cntA >= need && cntB >= need
 		if ok {
 			for i := 1; i <= k; i++ {
 				if !presentA[i] && !presentB[i] {
