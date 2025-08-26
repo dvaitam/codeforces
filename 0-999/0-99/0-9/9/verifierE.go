@@ -113,6 +113,18 @@ func validateFinal(n int, baseU, baseV []int, addEdges []pair) error {
 // Determine if the original graph can be fixed (i.e., no vertex already
 // belongs to more than one cycle). If impossible, only NO is acceptable.
 func impossibleOriginal(n int, u, v []int) bool {
+    m := len(u)
+    // If current edges exceed n, cannot reach a union of cycles (which has exactly n edges)
+    if m > n {
+        return true
+    }
+    // If edges equal n, it's possible only if the graph is already interesting
+    if m == n {
+        if err := validateFinal(n, u, v, nil); err != nil {
+            return true
+        }
+        return false
+    }
     loops := make([]int, n)
     adj := make([]map[int]int, n)
     for i := 0; i < n; i++ {
