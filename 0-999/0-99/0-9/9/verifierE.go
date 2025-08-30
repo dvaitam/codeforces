@@ -114,16 +114,15 @@ func validateFinal(n int, baseU, baseV []int, addEdges []pair) error {
 // belongs to more than one cycle). If impossible, only NO is acceptable.
 func impossibleOriginal(n int, u, v []int) bool {
     m := len(u)
-    // Final "interesting" graph has exactly n edges.
+    // If more than n edges already, impossible to delete; if exactly n, must already be interesting.
     if m > n {
         return true
     }
-    // If already at n edges, must already be interesting.
     if m == n {
         return validateFinal(n, u, v, nil) != nil
     }
 
-    // Count loops and build multigraph for non-loop edges.
+    // Count loops and build multigraph for non-loop edges to check local violations.
     loops := make([]int, n)
     adj := make([]map[int]int, n)
     for i := 0; i < n; i++ {
@@ -138,70 +137,29 @@ func impossibleOriginal(n int, u, v []int) bool {
             adj[b][a]++
         }
     }
-
-    // Compute degrees ignoring loops, then leaf-trim to obtain the cycle core.
+    // Degree (ignoring loops)
     deg := make([]int, n)
     for i := 0; i < n; i++ {
-        s := 0
         for _, c := range adj[i] {
-            s += c
+            deg[i] += c
         }
-        deg[i] = s
     }
-    inQueue := make([]bool, n)
-    queue := []int{}
+    // Immediate impossibility conditions that cannot be fixed by adding edges
     for i := 0; i < n; i++ {
-        if deg[i] <= 1 {
-            inQueue[i] = true
-            queue = append(queue, i)
-        }
-    }
-    for len(queue) > 0 {
-        x := queue[0]
-        queue = queue[1:]
-        for y, c := range adj[x] {
-            if c == 0 {
-                continue
-            }
-            deg[y] -= c
-            adj[y][x] -= c
-            adj[x][y] = 0
-            if deg[y] <= 1 && !inQueue[y] {
-                inQueue[y] = true
-                queue = append(queue, y)
-            }
-        }
-        deg[x] = 0
-    }
-
-    // Impossibility if any vertex is already in >1 cycles or loop+cycle.
-    for i := 0; i < n; i++ {
-        if loops[i] > 1 {
+        if loops[i] > 1 { // multiple loops at a vertex
             return true
         }
-        if loops[i] > 0 && deg[i] > 0 {
+        if loops[i] > 0 && deg[i] > 0 { // loop plus other edge(s)
             return true
         }
-        if deg[i] > 2 {
+        if deg[i] > 2 { // would require removing edges
             return true
         }
     }
-
-    // Each vertex must belong to exactly one cycle in the end.
-    // Vertices with deg[i]==0 and no loop must each consume exactly one added edge (a loop
-    // or an edge in a newly created non-loop cycle). Any non-loop cycle covering k such
-    // vertices also consumes k added edges, so the total number of required added edges is
-    // exactly the count below.
-    need := 0
-    for i := 0; i < n; i++ {
-        if loops[i] == 0 && deg[i] == 0 {
-            need++
-        }
-    }
-
-    // We can only add exactly (n - m) edges.
-    return need != n-m
+    // Otherwise it's always possible to complete to an interesting graph by adding edges.
+    return false
 }
+
 
 // Parse candidate output and validate construction.
 func checkCandidate(n, m int, u, v []int, out string) error {
