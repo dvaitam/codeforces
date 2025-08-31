@@ -81,7 +81,7 @@ func (h *MaxHeap) Pop() interface{} {
 	return x
 }
 
-func expected(tc testCaseD) int64 {
+func expected(tc testCaseD) (int64, error) {
 	m := tc.m
 	xs := tc.xs
 	ys := tc.ys
@@ -126,25 +126,59 @@ func expected(tc testCaseD) int64 {
 			heap.Push(&maxh, i)
 		}
 	}
+	refillMax := func() {
+		for i := 0; i < m; i++ {
+			if !removed[i] && inSet[i] {
+				heap.Push(&maxh, i)
+			}
+		}
+	}
+	refillMin := func() {
+		for i := 0; i < m; i++ {
+			if !removed[i] && inSet[i] {
+				heap.Push(&minh, i)
+			}
+		}
+	}
+	popMax := func() (int, bool) {
+		for {
+			for maxh.Len() > 0 {
+				top := heap.Pop(&maxh).(int)
+				if !removed[top] && inSet[top] {
+					return top, true
+				}
+			}
+			refillMax()
+			if maxh.Len() == 0 {
+				return 0, false
+			}
+		}
+	}
+	popMin := func() (int, bool) {
+		for {
+			for minh.Len() > 0 {
+				top := heap.Pop(&minh).(int)
+				if !removed[top] && inSet[top] {
+					return top, true
+				}
+			}
+			refillMin()
+			if minh.Len() == 0 {
+				return 0, false
+			}
+		}
+	}
 	seq := make([]int, 0, m)
 	for t := 0; t < m; t++ {
 		var v int
+		var ok bool
 		if t%2 == 0 {
-			for {
-				top := heap.Pop(&maxh).(int)
-				if !removed[top] && inSet[top] {
-					v = top
-					break
-				}
-			}
+			v, ok = popMax()
 		} else {
-			for {
-				top := heap.Pop(&minh).(int)
-				if !removed[top] && inSet[top] {
-					v = top
-					break
-				}
-			}
+			v, ok = popMin()
+		}
+		if !ok {
+			return 0, fmt.Errorf("no removable cube available at step %d", t)
 		}
 		removed[v] = true
 		inSet[v] = false
@@ -168,14 +202,14 @@ func expected(tc testCaseD) int64 {
 			if removed[w] || inSet[w] {
 				continue
 			}
-			ok := true
+			ok2 := true
 			for _, u := range dependents[w] {
 				if supportCount[u] < 2 {
-					ok = false
+					ok2 = false
 					break
 				}
 			}
-			if ok {
+			if ok2 {
 				inSet[w] = true
 				heap.Push(&minh, w)
 				heap.Push(&maxh, w)
@@ -186,7 +220,7 @@ func expected(tc testCaseD) int64 {
 	for i := 0; i < m; i++ {
 		res = (res*int64(m) + int64(seq[i])) % modD
 	}
-	return res
+	return res, nil
 }
 
 func runCase(bin string, input string, tc testCaseD) error {
@@ -208,7 +242,10 @@ func runCase(bin string, input string, tc testCaseD) error {
 	if _, err := fmt.Sscan(gotStr, &got); err != nil {
 		return fmt.Errorf("invalid output: %v", err)
 	}
-	want := expected(tc)
+	want, err := expected(tc)
+	if err != nil {
+		return fmt.Errorf("verifier error: %v", err)
+	}
 	if got != want {
 		return fmt.Errorf("expected %d got %d", want, got)
 	}
