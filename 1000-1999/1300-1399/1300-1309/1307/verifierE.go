@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
@@ -34,92 +35,108 @@ func runCandidate(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func countLE(a []int, v int) int {
+	return sort.Search(len(a), func(i int) bool { return a[i] > v })
+}
+
 func solve(input string) string {
 	in := strings.NewReader(input)
 	var n, m int
 	fmt.Fscan(in, &n, &m)
-	s := make([]int, n)
-	for i := 0; i < n; i++ {
-		fmt.Fscan(in, &s[i])
+	// 1-based arrays
+	a := make([]int, n+1)
+	for i := 1; i <= n; i++ {
+		fmt.Fscan(in, &a[i])
 	}
-	occ := make([][]int, n+1)
-	for i, v := range s {
-		occ[v] = append(occ[v], i+1)
-	}
-	cowsByF := make([][]Cow, n+1)
+	V := make([][]int, n+1)
 	for i := 0; i < m; i++ {
 		var f, h int
 		fmt.Fscan(in, &f, &h)
-		list := occ[f]
-		sz := len(list)
-		var posL, posR int
-		if h <= sz {
-			posL = list[h-1]
-			posR = list[sz-h]
-		} else {
-			posL = -1
-			posR = -1
+		V[f] = append(V[f], h)
+	}
+	for f := 1; f <= n; f++ {
+		sort.Ints(V[f])
+	}
+	mx := 0
+	var ans int64 = 0
+	c1 := make([]int, n+1)
+	c2 := make([]int, n+1)
+	for i := 0; i <= n; i++ {
+		for j := 1; j <= n; j++ {
+			c1[j], c2[j] = 0, 0
 		}
-		if posL < 0 && posR < 0 {
+		for x := 1; x <= i; x++ {
+			c1[a[x]]++
+		}
+		for x := i + 1; x <= n; x++ {
+			c2[a[x]]++
+		}
+		ff := (i == 0)
+		tt := 0
+		if i != 0 {
+			tt = 1
+		}
+		s := int64(1)
+		ai := 0
+		if i >= 1 {
+			ai = a[i]
+		}
+		// check feasibility for anchor flavor
+		if !ff {
+			for _, need := range V[ai] {
+				if need == c1[ai] {
+					ff = true
+					break
+				}
+			}
+		}
+		if !ff {
 			continue
 		}
-		cowsByF[f] = append(cowsByF[f], Cow{posL, posR})
-	}
-	pow2 := make([]int, m+1)
-	pow2[0] = 1
-	for i := 1; i <= m; i++ {
-		pow2[i] = pow2[i-1] * 2 % MOD
-	}
-	bestCnt := 0
-	bestWays := 0
-	for k := 0; k <= n; k++ {
-		total := 0
-		ways := 1
-		for f := 1; f <= n; f++ {
-			list := cowsByF[f]
-			if len(list) == 0 {
+		for j := 1; j <= n; j++ {
+			if len(V[j]) == 0 {
 				continue
 			}
-			ca, cb, inter := 0, 0, 0
-			for _, c := range list {
-				inA := c.posL > 0 && c.posL <= k
-				inB := c.posR > 0 && c.posR > k
-				if inA {
-					ca++
-				}
-				if inB {
-					cb++
-				}
-				if inA && inB {
-					inter++
+			x := countLE(V[j], c1[j])
+			y := countLE(V[j], c2[j])
+			if j == ai {
+				x = 0
+				if c2[j] >= c1[j] && y > 0 {
+					y--
 				}
 			}
-			uni := ca + cb - inter
-			if uni == 0 {
+			if x == 0 && y == 0 {
 				continue
 			}
-			total += uni
-			if inter > 0 {
-				ways = ways * pow2[inter] % MOD
+			if x > y {
+				x, y = y, x
+			}
+			if x == 0 {
+				s = (s * int64(y)) % MOD
+				tt++
+			} else if y == 1 {
+				s = (s * 2) % MOD
+				tt++
+			} else {
+				s = (s * int64(x)) % MOD
+				s = (s * int64(y-1)) % MOD
+				tt += 2
 			}
 		}
-		if total > bestCnt {
-			bestCnt = total
-			bestWays = ways
-		} else if total == bestCnt {
-			bestWays = (bestWays + ways) % MOD
+		if tt > mx {
+			mx = tt
+			ans = 0
+		}
+		if tt == mx {
+			ans = (ans + s) % MOD
 		}
 	}
-	// Align with accepted solutions: if no cows can be served, there is exactly 1 way.
-	if bestCnt == 0 {
-		bestWays = 1
-	}
-	return fmt.Sprintf("%d %d", bestCnt, bestWays)
+	return fmt.Sprintf("%d %d", mx, ans)
 }
 
 func generateCase(rng *rand.Rand) (string, string) {
-	n := rng.Intn(5) + 1
-	m := rng.Intn(5) + 1
+	n := rng.Intn(6) + 1
+	m := rng.Intn(6) + 1
 	s := make([]int, n)
 	for i := range s {
 		s[i] = rng.Intn(n) + 1
