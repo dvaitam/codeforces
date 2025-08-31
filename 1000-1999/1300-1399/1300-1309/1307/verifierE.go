@@ -110,6 +110,10 @@ func solve(input string) string {
 			bestWays = (bestWays + ways) % MOD
 		}
 	}
+	// Align with accepted solutions: if no cows can be served, there is exactly 1 way.
+	if bestCnt == 0 {
+		bestWays = 1
+	}
 	return fmt.Sprintf("%d %d", bestCnt, bestWays)
 }
 
