@@ -11,38 +11,33 @@ import (
 
 func solveCase(line string) string {
 	fields := strings.Fields(line)
-	if len(fields) < 1 {
+	if len(fields) == 0 {
 		return ""
 	}
 	idx := 0
 	n, _ := strconv.Atoi(fields[idx])
 	idx++
-	costs := make([]int64, n)
-	var total int64
-	for i := 0; i < n; i++ {
-		c, _ := strconv.ParseInt(fields[idx], 10, 64)
+	s := 0
+	f := false
+	lastX := 0
+	for i := 0; i < n && idx < len(fields); i++ {
+		x, _ := strconv.Atoi(fields[idx])
 		idx++
-		costs[i] = c
-		total += c
-	}
-	var bonus int64
-	var cash int64
-	rem := total
-	for _, c := range costs {
-		if rem-bonus > c {
-			cash += c
-			bonus += c / 10
-		} else {
-			if bonus >= c {
-				bonus -= c
-			} else {
-				cash += c - bonus
-				bonus = 0
-			}
+		lastX = x
+		s += x / 1000
+		if x == 1000 {
+			f = true
 		}
-		rem -= c
 	}
-	return fmt.Sprintf("%d", cash)
+	t := s * 10 / 11
+	if s <= 11 {
+		t = s - lastX/1000
+	}
+	if !f && (t&1) == 1 {
+		t--
+	}
+	ans := s*1000 - t*100
+	return fmt.Sprintf("%d", ans)
 }
 
 func run(bin, input string) (string, error) {
