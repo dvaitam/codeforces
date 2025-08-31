@@ -6,16 +6,80 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	exe := "oracleC"
-	cmd := exec.Command("go", "build", "-o", exe, "91C.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle: %v\n%s", err, out)
+// DSU for expected calculation
+type dsu struct{ p, sz []int }
+
+func newDSU(n int) *dsu {
+	d := &dsu{p: make([]int, n+1), sz: make([]int, n+1)}
+	for i := 0; i <= n; i++ {
+		d.p[i] = i
+		d.sz[i] = 1
 	}
-	return exe, nil
+	return d
+}
+
+func (d *dsu) find(x int) int {
+	if d.p[x] != x {
+		d.p[x] = d.find(d.p[x])
+	}
+	return d.p[x]
+}
+
+func (d *dsu) union(a, b int) bool {
+	ra, rb := d.find(a), d.find(b)
+	if ra == rb {
+		return false
+	}
+	if d.sz[ra] < d.sz[rb] {
+		ra, rb = rb, ra
+	}
+	d.p[rb] = ra
+	d.sz[ra] += d.sz[rb]
+	return true
+}
+
+func expectedFromLines(lines []string) (string, error) {
+	if len(lines) == 0 {
+		return "", fmt.Errorf("empty case")
+	}
+	h := strings.Fields(lines[0])
+	if len(h) < 2 {
+		return "", fmt.Errorf("bad header: %q", lines[0])
+	}
+	n, err := strconv.Atoi(h[0])
+	if err != nil {
+		return "", err
+	}
+	m, err := strconv.Atoi(h[1])
+	if err != nil {
+		return "", err
+	}
+	if len(lines) < 1+m {
+		return "", fmt.Errorf("need %d edges, got %d", m, len(lines)-1)
+	}
+	d := newDSU(n)
+	const MOD int64 = 1000000009
+	pow := int64(1)
+	var sb strings.Builder
+	for i := 0; i < m; i++ {
+		parts := strings.Fields(lines[1+i])
+		if len(parts) < 2 {
+			return "", fmt.Errorf("bad edge line: %q", lines[1+i])
+		}
+		u, _ := strconv.Atoi(parts[0])
+		v, _ := strconv.Atoi(parts[1])
+		if !d.union(u, v) {
+			pow = (pow * 2) % MOD
+		}
+		ans := (pow - 1 + MOD) % MOD
+		sb.WriteString(strconv.FormatInt(ans, 10))
+		sb.WriteByte('\n')
+	}
+	return strings.TrimRight(sb.String(), "\n"), nil
 }
 
 func runProg(bin, input string) (string, error) {
@@ -37,13 +101,6 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
 	file, err := os.Open("testcasesC.txt")
 	if err != nil {
 		panic(err)
@@ -58,9 +115,9 @@ func main() {
 		}
 		idx++
 		input := strings.Join(lines, "\n") + "\n"
-		exp, err := runProg("./"+oracle, input)
+		exp, err := expectedFromLines(lines)
 		if err != nil {
-			fmt.Printf("oracle error on case %d: %v\n", idx, err)
+			fmt.Printf("verifier error on case %d: %v\n", idx, err)
 			os.Exit(1)
 		}
 		got, err := runProg(bin, input)
