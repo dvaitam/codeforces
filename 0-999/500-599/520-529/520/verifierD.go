@@ -115,7 +115,7 @@ func expected(tc testCaseD) (int64, error) {
 	for i := 0; i < m; i++ {
 		ok := true
 		for _, u := range dependents[i] {
-			if supportCount[u] < 2 {
+			if !removed[u] && supportCount[u] < 2 {
 				ok = false
 				break
 			}
@@ -183,28 +183,32 @@ func expected(tc testCaseD) (int64, error) {
 		removed[v] = true
 		inSet[v] = false
 		seq = append(seq, v)
+		// Update dependents of removed cube v: always decrement, then if it drops to 1,
+		// the unique remaining supporter becomes non-removable.
 		for _, u := range dependents[v] {
-			if supportCount[u] >= 2 {
-				supportCount[u]--
-				if supportCount[u] == 1 {
-					for _, w := range supporters[u] {
-						if !removed[w] {
-							if inSet[w] {
-								inSet[w] = false
-							}
-							break
+			if removed[u] {
+				continue
+			}
+			supportCount[u]--
+			if supportCount[u] == 1 {
+				for _, w := range supporters[u] {
+					if !removed[w] {
+						if inSet[w] {
+							inSet[w] = false
 						}
+						break
 					}
 				}
 			}
 		}
+		// Try to add supporters of v that may have become removable now.
 		for _, w := range supporters[v] {
 			if removed[w] || inSet[w] {
 				continue
 			}
 			ok2 := true
 			for _, u := range dependents[w] {
-				if supportCount[u] < 2 {
+				if !removed[u] && supportCount[u] < 2 {
 					ok2 = false
 					break
 				}
