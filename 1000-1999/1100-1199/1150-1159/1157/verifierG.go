@@ -44,23 +44,29 @@ func main() {
 			sb.WriteByte('\n')
 		}
 		input := sb.String()
-		expected := solveG(a)
 		out, err := run1157G(binPath, input)
 		if err != nil {
 			fmt.Printf("test %d: runtime error: %v\n", t, err)
 			os.Exit(1)
 		}
-		out = strings.TrimSpace(out)
-		expTrim := strings.TrimSpace(expected)
-		if expTrim == "NO" {
-			if out != "NO" {
-				fmt.Printf("test %d failed\ninput:%sexpected:%s got:%s\n", t, input, expected, out)
+		first := firstNonEmptyLine(out)
+		if strings.ToUpper(first) == "YES" {
+			if !validateGOutput(n, m, a, out) {
+				ok, rr, cc := existsSolution1157G(a)
+				expected := "NO"
+				if ok {
+					expected = fmt.Sprintf("YES\n%s\n%s", rr, cc)
+				}
+				fmt.Printf("test %d failed\ninput:%sexpected:%s got:%s\n", t, input, expected, strings.TrimSpace(out))
 				os.Exit(1)
 			}
 			continue
 		}
-		if !validateGOutput(n, m, a, out) {
-			fmt.Printf("test %d failed\ninput:%sexpected:%s got:%s\n", t, input, expected, out)
+		// Treat anything else as NO
+		ok, rr, cc := existsSolution1157G(a)
+		if ok {
+			expected := fmt.Sprintf("YES\n%s\n%s", rr, cc)
+			fmt.Printf("test %d failed\ninput:%sexpected:%s got:%s\n", t, input, expected, strings.TrimSpace(out))
 			os.Exit(1)
 		}
 	}
@@ -217,4 +223,68 @@ func validateGOutput(n, m int, a [][]int, out string) bool {
 		}
 	}
 	return true
+}
+
+// firstNonEmptyLine returns the first non-empty trimmed line (or "").
+func firstNonEmptyLine(s string) string {
+	for _, ln := range strings.Split(s, "\n") {
+		l := strings.TrimSpace(ln)
+		if l != "" {
+			return l
+		}
+	}
+	return ""
+}
+
+// existsSolution1157G brute-forces r and c to find a valid sorted configuration.
+// Returns true along with bit strings r and c if found.
+func existsSolution1157G(a [][]int) (bool, string, string) {
+	n := len(a)
+	if n == 0 {
+		return true, "", ""
+	}
+	m := len(a[0])
+	isSorted := func(rmask, cmask int) bool {
+		first := true
+		prev := 0
+		for i := 0; i < n; i++ {
+			for j := 0; j < m; j++ {
+				v := a[i][j] ^ ((rmask >> i) & 1) ^ ((cmask >> j) & 1)
+				if first {
+					prev = v
+					first = false
+					continue
+				}
+				if prev == 1 && v == 0 {
+					return false
+				}
+				prev = v
+			}
+		}
+		return true
+	}
+	for rmask := 0; rmask < (1 << n); rmask++ {
+		for cmask := 0; cmask < (1 << m); cmask++ {
+			if isSorted(rmask, cmask) {
+				r := make([]byte, n)
+				for i := 0; i < n; i++ {
+					if (rmask>>i)&1 == 1 {
+						r[i] = '1'
+					} else {
+						r[i] = '0'
+					}
+				}
+				c := make([]byte, m)
+				for j := 0; j < m; j++ {
+					if (cmask>>j)&1 == 1 {
+						c[j] = '1'
+					} else {
+						c[j] = '0'
+					}
+				}
+				return true, string(r), string(c)
+			}
+		}
+	}
+	return false, "", ""
 }
