@@ -13,7 +13,7 @@ import (
 type maxHeap77 []int
 
 func (h maxHeap77) Len() int           { return len(h) }
-func (h maxHeap77) Less(i, j int) bool { return h[i] > h[j] } // max-heap by depth
+func (h maxHeap77) Less(i, j int) bool { return h[i] < h[j] } // min-heap by depth; drop nearest first
 func (h maxHeap77) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
 func (h *maxHeap77) Push(x interface{}) {
 	*h = append(*h, x.(int))
@@ -96,7 +96,7 @@ func solve77COracle(n int, k []int64, edges [][2]int, root int) int64 {
 		}
 		capc := k[u]
 		for st.total > capc {
-			// drop farthest depths first to minimize total path length
+			// drop nearest depths first (keep farthest) to maximize total path length (moves)
 			d := st.h.Peek()
 			cnt := st.m[d]
 			rem := st.total - capc
