@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -46,6 +47,26 @@ func readCases(r io.Reader) ([]string, error) {
 	return cases, scanner.Err()
 }
 
+func normalizeOutput(out string) (int, []string) {
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	norm := make([]string, 0, len(lines))
+	for _, ln := range lines {
+		ln = strings.TrimSpace(ln)
+		if ln == "" {
+			continue
+		}
+		norm = append(norm, strings.Join(strings.Fields(ln), " "))
+	}
+	if len(norm) == 0 {
+		return 0, nil
+	}
+	var cnt int
+	fmt.Sscan(norm[0], &cnt)
+	detail := append([]string(nil), norm[1:]...)
+	sort.Strings(detail)
+	return cnt, detail
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierF.go /path/to/binary")
@@ -82,7 +103,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "oracle run error on case %d: %v\n", idx, err)
 			os.Exit(1)
 		}
-		expected := strings.TrimSpace(outO.String())
+		expectedRaw := outO.String()
+		expCnt, expList := normalizeOutput(expectedRaw)
 
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(c)
@@ -94,10 +116,22 @@ func main() {
 			fmt.Printf("case %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
-		if got != expected {
-			fmt.Printf("case %d failed\nexpected: %s\n got: %s\n", idx, expected, got)
+		gotRaw := out.String()
+		gotCnt, gotList := normalizeOutput(gotRaw)
+
+		if gotCnt != expCnt {
+			fmt.Printf("case %d failed\nexpected: %s\n got: %s\n", idx, strings.TrimSpace(expectedRaw), strings.TrimSpace(gotRaw))
 			os.Exit(1)
+		}
+		if len(gotList) != len(expList) {
+			fmt.Printf("case %d failed (count mismatch)\nexpected: %s\n got: %s\n", idx, strings.TrimSpace(expectedRaw), strings.TrimSpace(gotRaw))
+			os.Exit(1)
+		}
+		for j := range expList {
+			if expList[j] != gotList[j] {
+				fmt.Printf("case %d failed\nexpected: %s\n got: %s\n", idx, strings.TrimSpace(expectedRaw), strings.TrimSpace(gotRaw))
+				os.Exit(1)
+			}
 		}
 	}
 	fmt.Printf("All %d tests passed\n", len(cases))
