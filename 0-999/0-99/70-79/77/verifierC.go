@@ -10,34 +10,37 @@ import (
 	"strings"
 )
 
-type IntHeap []int
+type maxHeap77 []int
 
-func (h IntHeap) Len() int            { return len(h) }
-func (h IntHeap) Less(i, j int) bool  { return h[i] < h[j] }
-func (h IntHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
-func (h *IntHeap) Push(x interface{}) { *h = append(*h, x.(int)) }
-func (h *IntHeap) Pop() interface{} {
+func (h maxHeap77) Len() int           { return len(h) }
+func (h maxHeap77) Less(i, j int) bool { return h[i] > h[j] } // max-heap by depth
+func (h maxHeap77) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *maxHeap77) Push(x interface{}) {
+	*h = append(*h, x.(int))
+}
+func (h *maxHeap77) Pop() interface{} {
 	old := *h
 	n := len(old)
 	x := old[n-1]
 	*h = old[:n-1]
 	return x
 }
-func (h *IntHeap) Peek() int { return (*h)[0] }
+func (h *maxHeap77) Peek() int { return (*h)[0] }
 
-type State struct {
-	m     map[int]int64
-	heap  *IntHeap
-	total int64
+type state77 struct {
+	m     map[int]int64 // depth -> count
+	h     *maxHeap77    // depths present in m (max-heap)
+	total int64         // total count
 }
 
-func (s *State) merge(o *State) {
+func (s *state77) merge(o *state77) {
 	if o == nil || o.m == nil {
 		return
 	}
+	// small-to-large
 	if len(s.m) < len(o.m) {
 		s.m, o.m = o.m, s.m
-		s.heap, o.heap = o.heap, s.heap
+		s.h, o.h = o.h, s.h
 		s.total, o.total = o.total, s.total
 	}
 	for d, cnt := range o.m {
@@ -48,16 +51,17 @@ func (s *State) merge(o *State) {
 			s.m[d] += cnt
 		} else {
 			s.m[d] = cnt
-			heap.Push(s.heap, d)
+			heap.Push(s.h, d)
 		}
 		s.total += cnt
 	}
 	o.m = nil
-	o.heap = nil
+	o.h = nil
 	o.total = 0
 }
 
-func solveC(n int, k []int64, edges [][2]int, sRoot int) int64 {
+// Oracle computing the objective using greedy trimming of farthest depths first when capacity is exceeded.
+func solve77COracle(n int, k []int64, edges [][2]int, root int) int64 {
 	adj := make([][]int, n+1)
 	for _, e := range edges {
 		u, v := e[0], e[1]
@@ -65,10 +69,10 @@ func solveC(n int, k []int64, edges [][2]int, sRoot int) int64 {
 		adj[v] = append(adj[v], u)
 	}
 	depth := make([]int, n+1)
-	var dfs func(u, p int) *State
-	dfs = func(u, p int) *State {
-		st := &State{m: make(map[int]int64), heap: &IntHeap{}, total: 0}
-		heap.Init(st.heap)
+	var dfs func(u, p int) *state77
+	dfs = func(u, p int) *state77 {
+		st := &state77{m: make(map[int]int64), h: &maxHeap77{}, total: 0}
+		heap.Init(st.h)
 		for _, v := range adj[u] {
 			if v == p {
 				continue
@@ -77,7 +81,7 @@ func solveC(n int, k []int64, edges [][2]int, sRoot int) int64 {
 			child := dfs(v, u)
 			st.merge(child)
 		}
-		if u != sRoot {
+		if u != root {
 			d := depth[u]
 			cnt := k[u]
 			if cnt > 0 {
@@ -85,18 +89,19 @@ func solveC(n int, k []int64, edges [][2]int, sRoot int) int64 {
 					st.m[d] += cnt
 				} else {
 					st.m[d] = cnt
-					heap.Push(st.heap, d)
+					heap.Push(st.h, d)
 				}
 				st.total += cnt
 			}
 		}
 		capc := k[u]
 		for st.total > capc {
-			d := st.heap.Peek()
+			// drop farthest depths first to minimize total path length
+			d := st.h.Peek()
 			cnt := st.m[d]
 			rem := st.total - capc
 			if cnt <= rem {
-				heap.Pop(st.heap)
+				heap.Pop(st.h)
 				delete(st.m, d)
 				st.total -= cnt
 			} else {
@@ -107,8 +112,8 @@ func solveC(n int, k []int64, edges [][2]int, sRoot int) int64 {
 		}
 		return st
 	}
-	depth[sRoot] = 0
-	st := dfs(sRoot, 0)
+	depth[root] = 0
+	st := dfs(root, 0)
 	var ans int64
 	for d, cnt := range st.m {
 		ans += int64(d) * cnt * 2
@@ -116,7 +121,7 @@ func solveC(n int, k []int64, edges [][2]int, sRoot int) int64 {
 	return ans
 }
 
-func run(bin, input string) (string, error) {
+func run77C(bin, input string) (string, error) {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
 		cmd = exec.Command("go", "run", bin)
@@ -164,8 +169,8 @@ func main() {
 			fmt.Fprintf(&input, "%d %d\n", e[0], e[1])
 		}
 		fmt.Fprintln(&input, root)
-		exp := solveC(n, k, edges, root)
-		out, err := run(bin, input.String())
+		exp := solve77COracle(n, k, edges, root)
+		out, err := run77C(bin, input.String())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", t, err)
 			os.Exit(1)
