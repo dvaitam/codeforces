@@ -1,27 +1,17 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
 
-func buildRef() (string, error) {
-	_, self, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(self)
-	ref := filepath.Join(dir, "refA.bin")
-	cmd := exec.Command("go", "build", "-o", ref, filepath.Join(dir, "730A.go"))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
-	}
-	return ref, nil
-}
+type Case struct{ input string }
 
 func runBinary(bin, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -39,8 +29,6 @@ func runBinary(bin, input string) (string, error) {
 	}
 	return strings.TrimSpace(out.String()), nil
 }
-
-type Case struct{ input string }
 
 func genCases() []Case {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -61,17 +49,90 @@ func genCases() []Case {
 	return cases
 }
 
-func runCase(bin, ref string, c Case) error {
-	exp, err := runBinary(ref, c.input)
-	if err != nil {
-		return fmt.Errorf("reference failed: %v", err)
+func verifyOne(input, output string) error {
+	in := bufio.NewReader(strings.NewReader(input))
+	var n int
+	if _, err := fmt.Fscan(in, &n); err != nil {
+		return fmt.Errorf("bad n: %v", err)
 	}
-	got, err := runBinary(bin, c.input)
-	if err != nil {
-		return err
+	r := make([]int, n)
+	for i := 0; i < n; i++ {
+		if _, err := fmt.Fscan(in, &r[i]); err != nil {
+			return fmt.Errorf("bad r[%d]", i)
+		}
 	}
-	if strings.TrimSpace(exp) != strings.TrimSpace(got) {
-		return fmt.Errorf("expected %s got %s", exp, got)
+
+	scan := bufio.NewScanner(strings.NewReader(output))
+	scan.Split(bufio.ScanWords)
+	if !scan.Scan() {
+		return fmt.Errorf("missing R")
+	}
+	var R int
+	if _, err := fmt.Sscan(scan.Text(), &R); err != nil {
+		return fmt.Errorf("bad R")
+	}
+	if !scan.Scan() {
+		return fmt.Errorf("missing K")
+	}
+	var K int
+	if _, err := fmt.Sscan(scan.Text(), &K); err != nil {
+		return fmt.Errorf("bad K")
+	}
+	if K < 0 {
+		return fmt.Errorf("negative K")
+	}
+
+	needs := make([]int, n)
+	sumNeeds := 0
+	for i := 0; i < n; i++ {
+		needs[i] = r[i] - R
+		if needs[i] < 0 {
+			return fmt.Errorf("R too large: r[%d]=%d < R=%d", i, r[i], R)
+		}
+		sumNeeds += needs[i]
+	}
+	triples := 0
+	pairs := 0
+	for step := 0; step < K; step++ {
+		if !scan.Scan() {
+			return fmt.Errorf("step %d: missing bitstring", step+1)
+		}
+		line := scan.Text()
+		if len(line) != n {
+			return fmt.Errorf("step %d: bitstring length %d != n=%d", step+1, len(line), n)
+		}
+		ones := 0
+		for i := 0; i < n; i++ {
+			c := line[i]
+			if c != '0' && c != '1' {
+				return fmt.Errorf("step %d: invalid char", step+1)
+			}
+			if c == '1' {
+				needs[i]--
+				if needs[i] < 0 {
+					return fmt.Errorf("step %d: index %d decremented too many times", step+1, i+1)
+				}
+				ones++
+			}
+		}
+		if ones == 3 {
+			triples++
+		} else if ones == 2 {
+			pairs++
+		} else {
+			return fmt.Errorf("step %d: must select 2 or 3 indices, got %d", step+1, ones)
+		}
+	}
+	for i := 0; i < n; i++ {
+		if needs[i] != 0 {
+			return fmt.Errorf("index %d remaining %d (not equalized)", i+1, needs[i])
+		}
+	}
+	if 2*pairs+3*triples != sumNeeds {
+		return fmt.Errorf("mismatch in total decrements: need %d got %d", sumNeeds, 2*pairs+3*triples)
+	}
+	if scan.Scan() {
+		return fmt.Errorf("extra output: %s", scan.Text())
 	}
 	return nil
 }
@@ -82,16 +143,15 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	ref, err := buildRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 	cases := genCases()
 	for i, c := range cases {
-		if err := runCase(bin, ref, c); err != nil {
+		out, err := runBinary(bin, c.input)
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, c.input)
+			os.Exit(1)
+		}
+		if err := verifyOne(c.input, out); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%soutput:\n%s\n", i+1, err, c.input, out)
 			os.Exit(1)
 		}
 	}
