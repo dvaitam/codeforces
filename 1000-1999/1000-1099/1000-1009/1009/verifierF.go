@@ -6,25 +6,12 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleF")
-	cmd := exec.Command("go", "build", "-o", oracle, "1009F.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
-}
-
+// runProg executes a binary with given input and returns trimmed stdout or an error including stderr.
 func runProg(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
@@ -79,7 +66,54 @@ func intsToString(a []int) string {
 	return sb.String()
 }
 
-func runCaseF(bin, oracle string, n int, edges [][2]int) error {
+// expectedAns1009F computes answers: for each node u, the smallest d maximizing the
+// count of nodes at distance d within u's subtree (rooted at 1).
+func expectedAns1009F(n int, edges [][2]int) []int {
+	adj := make([][]int, n+1)
+	for _, e := range edges {
+		u, v := e[0], e[1]
+		adj[u] = append(adj[u], v)
+		adj[v] = append(adj[v], u)
+	}
+	depth := make([]int, n+1)
+	tin := make([]int, n+1)
+	tout := make([]int, n+1)
+	timeD := 0
+	var dfs func(u, p, d int)
+	dfs = func(u, p, d int) {
+		timeD++
+		tin[u] = timeD
+		depth[u] = d
+		for _, v := range adj[u] {
+			if v == p {
+				continue
+			}
+			dfs(v, u, d+1)
+		}
+		tout[u] = timeD
+	}
+	dfs(1, 0, 0)
+
+	ans := make([]int, n+1)
+	for u := 1; u <= n; u++ {
+		freq := make(map[int]int)
+		maxc, best := 0, 0
+		for v := 1; v <= n; v++ {
+			if tin[u] <= tin[v] && tin[v] <= tout[u] {
+				d := depth[v] - depth[u]
+				freq[d]++
+				c := freq[d]
+				if c > maxc || (c == maxc && d < best) {
+					maxc, best = c, d
+				}
+			}
+		}
+		ans[u] = best
+	}
+	return ans
+}
+
+func runCaseF(bin string, n int, edges [][2]int) error {
 	var sb strings.Builder
 	sb.WriteString(strconv.Itoa(n))
 	sb.WriteByte('\n')
@@ -95,27 +129,21 @@ func runCaseF(bin, oracle string, n int, edges [][2]int) error {
 		sb.WriteByte('\n')
 	}
 	input := sb.String()
-	exp, err := runProg(oracle, input)
-	if err != nil {
-		return fmt.Errorf("oracle error: %v", err)
-	}
 	got, err := runProg(bin, input)
 	if err != nil {
 		return err
-	}
-	expList, err := parseInts(exp)
-	if err != nil {
-		return fmt.Errorf("failed to parse oracle output: %v (output=%q)", err, exp)
 	}
 	gotList, err := parseInts(got)
 	if err != nil {
 		return fmt.Errorf("failed to parse candidate output: %v (output=%q)", err, got)
 	}
-	if len(expList) != len(gotList) {
-		return fmt.Errorf("length mismatch: expected %d values got %d\nexpected %s got %s", len(expList), len(gotList), intsToString(expList), intsToString(gotList))
+	if len(gotList) != n {
+		return fmt.Errorf("length mismatch: expected %d values got %d", n, len(gotList))
 	}
-	for i := range expList {
-		if expList[i] != gotList[i] {
+	expListFull := expectedAns1009F(n, edges)
+	expList := expListFull[1:]
+	for i := 0; i < n; i++ {
+		if gotList[i] != expList[i] {
 			return fmt.Errorf("mismatch at pos %d: expected %d got %d\nexpected %s got %s", i+1, expList[i], gotList[i], intsToString(expList), intsToString(gotList))
 		}
 	}
@@ -128,16 +156,10 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		n, edges := genCaseF(rng)
-		if err := runCaseF(bin, oracle, n, edges); err != nil {
+		if err := runCaseF(bin, n, edges); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
