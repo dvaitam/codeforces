@@ -27,6 +27,14 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func normalizeOutput1886E(s string) string {
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	for i, ln := range lines {
+		lines[i] = strings.Join(strings.Fields(ln), " ")
+	}
+	return strings.Join(lines, "\n")
+}
+
 func generateCase(rng *rand.Rand) string {
 	n := rng.Intn(6) + 1 // 1..6
 	m := rng.Intn(3) + 1 // 1..3
@@ -76,8 +84,10 @@ func main() {
 			fmt.Fprintf(os.Stderr, "candidate runtime error on test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if want != got {
-			fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, input, want, got)
+		wantN := normalizeOutput1886E(want)
+		gotN := normalizeOutput1886E(got)
+		if wantN != gotN {
+			fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, input, wantN, gotN)
 			os.Exit(1)
 		}
 	}
