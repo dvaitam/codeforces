@@ -172,13 +172,13 @@ func main() {
 		exp := solve77COracle(n, k, edges, root)
 		out, err := run77C(bin, input.String())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", t, err)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\nInput:\n%s", t, err, input.String())
 			os.Exit(1)
 		}
 		var got int64
 		fmt.Sscan(out, &got)
 		if got != exp {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %d got %s\n", t, exp, out)
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %d got %s\nInput:\n%s", t, exp, out, input.String())
 			os.Exit(1)
 		}
 	}
