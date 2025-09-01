@@ -21,31 +21,33 @@ type op struct {
 }
 
 func solveE(ops []op) string {
+	// Recompute the expected answer per query from scratch.
+	// Maintain prefix sums and for each type-2 query compute
+	// min over k in [0..idx-1] of (P[k] + a[idx])/(k+1).
 	Q := len(ops)
-	a := make([]int64, Q+5)
-	var idx, cnt int
-	var sum int64
-	var Max int64
-	var aver float64 = 1e18
+	a := make([]int64, Q+5)    // 1-indexed values
+	pref := make([]int64, Q+5) // prefix sums, pref[0]=0
+	idx := 0
 	results := make([]string, 0)
 	for _, o := range ops {
 		if o.typ == 1 {
 			idx++
 			a[idx] = o.val
-			Max = o.val
+			pref[idx] = pref[idx-1] + o.val
 		} else {
-			aver = float64(sum+a[idx]) / float64(cnt+1)
-			for cnt < idx-1 {
-				tmp := float64(sum+a[idx]+a[cnt+1]) / float64(cnt+2)
-				if tmp < aver {
-					aver = tmp
-					sum += a[cnt+1]
-					cnt++
-				} else {
-					break
+			if idx == 0 {
+				results = append(results, fmt.Sprintf("%.8f", 0.0))
+				continue
+			}
+			last := float64(a[idx])
+			minAvg := last // k=0 gives avg=last
+			for k := 1; k <= idx-1; k++ {
+				avg := float64(pref[k]+a[idx]) / float64(k+1)
+				if avg < minAvg {
+					minAvg = avg
 				}
 			}
-			diff := float64(Max) - aver
+			diff := last - minAvg
 			results = append(results, fmt.Sprintf("%.8f", diff))
 		}
 	}
