@@ -17,7 +17,7 @@ func main() {
 		fmt.Println("Usage: verifierG.go <binary>")
 		os.Exit(1)
 	}
-	binPath, cleanup, err := prepareBinary(os.Args[1])
+	binPath, cleanup, err := prepareBinary1157G(os.Args[1])
 	if err != nil {
 		fmt.Println("compile error:", err)
 		os.Exit(1)
@@ -45,13 +45,21 @@ func main() {
 		}
 		input := sb.String()
 		expected := solveG(a)
-		out, err := run(binPath, input)
+		out, err := run1157G(binPath, input)
 		if err != nil {
 			fmt.Printf("test %d: runtime error: %v\n", t, err)
 			os.Exit(1)
 		}
 		out = strings.TrimSpace(out)
-		if out != expected {
+		expTrim := strings.TrimSpace(expected)
+		if expTrim == "NO" {
+			if out != "NO" {
+				fmt.Printf("test %d failed\ninput:%sexpected:%s got:%s\n", t, input, expected, out)
+				os.Exit(1)
+			}
+			continue
+		}
+		if !validateGOutput(n, m, a, out) {
 			fmt.Printf("test %d failed\ninput:%sexpected:%s got:%s\n", t, input, expected, out)
 			os.Exit(1)
 		}
@@ -59,7 +67,7 @@ func main() {
 	fmt.Println("OK")
 }
 
-func prepareBinary(path string) (string, func(), error) {
+func prepareBinary1157G(path string) (string, func(), error) {
 	if strings.HasSuffix(path, ".go") {
 		tmp := filepath.Join(os.TempDir(), "verify_binG")
 		cmd := exec.Command("go", "build", "-o", tmp, path)
@@ -71,7 +79,7 @@ func prepareBinary(path string) (string, func(), error) {
 	return path, nil, nil
 }
 
-func run(bin, input string) (string, error) {
+func run1157G(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var buf bytes.Buffer
@@ -148,4 +156,65 @@ func solveG(a [][]int) string {
 		sb.WriteByte(byte('0' + c[j]))
 	}
 	return strings.TrimSpace(sb.String())
+}
+
+func validateGOutput(n, m int, a [][]int, out string) bool {
+	// Expect format:
+	// YES\n
+	// row bits of length n (0/1) possibly with spaces\n
+	// col bits of length m (0/1) possibly with spaces
+	lines := strings.Split(out, "\n")
+	pick := func(k int) (string, int) {
+		for k < len(lines) {
+			ln := strings.TrimSpace(lines[k])
+			k++
+			if ln != "" {
+				return ln, k
+			}
+		}
+		return "", k
+	}
+	ln, idx := pick(0)
+	if strings.ToUpper(strings.TrimSpace(ln)) != "YES" {
+		return false
+	}
+	rowLine, idx := pick(idx)
+	colLine, _ := pick(idx)
+	rStr := strings.ReplaceAll(strings.TrimSpace(rowLine), " ", "")
+	cStr := strings.ReplaceAll(strings.TrimSpace(colLine), " ", "")
+	if len(rStr) != n || len(cStr) != m {
+		return false
+	}
+	r := make([]int, n)
+	c := make([]int, m)
+	for i := 0; i < n; i++ {
+		if rStr[i] != '0' && rStr[i] != '1' {
+			return false
+		}
+		r[i] = int(rStr[i] - '0')
+	}
+	for j := 0; j < m; j++ {
+		if cStr[j] != '0' && cStr[j] != '1' {
+			return false
+		}
+		c[j] = int(cStr[j] - '0')
+	}
+	// Build flattened sequence after flips and ensure nondecreasing
+	prev := 0
+	first := true
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			v := a[i][j] ^ r[i] ^ c[j]
+			if first {
+				prev = v
+				first = false
+				continue
+			}
+			if prev == 1 && v == 0 {
+				return false
+			}
+			prev = v
+		}
+	}
+	return true
 }
