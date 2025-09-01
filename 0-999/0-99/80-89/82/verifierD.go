@@ -11,7 +11,11 @@ import (
 )
 
 func solveTime(a []int) int {
-	n := len(a)
+	n0 := len(a)
+	// pad to safely access a[i+1], a[i-1] and a[m+1] in transitions
+	aa := make([]int, n0+3)
+	copy(aa, a)
+	n := len(aa)
 	d := make([]int, n+3)
 	p := make([]int, n+3)
 	var even func(int) int
@@ -30,16 +34,21 @@ func solveTime(a []int) int {
 			return d[m]
 		}
 		if m == 2 {
-			d[m] = max(a[0], a[1])
+			d[m] = max(aa[0], aa[1])
 			p[m] = 0
 			return d[m]
 		}
-		smallest := even(m-2) + max(a[m-2], a[m-1])
+		smallest := even(m-2) + max(aa[m-2], aa[m-1])
 		k := m - 2
 		sum := 0
 		for i := m - 2; i >= 0; i -= 2 {
-			cur := even(i) + sum + max(a[i], a[m-1])
-			sum += max(a[i], a[i-1])
+			cur := even(i) + sum + max(aa[i], aa[m-1])
+			// add pair cost max(a[i], a[i-1]) if i-1 >= 0, otherwise just a[i]
+			if i-1 >= 0 {
+				sum += max(aa[i], aa[i-1])
+			} else {
+				sum += aa[i]
+			}
 			if cur < smallest {
 				smallest = cur
 				k = i
@@ -47,8 +56,8 @@ func solveTime(a []int) int {
 		}
 		sum = 0
 		for i := m - 3; i >= 0; i -= 2 {
-			cur := odd(i) + sum + max(a[i], a[m-1])
-			sum += max(a[i], a[i+1])
+			cur := odd(i) + sum + max(aa[i], aa[m-1])
+			sum += max(aa[i], aa[i+1])
 			if cur < smallest {
 				smallest = cur
 				k = i
@@ -60,17 +69,21 @@ func solveTime(a []int) int {
 	}
 	odd = func(m int) int {
 		if m == 1 {
-			return max(a[0], a[2])
+			return max(aa[0], aa[2])
 		}
 		if d[m] != 0 {
 			return d[m]
 		}
-		smallest := even(m-1) + max(a[m-1], a[m+1])
+		smallest := even(m-1) + max(aa[m-1], aa[m+1])
 		k := m - 1
 		sum := 0
 		for i := m - 1; i >= 0; i -= 2 {
-			cur := even(i) + sum + max(a[i], a[m+1])
-			sum += max(a[i], a[i-1])
+			cur := even(i) + sum + max(aa[i], aa[m+1])
+			if i-1 >= 0 {
+				sum += max(aa[i], aa[i-1])
+			} else {
+				sum += aa[i]
+			}
 			if cur < smallest {
 				smallest = cur
 				k = i
@@ -78,8 +91,8 @@ func solveTime(a []int) int {
 		}
 		sum = 0
 		for i := m - 2; i >= 0; i -= 2 {
-			cur := odd(i) + sum + max(a[i], a[m+1])
-			sum += max(a[i], a[i+1])
+			cur := odd(i) + sum + max(aa[i], aa[m+1])
+			sum += max(aa[i], aa[i+1])
 			if cur < smallest {
 				smallest = cur
 				k = i
@@ -89,10 +102,10 @@ func solveTime(a []int) int {
 		p[m] = k
 		return smallest
 	}
-	if n%2 == 0 {
-		return even(n)
+	if n0%2 == 0 {
+		return even(n0)
 	}
-	return odd(n)
+	return odd(n0)
 }
 
 func generateCase(rng *rand.Rand) (string, int) {
