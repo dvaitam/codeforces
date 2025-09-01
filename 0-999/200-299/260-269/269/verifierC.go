@@ -18,22 +18,22 @@ func generateRandomCase(rng *rand.Rand) testCase {
 	n := rng.Intn(5) + 2
 	maxEdges := n * (n - 1) / 2
 	m := rng.Intn(maxEdges-(n-1)+1) + (n - 1)
-	// build tree to ensure connectivity
+	// build a proper tree to ensure connectivity (no self-loops)
 	edges := make([][3]int, 0, m)
-	parent := rng.Perm(n - 1)
-	for i := 2; i <= n; i++ {
-		p := parent[i-2] + 1
-		w := rng.Intn(20) + 1
-		edges = append(edges, [3]int{p, i, w})
-	}
 	used := make(map[[2]int]bool)
-	for _, e := range edges {
-		u, v := e[0], e[1]
+	for i := 2; i <= n; i++ {
+		p := rng.Intn(i-1) + 1 // connect to a previous node, guarantees p != i
+		u, v := p, i
 		if u > v {
 			u, v = v, u
 		}
-		used[[2]int{u, v}] = true
+		if !used[[2]int{u, v}] {
+			used[[2]int{u, v}] = true
+			w := rng.Intn(20) + 1
+			edges = append(edges, [3]int{u, v, w})
+		}
 	}
+	// add extra random edges without duplicates or self-loops
 	for len(edges) < m {
 		u := rng.Intn(n) + 1
 		v := rng.Intn(n) + 1
@@ -85,22 +85,20 @@ func verify(input, output string) error {
 	a := make([]int, m)
 	b := make([]int, m)
 	w := make([]int64, m)
-	sumFlow := make([]int64, n+1)
 	for i := 0; i < m; i++ {
 		u := atoi(fields[p])
 		v := atoi(fields[p+1])
 		c := atoi(fields[p+2])
 		p += 3
 		a[i], b[i], w[i] = u, v, int64(c)
-		sumFlow[u] += int64(c)
-		sumFlow[v] += int64(c)
 	}
 	// parse output: expect m numbers 0/1
 	outs := strings.Fields(output)
 	if len(outs) < m {
 		return fmt.Errorf("missing orientations: need %d got %d", m, len(outs))
 	}
-	outSum := make([]int64, n+1)
+	outSum := make([]int64, n+1) // total flow going out of each node
+	inSum := make([]int64, n+1)  // total flow coming into each node
 	for i := 0; i < m; i++ {
 		var d int
 		if _, err := fmt.Sscan(outs[i], &d); err != nil {
@@ -109,27 +107,38 @@ func verify(input, output string) error {
 		if d != 0 && d != 1 {
 			return fmt.Errorf("orientation must be 0/1 at %d", i+1)
 		}
-		if d == 0 {
-			outSum[a[i]] += w[i]
-		} else {
-			outSum[b[i]] += w[i]
+		u, v, ww := a[i], b[i], w[i]
+		if u == v {
+			// self-loop contributes equally to in and out; not present in CF input, but be robust
+			outSum[u] += ww
+			inSum[u] += ww
+			continue
+		}
+		if d == 0 { // u -> v
+			outSum[u] += ww
+			inSum[v] += ww
+		} else { // v -> u
+			outSum[v] += ww
+			inSum[u] += ww
 		}
 	}
-	// verify balances
-	if outSum[1] != sumFlow[1] {
-		return fmt.Errorf("node 1 out=%d sum=%d", outSum[1], sumFlow[1])
+	// enforce CF 269C balance constraints
+	// node 1: all outgoing (no incoming)
+	if inSum[1] != 0 {
+		return fmt.Errorf("node 1 must have no incoming, got %d", inSum[1])
 	}
+	// node n: all incoming (no outgoing)
 	if outSum[n] != 0 {
-		return fmt.Errorf("node %d out must be 0, got %d", n, outSum[n])
+		return fmt.Errorf("node %d must have no outgoing, got %d", n, outSum[n])
 	}
+	// internal nodes: in == out
 	for v := 2; v <= n-1; v++ {
-		if outSum[v]*2 != sumFlow[v] {
-			return fmt.Errorf("node %d out*2=%d sum=%d", v, outSum[v]*2, sumFlow[v])
+		if inSum[v] != outSum[v] {
+			return fmt.Errorf("node %d out=%d in=%d", v, outSum[v], inSum[v])
 		}
 	}
-	// ensure no extra significant tokens beyond m
+	// ensure no extra tokens beyond m
 	if len(outs) > m {
-		// allow trailing whitespace and lines, but if extra tokens exist, error
 		return fmt.Errorf("extra output tokens: %v", outs[m:])
 	}
 	return nil
