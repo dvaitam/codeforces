@@ -39,10 +39,12 @@ func genTests() []string {
 		l := rand.Int63n(50) + 1
 		r := l + rand.Int63n(50)
 		z := rand.Int63n(64)
-		tests = append(tests, fmt.Sprintf("1\n%d %d %d %d\n", n, l, r, z))
+		// Single test format: n l r z\n
+		tests = append(tests, fmt.Sprintf("%d %d %d %d\n", n, l, r, z))
 	}
-	tests = append(tests, "1\n1 1 1 0\n")
-	tests = append(tests, "1\n2 1 3 1\n")
+	// Edge cases
+	tests = append(tests, "1 1 1 0\n")
+	tests = append(tests, "2 1 3 1\n")
 	return tests
 }
 
