@@ -100,6 +100,7 @@ func main() {
 			fmt.Printf("test %d: wrong number count\n", idx)
 			os.Exit(1)
 		}
+		// parse as r[0..n-1], then c[0..n-1]
 		r := make([]int64, n)
 		c := make([]int64, n)
 		for i := 0; i < n; i++ {
@@ -111,22 +112,24 @@ func main() {
 			c[i] = v
 		}
 		expect := fmt.Sprintf("%d", solveCase(r, c))
-		input := fmt.Sprintf("1\n%d\n", n)
+		// build candidate input (t=1)
+		var input strings.Builder
+		input.WriteString(fmt.Sprintf("1\n%d\n", n))
 		for i, v := range r {
 			if i > 0 {
-				input += " "
+				input.WriteByte(' ')
 			}
-			input += fmt.Sprintf("%d", v)
+			input.WriteString(fmt.Sprintf("%d", v))
 		}
-		input += "\n"
+		input.WriteByte('\n')
 		for i, v := range c {
 			if i > 0 {
-				input += " "
+				input.WriteByte(' ')
 			}
-			input += fmt.Sprintf("%d", v)
+			input.WriteString(fmt.Sprintf("%d", v))
 		}
-		input += "\n"
-		got, err := runCandidate(bin, input)
+		input.WriteByte('\n')
+		got, err := runCandidate(bin, input.String())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx, err)
 			os.Exit(1)
