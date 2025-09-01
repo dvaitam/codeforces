@@ -30,18 +30,21 @@ func runCandidate(bin, input string) (string, error) {
 }
 
 func segCost(sa, ca, sb, cb int64) int64 {
-	dr := sb - sa
-	dc := cb - ca
-	if dr < 0 || dc < 0 || dc > dr {
+	// Use v = r - c based formula
+	if sb < sa || cb < ca {
 		return 0
 	}
-	if (sa+ca)%2 == 0 {
-		if dc == dr {
-			return dr
-		}
-		return (dr - dc) / 2
+	v1 := sa - ca
+	v2 := sb - cb
+	if v2 < v1 {
+		return 0
 	}
-	return (dr - dc + 1) / 2
+	res := v2/2 - v1/2 // floor division
+	// If on the same diagonal and that diagonal is even, we can move straight down-right
+	if v2 == v1 && ((sa+ca)&1) == 0 {
+		res += sb - sa
+	}
+	return res
 }
 
 func solveCase(r, c []int64) int64 {
