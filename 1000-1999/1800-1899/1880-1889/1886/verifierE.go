@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -77,6 +78,120 @@ func generateCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
+// parseInput1886E parses the generated input back into n, m, values a (1..n), b (1..m).
+func parseInput1886E(input string) (int, int, []int, []int, error) {
+	lines := strings.Split(strings.TrimSpace(input), "\n")
+	if len(lines) < 3 {
+		return 0, 0, nil, nil, fmt.Errorf("bad input")
+	}
+	hdr := strings.Fields(lines[0])
+	if len(hdr) < 2 {
+		return 0, 0, nil, nil, fmt.Errorf("bad header")
+	}
+	n, err1 := strconv.Atoi(hdr[0])
+	m, err2 := strconv.Atoi(hdr[1])
+	if err1 != nil || err2 != nil {
+		return 0, 0, nil, nil, fmt.Errorf("bad n/m")
+	}
+	fa := strings.Fields(lines[1])
+	if len(fa) != n {
+		return 0, 0, nil, nil, fmt.Errorf("bad a size")
+	}
+	a := make([]int, n+1)
+	for i := 0; i < n; i++ {
+		v, err := strconv.Atoi(fa[i])
+		if err != nil {
+			return 0, 0, nil, nil, fmt.Errorf("bad a val")
+		}
+		a[i+1] = v
+	}
+	fb := strings.Fields(lines[2])
+	if len(fb) != m {
+		return 0, 0, nil, nil, fmt.Errorf("bad b size")
+	}
+	b := make([]int, m+1)
+	for i := 0; i < m; i++ {
+		v, err := strconv.Atoi(fb[i])
+		if err != nil {
+			return 0, 0, nil, nil, fmt.Errorf("bad b val")
+		}
+		b[i+1] = v
+	}
+	return n, m, a, b, nil
+}
+
+// validateYes1886E checks candidate YES output semantically.
+func validateYes1886E(input, got string) bool {
+	n, m, a, b, err := parseInput1886E(input)
+	if err != nil {
+		return false
+	}
+	val := make([]int, n+1)
+	for i := 1; i <= n; i++ {
+		val[i] = a[i]
+	}
+
+	lines := strings.Split(strings.TrimSpace(got), "\n")
+	// find header line
+	idx := 0
+	for idx < len(lines) && strings.TrimSpace(lines[idx]) == "" {
+		idx++
+	}
+	if idx >= len(lines) || strings.ToUpper(strings.TrimSpace(lines[idx])) != "YES" {
+		return false
+	}
+	idx++
+
+	groups := make([][]int, 0, m)
+	used := make([]bool, n+1)
+	for len(groups) < m && idx < len(lines) {
+		ln := strings.TrimSpace(lines[idx])
+		idx++
+		if ln == "" {
+			continue
+		}
+		fields := strings.Fields(ln)
+		cnt, err := strconv.Atoi(fields[0])
+		if err != nil || cnt < 0 || len(fields)-1 < cnt {
+			return false
+		}
+		ids := make([]int, 0, cnt)
+		for k := 0; k < cnt; k++ {
+			id, err := strconv.Atoi(fields[1+k])
+			if err != nil || id < 1 || id > n || used[id] {
+				return false
+			}
+			used[id] = true
+			ids = append(ids, id)
+		}
+		groups = append(groups, ids)
+	}
+	if len(groups) != m {
+		return false
+	}
+
+	for gi := 0; gi < m; gi++ {
+		ids := groups[gi]
+		cnt := len(ids)
+		if cnt == 0 {
+			if b[gi+1] != 0 {
+				return false
+			}
+			continue
+		}
+		minVal := val[ids[0]]
+		for _, id := range ids[1:] {
+			if val[id] < minVal {
+				minVal = val[id]
+			}
+		}
+		if int64(minVal)*int64(cnt) < int64(b[gi+1]) {
+			return false
+		}
+	}
+	return true
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierE.go /path/to/binary")
@@ -104,25 +219,23 @@ func main() {
 			fmt.Fprintf(os.Stderr, "candidate runtime error on test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		wHead, wLines := canonicalize1886E(want)
-		gHead, gLines := canonicalize1886E(got)
+		wHead := strings.ToUpper(strings.TrimSpace(strings.Split(strings.TrimSpace(want), "\n")[0]))
+		gHead := strings.ToUpper(strings.TrimSpace(strings.Split(strings.TrimSpace(got), "\n")[0]))
 		if wHead == "NO" {
-			if gHead != "NO" {
-				fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, input, strings.TrimSpace(want), strings.TrimSpace(got))
-				os.Exit(1)
+			// Accept candidate NO or any semantically valid YES
+			if gHead == "NO" {
+				continue
 			}
-			continue
-		}
-		// YES case: compare multisets of lines
-		if gHead != "YES" || len(wLines) != len(gLines) {
+			if gHead == "YES" && validateYes1886E(input, got) {
+				continue
+			}
 			fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, input, strings.TrimSpace(want), strings.TrimSpace(got))
 			os.Exit(1)
 		}
-		for j := range wLines {
-			if wLines[j] != gLines[j] {
-				fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, input, strings.TrimSpace(want), strings.TrimSpace(got))
-				os.Exit(1)
-			}
+		// YES case: semantically validate candidate
+		if gHead != "YES" || !validateYes1886E(input, got) {
+			fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, input, strings.TrimSpace(want), strings.TrimSpace(got))
+			os.Exit(1)
 		}
 	}
 	fmt.Println("All tests passed")
