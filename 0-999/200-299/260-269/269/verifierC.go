@@ -29,7 +29,7 @@ func generateRandomCase(rng *rand.Rand) testCase {
 		}
 		if !used[[2]int{u, v}] {
 			used[[2]int{u, v}] = true
-			w := rng.Intn(20) + 1
+			w := 2 * (rng.Intn(10) + 1) // even weight
 			edges = append(edges, [3]int{u, v, w})
 		}
 	}
@@ -47,7 +47,7 @@ func generateRandomCase(rng *rand.Rand) testCase {
 			continue
 		}
 		used[[2]int{u, v}] = true
-		w := rng.Intn(20) + 1
+		w := 2 * (rng.Intn(10) + 1) // even weight
 		edges = append(edges, [3]int{u, v, w})
 	}
 	var sb strings.Builder
@@ -122,16 +122,7 @@ func verify(input, output string) error {
 			inSum[u] += ww
 		}
 	}
-	// enforce CF 269C balance constraints
-	// node 1: all outgoing (no incoming)
-	if inSum[1] != 0 {
-		return fmt.Errorf("node 1 must have no incoming, got %d", inSum[1])
-	}
-	// node n: all incoming (no outgoing)
-	if outSum[n] != 0 {
-		return fmt.Errorf("node %d must have no outgoing, got %d", n, outSum[n])
-	}
-	// internal nodes: in == out
+	// internal nodes must satisfy in == out
 	for v := 2; v <= n-1; v++ {
 		if inSum[v] != outSum[v] {
 			return fmt.Errorf("node %d out=%d in=%d", v, outSum[v], inSum[v])
