@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 )
 
@@ -60,65 +61,45 @@ func (s *state77) merge(o *state77) {
 	o.total = 0
 }
 
-// Oracle computing the objective using greedy trimming of farthest depths first when capacity is exceeded.
-func solve77COracle(n int, k []int64, edges [][2]int, root int) int64 {
+// Oracle computing the objective using the accepted greedy from C++ reference
+func solve77COracle(n int, k0 []int64, edges [][2]int, root int) int64 {
 	adj := make([][]int, n+1)
 	for _, e := range edges {
 		u, v := e[0], e[1]
 		adj[u] = append(adj[u], v)
 		adj[v] = append(adj[v], u)
 	}
-	depth := make([]int, n+1)
-	var dfs func(u, p int) *state77
-	dfs = func(u, p int) *state77 {
-		st := &state77{m: make(map[int]int64), h: &maxHeap77{}, total: 0}
-		heap.Init(st.h)
+	k := make([]int64, n+1)
+	copy(k, k0)
+	var dfs func(u, p int) int64
+	dfs = func(u, p int) int64 {
+		r := make([]int64, 0)
+		var fb int64 = 0
+		var res int64 = 0
 		for _, v := range adj[u] {
 			if v == p {
 				continue
 			}
-			depth[v] = depth[u] + 1
-			child := dfs(v, u)
-			st.merge(child)
+			k[v]--
+			val := -dfs(v, u)
+			r = append(r, val)
+			fb += k[v]
 		}
-		if u != root {
-			d := depth[u]
-			cnt := k[u]
-			if cnt > 0 {
-				if _, ok := st.m[d]; ok {
-					st.m[d] += cnt
-				} else {
-					st.m[d] = cnt
-					heap.Push(st.h, d)
-				}
-				st.total += cnt
-			}
-		}
-		capc := k[u]
-		for st.total > capc {
-			// drop nearest depths first (keep farthest) to maximize total path length (moves)
-			d := st.h.Peek()
-			cnt := st.m[d]
-			rem := st.total - capc
-			if cnt <= rem {
-				heap.Pop(st.h)
-				delete(st.m, d)
-				st.total -= cnt
-			} else {
-				st.m[d] = cnt - rem
-				st.total -= rem
+		sort.Slice(r, func(i, j int) bool { return r[i] < r[j] })
+		for _, pv := range r {
+			if k[u] == 0 {
 				break
 			}
+			res -= pv - 2
+			k[u]--
 		}
-		return st
+		if fb > k[u] {
+			fb = k[u]
+		}
+		k[u] -= fb
+		return res + fb*2
 	}
-	depth[root] = 0
-	st := dfs(root, 0)
-	var ans int64
-	for d, cnt := range st.m {
-		ans += int64(d) * cnt * 2
-	}
-	return ans
+	return dfs(root, 0)
 }
 
 func run77C(bin, input string) (string, error) {
