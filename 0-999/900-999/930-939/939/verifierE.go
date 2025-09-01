@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -114,7 +115,25 @@ func main() {
 			fmt.Print(out)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != t.out {
+
+		// Tolerant float comparison (accepts different formatting)
+		expLines := strings.Fields(strings.TrimSpace(t.out))
+		gotFields := strings.Fields(strings.TrimSpace(out))
+		if len(expLines) != len(gotFields) {
+			fmt.Printf("Test %d failed. Expected %d lines, got %d. Input:\n%sExpected:\n%s\nGot:\n%s\n", i+1, len(expLines), len(gotFields), t.in, t.out, out)
+			os.Exit(1)
+		}
+		ok := true
+		const eps = 1e-6
+		for j := range expLines {
+			expV, err1 := strconv.ParseFloat(expLines[j], 64)
+			gotV, err2 := strconv.ParseFloat(gotFields[j], 64)
+			if err1 != nil || err2 != nil || (gotV-expV > eps) || (expV-gotV > eps) {
+				ok = false
+				break
+			}
+		}
+		if !ok {
 			fmt.Printf("Test %d failed. Expected %q, got %q. Input:\n%s", i+1, t.out, out, t.in)
 			os.Exit(1)
 		}
