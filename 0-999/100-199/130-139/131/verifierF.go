@@ -36,8 +36,10 @@ func solveCase(n, m, k int, grid []string) string {
 		return "0"
 	}
 	star := countStars(grid)
+	// colSum[j] = sum over rows l..r of star[row][j]
 	colSum := make([]int, M)
-	S := make([]int, M+1)
+	// prefix sums over columns
+	pref := make([]int, M+1)
 	var ans int64
 	for l := 0; l < N; l++ {
 		for j := 0; j < M; j++ {
@@ -47,27 +49,19 @@ func solveCase(n, m, k int, grid []string) string {
 			for j := 0; j < M; j++ {
 				colSum[j] += star[r][j]
 			}
-			S[0] = 0
+			pref[0] = 0
 			for j := 1; j <= M; j++ {
-				S[j] = S[j-1] + colSum[j-1]
+				pref[j] = pref[j-1] + colSum[j-1]
 			}
-			var innerSum int64
-			c := 0
-			for R := 1; R <= M; R++ {
-				if S[R] < k {
+			h := 0
+			for g := 1; g <= M; g++ {
+				if pref[g] < k {
 					continue
 				}
-				target := S[R] - k
-				for c <= R-1 && S[c] <= target {
-					c++
+				for h < g && pref[g]-pref[h] >= k {
+					h++
 				}
-				t := c
-				tri := int64(t) * int64(t+1) / 2
-				innerSum += tri * int64(M+1-R)
-			}
-			if innerSum != 0 {
-				A := int64(l+1) * int64(N-r)
-				ans += A * innerSum
+				ans += int64(h)
 			}
 		}
 	}
