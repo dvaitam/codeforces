@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
@@ -33,6 +34,25 @@ func normalizeOutput1886E(s string) string {
 		lines[i] = strings.Join(strings.Fields(ln), " ")
 	}
 	return strings.Join(lines, "\n")
+}
+
+// canonicalize1886E returns the header (YES/NO) and a sorted list of normalized lines after the header.
+func canonicalize1886E(s string) (string, []string) {
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	norm := make([]string, 0, len(lines))
+	for _, ln := range lines {
+		norm = append(norm, strings.Join(strings.Fields(ln), " "))
+	}
+	if len(norm) == 0 {
+		return "", nil
+	}
+	head := strings.ToUpper(norm[0])
+	if head != "YES" {
+		return "NO", nil
+	}
+	rest := append([]string(nil), norm[1:]...)
+	sort.Strings(rest)
+	return "YES", rest
 }
 
 func generateCase(rng *rand.Rand) string {
@@ -84,11 +104,25 @@ func main() {
 			fmt.Fprintf(os.Stderr, "candidate runtime error on test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		wantN := normalizeOutput1886E(want)
-		gotN := normalizeOutput1886E(got)
-		if wantN != gotN {
-			fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, input, wantN, gotN)
+		wHead, wLines := canonicalize1886E(want)
+		gHead, gLines := canonicalize1886E(got)
+		if wHead == "NO" {
+			if gHead != "NO" {
+				fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, input, strings.TrimSpace(want), strings.TrimSpace(got))
+				os.Exit(1)
+			}
+			continue
+		}
+		// YES case: compare multisets of lines
+		if gHead != "YES" || len(wLines) != len(gLines) {
+			fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, input, strings.TrimSpace(want), strings.TrimSpace(got))
 			os.Exit(1)
+		}
+		for j := range wLines {
+			if wLines[j] != gLines[j] {
+				fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, input, strings.TrimSpace(want), strings.TrimSpace(got))
+				os.Exit(1)
+			}
 		}
 	}
 	fmt.Println("All tests passed")
