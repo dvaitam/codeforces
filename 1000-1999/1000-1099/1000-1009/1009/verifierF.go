@@ -51,6 +51,34 @@ func genCaseF(rng *rand.Rand) (int, [][2]int) {
 	return n, edges
 }
 
+// parseInts parses any whitespace-separated list of integers.
+func parseInts(s string) ([]int, error) {
+	fields := strings.Fields(strings.TrimSpace(s))
+	res := make([]int, len(fields))
+	for i, f := range fields {
+		v, err := strconv.Atoi(f)
+		if err != nil {
+			return nil, fmt.Errorf("invalid int %q", f)
+		}
+		res[i] = v
+	}
+	return res, nil
+}
+
+func intsToString(a []int) string {
+	if len(a) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	for i, v := range a {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(v))
+	}
+	return sb.String()
+}
+
 func runCaseF(bin, oracle string, n int, edges [][2]int) error {
 	var sb strings.Builder
 	sb.WriteString(strconv.Itoa(n))
@@ -75,8 +103,21 @@ func runCaseF(bin, oracle string, n int, edges [][2]int) error {
 	if err != nil {
 		return err
 	}
-	if got != exp {
-		return fmt.Errorf("expected %s got %s", exp, got)
+	expList, err := parseInts(exp)
+	if err != nil {
+		return fmt.Errorf("failed to parse oracle output: %v (output=%q)", err, exp)
+	}
+	gotList, err := parseInts(got)
+	if err != nil {
+		return fmt.Errorf("failed to parse candidate output: %v (output=%q)", err, got)
+	}
+	if len(expList) != len(gotList) {
+		return fmt.Errorf("length mismatch: expected %d values got %d\nexpected %s got %s", len(expList), len(gotList), intsToString(expList), intsToString(gotList))
+	}
+	for i := range expList {
+		if expList[i] != gotList[i] {
+			return fmt.Errorf("mismatch at pos %d: expected %d got %d\nexpected %s got %s", i+1, expList[i], gotList[i], intsToString(expList), intsToString(gotList))
+		}
 	}
 	return nil
 }
