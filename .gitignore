@@ -3,3 +3,5 @@ cache/
 .gocache/
 webserver
 click.scpt
+
+*.bin
