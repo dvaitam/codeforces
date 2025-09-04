@@ -6,25 +6,12 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
 type test struct {
-	input    string
-	expected string
-}
-
-func solve(input string) string {
-	r := strings.NewReader(input)
-	var t int
-	fmt.Fscan(r, &t)
-	var out strings.Builder
-	for i := 0; i < t; i++ {
-		var a, b, c int64
-		fmt.Fscan(r, &a, &b, &c)
-		fmt.Fprintf(&out, "%d\n", a+b+c-1)
-	}
-	return strings.TrimRight(out.String(), "\n")
+	input string
 }
 
 func generateTests() []test {
@@ -35,7 +22,7 @@ func generateTests() []test {
 		"1\n10 20 30\n",
 	}
 	for _, f := range fixed {
-		tests = append(tests, test{f, solve(f)})
+		tests = append(tests, test{f})
 	}
 	for len(tests) < 100 {
 		var sb strings.Builder
@@ -45,7 +32,7 @@ func generateTests() []test {
 		c := rng.Int63n(1e9) + 1
 		fmt.Fprintf(&sb, "%d %d %d\n", a, b, c)
 		inp := sb.String()
-		tests = append(tests, test{inp, solve(inp)})
+		tests = append(tests, test{inp})
 	}
 	return tests
 }
@@ -65,6 +52,21 @@ func runBinary(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), err
 }
 
+func validD(a, b, c, d int64) bool {
+	s := a + b + c + d
+	m := a
+	if b > m {
+		m = b
+	}
+	if c > m {
+		m = c
+	}
+	if d > m {
+		m = d
+	}
+	return 2*m < s
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierA.go /path/to/binary")
@@ -78,8 +80,27 @@ func main() {
 			fmt.Printf("Runtime error on test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(t.expected) {
-			fmt.Printf("Wrong answer on test %d\nInput:\n%sExpected:%s\nGot:%s\n", i+1, t.input, t.expected, got)
+		// parse input
+		r := strings.NewReader(t.input)
+		var T int
+		fmt.Fscan(r, &T)
+		outs := strings.Fields(got)
+		if len(outs) != T {
+			fmt.Printf("Wrong number of outputs on test %d\nInput:\n%sExpected %d values, got %d (%q)\n", i+1, t.input, T, len(outs), got)
+			os.Exit(1)
+		}
+		ok := true
+		for caseIdx := 0; caseIdx < T; caseIdx++ {
+			var a, b, c int64
+			fmt.Fscan(r, &a, &b, &c)
+			dVal, err := strconv.ParseInt(outs[caseIdx], 10, 64)
+			if err != nil || !validD(a, b, c, dVal) {
+				ok = false
+				break
+			}
+		}
+		if !ok {
+			fmt.Printf("Wrong answer on test %d\nInput:\n%sOutput:%s\n(Note: any d is accepted if 2*max(a,b,c,d) < a+b+c+d)\n", i+1, t.input, got)
 			os.Exit(1)
 		}
 	}
