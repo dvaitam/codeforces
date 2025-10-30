@@ -38,7 +38,7 @@ var indexTmpl = template.Must(template.New("index").Parse(`
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Contests</title>
+    <title>ggg</title>
     <style>
       :root {
         --bg: #0b0f17;
