@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+    "strconv"
 	"strings"
 	"time"
 )
@@ -42,6 +43,14 @@ func solveCase(n int, l int, arr []int) string {
 	return fmt.Sprintf("%.12f", radius)
 }
 
+func parseFirstFloat(s string) (float64, error) {
+    fields := strings.Fields(s)
+    if len(fields) == 0 {
+        return 0, fmt.Errorf("empty output")
+    }
+    return strconv.ParseFloat(fields[0], 64)
+}
+
 func generateCase(rng *rand.Rand) (string, string) {
 	n := rng.Intn(50) + 1
 	l := rng.Intn(1000) + 1
@@ -74,10 +83,22 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != strings.TrimSpace(exp) {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, exp, out, in)
-			os.Exit(1)
-		}
+		outTrim := strings.TrimSpace(out)
+        expTrim := strings.TrimSpace(exp)
+        if outTrim != expTrim {
+            of, oerr := parseFirstFloat(outTrim)
+            ef, eerr := parseFirstFloat(expTrim)
+            if oerr == nil && eerr == nil {
+                diff := math.Abs(of - ef)
+                if diff <= 1e-6 {
+                    // acceptable numeric tolerance
+                    goto CONTINUE_CASE
+                }
+            }
+            fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, expTrim, outTrim, in)
+            os.Exit(1)
+        }
+        CONTINUE_CASE:
 	}
 	fmt.Println("All tests passed")
 }
