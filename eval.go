@@ -821,8 +821,7 @@ func sendPrompt(provider, model, apiKey, prompt string, useResponses bool) strin
 				OutputText string `json:"output_text"`
 			}
 			if err = json.Unmarshal(bodyBytes, &respBody); err != nil {
-				fmt.Printf("Error decoding response (attempt %d): %v
-", attempt, err)
+				fmt.Printf("Error decoding response (attempt %d): %v\n", attempt, err)
 				if attempt == maxRetries {
 					return ""
 				}
@@ -830,8 +829,7 @@ func sendPrompt(provider, model, apiKey, prompt string, useResponses bool) strin
 				continue
 			}
 			if respBody.OutputText == "" {
-				fmt.Printf("No response from API (attempt %d)
-", attempt)
+				fmt.Printf("No response from API (attempt %d)\n", attempt)
 				if attempt == maxRetries {
 					return ""
 				}
