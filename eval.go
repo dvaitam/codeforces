@@ -63,7 +63,7 @@ func main() {
 	maxAttempts := flag.Int("max-attempts", 1, "Maximum attempts to fix syntax errors (1-5)")
 	httpTimeout := flag.Duration("timeout", 120*time.Second, "HTTP request timeout")
 	language := flag.String("lang", "go", "Programming language to generate the solution in")
-	useCompletions := flag.Bool("use-completions", false, "Use the completions endpoint instead of chat for compatible providers/models")
+	useResponses := flag.Bool("use-responses", false, "Use the responses endpoint instead of chat for compatible providers/models")
 	flag.Parse()
 	lang := strings.ToLower(*language)
 	switch lang {
@@ -171,7 +171,7 @@ func main() {
 		prompt := fmt.Sprintf("write a %s solution for %s. Output only the code with no comments, explanation, or additional text.", lang, plainStatement)
 		fmt.Printf("Sending prompt for Problem ID: %d, Contest ID: %d, Index: %s\n", problem.ID, problem.ContestID, problem.IndexName)
 		fmt.Println("Sending prompt...")
-		response := sendPrompt(*provider, *model, apiKey, prompt, *useCompletions)
+		response := sendPrompt(*provider, *model, apiKey, prompt, *useResponses)
 		if strings.TrimSpace(response) == "" {
 			fmt.Println("No response after retries; skipping build/fix.")
 			// Record the failed attempt and move to the next problem without invoking fixer.
@@ -208,7 +208,7 @@ func main() {
 				fixPrompt := fmt.Sprintf("The following %s code has compilation errors: %s\n\nFix the errors and output only the corrected code with no comments or explanation.", lang, buildErrMsg)
 				fixPrompt += "\n\nOriginal code:\n" + code
 				fmt.Println("Sending fix prompt...")
-				fixResponse := sendPrompt(*provider, *model, apiKey, fixPrompt, *useCompletions)
+				fixResponse := sendPrompt(*provider, *model, apiKey, fixPrompt, *useResponses)
 				code = extractCode(fixResponse, lang)
 				finalResponse = fixResponse // Update final response to the corrected one
 				fmt.Printf("Corrected code:\n%s\n", code)
@@ -647,7 +647,7 @@ func latexToPlain(text string) string {
 	})
 }
 
-func sendPrompt(provider, model, apiKey, prompt string, useCompletions bool) string {
+func sendPrompt(provider, model, apiKey, prompt string, useResponses bool) string {
 	prompt = latexToPlain(prompt)
 	fmt.Printf("Prompt length: %d characters\n", len(prompt))
 
@@ -656,8 +656,8 @@ func sendPrompt(provider, model, apiKey, prompt string, useCompletions bool) str
 
 	lowerProvider := strings.ToLower(provider)
 
-	// Determine if we should use the legacy completions API for this provider
-	useComp := useCompletions && (lowerProvider == "openai" || lowerProvider == "openrouter" || lowerProvider == "deepseek")
+	// Determine if we should use the Responses API for this provider
+	useResp := useResponses && (lowerProvider == "openai" || lowerProvider == "openrouter")
 
 	if lowerProvider == "gemini" {
 		gemReq := map[string]interface{}{
@@ -668,12 +668,9 @@ func sendPrompt(provider, model, apiKey, prompt string, useCompletions bool) str
 			},
 		}
 		body, err = json.Marshal(gemReq)
-	} else if useComp {
-		compReq := map[string]interface{}{
-			"model":  model,
-			"prompt": prompt,
-		}
-		body, err = json.Marshal(compReq)
+	} else if useResp {
+		respReq := map[string]interface{}{"model": model, "input": prompt}
+		body, err = json.Marshal(respReq)
 	} else {
 		messages := []Message{{Role: "user", Content: prompt}}
 		reqBody := Request{Model: model, Messages: messages}
@@ -693,8 +690,8 @@ func sendPrompt(provider, model, apiKey, prompt string, useCompletions bool) str
 
 	switch lowerProvider {
 	case "openai":
-		if useComp {
-			url = "https://api.openai.com/v1/completions"
+		if useResp {
+			url = "https://api.openai.com/v1/responses"
 		} else {
 			url = "https://api.openai.com/v1/chat/completions"
 		}
@@ -709,15 +706,11 @@ func sendPrompt(provider, model, apiKey, prompt string, useCompletions bool) str
 		headers["x-api-key"] = apiKey
 		headers["anthropic-version"] = "2023-06-01"
 	case "deepseek":
-		if useComp {
-			url = "https://api.deepseek.com/v1/completions"
-		} else {
-			url = "https://api.deepseek.com/v1/chat/completions"
-		}
+		url = "https://api.deepseek.com/v1/chat/completions"
 		headers["Authorization"] = "Bearer " + apiKey
 	default:
-		if useComp {
-			url = "https://openrouter.ai/api/v1/completions"
+		if useResp {
+			url = "https://openrouter.ai/api/v1/responses"
 		} else {
 			url = "https://openrouter.ai/api/v1/chat/completions"
 		}
@@ -823,25 +816,29 @@ func sendPrompt(provider, model, apiKey, prompt string, useCompletions bool) str
 			return cResp.Content[0].Text
 		}
 
-		if useComp {
-			var compResp CompletionResponse
-			if err = json.Unmarshal(bodyBytes, &compResp); err != nil {
-				fmt.Printf("Error decoding response (attempt %d): %v\n", attempt, err)
+		if useResp {
+			var respBody struct {
+				OutputText string `json:"output_text"`
+			}
+			if err = json.Unmarshal(bodyBytes, &respBody); err != nil {
+				fmt.Printf("Error decoding response (attempt %d): %v
+", attempt, err)
 				if attempt == maxRetries {
 					return ""
 				}
 				time.Sleep(time.Second * time.Duration(attempt))
 				continue
 			}
-			if len(compResp.Choices) == 0 {
-				fmt.Printf("No response from API (attempt %d)\n", attempt)
+			if respBody.OutputText == "" {
+				fmt.Printf("No response from API (attempt %d)
+", attempt)
 				if attempt == maxRetries {
 					return ""
 				}
 				time.Sleep(time.Second * time.Duration(attempt))
 				continue
 			}
-			return compResp.Choices[0].Text
+			return respBody.OutputText
 		}
 
 		var apiResp Response
