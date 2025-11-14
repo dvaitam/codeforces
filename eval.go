@@ -55,7 +55,7 @@ func main() {
 	provider := flag.String("provider", "openrouter", "Model provider: Gemini, OpenAI, xai, Claude, Deepseek, openrouter")
 	dbDSN := flag.String("db", "user:pass@tcp(127.0.0.1:3306)/dbname", "Database DSN")
 	maxAttempts := flag.Int("max-attempts", 1, "Maximum attempts to fix syntax errors (1-5)")
-    httpTimeout := flag.Duration("timeout", 120*time.Second, "HTTP request timeout")
+	httpTimeout := flag.Duration("timeout", 120*time.Second, "HTTP request timeout")
 	language := flag.String("lang", "go", "Programming language to generate the solution in")
 	flag.Parse()
 	lang := strings.ToLower(*language)
@@ -98,16 +98,16 @@ func main() {
 	}
 
 	db, err := sql.Open("mysql", *dbDSN)
-    if err != nil {
-        panic(err)
-    }
-    // Ensure provider column exists for older deployments
-    if _, err = db.Exec(`ALTER TABLE evaluations ADD COLUMN provider VARCHAR(255)`); err != nil && !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
-        panic(err)
-    }
+	if err != nil {
+		panic(err)
+	}
+	// Ensure provider column exists for older deployments
+	if _, err = db.Exec(`ALTER TABLE evaluations ADD COLUMN provider VARCHAR(255)`); err != nil && !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+		panic(err)
+	}
 	defer db.Close()
 
-    _, err = db.Exec(`
+	_, err = db.Exec(`
                 CREATE TABLE IF NOT EXISTS evaluations (
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         run_id VARCHAR(255),
@@ -162,23 +162,24 @@ func main() {
 		problem, verifierFile := getRandomProblem(db, actualRating)
 		plainStatement := latexToPlain(problem.Statement)
 		prompt := fmt.Sprintf("write a %s solution for %s. Output only the code with no comments, explanation, or additional text.", lang, plainStatement)
-        fmt.Printf("Sending prompt for Problem ID: %d, Contest ID: %d, Index: %s\n", problem.ID, problem.ContestID, problem.IndexName)
-        fmt.Println("Sending prompt...")
-        response := sendPrompt(*provider, *model, apiKey, prompt)
-        if strings.TrimSpace(response) == "" {
-            fmt.Println("No response after retries; skipping build/fix.")
-            // Record the failed attempt and move to the next problem without invoking fixer.
-            _, err = db.Exec(
-                "INSERT INTO evaluations (run_id, provider, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                runID, strings.ToLower(*provider), *model, lang, problem.ID, prompt, response, false, "", "No response from API",
-            )
-            if err != nil {
-                panic(err)
-            }
-            estimatedRating -= 100
-            continue
-        }
-        fmt.Println("Response received.")
+		fmt.Printf("Sending prompt for Problem ID: %d, Contest ID: %d, Index: %s\n", problem.ID, problem.ContestID, problem.IndexName)
+		fmt.Println("Sending prompt...")
+		response := sendPrompt(*provider, *model, apiKey, prompt)
+		if strings.TrimSpace(response) == "" {
+			fmt.Println("No response after retries; skipping build/fix.")
+			// Record the failed attempt and move to the next problem without invoking fixer.
+			_, err = db.Exec(
+
+				"INSERT INTO evaluations (run_id, provider, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				runID, strings.ToLower(*provider), *model, lang, problem.ID, prompt, response, false, "", "No response from API",
+			)
+			if err != nil {
+				panic(err)
+			}
+			estimatedRating -= 100
+			continue
+		}
+		fmt.Println("Response received.")
 
 		code := extractCode(response, lang)
 		fmt.Printf("Solution code:\n%s\n", code)
@@ -212,6 +213,15 @@ func main() {
 			verifySuccess, vOut, vErr := runVerifier(verifierFile, tempBinAbs)
 			verifierStdout = vOut
 			verifierStderr = vErr
+			// Truncate verifier stdout/stderr to fit MySQL TEXT column (64KB limit)
+			const maxTextLen = 64000
+			if len(verifierStdout) > maxTextLen {
+				verifierStdout = verifierStdout[:maxTextLen]
+			}
+			if len(verifierStderr) > maxTextLen {
+				verifierStderr = verifierStderr[:maxTextLen]
+			}
+
 			if verifySuccess {
 				success = true
 			}
@@ -231,13 +241,13 @@ func main() {
 			os.RemoveAll(filepath.Dir(tempBinAbs))
 		}
 
-        _, err = db.Exec(
-            "INSERT INTO evaluations (run_id, provider, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            runID, strings.ToLower(*provider), *model, lang, problem.ID, prompt, finalResponse, success, verifierStdout, verifierStderr,
-        )
-        if err != nil {
-            panic(err)
-        }
+		_, err = db.Exec(
+			"INSERT INTO evaluations (run_id, provider, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			runID, strings.ToLower(*provider), *model, lang, problem.ID, prompt, finalResponse, success, verifierStdout, verifierStderr,
+		)
+		if err != nil {
+			panic(err)
+		}
 
 		if success {
 			estimatedRating += 100
@@ -380,7 +390,7 @@ func runVerifier(verifierFile, tempBinAbs string) (bool, string, string) {
 		return false, "", ""
 	}
 
-    ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
 	// Use a separate process group so we can kill all children on timeout
@@ -414,7 +424,7 @@ func runVerifier(verifierFile, tempBinAbs string) (bool, string, string) {
 		pgid, _ := syscall.Getpgid(cmd.Process.Pid)
 		syscall.Kill(-pgid, syscall.SIGKILL)
 		<-done
-        fmt.Println("Verification timed out after 120 seconds")
+		fmt.Println("Verification timed out after 120 seconds")
 		fmt.Printf("Verifier stdout: %s\n", out.String())
 		fmt.Printf("Verifier stderr: %s\n", stderr.String())
 		return false, out.String(), stderr.String()
