@@ -42,6 +42,8 @@ type Response struct {
 }
 
 type Problem struct {
+var useCompletions bool
+
 	ID        int
 	ContestID int
 	IndexName string
@@ -57,6 +59,7 @@ func main() {
 	maxAttempts := flag.Int("max-attempts", 1, "Maximum attempts to fix syntax errors (1-5)")
 	httpTimeout := flag.Duration("timeout", 120*time.Second, "HTTP request timeout")
 	language := flag.String("lang", "go", "Programming language to generate the solution in")
+	useComp := flag.Bool("use-completions", false, "Use legacy completions API instead of chat/completions when supported")
 	flag.Parse()
 	lang := strings.ToLower(*language)
 	switch lang {
@@ -68,6 +71,7 @@ func main() {
 		lang = "c++"
 	}
 	requestTimeout = *httpTimeout
+	useCompletions = *useComp
 
 	if *maxAttempts < 1 || *maxAttempts > 5 {
 		fmt.Println("max-attempts must be between 1 and 5")
@@ -641,193 +645,93 @@ func latexToPlain(text string) string {
 }
 
 func sendPrompt(provider, model, apiKey, prompt string) string {
-	prompt = latexToPlain(prompt)
-	fmt.Printf("Prompt length: %d characters\n", len(prompt))
+	url, headers := getAPIConfig(provider, model, apiKey)
 
-	var body []byte
-	var err error
+	// If requested and using OpenAI, try the legacy completions endpoint instead of chat/completions.
+	if useCompletions && strings.ToLower(provider) == "openai" {
+		payload := map[string]any{
+			"model":  model,
+			"prompt": prompt,
+		}
 
-	lowerProvider := strings.ToLower(provider)
-	if lowerProvider == "gemini" {
-		gemReq := map[string]interface{}{
-			"contents": []map[string]interface{}{
-				{
-					"parts": []map[string]string{{"text": prompt}},
-				},
-			},
+		body, err := json.Marshal(payload)
+		if err != nil {
+			fmt.Printf("Error marshaling completions request: %v
+", err)
+			return ""
 		}
-		body, err = json.Marshal(gemReq)
-	} else {
-		messages := []Message{{Role: "user", Content: prompt}}
-		reqBody := Request{Model: model, Messages: messages}
-		if lowerProvider == "claude" {
-			reqBody.MaxTokens = 4096
+
+		// Adjust URL to use /v1/completions instead of /v1/chat/completions when applicable.
+		compURL := strings.Replace(url, "/chat/completions", "/completions", 1)
+		if compURL == url {
+			// In case getAPIConfig already returns a completions URL, just use it as-is.
+			compURL = url
 		}
-		body, err = json.Marshal(reqBody)
-	}
-	if err != nil {
-		fmt.Printf("Error marshaling request: %v\n", err)
+
+		for attempt := 0; attempt < 3; attempt++ {
+			respBody, err := doRequest(compURL, headers, body)
+			if err != nil {
+				fmt.Printf("Error during completions request (attempt %d): %v
+", attempt+1, err)
+				time.Sleep(2 * time.Second)
+				continue
+			}
+
+			var data struct {
+				Choices []struct {
+					Text string `json:"text"`
+				} `json:"choices"`
+			}
+			if err := json.Unmarshal(respBody, &data); err != nil {
+				fmt.Printf("Error decoding completions response: %v
+", err)
+				return ""
+			}
+			if len(data.Choices) == 0 {
+				return ""
+			}
+			return data.Choices[0].Text
+		}
 		return ""
 	}
 
-	client := &http.Client{Timeout: requestTimeout}
-	url := ""
-	headers := map[string]string{"Content-Type": "application/json"}
-
-	switch strings.ToLower(provider) {
-	case "openai":
-		url = "https://api.openai.com/v1/chat/completions"
-		headers["Authorization"] = "Bearer " + apiKey
-	case "gemini":
-		url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey
-	case "xai":
-		url = "https://api.x.ai/v1/chat/completions"
-		headers["Authorization"] = "Bearer " + apiKey
-	case "claude":
-		url = "https://api.anthropic.com/v1/messages"
-		headers["x-api-key"] = apiKey
-		headers["anthropic-version"] = "2023-06-01"
-	case "deepseek":
-		url = "https://api.deepseek.com/v1/chat/completions"
-		headers["Authorization"] = "Bearer " + apiKey
-	default:
-		url = "https://openrouter.ai/api/v1/chat/completions"
-		headers["Authorization"] = "Bearer " + apiKey
+	// Default: chat-style messages
+	req := Request{
+		Model: model,
+		Messages: []Message{{
+			Role:    "user",
+			Content: prompt,
+		}},
 	}
 
-	const maxRetries = 3
-	for attempt := 1; attempt <= maxRetries; attempt++ {
-		httpReq, err := http.NewRequest("POST", url, bytes.NewReader(body))
-		if err != nil {
-			fmt.Printf("Error creating request (attempt %d): %v\n", attempt, err)
-			if attempt == maxRetries {
-				return ""
-			}
-			time.Sleep(time.Second * time.Duration(attempt))
-			continue
-		}
-
-		for k, v := range headers {
-			httpReq.Header.Set(k, v)
-		}
-
-		resp, err := client.Do(httpReq)
-		if err != nil {
-			fmt.Printf("Error sending request (attempt %d): %v\n", attempt, err)
-			if attempt == maxRetries {
-				return ""
-			}
-			time.Sleep(time.Second * time.Duration(attempt))
-			continue
-		}
-		bodyBytes, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			fmt.Printf("Error reading response (attempt %d): %v\n", attempt, err)
-			if attempt == maxRetries {
-				return ""
-			}
-			time.Sleep(time.Second * time.Duration(attempt))
-			continue
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			fmt.Printf("API error (attempt %d): %s\n", attempt, string(bodyBytes))
-			if attempt == maxRetries {
-				return ""
-			}
-			time.Sleep(time.Second * time.Duration(attempt))
-			continue
-		}
-
-		if strings.ToLower(provider) == "gemini" {
-			var gResp struct {
-				Candidates []struct {
-					Content struct {
-						Parts []struct {
-							Text string `json:"text"`
-						} `json:"parts"`
-					} `json:"content"`
-				} `json:"candidates"`
-			}
-			if err = json.Unmarshal(bodyBytes, &gResp); err != nil {
-				fmt.Printf("Error decoding response (attempt %d): %v\n", attempt, err)
-				if attempt == maxRetries {
-					return ""
-				}
-				time.Sleep(time.Second * time.Duration(attempt))
-				continue
-			}
-			if len(gResp.Candidates) == 0 || len(gResp.Candidates[0].Content.Parts) == 0 {
-				fmt.Printf("No response from API (attempt %d)\n", attempt)
-				if attempt == maxRetries {
-					return ""
-				}
-				time.Sleep(time.Second * time.Duration(attempt))
-				continue
-			}
-			return gResp.Candidates[0].Content.Parts[0].Text
-		}
-
-		if strings.ToLower(provider) == "claude" {
-			var cResp struct {
-				Content []struct {
-					Text string `json:"text"`
-				} `json:"content"`
-			}
-			if err = json.Unmarshal(bodyBytes, &cResp); err != nil {
-				fmt.Printf("Error decoding response (attempt %d): %v\n", attempt, err)
-				if attempt == maxRetries {
-					return ""
-				}
-				time.Sleep(time.Second * time.Duration(attempt))
-				continue
-			}
-			if len(cResp.Content) == 0 {
-				fmt.Printf("No response from API (attempt %d)\n", attempt)
-				if attempt == maxRetries {
-					return ""
-				}
-				time.Sleep(time.Second * time.Duration(attempt))
-				continue
-			}
-			return cResp.Content[0].Text
-		}
-
-		var apiResp Response
-		if err = json.Unmarshal(bodyBytes, &apiResp); err != nil {
-			fmt.Printf("Error decoding response (attempt %d): %v\n", attempt, err)
-			if attempt == maxRetries {
-				return ""
-			}
-			time.Sleep(time.Second * time.Duration(attempt))
-			continue
-		}
-
-		if len(apiResp.Choices) == 0 {
-			fmt.Printf("No response from API (attempt %d)\n", attempt)
-			if attempt == maxRetries {
-				return ""
-			}
-			time.Sleep(time.Second * time.Duration(attempt))
-			continue
-		}
-
-		return apiResp.Choices[0].Message.Content
+	body, err := json.Marshal(req)
+	if err != nil {
+		fmt.Printf("Error marshaling chat request: %v
+", err)
+		return ""
 	}
+
+	for attempt := 0; attempt < 3; attempt++ {
+		respBody, err := doRequest(url, headers, body)
+		if err != nil {
+			fmt.Printf("Error during chat request (attempt %d): %v
+", attempt+1, err)
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		var resp Response
+		if err := json.Unmarshal(respBody, &resp); err != nil {
+			fmt.Printf("Error decoding chat response: %v
+", err)
+			return ""
+		}
+		if len(resp.Choices) == 0 {
+			return ""
+		}
+		return resp.Choices[0].Message.Content
+	}
+
 	return ""
 }
 
-func extractCode(response, language string) string {
-	re := regexp.MustCompile(fmt.Sprintf(`(?s)\x60\x60\x60%s\s*(.*?)\x60\x60\x60`, regexp.QuoteMeta(language)))
-	matches := re.FindStringSubmatch(response)
-	if len(matches) > 1 {
-		return strings.TrimSpace(matches[1])
-	}
-	re = regexp.MustCompile(`(?s)\x60\x60\x60\s*(.*?)\x60\x60\x60`)
-	matches = re.FindStringSubmatch(response)
-	if len(matches) > 1 {
-		return strings.TrimSpace(matches[1])
-	}
-	return strings.TrimSpace(response)
-}
