@@ -58,7 +58,7 @@ var requestTimeout time.Duration
 
 func main() {
 	model := flag.String("model", "", "The AI model to use (e.g., anthropic/claude-3.5-sonnet)")
-	provider := flag.String("provider", "openrouter", "Model provider: Gemini, OpenAI, xai, Claude, Deepseek, openrouter")
+	provider := flag.String("provider", "openrouter", "Model provider: Gemini, Vertex, OpenAI, xai, Claude, Deepseek, openrouter")
 	dbDSN := flag.String("db", "user:pass@tcp(127.0.0.1:3306)/dbname", "Database DSN")
 	maxAttempts := flag.Int("max-attempts", 1, "Maximum attempts to fix syntax errors (1-5)")
 	httpTimeout := flag.Duration("timeout", 120*time.Second, "HTTP request timeout")
@@ -87,6 +87,8 @@ func main() {
 		apiKeyEnv = "OPENAI_API_KEY"
 	case "gemini":
 		apiKeyEnv = "GEMINI_API_KEY"
+	case "vertex":
+		apiKeyEnv = "VERTEX_API_KEY"
 	case "xai":
 		apiKeyEnv = "XAI_API_KEY"
 	case "claude":
@@ -659,10 +661,11 @@ func sendPrompt(provider, model, apiKey, prompt string, useResponses bool) strin
 	// Determine if we should use the Responses API for this provider
 	useResp := useResponses && (lowerProvider == "openai" || lowerProvider == "openrouter")
 
-	if lowerProvider == "gemini" {
+	if lowerProvider == "gemini" || lowerProvider == "vertex" {
 		gemReq := map[string]interface{}{
 			"contents": []map[string]interface{}{
 				{
+					"role":  "user",
 					"parts": []map[string]string{{"text": prompt}},
 				},
 			},
@@ -698,6 +701,26 @@ func sendPrompt(provider, model, apiKey, prompt string, useResponses bool) strin
 		headers["Authorization"] = "Bearer " + apiKey
 	case "gemini":
 		url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey
+	case "vertex":
+		modelEndpoint := strings.TrimSpace(model)
+		if !strings.HasPrefix(modelEndpoint, "http://") && !strings.HasPrefix(modelEndpoint, "https://") {
+			modelPath := strings.TrimPrefix(modelEndpoint, "/")
+			if !strings.Contains(modelPath, "/") {
+				modelPath = "publishers/google/models/" + modelPath
+			}
+			modelEndpoint = "https://aiplatform.googleapis.com/v1/" + modelPath
+		}
+		if !strings.Contains(modelEndpoint, ":generateContent") {
+			modelEndpoint += ":generateContent"
+		}
+		if !strings.Contains(modelEndpoint, "key=") {
+			if strings.Contains(modelEndpoint, "?") {
+				modelEndpoint += "&key=" + apiKey
+			} else {
+				modelEndpoint += "?key=" + apiKey
+			}
+		}
+		url = modelEndpoint
 	case "xai":
 		url = "https://api.x.ai/v1/chat/completions"
 		headers["Authorization"] = "Bearer " + apiKey
@@ -762,7 +785,7 @@ func sendPrompt(provider, model, apiKey, prompt string, useResponses bool) strin
 			continue
 		}
 
-		if lowerProvider == "gemini" {
+		if lowerProvider == "gemini" || lowerProvider == "vertex" {
 			var gResp struct {
 				Candidates []struct {
 					Content struct {
