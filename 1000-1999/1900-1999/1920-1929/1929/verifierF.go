@@ -56,17 +56,57 @@ func genTree(n int) ([]int, []int) {
 	return left, right
 }
 
+func inorderOrder(left, right []int, root int) []int {
+	order := make([]int, 0, len(left)-1)
+	stack := make([]int, 0)
+	cur := root
+	for cur != -1 || len(stack) > 0 {
+		for cur != -1 {
+			stack = append(stack, cur)
+			cur = left[cur]
+		}
+		cur = stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		order = append(order, cur)
+		cur = right[cur]
+	}
+	return order
+}
+
+func genNonDecreasingSequence(n int, C int64) []int64 {
+	seq := make([]int64, n)
+	cur := rand.Int63n(C) + 1
+	seq[0] = cur
+	for i := 1; i < n; i++ {
+		if cur < C {
+			delta := rand.Int63n(C - cur + 1)
+			cur += delta
+		}
+		seq[i] = cur
+	}
+	return seq
+}
+
 func genTest() []byte {
 	n := rand.Intn(5) + 2
 	C := rand.Int63n(20) + 1
 	left, right := genTree(n)
+	order := inorderOrder(left, right, 1)
+	seq := genNonDecreasingSequence(n, C)
 	vals := make([]int64, n+1)
-	for i := 1; i <= n; i++ {
+	for idx, node := range order {
 		if rand.Intn(2) == 0 {
-			vals[i] = -1
+			vals[node] = -1
 		} else {
-			vals[i] = rand.Int63n(C) + 1
+			vals[node] = seq[idx]
 		}
+	}
+	// ensure at least one valid completion (already guaranteed by seq).
+	// However, to respect requirement that at least one completion exists when all values unknown,
+	// we leave as is since seq defines a valid assignment.
+	if len(order) > 0 && rand.Intn(5) == 0 {
+		// occasionally reveal last value to keep tail constraints interesting
+		vals[order[len(order)-1]] = seq[len(order)-1]
 	}
 	var sb strings.Builder
 	sb.WriteString("1\n")

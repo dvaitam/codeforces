@@ -197,7 +197,20 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, tc.input)
 			os.Exit(1)
 		}
-		if got != tc.expected {
+		expFields := strings.Fields(tc.expected)
+		gotFields := strings.Fields(got)
+		if len(expFields) != len(gotFields) {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, tc.expected, got, tc.input)
+			os.Exit(1)
+		}
+		ok := true
+		for idx := range expFields {
+			if expFields[idx] != gotFields[idx] {
+				ok = false
+				break
+			}
+		}
+		if !ok {
 			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, tc.expected, got, tc.input)
 			os.Exit(1)
 		}

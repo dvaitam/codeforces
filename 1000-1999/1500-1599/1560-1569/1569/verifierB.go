@@ -80,7 +80,20 @@ func main() {
 			fmt.Fprintf(os.Stderr, "test %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if want != got {
+		wantFields := strings.Fields(want)
+		gotFields := strings.Fields(got)
+		if len(wantFields) != len(gotFields) {
+			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input, want, got)
+			os.Exit(1)
+		}
+		ok := true
+		for idx := range wantFields {
+			if wantFields[idx] != gotFields[idx] {
+				ok = false
+				break
+			}
+		}
+		if !ok {
 			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input, want, got)
 			os.Exit(1)
 		}

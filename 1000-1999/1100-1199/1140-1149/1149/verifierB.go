@@ -6,124 +6,66 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
-func possible(S string, A, B, C []byte) bool {
-	n := len(S)
-	la, lb, lc := len(A), len(B), len(C)
-	nxt := make([][26]int, n+2)
-	for c := 0; c < 26; c++ {
-		nxt[n][c] = n
-		nxt[n+1][c] = n
+func buildOracle() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
 	}
-	for i := n - 1; i >= 0; i-- {
-		for c := 0; c < 26; c++ {
-			nxt[i][c] = nxt[i+1][c]
-		}
-		nxt[i][S[i]-'a'] = i + 1
+	path := filepath.Join(dir, "oracle1149B")
+	cmd := exec.Command("go", "build", "-o", path, "1149B.go")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("failed to build oracle: %v\n%s", err, string(out))
 	}
-	dp := make([][][]int, la+1)
-	for i := range dp {
-		dp[i] = make([][]int, lb+1)
-		for j := range dp[i] {
-			dp[i][j] = make([]int, lc+1)
-			for k := range dp[i][j] {
-				dp[i][j][k] = n + 1
-			}
-		}
-	}
-	dp[0][0][0] = 0
-	for i := 0; i <= la; i++ {
-		for j := 0; j <= lb; j++ {
-			for k := 0; k <= lc; k++ {
-				pos := dp[i][j][k]
-				if pos > n {
-					continue
-				}
-				if i < la {
-					p := nxt[pos][A[i]-'a']
-					if p <= n && p < dp[i+1][j][k] {
-						dp[i+1][j][k] = p
-					}
-				}
-				if j < lb {
-					p := nxt[pos][B[j]-'a']
-					if p <= n && p < dp[i][j+1][k] {
-						dp[i][j+1][k] = p
-					}
-				}
-				if k < lc {
-					p := nxt[pos][C[k]-'a']
-					if p <= n && p < dp[i][j][k+1] {
-						dp[i][j][k+1] = p
-					}
-				}
-			}
-		}
-	}
-	return dp[la][lb][lc] <= n
+	return path, nil
 }
 
-func genCaseB(rng *rand.Rand) (string, string) {
-	n := rng.Intn(6) + 1
+func runBinary(path string, input string) (string, error) {
+	cmd := exec.Command(path)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func genCase(rng *rand.Rand) string {
+	n := rng.Intn(5) + 1
 	q := rng.Intn(6) + 1
 	letters := []byte("abc")
 	var sb strings.Builder
-	Sbytes := make([]byte, n)
-	for i := range Sbytes {
-		Sbytes[i] = letters[rng.Intn(len(letters))]
+	s := make([]byte, n)
+	for i := range s {
+		s[i] = letters[rng.Intn(len(letters))]
 	}
 	fmt.Fprintf(&sb, "%d %d\n", n, q)
-	sb.WriteString(string(Sbytes))
+	sb.Write(s)
 	sb.WriteByte('\n')
-	var A, B, C []byte
-	var out strings.Builder
+	lengths := [3]int{}
 	for t := 0; t < q; t++ {
-		if rng.Intn(2) == 0 {
-			idx := rng.Intn(3) + 1
+		if rng.Intn(2) == 0 || (lengths[0] == 0 && lengths[1] == 0 && lengths[2] == 0) {
+			idx := rng.Intn(3)
 			ch := letters[rng.Intn(len(letters))]
-			fmt.Fprintf(&sb, "+ %d %c\n", idx, ch)
-			if idx == 1 {
-				A = append(A, ch)
-			} else if idx == 2 {
-				B = append(B, ch)
-			} else {
-				C = append(C, ch)
-			}
+			fmt.Fprintf(&sb, "+ %d %c\n", idx+1, ch)
+			lengths[idx]++
 		} else {
-			// ensure chosen string not empty
-			idx := rng.Intn(3) + 1
-			for (idx == 1 && len(A) == 0) || (idx == 2 && len(B) == 0) || (idx == 3 && len(C) == 0) {
-				idx = rng.Intn(3) + 1
+			idx := rng.Intn(3)
+			for lengths[idx] == 0 {
+				idx = rng.Intn(3)
 			}
-			fmt.Fprintf(&sb, "- %d\n", idx)
-			if idx == 1 {
-				A = A[:len(A)-1]
-			} else if idx == 2 {
-				B = B[:len(B)-1]
-			} else {
-				C = C[:len(C)-1]
-			}
-		}
-		if possible(string(Sbytes), A, B, C) {
-			out.WriteString("YES\n")
-		} else {
-			out.WriteString("NO\n")
+			fmt.Fprintf(&sb, "- %d\n", idx+1)
+			lengths[idx]--
 		}
 	}
-	return sb.String(), out.String()
-}
-
-func run(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return out.String(), err
+	return sb.String()
 }
 
 func main() {
@@ -132,17 +74,28 @@ func main() {
 		return
 	}
 	bin := os.Args[1]
-	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < 100; i++ {
-		in, expect := genCaseB(rand.New(rand.NewSource(time.Now().UnixNano() + int64(i))))
-		got, err := run(bin, in)
+	oracle, err := buildOracle()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer os.Remove(oracle)
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for tc := 1; tc <= 100; tc++ {
+		input := genCase(rng)
+		expect, err := runBinary(oracle, input)
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\ninput:\n%soutput:\n%s", i+1, err, in, got)
-			return
+			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", tc, err)
+			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
-			fmt.Printf("test %d failed\ninput:\n%sexpected:\n%sbut got:\n%s", i+1, in, expect, got)
-			return
+		got, err := runBinary(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "candidate runtime error on case %d: %v\ninput:\n%s", tc, err, input)
+			os.Exit(1)
+		}
+		if got != expect {
+			fmt.Fprintf(os.Stderr, "case %d failed\ninput:\n%s\nexpected:\n%s\n\ngot:\n%s\n", tc, input, expect, got)
+			os.Exit(1)
 		}
 	}
 	fmt.Println("All tests passed")

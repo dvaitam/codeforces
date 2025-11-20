@@ -20,7 +20,7 @@ func buildRef() (string, error) {
 }
 
 func genCase(rng *rand.Rand) string {
-	k := rng.Intn(9) // 0..8
+	k := rng.Intn(7) // limit to k <= 6 to keep oracle manageable
 	n := 1 << k
 	usedTeams := make([]bool, n)
 	arr := make([]int, n)

@@ -96,14 +96,14 @@ func validate(testCaseInput string, userOutput string) error {
 	for i, p := range sortedPoints {
 		coordMap[p] = i
 	}
-	
+
 	numPoints := len(coordMap)
-    if numPoints == 0 && n == 0 { // Empty case
-        if k == 0 {
-            return nil
-        }
-        return fmt.Errorf("expected 0 moves for 0 wires, but got %d", k)
-    }
+	if numPoints == 0 && n == 0 { // Empty case
+		if k == 0 {
+			return nil
+		}
+		return fmt.Errorf("expected 0 moves for 0 wires, but got %d", k)
+	}
 	if numPoints == 0 && n > 0 {
 		return fmt.Errorf("no points found for %d wires", n)
 	}
@@ -135,7 +135,7 @@ func validate(testCaseInput string, userOutput string) error {
 	for _, w := range initialWires {
 		finalDSU.Union(coordMap[w.u], coordMap[w.v])
 	}
-	
+
 	for _, m := range moves {
 		wire, ok := currentWires[m.wID]
 		if !ok {
@@ -156,7 +156,7 @@ func validate(testCaseInput string, userOutput string) error {
 		}
 
 		currentWires[m.wID] = struct{ u, v int }{otherP, m.newP}
-		
+
 		finalDSU.Union(coordMap[otherP], coordMap[m.newP])
 	}
 
@@ -182,23 +182,23 @@ func main() {
 	}
 
 	scanner := bufio.NewScanner(bytes.NewReader(testCasesData))
-	
+
 	scanner.Scan()
 	numTestCases, _ := strconv.Atoi(scanner.Text())
 
 	fmt.Printf("Running %d test cases...\n", numTestCases)
 
 	for i := 0; i < numTestCases; i++ {
-		
+
 		var testCaseBuffer bytes.Buffer
-		
+
 		scanner.Scan()
 		nStr := scanner.Text()
 		if nStr == "" { // Handle potential blank lines between test cases
 			i--
 			continue
 		}
-		
+
 		n, _ := strconv.Atoi(nStr)
 		testCaseBuffer.WriteString(nStr + "\n")
 
@@ -206,10 +206,15 @@ func main() {
 			scanner.Scan()
 			testCaseBuffer.WriteString(scanner.Text() + "\n")
 		}
-		
+
 		testCaseInput := testCaseBuffer.String()
 
-		cmd := exec.Command(bin)
+		var cmd *exec.Cmd
+		if strings.HasSuffix(bin, ".go") {
+			cmd = exec.Command("go", "run", bin)
+		} else {
+			cmd = exec.Command(bin)
+		}
 		cmd.Stdin = strings.NewReader(testCaseInput)
 		userOutput, err := cmd.CombinedOutput()
 		if err != nil {
@@ -228,8 +233,7 @@ Input ---
 `, testCaseInput, userOutput)
 			os.Exit(1)
 		}
-		fmt.Printf("[PASS] Test case %d\n", i+1)
 	}
 
-	fmt.Println("\nAll tests passed")
+	fmt.Println("All tests passed")
 }

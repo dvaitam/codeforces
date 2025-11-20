@@ -4,18 +4,65 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 )
 
-// getSum computes sum of sequence: starting with m = n, decrement by k each time and k *= i
-func getSum(n, i, k int64) int64 {
-	var sum int64
-	m := n
-	for m > 0 {
-		sum += m
-		m -= k
-		k *= i
+var (
+	n int
+	s int64
+	a []int
+	b []int
+)
+
+func chk(x int) bool {
+	for i := 0; i <= n+1; i++ {
+		b[i] = 0
 	}
-	return sum
+	a[1] = 1
+	i := 2
+	depth := 1
+	t := int64(1)
+	rem := s - 1
+	for i <= n {
+		t *= int64(x)
+		if t > int64(n) {
+			t = int64(n)
+		}
+		depth++
+		b[depth] = 0
+		limit := int(t)
+		for j := 0; j < limit && i <= n; j++ {
+			a[i] = depth
+			rem -= int64(depth)
+			b[depth]++
+			i++
+			if rem < 0 {
+				return false
+			}
+		}
+	}
+	if rem < 0 {
+		return false
+	}
+	j := n
+	for rem > 0 {
+		depth++
+		for j > 1 && b[a[j]] == 1 {
+			j--
+		}
+		if j <= 1 {
+			return false
+		}
+		inc := depth - a[j]
+		if int64(inc) > rem {
+			inc = int(rem)
+		}
+		rem -= int64(inc)
+		b[a[j]]--
+		a[j] += inc
+		j--
+	}
+	return rem == 0
 }
 
 func main() {
@@ -23,72 +70,59 @@ func main() {
 	writer := bufio.NewWriter(os.Stdout)
 	defer writer.Flush()
 
-	var n, s int64
 	if _, err := fmt.Fscan(reader, &n, &s); err != nil {
 		return
 	}
-	// try each possible block size i
-	for i := int64(1); i < n; i++ {
-		total := getSum(n, i, 1)
-		if i == 1 && total < s {
-			fmt.Fprintln(writer, "No")
-			return
-		}
-		if total > s {
-			continue
-		}
-		// found feasible i
-		fmt.Fprintln(writer, "Yes")
-		// case i == 1: identity permutation
-		if i == 1 {
-			for j := int64(1); j <= n; j++ {
-				if j > 1 {
-					writer.WriteByte(' ')
-				}
-				fmt.Fprint(writer, j)
-			}
-			fmt.Fprintln(writer)
-			return
-		}
-		// general case
-		k := i
-		m := n - 1
-		// we assume the largest element n is placed as first block
-		s -= n
-		start := int64(1)
-		finish := int64(1)
-		// build remaining elements
-		for m > 0 {
-			// find smallest e in [1..k] such that getSum(m, i, e) <= s
-			l, r := int64(1), k
-			for l < r {
-				e := (l + r) / 2
-				if getSum(m, i, e) > s {
-					l = e + 1
-				} else {
-					r = e
-				}
-			}
-			k = l
-			// print k elements: blocks of size i with increasing labels starting from start
-			for j := int64(0); j < k; j++ {
-				if start+(j/i) > n {
-					// safety check
-					fmt.Fprint(writer, n)
-				} else {
-					fmt.Fprint(writer, start+(j/i))
-				}
-				writer.WriteByte(' ')
-			}
-			// update for next iteration
-			start = finish + 1
-			finish += k
-			s -= m
-			m -= k
-			k *= i
-		}
-		fmt.Fprintln(writer)
+	minSum := int64(2*n - 1)
+	maxSum := int64(n) * int64(n+1) / 2
+	if s < minSum || s > maxSum {
+		fmt.Fprintln(writer, "No")
 		return
 	}
-	fmt.Fprintln(writer, "No")
+
+	a = make([]int, n+2)
+	b = make([]int, n+2)
+
+	l, r := 1, n
+	ans := n
+	for l <= r {
+		mid := (l + r) / 2
+		if chk(mid) {
+			ans = mid
+			r = mid - 1
+		} else {
+			l = mid + 1
+		}
+	}
+	chk(ans)
+
+	a[1] = 1
+	depths := make([]int, n-1)
+	for i := 2; i <= n; i++ {
+		depths[i-2] = a[i]
+	}
+	sort.Ints(depths)
+	for i := 2; i <= n; i++ {
+		a[i] = depths[i-2]
+	}
+
+	children := make([]int, n+2)
+	parents := make([]int, n+1)
+	ptr := 1
+	for i := 2; i <= n; i++ {
+		for a[ptr] != a[i]-1 || children[ptr] == ans {
+			ptr++
+		}
+		parents[i] = ptr
+		children[ptr]++
+	}
+
+	fmt.Fprintln(writer, "Yes")
+	for i := 2; i <= n; i++ {
+		if i > 2 {
+			fmt.Fprint(writer, " ")
+		}
+		fmt.Fprint(writer, parents[i])
+	}
+	fmt.Fprintln(writer)
 }

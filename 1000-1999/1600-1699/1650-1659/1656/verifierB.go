@@ -85,7 +85,20 @@ func main() {
 			fmt.Fprintf(os.Stderr, "candidate runtime error on test %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
+		expWords := strings.Fields(strings.TrimSpace(expect))
+		gotWords := strings.Fields(strings.TrimSpace(got))
+		if len(expWords) != len(gotWords) {
+			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input, expect, got)
+			os.Exit(1)
+		}
+		match := true
+		for idx := range expWords {
+			if expWords[idx] != gotWords[idx] {
+				match = false
+				break
+			}
+		}
+		if !match {
 			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input, expect, got)
 			os.Exit(1)
 		}

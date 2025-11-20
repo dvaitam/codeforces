@@ -2,105 +2,230 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 )
 
-const maxn = 1000009
+const MAXN = 1000005
+const MAXQ = 1000005
 
 var (
-	a       = make([]int, maxn)
-	res     = make([]int, maxn)
-	cnt     = make([]int, maxn)
-	f       = make([]int, maxn)
-	p       = make([]int, maxn)
-	q       = make([]int, maxn)
-	g       = make([][]int, maxn)
-	queries = make([][]qry, maxn)
+	gHead, gNext, gTo  [MAXN]int
+	ecnt               int
+	qHead              [MAXN]int
+	qNext, qL, qK, qID [MAXQ]int
+	qCnt               int
+	val                [MAXN]int
+	cnt, pos, bit      [MAXN]int
+	lists              [MAXN][]int
+	ans                [MAXQ]int
+	reader             *bufio.Reader
+	writer             *bufio.Writer
+	n, q               int
 )
 
-type qry struct {
-	i, l, k int
+func readInt() int {
+	res := 0
+	c, err := reader.ReadByte()
+	for err == nil && c <= ' ' {
+		c, err = reader.ReadByte()
+	}
+	if err != nil {
+		return 0
+	}
+	for c >= '0' && c <= '9' {
+		res = res*10 + int(c-'0')
+		c, err = reader.ReadByte()
+	}
+	return res
 }
 
-func swapPos(pos, newpos int) {
-	x := p[pos]
-	y := p[newpos]
-	p[pos], p[newpos] = y, x
-	q[y], q[x] = pos, newpos
+func writeInt(x int) {
+	if x < 0 {
+		writer.WriteByte('-')
+		writer.WriteByte('1')
+		return
+	}
+	if x == 0 {
+		writer.WriteByte('0')
+		return
+	}
+	var b [20]byte
+	p := 0
+	for x > 0 {
+		b[p] = byte(x%10 + '0')
+		x /= 10
+		p++
+	}
+	for p > 0 {
+		p--
+		writer.WriteByte(b[p])
+	}
 }
 
-func insert(x int) {
+func addEdge(u, v int) {
+	ecnt++
+	gTo[ecnt] = v
+	gNext[ecnt] = gHead[u]
+	gHead[u] = ecnt
+}
+
+func addQuery(u, l, k, id int) {
+	qCnt++
+	qL[qCnt] = l
+	qK[qCnt] = k
+	qID[qCnt] = id
+	qNext[qCnt] = qHead[u]
+	qHead[u] = qCnt
+}
+
+func update(idx, v int) {
+	for ; idx <= n; idx += idx & -idx {
+		bit[idx] += v
+	}
+}
+
+func queryBIT(idx int) int {
+	res := 0
+	for ; idx > 0; idx -= idx & -idx {
+		res += bit[idx]
+	}
+	return res
+}
+
+func addVal(u int) {
+	x := val[u]
+	c := cnt[x]
+	if c > 0 {
+		update(c, -1)
+		idx := pos[x]
+		last := lists[c][len(lists[c])-1]
+		lists[c][idx] = last
+		pos[last] = idx
+		lists[c] = lists[c][:len(lists[c])-1]
+	}
 	cnt[x]++
-	f[cnt[x]]++
-	newpos := f[cnt[x]]
-	pos := q[x]
-	swapPos(pos, newpos)
+	c = cnt[x]
+	update(c, 1)
+	lists[c] = append(lists[c], x)
+	pos[x] = len(lists[c]) - 1
 }
 
-func erase(x int) {
-	pos := q[x]
-	newpos := f[cnt[x]]
-	f[cnt[x]]--
+func removeVal(u int) {
+	x := val[u]
+	c := cnt[x]
+	update(c, -1)
+	idx := pos[x]
+	last := lists[c][len(lists[c])-1]
+	lists[c][idx] = last
+	pos[last] = idx
+	lists[c] = lists[c][:len(lists[c])-1]
+
 	cnt[x]--
-	swapPos(pos, newpos)
+	c = cnt[x]
+	if c > 0 {
+		update(c, 1)
+		lists[c] = append(lists[c], x)
+		pos[x] = len(lists[c]) - 1
+	}
 }
 
-func query(l, k int) int {
-	if f[l] < k {
+func solveQuery(l, k int) int {
+	total := queryBIT(n) - queryBIT(l-1)
+	if total < k {
 		return -1
 	}
-	return p[f[l]-k+1]
+	target := queryBIT(l-1) + k
+	idx := 0
+	current := 0
+	for i := 19; i >= 0; i-- {
+		nextIdx := idx + (1 << i)
+		if nextIdx <= n && current+bit[nextIdx] < target {
+			idx = nextIdx
+			current += bit[nextIdx]
+		}
+	}
+	freq := idx + 1
+	if len(lists[freq]) == 0 {
+		return -1
+	}
+	return lists[freq][0]
 }
 
-func solution(reader *bufio.Reader, writer *bufio.Writer) {
-	var n, que int
-	fmt.Fscan(reader, &n, &que)
-	for i := 1; i <= n; i++ {
-		fmt.Fscan(reader, &a[i])
-		g[i] = g[i][:0]
-		queries[i] = queries[i][:0]
-	}
-	for v := 2; v <= n; v++ {
-		var u int
-		fmt.Fscan(reader, &u)
-		g[u] = append(g[u], v)
-	}
-	for i := 0; i <= n; i++ {
-		p[i] = i
-		q[i] = i
-	}
-	for i := 0; i < que; i++ {
-		var u, l, k int
-		fmt.Fscan(reader, &u, &l, &k)
-		queries[u] = append(queries[u], qry{i, l, k})
-	}
-	var dfs func(u int)
-	dfs = func(u int) {
-		insert(a[u])
-		for _, qq := range queries[u] {
-			res[qq.i] = query(qq.l, qq.k)
-		}
-		for _, v := range g[u] {
-			dfs(v)
-		}
-		erase(a[u])
-	}
-	dfs(1)
-	for i := 0; i < que; i++ {
-		fmt.Fprint(writer, res[i], " ")
-	}
-	fmt.Fprintln(writer)
+type StackFrame struct {
+	u, e int
 }
 
 func main() {
-	reader := bufio.NewReader(os.Stdin)
-	writer := bufio.NewWriter(os.Stdout)
+	reader = bufio.NewReaderSize(os.Stdin, 1<<20)
+	writer = bufio.NewWriterSize(os.Stdout, 1<<20)
 	defer writer.Flush()
-	var tc int
-	fmt.Fscan(reader, &tc)
-	for tc > 0 {
-		solution(reader, writer)
-		tc--
+
+	t := readInt()
+	for i := 0; i < t; i++ {
+		n = readInt()
+		q = readInt()
+
+		ecnt = 0
+		qCnt = 0
+		for j := 0; j <= n; j++ {
+			gHead[j] = 0
+			qHead[j] = 0
+			cnt[j] = 0
+			bit[j] = 0
+			lists[j] = lists[j][:0]
+		}
+
+		for j := 1; j <= n; j++ {
+			val[j] = readInt()
+		}
+
+		for j := 2; j <= n; j++ {
+			p := readInt()
+			addEdge(p, j)
+		}
+
+		for j := 0; j < q; j++ {
+			v := readInt()
+			l := readInt()
+			k := readInt()
+			addQuery(v, l, k, j)
+		}
+
+		stk := make([]StackFrame, 0, n)
+		stk = append(stk, StackFrame{1, gHead[1]})
+		addVal(1)
+
+		idx := qHead[1]
+		for idx != 0 {
+			ans[qID[idx]] = solveQuery(qL[idx], qK[idx])
+			idx = qNext[idx]
+		}
+
+		for len(stk) > 0 {
+			top := &stk[len(stk)-1]
+			if top.e != 0 {
+				v := gTo[top.e]
+				top.e = gNext[top.e]
+
+				addVal(v)
+				qIdx := qHead[v]
+				for qIdx != 0 {
+					ans[qID[qIdx]] = solveQuery(qL[qIdx], qK[qIdx])
+					qIdx = qNext[qIdx]
+				}
+				stk = append(stk, StackFrame{v, gHead[v]})
+			} else {
+				removeVal(top.u)
+				stk = stk[:len(stk)-1]
+			}
+		}
+
+		for j := 0; j < q; j++ {
+			if j > 0 {
+				writer.WriteByte(' ')
+			}
+			writeInt(ans[j])
+		}
+		writer.WriteByte('\n')
 	}
 }

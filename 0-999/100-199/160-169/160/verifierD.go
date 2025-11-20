@@ -26,7 +26,8 @@ func main() {
 	var tests []string
 	for t := 0; t < 100; t++ {
 		n := rand.Intn(5) + 2
-		m := rand.Intn(n*(n-1)/2-n+1) + n - 1
+		maxEdges := n * (n - 1) / 2
+		m := rand.Intn(maxEdges-(n-1)+1) + (n - 1)
 		// generate connected graph
 		edges := make([]Edge, 0, m)
 		used := make(map[[2]int]bool)

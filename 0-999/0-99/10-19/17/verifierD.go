@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 func decStringMinusOne(s string) string {
@@ -84,39 +85,57 @@ func main() {
 		os.Exit(1)
 	}
 	t, _ := strconv.Atoi(scan.Text())
-	expected := make([]string, t)
-	for i := 0; i < t; i++ {
-		scan.Scan()
-		bStr := scan.Text()
-		scan.Scan()
-		nStr := scan.Text()
-		scan.Scan()
-		cVal, _ := strconv.ParseInt(scan.Text(), 10, 64)
-		expected[i] = fmt.Sprintf("%d", solveCaseD(bStr, nStr, cVal))
+	type testCase struct {
+		bStr string
+		nStr string
+		cStr string
+		exp  string
 	}
-	cmd := exec.Command(os.Args[1])
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println("execution failed:", err)
-		os.Exit(1)
-	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
+	tests := make([]testCase, t)
 	for i := 0; i < t; i++ {
+		if !scan.Scan() {
+			fmt.Printf("bad test file at case %d\n", i+1)
+			os.Exit(1)
+		}
+		tests[i].bStr = scan.Text()
+		if !scan.Scan() {
+			fmt.Printf("bad test file at case %d\n", i+1)
+			os.Exit(1)
+		}
+		tests[i].nStr = scan.Text()
+		if !scan.Scan() {
+			fmt.Printf("bad test file at case %d\n", i+1)
+			os.Exit(1)
+		}
+		tests[i].cStr = scan.Text()
+		cVal, _ := strconv.ParseInt(tests[i].cStr, 10, 64)
+		tests[i].exp = fmt.Sprintf("%d", solveCaseD(tests[i].bStr, tests[i].nStr, cVal))
+	}
+
+	for i, tc := range tests {
+		input := fmt.Sprintf("%s %s %s\n", tc.bStr, tc.nStr, tc.cStr)
+		cmd := exec.Command(os.Args[1])
+		cmd.Stdin = strings.NewReader(input)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf("execution failed on test %d: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		outScan := bufio.NewScanner(bytes.NewReader(out))
+		outScan.Split(bufio.ScanWords)
 		if !outScan.Scan() {
 			fmt.Printf("missing output for test %d\n", i+1)
 			os.Exit(1)
 		}
 		got := outScan.Text()
-		if got != expected[i] {
-			fmt.Printf("test %d failed: expected %s got %s\n", i+1, expected[i], got)
+		if got != tc.exp {
+			fmt.Printf("test %d failed: expected %s got %s\n", i+1, tc.exp, got)
 			os.Exit(1)
 		}
-	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
-		os.Exit(1)
+		if outScan.Scan() {
+			fmt.Printf("extra output detected on test %d\n", i+1)
+			os.Exit(1)
+		}
 	}
 	fmt.Println("All tests passed!")
 }

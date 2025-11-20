@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -106,7 +107,109 @@ func genCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
-func runCase(bin string, input, expected string) error {
+func parseInputCase(input string) (int, []int, error) {
+	reader := strings.NewReader(input)
+	var n int
+	if _, err := fmt.Fscan(reader, &n); err != nil {
+		return 0, nil, fmt.Errorf("failed to read n: %v", err)
+	}
+	diam := make([]int, n)
+	for i := 0; i < n; i++ {
+		if _, err := fmt.Fscan(reader, &diam[i]); err != nil {
+			return 0, nil, fmt.Errorf("failed to read diameter %d: %v", i+1, err)
+		}
+	}
+	return n, diam, nil
+}
+
+func simulateMoves(n int, diam []int, moves []pair) error {
+	pegs := make([][]int, 3)
+	for i := 0; i < n; i++ {
+		pegs[0] = append(pegs[0], i)
+	}
+	for idx, mv := range moves {
+		s, t := mv.x, mv.y
+		if s < 1 || s > 3 || t < 1 || t > 3 {
+			return fmt.Errorf("move %d: invalid pillar %d %d", idx+1, s, t)
+		}
+		if s == t {
+			return fmt.Errorf("move %d: source equals destination", idx+1)
+		}
+		src := s - 1
+		dst := t - 1
+		if len(pegs[src]) == 0 {
+			return fmt.Errorf("move %d: source pillar empty", idx+1)
+		}
+		disk := pegs[src][len(pegs[src])-1]
+		pegs[src] = pegs[src][:len(pegs[src])-1]
+		if len(pegs[dst]) > 0 {
+			top := pegs[dst][len(pegs[dst])-1]
+			if diam[top] < diam[disk] {
+				return fmt.Errorf("move %d: cannot place larger disk on smaller", idx+1)
+			}
+		}
+		pegs[dst] = append(pegs[dst], disk)
+	}
+	if len(pegs[0]) != 0 || len(pegs[1]) != 0 || len(pegs[2]) != n {
+		return fmt.Errorf("not all disks moved to third pillar")
+	}
+	for i, disk := range pegs[2] {
+		if disk != i {
+			return fmt.Errorf("final order incorrect")
+		}
+	}
+	return nil
+}
+
+func validateOutput(output, input string, expectedMoves int) error {
+	output = strings.TrimSpace(output)
+	if output == "" {
+		return fmt.Errorf("empty output")
+	}
+	fields := strings.Fields(output)
+	wantTokens := 1 + 2*expectedMoves
+	if len(fields) != wantTokens {
+		return fmt.Errorf("expected %d move pairs (%d tokens) but got %d tokens", expectedMoves, wantTokens, len(fields))
+	}
+	movesCount, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return fmt.Errorf("invalid move count: %v", err)
+	}
+	if movesCount != expectedMoves {
+		return fmt.Errorf("expected %d moves but got %d", expectedMoves, movesCount)
+	}
+	moves := make([]pair, movesCount)
+	idx := 1
+	for i := 0; i < movesCount; i++ {
+		s, err := strconv.Atoi(fields[idx])
+		if err != nil {
+			return fmt.Errorf("invalid source in move %d: %v", i+1, err)
+		}
+		idx++
+		t, err := strconv.Atoi(fields[idx])
+		if err != nil {
+			return fmt.Errorf("invalid destination in move %d: %v", i+1, err)
+		}
+		idx++
+		moves[i] = pair{s, t}
+	}
+	n, diam, err := parseInputCase(input)
+	if err != nil {
+		return err
+	}
+	return simulateMoves(n, diam, moves)
+}
+
+func runCase(bin string, input string) error {
+	expected := solve(strings.TrimSpace(input))
+	parts := strings.Fields(expected)
+	if len(parts) == 0 {
+		return fmt.Errorf("reference produced empty output")
+	}
+	expectedMoves, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return fmt.Errorf("invalid reference move count: %v", err)
+	}
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
@@ -115,11 +218,7 @@ func runCase(bin string, input, expected string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	got := strings.TrimSpace(out.String())
-	if got != expected {
-		return fmt.Errorf("expected\n%s\ngot\n%s", expected, got)
-	}
-	return nil
+	return validateOutput(out.String(), input, expectedMoves)
 }
 
 func main() {
@@ -131,8 +230,7 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input := genCase(rng)
-		expected := solve(strings.TrimSpace(input))
-		if err := runCase(bin, input, expected); err != nil {
+		if err := runCase(bin, input); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}

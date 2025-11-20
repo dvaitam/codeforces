@@ -6,7 +6,9 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Test struct {
@@ -15,9 +17,6 @@ type Test struct {
 
 func runExe(path, input string) (string, error) {
 	cmd := exec.Command(path)
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -27,26 +26,33 @@ func runExe(path, input string) (string, error) {
 }
 
 func buildRef() (string, error) {
-	ref := "./refD.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "904D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build reference failed: %v: %s", err, string(out))
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
 	}
-	return ref, nil
+	path := filepath.Join(dir, "oracle904D")
+	cmd := exec.Command("go", "build", "-o", path, "904D.go")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
+	}
+	return path, nil
 }
 
 func genTests() []Test {
-	rand.Seed(4)
-	tests := make([]Test, 0, 100)
-	for i := 0; i < 100; i++ {
-		n := rand.Intn(4) + 1
-		m := rand.Intn(4) + 1
-		if n*m > 20 {
-			n = 1 + rand.Intn(4)
-			m = 20 / n
-			if m == 0 {
-				m = 1
-			}
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	tests := make([]Test, 0, 200)
+	// small cases
+	for n := 1; n <= 20; n++ {
+		for m := 1; m <= 20; m++ {
+			tests = append(tests, Test{fmt.Sprintf("%d %d\n", n, m)})
+		}
+	}
+	// random larger cases
+	for len(tests) < 200 {
+		n := rng.Intn(100) + 1
+		m := rng.Intn(100) + 1
+		if n*m > 100000 {
+			continue
 		}
 		tests = append(tests, Test{fmt.Sprintf("%d %d\n", n, m)})
 	}
