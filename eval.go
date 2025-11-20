@@ -19,7 +19,7 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 )
 
 type Message struct {
@@ -59,7 +59,7 @@ var requestTimeout time.Duration
 func main() {
 	model := flag.String("model", "", "The AI model to use (e.g., anthropic/claude-3.5-sonnet)")
 	provider := flag.String("provider", "openrouter", "Model provider: Gemini, Vertex, OpenAI, xai, Claude, Deepseek, openrouter")
-	dbDSN := flag.String("db", "user:pass@tcp(127.0.0.1:3306)/dbname", "Database DSN")
+	dbDSN := flag.String("db", "postgres://postgres:password@localhost:5432/codeforces?sslmode=disable", "Postgres DSN")
 	maxAttempts := flag.Int("max-attempts", 1, "Maximum attempts to fix syntax errors (1-5)")
 	httpTimeout := flag.Duration("timeout", 120*time.Second, "HTTP request timeout")
 	language := flag.String("lang", "go", "Programming language to generate the solution in")
@@ -106,52 +106,58 @@ func main() {
 		os.Exit(1)
 	}
 
-	db, err := sql.Open("mysql", *dbDSN)
+	db, err := sql.Open("postgres", *dbDSN)
 	if err != nil {
 		panic(err)
 	}
 	// Ensure provider column exists for older deployments
-	if _, err = db.Exec(`ALTER TABLE evaluations ADD COLUMN provider VARCHAR(255)`); err != nil && !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+	if _, err = db.Exec(`ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS provider VARCHAR(255)`); err != nil {
 		panic(err)
 	}
 	defer db.Close()
 
 	_, err = db.Exec(`
-                CREATE TABLE IF NOT EXISTS evaluations (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        run_id VARCHAR(255),
-                        provider VARCHAR(255),
-                        model VARCHAR(255),
-                        lang VARCHAR(255),
-                        problem_id INT,
-                        prompt TEXT,
-                        response TEXT,
-                        success BOOL,
-                        stdout TEXT,
-                        stderr TEXT,
-                        reviewied TINYINT DEFAULT 0,
-                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-       `)
+	                CREATE TABLE IF NOT EXISTS evaluations (
+	                        id SERIAL PRIMARY KEY,
+	                        run_id VARCHAR(255),
+	                        provider VARCHAR(255),
+	                        model VARCHAR(255),
+	                        lang VARCHAR(255),
+	                        problem_id INT,
+	                        prompt TEXT,
+	                        response TEXT,
+	                        success BOOLEAN,
+	                        stdout TEXT,
+	                        stderr TEXT,
+	                        reviewied SMALLINT DEFAULT 0,
+	                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	                )
+	       `)
 	if err != nil {
 		panic(err)
 	}
 
 	_, err = db.Exec(`
-                CREATE TABLE IF NOT EXISTS leaderboard (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        run_id VARCHAR(255),
-                        model VARCHAR(255),
-                        lang VARCHAR(255),
-                        rating INT,
-                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-        `)
+	                CREATE TABLE IF NOT EXISTS leaderboard (
+	                        id SERIAL PRIMARY KEY,
+	                        run_id VARCHAR(255),
+	                        model VARCHAR(255),
+	                        lang VARCHAR(255),
+	                        rating INT,
+	                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	                )
+	        `)
 	if err != nil {
 		panic(err)
 	}
 	// Ensure lang column exists for older deployments
-	if _, err = db.Exec(`ALTER TABLE leaderboard ADD COLUMN lang VARCHAR(255)`); err != nil && !strings.Contains(err.Error(), "Duplicate column") {
+	if _, err = db.Exec(`ALTER TABLE leaderboard ADD COLUMN IF NOT EXISTS lang VARCHAR(255)`); err != nil {
+		panic(err)
+	}
+	if err = ensureSerialSequence(db, "evaluations", "id"); err != nil {
+		panic(err)
+	}
+	if err = ensureSerialSequence(db, "leaderboard", "id"); err != nil {
 		panic(err)
 	}
 
@@ -178,8 +184,7 @@ func main() {
 			fmt.Println("No response after retries; skipping build/fix.")
 			// Record the failed attempt and move to the next problem without invoking fixer.
 			_, err = db.Exec(
-
-				"INSERT INTO evaluations (run_id, provider, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				"INSERT INTO evaluations (run_id, provider, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
 				runID, strings.ToLower(*provider), *model, lang, problem.ID, prompt, response, false, "", "No response from API",
 			)
 			if err != nil {
@@ -251,7 +256,7 @@ func main() {
 		}
 
 		_, err = db.Exec(
-			"INSERT INTO evaluations (run_id, provider, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			"INSERT INTO evaluations (run_id, provider, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
 			runID, strings.ToLower(*provider), *model, lang, problem.ID, prompt, finalResponse, success, verifierStdout, verifierStderr,
 		)
 		if err != nil {
@@ -267,7 +272,7 @@ func main() {
 
 	// Insert into leaderboard
 	_, err = db.Exec(
-		"INSERT INTO leaderboard (run_id, model, lang, rating) VALUES (?, ?, ?, ?)",
+		"INSERT INTO leaderboard (run_id, model, lang, rating) VALUES ($1, $2, $3, $4)",
 		runID, *model, lang, estimatedRating,
 	)
 	if err != nil {
@@ -474,7 +479,7 @@ func getAvailableRatings(db *sql.DB) []int {
 }
 
 func hasValidProblem(db *sql.DB, rating int) bool {
-	rows, err := db.Query("SELECT contest_id, index_name FROM problems WHERE rating = ? AND statement IS NOT NULL", rating)
+	rows, err := db.Query("SELECT contest_id, index_name FROM problems WHERE rating = $1 AND statement IS NOT NULL", rating)
 	if err != nil {
 		panic(err)
 	}
@@ -535,7 +540,7 @@ func clampToNearest(target int, available []int) int {
 }
 
 func getRandomProblem(db *sql.DB, rating int) (Problem, string) {
-	rows, err := db.Query("SELECT id, contest_id, index_name, statement FROM problems WHERE rating = ? AND statement IS NOT NULL", rating)
+	rows, err := db.Query("SELECT id, contest_id, index_name, statement FROM problems WHERE rating = $1 AND statement IS NOT NULL", rating)
 	if err != nil {
 		panic(err)
 	}
@@ -647,6 +652,24 @@ func latexToPlain(text string) string {
 		sub = strings.ReplaceAll(sub, " ", "")
 		return sub
 	})
+}
+
+func ensureSerialSequence(db *sql.DB, table, column string) error {
+	sequence := fmt.Sprintf("%s_%s_seq", table, column)
+	createSeq := fmt.Sprintf(`CREATE SEQUENCE IF NOT EXISTS "%s"`, sequence)
+	if _, err := db.Exec(createSeq); err != nil {
+		return err
+	}
+	alter := fmt.Sprintf(`ALTER TABLE "%s" ALTER COLUMN "%s" SET DEFAULT nextval('"%s"'::regclass)`, table, column, sequence)
+	if _, err := db.Exec(alter); err != nil {
+		return err
+	}
+	setval := fmt.Sprintf(`SELECT setval('"%s"', COALESCE((SELECT MAX("%s") + 1 FROM "%s"), 1), false)`, sequence, column, table)
+	var dummy int64
+	if err := db.QueryRow(setval).Scan(&dummy); err != nil {
+		return err
+	}
+	return nil
 }
 
 func sendPrompt(provider, model, apiKey, prompt string, useResponses bool) string {

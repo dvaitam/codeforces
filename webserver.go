@@ -20,7 +20,7 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 )
 
 type contestInfo struct {
@@ -829,73 +829,73 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-    lang := r.FormValue("lang")
-    // Normalize language variants from UI or retry helper
-    l := strings.ToLower(strings.TrimSpace(lang))
-    if l == "c++" || strings.Contains(l, "cpp") {
-        l = "cpp"
-    } else if l == "py" || l == "python3" || strings.Contains(l, "python") {
-        l = "python"
-    } else if l == "golang" || l == "go" || strings.Contains(l, "golang") || strings.HasPrefix(l, "go") {
-        // Accept variants like "Go (Golang)"
-        l = "go"
-    } else if l == "rs" || strings.Contains(l, "rust") {
-        l = "rust"
-    } else if l == "java" || strings.Contains(l, "java") {
-        l = "java"
-    } else if l == "c" {
-        l = "c"
-    }
-    lang = l
-    var data []byte
-    file, _, err := r.FormFile("file")
-    if err == nil {
-        defer file.Close()
-        data, _ = io.ReadAll(file)
-    } else {
-        data = []byte(r.FormValue("code"))
-    }
-    extMap := map[string]string{
-        "c": ".c",
-        "cpp": ".cpp",
-        "c++": ".cpp",
-        "java": ".java",
-        "python": ".py",
-        "python3": ".py",
-        "py": ".py",
-        "go": ".go",
-        "golang": ".go",
-        "rust": ".rs",
-        "rs": ".rs",
-    }
-    ext := extMap[lang]
-    if ext == "" {
-        // Heuristic fallback: detect language from code contents (helps retries with odd labels)
-        code := strings.ToLower(string(data))
-        switch {
-        case strings.Contains(code, "package main") && strings.Contains(code, "func main"):
-            lang, ext = "go", ".go"
-        case strings.Contains(code, "#include") || strings.Contains(code, "int main("):
-            // Try to disambiguate C++ from C using common C++ markers
-            if strings.Contains(code, "std::") || strings.Contains(code, "using namespace std") || strings.Contains(code, "<iostream>") {
-                lang, ext = "cpp", ".cpp"
-            } else {
-                lang, ext = "c", ".c"
-            }
-        case strings.Contains(code, "using namespace std") || strings.Contains(code, "std::") || strings.Contains(code, "#include <iostream>"):
-            lang, ext = "cpp", ".cpp"
-        case strings.Contains(code, "public class") && strings.Contains(code, "static void main"):
-            lang, ext = "java", ".java"
-        case strings.Contains(code, "def main(") || strings.Contains(code, "#!/usr/bin/env python") || strings.Contains(code, "print("):
-            lang, ext = "python", ".py"
-        case strings.Contains(code, "fn main()") || strings.Contains(code, "use std::"):
-            lang, ext = "rust", ".rs"
-        }
-        if ext == "" {
-            http.Error(w, "unknown language", http.StatusBadRequest)
-            return
-        }
-    }
+	lang := r.FormValue("lang")
+	// Normalize language variants from UI or retry helper
+	l := strings.ToLower(strings.TrimSpace(lang))
+	if l == "c++" || strings.Contains(l, "cpp") {
+		l = "cpp"
+	} else if l == "py" || l == "python3" || strings.Contains(l, "python") {
+		l = "python"
+	} else if l == "golang" || l == "go" || strings.Contains(l, "golang") || strings.HasPrefix(l, "go") {
+		// Accept variants like "Go (Golang)"
+		l = "go"
+	} else if l == "rs" || strings.Contains(l, "rust") {
+		l = "rust"
+	} else if l == "java" || strings.Contains(l, "java") {
+		l = "java"
+	} else if l == "c" {
+		l = "c"
+	}
+	lang = l
+	var data []byte
+	file, _, err := r.FormFile("file")
+	if err == nil {
+		defer file.Close()
+		data, _ = io.ReadAll(file)
+	} else {
+		data = []byte(r.FormValue("code"))
+	}
+	extMap := map[string]string{
+		"c":       ".c",
+		"cpp":     ".cpp",
+		"c++":     ".cpp",
+		"java":    ".java",
+		"python":  ".py",
+		"python3": ".py",
+		"py":      ".py",
+		"go":      ".go",
+		"golang":  ".go",
+		"rust":    ".rs",
+		"rs":      ".rs",
+	}
+	ext := extMap[lang]
+	if ext == "" {
+		// Heuristic fallback: detect language from code contents (helps retries with odd labels)
+		code := strings.ToLower(string(data))
+		switch {
+		case strings.Contains(code, "package main") && strings.Contains(code, "func main"):
+			lang, ext = "go", ".go"
+		case strings.Contains(code, "#include") || strings.Contains(code, "int main("):
+			// Try to disambiguate C++ from C using common C++ markers
+			if strings.Contains(code, "std::") || strings.Contains(code, "using namespace std") || strings.Contains(code, "<iostream>") {
+				lang, ext = "cpp", ".cpp"
+			} else {
+				lang, ext = "c", ".c"
+			}
+		case strings.Contains(code, "using namespace std") || strings.Contains(code, "std::") || strings.Contains(code, "#include <iostream>"):
+			lang, ext = "cpp", ".cpp"
+		case strings.Contains(code, "public class") && strings.Contains(code, "static void main"):
+			lang, ext = "java", ".java"
+		case strings.Contains(code, "def main(") || strings.Contains(code, "#!/usr/bin/env python") || strings.Contains(code, "print("):
+			lang, ext = "python", ".py"
+		case strings.Contains(code, "fn main()") || strings.Contains(code, "use std::"):
+			lang, ext = "rust", ".rs"
+		}
+		if ext == "" {
+			http.Error(w, "unknown language", http.StatusBadRequest)
+			return
+		}
+	}
 	srcPath := filepath.Join(c.Path, "user"+strings.ToUpper(letter)+ext)
 	if err := os.WriteFile(srcPath, data, 0644); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -914,7 +914,7 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 	} else {
 		verifier := findVerifier(c.Path, letter)
 		if verifier != "" {
-            ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 			defer cancel()
 			cmd := exec.CommandContext(ctx, "go", "run", filepath.Base(verifier), exe)
 			cmd.Dir = c.Path
@@ -948,8 +948,8 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 				output.WriteString(stdoutStr)
 				output.WriteString(stderrStr)
 
-                if ctx.Err() == context.DeadlineExceeded {
-                    output.WriteString("\nVerifier timed out after 120 seconds")
+				if ctx.Err() == context.DeadlineExceeded {
+					output.WriteString("\nVerifier timed out after 120 seconds")
 				} else if runErr != nil {
 					if ee, ok := runErr.(*exec.ExitError); ok {
 						exitCode = ee.ExitCode()
@@ -966,7 +966,7 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 		}
 	}
 	respStr := output.String()
-	if _, dbErr := db.Exec("INSERT INTO submissions (contest_id, problem_letter, lang, code, stdout, stderr, response, exit_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", c.ID, letter, lang, string(data), stdoutStr, stderrStr, respStr, exitCode); dbErr != nil {
+	if _, dbErr := db.Exec("INSERT INTO submissions (contest_id, problem_letter, lang, code, stdout, stderr, response, exit_code) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", c.ID, letter, lang, string(data), stdoutStr, stderrStr, respStr, exitCode); dbErr != nil {
 		fmt.Println("failed to insert submission:", dbErr)
 	}
 	resultTmpl.Execute(w, map[string]string{
@@ -977,68 +977,68 @@ func submitSolution(w http.ResponseWriter, r *http.Request, c *contestInfo, lett
 }
 
 func problemPage(w http.ResponseWriter, r *http.Request, c *contestInfo, letter string) {
-    stmtPath := filepath.Join(c.Path, "problem"+letter+".txt")
-    data, err := os.ReadFile(stmtPath)
-    if err != nil {
-        http.Error(w, "problem not found", http.StatusNotFound)
-        return
-    }
-    // Load submissions for this problem
-    type Sub struct {
-        ID        int
-        Lang      string
-        ExitCode  int
-        Timestamp string
-    }
-    var subs []Sub
-    if db != nil {
-        rows, err := db.Query("SELECT id, lang, exit_code, timestamp FROM submissions WHERE contest_id = ? AND problem_letter = ? ORDER BY id DESC", c.ID, letter)
-        if err == nil {
-            defer rows.Close()
-            for rows.Next() {
-                var s Sub
-                if err = rows.Scan(&s.ID, &s.Lang, &s.ExitCode, &s.Timestamp); err == nil {
-                    subs = append(subs, s)
-                }
-            }
-        }
-    }
+	stmtPath := filepath.Join(c.Path, "problem"+letter+".txt")
+	data, err := os.ReadFile(stmtPath)
+	if err != nil {
+		http.Error(w, "problem not found", http.StatusNotFound)
+		return
+	}
+	// Load submissions for this problem
+	type Sub struct {
+		ID        int
+		Lang      string
+		ExitCode  int
+		Timestamp string
+	}
+	var subs []Sub
+	if db != nil {
+		rows, err := db.Query("SELECT id, lang, exit_code, timestamp FROM submissions WHERE contest_id = $1 AND problem_letter = $2 ORDER BY id DESC", c.ID, letter)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var s Sub
+				if err = rows.Scan(&s.ID, &s.Lang, &s.ExitCode, &s.Timestamp); err == nil {
+					subs = append(subs, s)
+				}
+			}
+		}
+	}
 
-    // Load evaluations for this problem (by joining problems)
-    type Eval struct {
-        ID        int
-        RunID     string
-        Provider  string
-        Model     string
-        Lang      string
-        Success   bool
-        Timestamp string
-    }
-    var evals []Eval
-    if db != nil {
-        rows, err := db.Query(`SELECT e.id, e.run_id, COALESCE(e.provider, ''), e.model, e.lang, e.success, e.timestamp
-                                FROM evaluations e
-                                JOIN problems p ON e.problem_id = p.id
-                                WHERE p.contest_id = ? AND p.index_name = ?
-                                ORDER BY e.timestamp DESC`, c.ID, letter)
-        if err == nil {
-            defer rows.Close()
-            for rows.Next() {
-                var e Eval
-                if err = rows.Scan(&e.ID, &e.RunID, &e.Provider, &e.Model, &e.Lang, &e.Success, &e.Timestamp); err == nil {
-                    evals = append(evals, e)
-                }
-            }
-        }
-    }
+	// Load evaluations for this problem (by joining problems)
+	type Eval struct {
+		ID        int
+		RunID     string
+		Provider  string
+		Model     string
+		Lang      string
+		Success   bool
+		Timestamp string
+	}
+	var evals []Eval
+	if db != nil {
+		rows, err := db.Query(`SELECT e.id, e.run_id, COALESCE(e.provider, ''), e.model, e.lang, e.success, e.timestamp
+					FROM evaluations e
+					JOIN problems p ON e.problem_id = p.id
+					WHERE p.contest_id = $1 AND p.index_name = $2
+					ORDER BY e.timestamp DESC`, c.ID, letter)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var e Eval
+				if err = rows.Scan(&e.ID, &e.RunID, &e.Provider, &e.Model, &e.Lang, &e.Success, &e.Timestamp); err == nil {
+					evals = append(evals, e)
+				}
+			}
+		}
+	}
 
-    problemTmpl.Execute(w, map[string]interface{}{
-        "Contest":     c.ID,
-        "Letter":      letter,
-        "Statement":   string(data),
-        "Submissions": subs,
-        "Evals":       evals,
-    })
+	problemTmpl.Execute(w, map[string]interface{}{
+		"Contest":     c.ID,
+		"Letter":      letter,
+		"Statement":   string(data),
+		"Submissions": subs,
+		"Evals":       evals,
+	})
 }
 
 func contestPage(w http.ResponseWriter, r *http.Request, cid string) {
@@ -1216,9 +1216,9 @@ func leaderboardHandler(w http.ResponseWriter, r *http.Request) {
 	runIDFilter := r.URL.Query().Get("run")
 	if runIDFilter != "" {
 		rows, err = db.Query(`SELECT e.id, e.run_id, e.model, e.lang, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), e.success, e.timestamp
-                       FROM evaluations e
-                       JOIN problems p ON e.problem_id = p.id
-                       WHERE e.run_id = ? ORDER BY e.timestamp DESC`, runIDFilter)
+	                       FROM evaluations e
+	                       JOIN problems p ON e.problem_id = p.id
+	                       WHERE e.run_id = $1 ORDER BY e.timestamp DESC`, runIDFilter)
 		if err == nil {
 			defer rows.Close()
 			for rows.Next() {
@@ -1271,9 +1271,9 @@ func modelHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var evals []Eval
 	rows, err := db.Query(`SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), e.success, e.timestamp
-                               FROM evaluations e
-                               JOIN problems p ON e.problem_id = p.id
-                               WHERE e.model = ? ORDER BY e.timestamp DESC`, modelName)
+	                               FROM evaluations e
+	                               JOIN problems p ON e.problem_id = p.id
+	                               WHERE e.model = $1 ORDER BY e.timestamp DESC`, modelName)
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {
@@ -1312,9 +1312,8 @@ func failedHandler(w http.ResponseWriter, r *http.Request) {
 		Timestamp string
 	}
 	var evals []Eval
-	cond := "WHERE e.model = ? AND e.success = 0"
-	var args []interface{}
-	args = append(args, modelName)
+	cond := "WHERE e.model = $1 AND e.success = false"
+	args := []interface{}{modelName}
 	if onlyUnreviewed {
 		cond += " AND COALESCE(e.reviewied, 0) = 0"
 	}
@@ -1360,11 +1359,12 @@ func markReviewedHandler(w http.ResponseWriter, r *http.Request) {
 		if s == "" {
 			continue
 		}
-		if _, err := strconv.Atoi(s); err != nil {
+		val, err := strconv.Atoi(s)
+		if err != nil {
 			continue
 		}
-		placeholders = append(placeholders, "?")
-		args = append(args, s)
+		args = append(args, val)
+		placeholders = append(placeholders, fmt.Sprintf("$%d", len(args)))
 	}
 	if len(placeholders) > 0 {
 		q := "UPDATE evaluations SET reviewied = 1 WHERE id IN (" + strings.Join(placeholders, ",") + ")"
@@ -1402,16 +1402,18 @@ func failedJSONHandler(w http.ResponseWriter, r *http.Request) {
 		Timestamp string `json:"timestamp"`
 	}
 	var evals []Eval
-	cond := "WHERE e.model = ? AND e.success = 0"
-	var args []interface{}
-	args = append(args, modelName)
+	conds := []string{"e.model = $1", "e.success = false"}
+	args := []interface{}{modelName}
+	next := 2
 	if langFilter != "" {
-		cond += " AND e.lang = ?"
+		conds = append(conds, fmt.Sprintf("LOWER(e.lang) = $%d", next))
 		args = append(args, langFilter)
+		next++
 	}
+	cond := "WHERE " + strings.Join(conds, " AND ")
 	q := `SELECT e.id, e.run_id, e.problem_id, p.contest_id, p.index_name, COALESCE(p.rating, 0), COALESCE(e.reviewied,0), e.timestamp
-            FROM evaluations e
-            JOIN problems p ON e.problem_id = p.id ` + cond + ` ORDER BY e.timestamp DESC`
+	            FROM evaluations e
+	            JOIN problems p ON e.problem_id = p.id ` + cond + ` ORDER BY e.timestamp DESC`
 	rows, err := db.Query(q, args...)
 	if err == nil {
 		defer rows.Close()
@@ -1435,26 +1437,26 @@ func submissionsHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-    type Sub struct {
-        ID        int
-        ContestID string
-        Letter    string
-        Lang      string
-        ExitCode  int
-        Timestamp string
-    }
-    var subs []Sub
-    rows, err := db.Query("SELECT id, contest_id, problem_letter, lang, exit_code, timestamp FROM submissions ORDER BY id DESC")
-    if err == nil {
-        defer rows.Close()
-        for rows.Next() {
-            var s Sub
-            if err = rows.Scan(&s.ID, &s.ContestID, &s.Letter, &s.Lang, &s.ExitCode, &s.Timestamp); err == nil {
-                subs = append(subs, s)
-            }
-        }
-    }
-    submissionsTmpl.Execute(w, subs)
+	type Sub struct {
+		ID        int
+		ContestID string
+		Letter    string
+		Lang      string
+		ExitCode  int
+		Timestamp string
+	}
+	var subs []Sub
+	rows, err := db.Query("SELECT id, contest_id, problem_letter, lang, exit_code, timestamp FROM submissions ORDER BY id DESC")
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var s Sub
+			if err = rows.Scan(&s.ID, &s.ContestID, &s.Letter, &s.Lang, &s.ExitCode, &s.Timestamp); err == nil {
+				subs = append(subs, s)
+			}
+		}
+	}
+	submissionsTmpl.Execute(w, subs)
 }
 
 func submissionFixPromptHandler(w http.ResponseWriter, r *http.Request) {
@@ -1465,7 +1467,7 @@ func submissionFixPromptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var contestID, letter, code, stdout, stderr string
-	err = db.QueryRow("SELECT contest_id, problem_letter, code, stdout, stderr FROM submissions WHERE id = ?", id).Scan(&contestID, &letter, &code, &stdout, &stderr)
+	err = db.QueryRow("SELECT contest_id, problem_letter, code, stdout, stderr FROM submissions WHERE id = $1", id).Scan(&contestID, &letter, &code, &stdout, &stderr)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -1492,7 +1494,7 @@ func submissionContentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var content string
-	err = db.QueryRow("SELECT "+field+" FROM submissions WHERE id = ?", id).Scan(&content)
+	err = db.QueryRow("SELECT "+field+" FROM submissions WHERE id = $1", id).Scan(&content)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -1501,20 +1503,20 @@ func submissionContentHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func submissionRawCodeHandler(w http.ResponseWriter, r *http.Request) {
-    idStr := strings.TrimPrefix(r.URL.Path, "/submission/raw/code/")
-    id, err := strconv.Atoi(idStr)
-    if err != nil {
-        http.NotFound(w, r)
-        return
-    }
-    var code string
-    err = db.QueryRow("SELECT code FROM submissions WHERE id = ?", id).Scan(&code)
-    if err != nil {
-        http.NotFound(w, r)
-        return
-    }
-    w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-    _, _ = w.Write([]byte(code))
+	idStr := strings.TrimPrefix(r.URL.Path, "/submission/raw/code/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	var code string
+	err = db.QueryRow("SELECT code FROM submissions WHERE id = $1", id).Scan(&code)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = w.Write([]byte(code))
 }
 
 func evaluationFixPromptHandler(w http.ResponseWriter, r *http.Request) {
@@ -1525,7 +1527,7 @@ func evaluationFixPromptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var contestID, letter, code, stdout, stderr string
-	err = db.QueryRow(`SELECT p.contest_id, p.index_name, e.response, e.stdout, e.stderr FROM evaluations e JOIN problems p ON e.problem_id = p.id WHERE e.id = ?`, id).Scan(&contestID, &letter, &code, &stdout, &stderr)
+	err = db.QueryRow(`SELECT p.contest_id, p.index_name, e.response, e.stdout, e.stderr FROM evaluations e JOIN problems p ON e.problem_id = p.id WHERE e.id = $1`, id).Scan(&contestID, &letter, &code, &stdout, &stderr)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -1548,7 +1550,7 @@ func evaluationContentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var content string
-	err = db.QueryRow("SELECT "+field+" FROM evaluations WHERE id = ?", id).Scan(&content)
+	err = db.QueryRow("SELECT "+field+" FROM evaluations WHERE id = $1", id).Scan(&content)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -1565,7 +1567,7 @@ func evaluationRawResponseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var resp string
-	if err := db.QueryRow("SELECT response FROM evaluations WHERE id = ?", id).Scan(&resp); err != nil {
+	if err := db.QueryRow("SELECT response FROM evaluations WHERE id = $1", id).Scan(&resp); err != nil {
 		http.NotFound(w, r)
 		return
 	}
@@ -1582,6 +1584,24 @@ func evaluationRawResponseHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(code))
 }
 
+func ensureSerialSequence(db *sql.DB, table, column string) error {
+	sequence := fmt.Sprintf("%s_%s_seq", table, column)
+	createSeq := fmt.Sprintf(`CREATE SEQUENCE IF NOT EXISTS "%s"`, sequence)
+	if _, err := db.Exec(createSeq); err != nil {
+		return err
+	}
+	alter := fmt.Sprintf(`ALTER TABLE "%s" ALTER COLUMN "%s" SET DEFAULT nextval('"%s"'::regclass)`, table, column, sequence)
+	if _, err := db.Exec(alter); err != nil {
+		return err
+	}
+	setval := fmt.Sprintf(`SELECT setval('"%s"', COALESCE((SELECT MAX("%s") + 1 FROM "%s"), 1), false)`, sequence, column, table)
+	var dummy int64
+	if err := db.QueryRow(setval).Scan(&dummy); err != nil {
+		return err
+	}
+	return nil
+}
+
 func main() {
 	var err error
 	fmt.Println("PATH:", os.Getenv("PATH"))
@@ -1591,50 +1611,41 @@ func main() {
 	}
 	dsn := os.Getenv("DB_DSN")
 	if dsn == "" {
-		dsn = "user:pass@tcp(127.0.0.1:3306)/dbname"
+		dsn = "postgres://postgres:password@localhost:5432/codeforces?sslmode=disable"
 	}
-	db, err = sql.Open("mysql", dsn)
+	db, err = sql.Open("postgres", dsn)
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
 	if _, err = db.Exec(`
-               CREATE TABLE IF NOT EXISTS submissions (
-                       id INT AUTO_INCREMENT PRIMARY KEY,
-                       contest_id VARCHAR(20),
-                       problem_letter VARCHAR(10),
-                       lang VARCHAR(20),
-                       code TEXT,
-                       stdout TEXT,
-                       stderr TEXT,
-                       response TEXT,
-                       exit_code INT,
-                       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-               )
-       `); err != nil {
+	               CREATE TABLE IF NOT EXISTS submissions (
+	                       id SERIAL PRIMARY KEY,
+	                       contest_id VARCHAR(20),
+	                       problem_letter VARCHAR(10),
+	                       lang VARCHAR(20),
+	                       code TEXT,
+	                       stdout TEXT,
+	                       stderr TEXT,
+	                       response TEXT,
+	                       exit_code INT,
+	                       timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	               )
+	       `); err != nil {
 		panic(err)
 	}
-	// Ensure evaluations table has reviewied column
-	if _, err = db.Exec(`ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS reviewied TINYINT DEFAULT 0`); err != nil {
-		// Fallback for MySQL versions without IF NOT EXISTS
-		if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
-			// Try without IF NOT EXISTS and ignore duplicate error
-			if _, err2 := db.Exec(`ALTER TABLE evaluations ADD COLUMN reviewied TINYINT DEFAULT 0`); err2 != nil {
-				if !strings.Contains(strings.ToLower(err2.Error()), "duplicate column") {
-					fmt.Println("warning: could not ensure reviewied column:", err2)
-				}
-			}
-		}
+	if err := ensureSerialSequence(db, "submissions", "id"); err != nil {
+		panic(err)
 	}
-	// Ensure evaluations table has provider column
+	// Ensure evaluations table has columns required by the UI
+	if _, err = db.Exec(`ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS reviewied SMALLINT DEFAULT 0`); err != nil {
+		fmt.Println("warning: could not ensure reviewied column:", err)
+	}
 	if _, err = db.Exec(`ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS provider VARCHAR(255)`); err != nil {
-		if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
-			if _, err2 := db.Exec(`ALTER TABLE evaluations ADD COLUMN provider VARCHAR(255)`); err2 != nil {
-				if !strings.Contains(strings.ToLower(err2.Error()), "duplicate column") {
-					fmt.Println("warning: could not ensure provider column:", err2)
-				}
-			}
-		}
+		fmt.Println("warning: could not ensure provider column:", err)
+	}
+	if err := ensureSerialSequence(db, "evaluations", "id"); err != nil {
+		fmt.Println("warning: could not ensure evaluations id sequence:", err)
 	}
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/path", pathHandler)
