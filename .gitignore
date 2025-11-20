@@ -3,5 +3,5 @@ cache/
 .gocache/
 webserver
 click.scpt
-
+deploy.sh
 *.bin

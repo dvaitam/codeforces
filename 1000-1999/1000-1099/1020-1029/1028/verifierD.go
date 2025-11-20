@@ -58,6 +58,7 @@ func genCase(r *rand.Rand) string {
 				ops = append(ops, fmt.Sprintf("ACCEPT %d", p))
 			}
 		} else {
+			// ADD logic (fixed)
 			bestBuy := -1
 			if len(ob.buys) > 0 {
 				bestBuy = ob.buys[0]
@@ -66,30 +67,40 @@ func genCase(r *rand.Rand) string {
 			if len(ob.sells) > 0 {
 				bestSell = ob.sells[0]
 			}
-			dir := r.Intn(2)
-			p := 0
+
+			var p int
+			attempts := 0
 			for {
 				p = r.Intn(1000) + 1
-				if !ob.used[p] {
+				dir := r.Intn(2)
+				
+				if dir == 0 { // buy
+					if p >= bestSell {
+						p = bestSell - 1
+					}
+				} else { // sell
+					if p <= bestBuy {
+						p = bestBuy + 1
+					}
+				}
+
+				if p > 0 && !ob.used[p] {
+					ob.used[p] = true
+					if dir == 0 {
+						ob.buys = insertDesc(ob.buys, p)
+					} else {
+						ob.sells = insertAsc(ob.sells, p)
+					}
+					ops = append(ops, fmt.Sprintf("ADD %d", p))
+					break
+				}
+
+				attempts++
+				if attempts > 100 { // Failsafe
+					i-- // Redo this step in the outer loop
 					break
 				}
 			}
-			ob.used[p] = true
-			if dir == 0 { // buy
-				if p >= bestSell {
-					p = bestSell - 1
-				}
-				if p <= 0 {
-					p = 1
-				}
-				ob.buys = insertDesc(ob.buys, p)
-			} else { // sell
-				if p <= bestBuy {
-					p = bestBuy + 1
-				}
-				ob.sells = insertAsc(ob.sells, p)
-			}
-			ops = append(ops, fmt.Sprintf("ADD %d", p))
 		}
 	}
 	var sb strings.Builder

@@ -64,31 +64,39 @@ func fractionFromA(a []*big.Int) (*big.Int, *big.Int) {
 }
 
 func genTestB() string {
-	n := rand.Intn(10) + 1
-	a := make([]*big.Int, n)
-	for i := 0; i < n; i++ {
-		a[i] = big.NewInt(int64(rand.Intn(1000) + 1))
-	}
-	num, den := fractionFromA(a)
-	// decide if we want equal or not
-	equal := rand.Intn(2) == 0
-	p := new(big.Int).Set(num)
-	q := new(big.Int).Set(den)
-	if !equal {
-		// modify p slightly
-		p.Add(p, big.NewInt(int64(rand.Intn(5)+1)))
-	}
-	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "%s %s\n", p.String(), q.String())
-	fmt.Fprintln(&buf, n)
-	for i, v := range a {
-		if i > 0 {
-			buf.WriteByte(' ')
+	for {
+		n := rand.Intn(10) + 1
+		a := make([]*big.Int, n)
+		for i := 0; i < n; i++ {
+			a[i] = big.NewInt(int64(rand.Intn(1000) + 1))
 		}
-		buf.WriteString(v.String())
+		num, den := fractionFromA(a)
+		// decide if we want equal or not
+		equal := rand.Intn(2) == 0
+		p := new(big.Int).Set(num)
+		q := new(big.Int).Set(den)
+		if !equal {
+			// modify p slightly
+			p.Add(p, big.NewInt(int64(rand.Intn(5)+1)))
+		}
+
+		limit := new(big.Int)
+		limit.SetString("1000000000000000000", 10) // 10^18
+
+		if p.Cmp(limit) <= 0 && q.Cmp(limit) <= 0 {
+			var buf bytes.Buffer
+			fmt.Fprintf(&buf, "%s %s\n", p.String(), q.String())
+			fmt.Fprintln(&buf, n)
+			for i, v := range a {
+				if i > 0 {
+					buf.WriteByte(' ')
+				}
+				buf.WriteString(v.String())
+			}
+			buf.WriteByte('\n')
+			return buf.String()
+		}
 	}
-	buf.WriteByte('\n')
-	return buf.String()
 }
 
 func main() {

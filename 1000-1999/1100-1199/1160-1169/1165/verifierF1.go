@@ -13,20 +13,47 @@ import (
 const numTestsF1 = 100
 
 func canFinish(D int, k []int, sales [][]int, totalK int) bool {
-	cheap := 0
-	for i, ki := range k {
-		if ki <= 0 {
-			continue
+    n := len(k)
+	
+    // 1. Find the last sale day for each item
+    lastSale := make([]int, n)
+    for i := 0; i < n; i++ {
+        idx := sort.SearchInts(sales[i], D+1)
+        if idx > 0 {
+            lastSale[i] = sales[i][idx-1]
+        }
+    }
+
+	// 2. Create events
+    events := make([][]int, D+1)
+	for t, d := range lastSale {
+		if d > 0 {
+			events[d] = append(events[d], t)
 		}
-		ci := sort.SearchInts(sales[i], D+1)
-		if ci > ki {
-			ci = ki
-		}
-		cheap += ci
 	}
-	expensive := totalK - cheap
-	cost := cheap + expensive*2
-	return cost <= D
+
+	// 3. Simulation
+    needed := make([]int, n)
+	copy(needed, k)
+	money := 0
+	boughtOnSale := 0
+
+	for d := 1; d <= D; d++ {
+		money++
+		for _, t := range events[d] {
+			buy := needed[t]
+			if buy > money {
+				buy = money
+			}
+			money -= buy
+			needed[t] -= buy
+			boughtOnSale += buy
+		}
+	}
+    
+    // 4. Final check
+    remaining_items := totalK - boughtOnSale
+	return money >= remaining_items*2
 }
 
 func solveF1(k []int, sales [][]int) int {

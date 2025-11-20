@@ -3,11 +3,14 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 func runTests(dir, binary string) error {
@@ -22,19 +25,35 @@ func runTests(dir, binary string) error {
 		if err != nil {
 			return err
 		}
-		expected, err := os.ReadFile(outFile)
+		expectedBytes, err := os.ReadFile(outFile)
 		if err != nil {
 			return err
 		}
+        expectedStr := strings.TrimSpace(string(expectedBytes))
+
 		cmd := exec.Command(binary)
 		cmd.Stdin = bytes.NewReader(input)
-		out, err := cmd.CombinedOutput()
+		outBytes, err := cmd.CombinedOutput()
 		if err != nil {
-			return fmt.Errorf("%s: %v", filepath.Base(inFile), err)
+			return fmt.Errorf("%s: runtime error: %v\noutput: %s", filepath.Base(inFile), err, string(outBytes))
 		}
-		if string(out) != string(expected) {
-			return fmt.Errorf("%s: expected\n%sbut got\n%s", filepath.Base(inFile), expected, out)
-		}
+        gotStr := strings.TrimSpace(string(outBytes))
+        
+        gotFloat, errGot := strconv.ParseFloat(gotStr, 64)
+        expectedFloat, errExpected := strconv.ParseFloat(expectedStr, 64)
+
+        if errGot != nil || errExpected != nil {
+            // If parsing to float fails, fall back to string comparison
+            if gotStr != expectedStr {
+                return fmt.Errorf("%s: expected\n%s\nbut got\n%s", filepath.Base(inFile), expectedStr, gotStr)
+            }
+        } else {
+            // Compare floats with a tolerance
+            epsilon := 1e-6
+            if math.Abs(gotFloat - expectedFloat) > epsilon {
+                 return fmt.Errorf("%s: expected\n%s\nbut got\n%s", filepath.Base(inFile), expectedStr, gotStr)
+            }
+        }
 	}
 	return nil
 }

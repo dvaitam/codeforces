@@ -38,6 +38,14 @@ func expected(b1, q, l int64, bad map[int64]bool) string {
 	if abs(b1) > l {
 		return "0"
 	}
+
+	if b1 == 0 {
+		if bad[0] {
+			return "0"
+		}
+		return "inf"
+	}
+
 	if q == 0 {
 		if !bad[b1] {
 			if bad[0] {

@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -70,23 +72,61 @@ func main() {
 	}
 	defer os.Remove(oracle)
 
-	input := generate()
-	exp, err := run(oracle, input)
+	inputStr := generate()
+	expOutput, err := run(oracle, inputStr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "oracle failed: %v\n", err)
 		os.Exit(1)
 	}
-	got, err := run(cand, input)
+	gotOutput, err := run(cand, inputStr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-	if strings.TrimSpace(exp) != strings.TrimSpace(got) {
-		fmt.Println("wrong answer")
-		fmt.Println("input:\n" + input)
-		fmt.Println("expected:\n" + exp)
-		fmt.Println("got:\n" + got)
-		os.Exit(1)
-	}
+
+	inputScanner := bufio.NewScanner(strings.NewReader(inputStr))
+    expScanner := bufio.NewScanner(strings.NewReader(expOutput))
+    gotScanner := bufio.NewScanner(strings.NewReader(gotOutput))
+
+    inputScanner.Scan() // Read T
+    t, _ := strconv.Atoi(inputScanner.Text())
+
+    for i := 1; i <= t; i++ {
+        inputScanner.Scan()
+        nk := strings.Fields(inputScanner.Text())
+        n, _ := strconv.Atoi(nk[0])
+        // k, _ := strconv.Atoi(nk[1])
+
+        inputScanner.Scan()
+        aStr := strings.Fields(inputScanner.Text())
+        a := make([]int, n)
+        for j := 0; j < n; j++ {
+            a[j], _ = strconv.Atoi(aStr[j])
+        }
+
+        expScanner.Scan()
+        expFields := strings.Fields(expScanner.Text())
+        exp_i, _ := strconv.Atoi(expFields[0])
+        exp_j, _ := strconv.Atoi(expFields[1])
+        exp_x, _ := strconv.Atoi(expFields[2])
+
+        gotScanner.Scan()
+        gotFields := strings.Fields(gotScanner.Text())
+        got_i, _ := strconv.Atoi(gotFields[0])
+        got_j, _ := strconv.Atoi(gotFields[1])
+        got_x, _ := strconv.Atoi(gotFields[2])
+
+        exp_val := (a[exp_i-1] ^ exp_x) & (a[exp_j-1] ^ exp_x)
+        got_val := (a[got_i-1] ^ got_x) & (a[got_j-1] ^ got_x)
+
+        if got_val != exp_val {
+            fmt.Printf("wrong answer on testcase %d\n", i)
+            fmt.Printf("input:\n%s\n%s\n", strings.Join(nk, " "), strings.Join(aStr, " "))
+            fmt.Printf("expected line: %s (value: %d)\n", expScanner.Text(), exp_val)
+            fmt.Printf("got line: %s (value: %d)\n", gotScanner.Text(), got_val)
+            os.Exit(1)
+        }
+    }
+
 	fmt.Println("All tests passed")
 }

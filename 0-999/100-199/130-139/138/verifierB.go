@@ -45,7 +45,7 @@ func dfs(c1, c2 [10]uint8, carry uint8, memo map[string]int) int {
 				continue
 			}
 			c2[j]--
-			if int(i)+int(j)+int(carry)%10 == 0 {
+			if (int(i)+int(j)+int(carry))%10 == 0 {
 				newCarry := uint8((int(i) + int(j) + int(carry)) / 10)
 				val := 1 + dfs(c1, c2, newCarry, memo)
 				if val > best {
@@ -153,7 +153,7 @@ func main() {
 		}
 		a := strings.TrimSpace(lines[0])
 		b := strings.TrimSpace(lines[1])
-		if len(a) != len(strings.TrimSpace(in))-1 || len(b) != len(strings.TrimSpace(in))-1 {
+		if len(a) != len(strings.TrimSpace(in)) || len(b) != len(strings.TrimSpace(in)) {
 			fmt.Fprintf(os.Stderr, "case %d failed: output length mismatch\n", t)
 			os.Exit(1)
 		}
