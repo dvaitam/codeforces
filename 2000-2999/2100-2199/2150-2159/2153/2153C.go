@@ -66,7 +66,6 @@ func uniqueSorted(arr []int) []int {
 }
 
 func solveCase(a []int) int64 {
-	n := len(a)
 	sort.Ints(a)
 	values := uniqueSorted(a)
 	idx := make(map[int]int, len(values))

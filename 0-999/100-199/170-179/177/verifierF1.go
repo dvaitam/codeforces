@@ -155,7 +155,8 @@ func deterministicTests() []testCase {
 func randomTest(rng *rand.Rand) testCase {
 	n := rng.Intn(6) + 1
 	maxEdges := n * n
-	k := rng.Intn(minInt(maxEdges, 12)-1) + 1 // ensure at least 1 edge
+	limit := minInt(maxEdges, 12)
+	k := rng.Intn(limit) + 1
 	used := make(map[[2]int]bool)
 	edges := make([]edge, 0, k)
 	for len(edges) < k {
