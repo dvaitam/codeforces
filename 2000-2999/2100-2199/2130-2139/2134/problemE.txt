@@ -1,0 +1,35 @@
+E. Power Boxestime limit per test2 secondsmemory limit per test256 megabytesinputstandard inputoutputstandard output This is an interactive problem.You are given $$$n$$$ boxes, indexed from $$$1$$$ to $$$n$$$. The boxes look identical, but each one has a hidden power value $$$a_i$$$, which is either $$$1$$$ or $$$2$$$.You want to determine the power value of each box. To do so, you conduct the following experiment. Initially, the $$$i$$$-th box is placed at coordinate $$$i$$$ on a number line ($$$1 \le i \le n$$$).You are allowed to perform the following two types of queries:  "swap $$$x$$$" ($$$1 \le x \le n - 1$$$): Swap the boxes currently located at coordinates $$$x$$$ and $$$x + 1$$$. Note that this change is permanent and affects all subsequent queries.  "throw $$$x$$$" ($$$1 \le x \le n$$$): Throw a ball at the box located at coordinate $$$x$$$. The ball travels $$$p$$$ units forward to coordinate $$$x + p$$$ if the power value of the box is $$$p$$$. If there is a box at the new coordinate, the ball jumps again using the power of that box. This continues until the ball lands on a coordinate without a box. As a response, you are given the total number of jumps the ball made before stopping. Your task is to determine the power value of each box using no more than $$$\left\lceil \frac{3n}{2} \right\rceil$$$ queries in total, counting both swap and throw queries.InputEach test contains multiple test cases. The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 500$$$). The description of the test cases follows. The first and the only line of each test case contains a single integer $$$n$$$ ($$$2 \le n \le 1000$$$) — the number of boxes.It is guaranteed that the sum of $$$n$$$ over all test cases does not exceed $$$1000$$$. InteractionThe interaction for each test case begins by reading the integer $$$n$$$.To make a query, output a line in one of the following formats:  "swap $$$x$$$" (without quotes) ($$$1 \le x \le n - 1$$$): Swap the boxes currently located at coordinates $$$x$$$ and $$$x + 1$$$.  "throw $$$x$$$" (without quotes) ($$$1 \le x \le n$$$): Throw a ball at the box located at coordinate $$$x$$$. The jury will respond with an integer representing the number of jumps the ball made before stopping. Note that queries are case sensitive.Once you have determined the power value of each box, output a line in the following format:  "! $$$a_1 \space a_2 \space \ldots \space a_n$$$" (without quotes): Here, $$$a_i$$$ is the power value of the box initially located at coordinate $$$i$$$ ($$$1 \le i \le n$$$). After submitting the final answer, proceed on to the next test case. Note that submitting the final answer with the previous query does not count towards the limit of $$$\left\lceil \frac{3n}{2} \right\rceil$$$ queries.If your program exceeds $$$\left\lceil \frac{3n}{2} \right\rceil$$$ queries in one test case, your program must terminate immediately to receive the verdict Wrong Answer. Otherwise, it may receive any other verdict.After outputting a query, do not forget to output the end of the line and flush the output. Otherwise, you will get Idleness limit exceeded. To do this, use:  fflush(stdout) or cout.flush() in C++;  System.out.flush() in Java;  sys.stdout.flush() in Python;  std::io::stdout().flush() in Rust;  see the documentation for other languages.  The interactor is non-adaptive; the power values of the boxes remain constant throughout the interaction.HacksTo hack, use the following format.The first line should contain a single integer $$$t$$$ ($$$1 \le t \le 500$$$) — the number of test cases.The first line of each test case contains a single integer $$$n$$$ ($$$2 \le n \le 1000$$$) — the number of boxes.The second line of each test case contains $$$n$$$ integers $$$a_1,a_2,\ldots,a_n$$$ ($$$1 \le a_i \le 2$$$) — the power value of each box.The sum of $$$n$$$ over all test cases should not exceed $$$1000$$$.ExampleInput2
+4
+
+2
+
+
+3
+
+3
+
+2
+
+2
+
+
+1
+
+
+Output
+
+throw 2
+
+swap 3
+throw 2
+
+throw 1
+
+! 2 1 2 1
+
+throw 1
+
+swap 1
+throw 1
+
+! 1 2NoteBelow is the interaction process in the example: SolutionJuryExplanation2There are $$$2$$$ test cases.4There are $$$4$$$ boxes in the first test case. The hidden power values are $$$a = [2,1,2,1]$$$.throw 22Throw a ball at the box located at coordinate $$$2$$$. The ball travels through coordinates $$$2 \to 3 \to 5$$$ and stops at coordinate $$$5$$$, so the response is $$$2$$$.swap 3Swap the boxes located at coordinate $$$3$$$ and $$$4$$$. Now box $$$3$$$ is located at coordinate $$$4$$$ and box $$$4$$$ is located at coordinate $$$3$$$.throw 23Throw a ball at the box located at coordinate $$$2$$$. The ball travels through coordinates $$$2 \to 3 \to 4 \to 6$$$ and stops at coordinate $$$6$$$, so the response is $$$3$$$. Note that the response is different because of the swap.throw 13Throw a ball at the box located at coordinate $$$1$$$. The ball travels through coordinates $$$1 \to 3 \to 4 \to 6$$$ and stops at coordinate $$$6$$$, so the response is $$$3$$$.! 2 1 2 1The solution concludes that the power values are $$$[2,1,2,1]$$$.2There are $$$2$$$ boxes in the second test case. The hidden power values are $$$a = [1, 2]$$$.throw 12Throw a ball at the box located at coordinate $$$1$$$. The ball travels through coordinates $$$1 \to 2 \to 4$$$ and stops at coordinate $$$4$$$, so the response is $$$2$$$.swap 1Swap the boxes located at coordinate $$$1$$$ and $$$2$$$. Now box $$$1$$$ is located at coordinate $$$2$$$ and box $$$2$$$ is located at coordinate $$$1$$$.throw 11Throw a ball at the box located at coordinate $$$1$$$. The ball travels through coordinates $$$1 \to 3$$$ and stops at coordinate $$$3$$$, so the response is $$$1$$$.! 1 2The solution concludes that the power values are $$$[1,2]$$$. Empty lines in the example input and output are given only for better readability; you don't need to output them in your solution.Note that in the first test case, the given queries are in fact insufficient to uniquely determine the power values; they are given only to illustrate the input/output format.

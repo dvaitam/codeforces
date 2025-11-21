@@ -1,0 +1,4 @@
+A. Minimize!time limit per test1 secondmemory limit per test256 megabytesinputstandard inputoutputstandard outputYou are given two integers $$$a$$$ and $$$b$$$ ($$$a \leq b$$$). Over all possible integer values of $$$c$$$ ($$$a \leq c \leq b$$$), find the minimum value of $$$(c - a) + (b - c)$$$.InputThe first line contains $$$t$$$ ($$$1 \leq t \leq 55$$$) — the number of test cases. Each test case contains two integers $$$a$$$ and $$$b$$$ ($$$1 \leq a \leq b \leq 10$$$).OutputFor each test case, output the minimum possible value of $$$(c - a) + (b - c)$$$ on a new line.ExampleInput31 23 105 5Output1
+7
+0
+NoteIn the first test case, you can choose $$$c = 1$$$ and obtain an answer of $$$(1 - 1) + (2 - 1) = 1$$$. It can be shown this is the minimum value possible.In the second test case, you can choose $$$c = 6$$$ and obtain an answer of $$$(6 - 3) + (10 - 6) = 7$$$. It can be shown this is the minimum value possible.

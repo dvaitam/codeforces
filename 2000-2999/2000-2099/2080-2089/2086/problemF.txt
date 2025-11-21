@@ -1,0 +1,33 @@
+F. Online Palindrometime limit per test1 secondmemory limit per test512 megabytesinputstandard inputoutputstandard outputThis is an interactive problem.The jury has a string $$$s$$$ consisting of lowercase Latin letters. The following constraints apply to this string:  the string has an odd length that does not exceed $$$99$$$;  the string consists only of the characters "a" and "b". There is also a string $$$t$$$, which is initially empty. Then, $$$|s|$$$ steps happen. During the $$$i$$$-th step, the following events occur:  first, the jury tells you the character $$$s_i$$$ and appends it to the end of the string $$$t$$$;  then, you may swap any two characters in $$$t$$$, or do nothing. Your task is to ensure that after the $$$|s|$$$-th step, the string $$$t$$$ is a palindrome.InteractionThe interactive interaction starts immediately.During each step, your program will receive one character — the next character of the string $$$s$$$ or "0" (zero) if the string has ended. If the character "0" is received, your program must terminate immediately.After receiving $$$s_{i}$$$, you must output the positions of the characters to be swapped, that is, two integers $$$l$$$ and $$$r$$$ ($$$1 \le l,r \le i$$$) or, if you do not want to swap characters, then "0 0".If your program makes an invalid operation, for example, by trying to swap characters from non-existing positions, or the resulting string $$$t$$$ is not a palindrome, the jury program will print one character "X" on a separate line. If your program receives "X" as the response, it should terminate immediately; otherwise, the verdict of your submission will be undefined. The interactor in this problem is not adaptive, meaning that the string $$$s$$$ does not change during the interaction.After each output request, do not forget to output a newline and flush the output buffer. Otherwise, you will receive a verdict of "Idleness limit exceeded". To do this, use:  fflush(stdout) or cout.flush() in C++;  System.out.flush() in Java;  sys.stdout.flush() in Python;  refer to the documentation for other languages. Hack formatFor hacks, use the following format.The first line should contain a single integer $$$|s|$$$ — the length of the string $$$s$$$.The second line should contain the $$$s$$$ itself ($$$1 \le |s| \le 99, |s| \bmod 2 = 1$$$), consisting of lowercase Latin letters "a" and "b".ExamplesInputa
+
+a
+
+b
+
+0Output
+0 0
+
+1 2
+
+2 3
+Inputa
+
+a
+
+b
+
+a
+
+b
+
+0
+Output
+0 0
+
+2 1
+
+3 2
+
+4 4
+
+4 5

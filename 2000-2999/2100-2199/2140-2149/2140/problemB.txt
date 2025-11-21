@@ -1,0 +1,7 @@
+B. Another Divisibility Problemtime limit per test1 secondmemory limit per test256 megabytesinputstandard inputoutputstandard outputAlice and Bob are playing a game in which Alice has given Bob a positive integer $$$x<10^8$$$.To win the game, Bob has to find another positive integer $$$y<10^9$$$ such that $$$x \operatorname{\#} y$$$ is divisible by $$$x + y$$$.Here $$$x\operatorname{\#}y$$$ denotes the integer formed by concatenating the integers $$$x$$$ and $$$y$$$ in that order. For example, if $$$x = 835$$$, $$$y = 47$$$, then $$$x \operatorname{\#} y = 83\,547$$$.However, since Bob is dumb, he is unable to find such an integer. Please help him.It can be shown that such an integer always exists.InputEach test contains multiple test cases. The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 10^4$$$). The description of the test cases follows. The only line of each test case contains a single integer $$$x$$$ ($$$1 \le x < 10^8$$$) — the integer that Alice has given to Bob.OutputFor each test case, print a single integer $$$y$$$ ($$$1 \le y < 10^9$$$) so that Bob can win the game.If there are multiple answers, print any one of them.ExampleInput68421000666661063449876543Output1
+12
+998
+7872
+8190
+174036
+NoteFor the first test case, $$$x = 8$$$, we can choose $$$y = 1$$$, and we have $$$x \operatorname{\#} y = 81$$$, which is divisible by $$$x + y = 9$$$.For the second test case, $$$x = 42$$$, we can choose $$$y = 12$$$, and we have $$$x \operatorname{\#} y = 4212$$$, which is divisible by $$$x + y = 54$$$.

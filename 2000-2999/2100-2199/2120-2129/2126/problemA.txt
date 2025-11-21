@@ -1,0 +1,6 @@
+A. Only One Digittime limit per test1 secondmemory limit per test256 megabytesinputstandard inputoutputstandard outputYou are given an integer $$$x$$$. You need to find the smallest non-negative integer $$$y$$$ such that the numbers $$$x$$$ and $$$y$$$ share at least one common digit. In other words, there must exist a decimal digit $$$d$$$ that appears in both the representation of the number $$$x$$$ and the number $$$y$$$.InputThe first line contains an integer $$$t$$$ ($$$1 \le t \le 1000$$$) — the number of test cases.The first line of each test case contains one integer $$$x$$$ ($$$1 \le x \le 1000$$$).OutputFor each test case, output one integer $$$y$$$ — the minimum non-negative number that satisfies the condition.ExampleInput569678122696Output6
+6
+7
+1
+6
+NoteIn the first test case, the numbers $$$6$$$ and $$$6$$$ share the common digit '6'. Moreover, there is no natural number smaller than this that shares a common digit.In the second test case, the numbers $$$6$$$ and $$$96$$$ share the common digit '6'.

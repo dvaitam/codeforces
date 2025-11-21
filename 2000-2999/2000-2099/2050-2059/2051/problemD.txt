@@ -1,0 +1,8 @@
+D. Counting Pairstime limit per test2 secondsmemory limit per test256 megabytesinputstandard inputoutputstandard outputYou are given a sequence $$$a$$$, consisting of $$$n$$$ integers, where the $$$i$$$-th element of the sequence is equal to $$$a_i$$$. You are also given two integers $$$x$$$ and $$$y$$$ ($$$x \le y$$$).A pair of integers $$$(i, j)$$$ is considered interesting if the following conditions are met:  $$$1 \le i < j \le n$$$;  if you simultaneously remove the elements at positions $$$i$$$ and $$$j$$$ from the sequence $$$a$$$, the sum of the remaining elements is at least $$$x$$$ and at most $$$y$$$. Your task is to determine the number of interesting pairs of integers for the given sequence $$$a$$$.InputThe first line contains one integer $$$t$$$ ($$$1 \le t \le 10^4$$$) — the number of test cases.Each test case consists of two lines:  The first line contains three integers $$$n, x, y$$$ ($$$3 \le n \le 2 \cdot 10^5$$$, $$$1 \le x \le y \le 2 \cdot 10^{14}$$$);  The second line contains $$$n$$$ integers $$$a_1, a_2, \dots, a_n$$$ ($$$1 \le a_i \le 10^{9}$$$). Additional constraint on the input: the sum of $$$n$$$ across all test cases does not exceed $$$2 \cdot 10^5$$$.OutputFor each test case, output one integer — the number of interesting pairs of integers for the given sequence $$$a$$$.ExampleInput74 8 104 6 3 66 22 274 9 6 3 4 53 8 103 2 13 1 12 3 43 3 63 2 14 4 123 3 2 16 8 81 1 2 2 2 3Output4
+7
+0
+0
+1
+5
+6
+NoteIn the first example, there are $$$4$$$ interesting pairs of integers:  $$$(1, 2)$$$;  $$$(1, 4)$$$;  $$$(2, 3)$$$;  $$$(3, 4)$$$.

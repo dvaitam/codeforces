@@ -1,0 +1,14 @@
+E. Number Mazetime limit per test1 secondmemory limit per test256 megabytesinputstandard inputoutputstandard outputAt the "Number Maze," a mysterious code master stands guard. He blocks the path and smiles, saying: "Brave adventurer, passing through this gate will not be easy! An ancient numeric code, capable of being rearranged into numerous combinations, is in the code master's possession. The traveler must choose two numeric codes from these combinations and show their $$$x$$$A$$$y$$$B result, or the gate will trap the traveler here forever!"The rules of $$$x$$$A$$$y$$$B are as follows:  Each A indicates that a digit in both codes matches in both value and position.  Each B indicates that a digit in both codes matches in value but not position. For example: Codes ComparedResultExplanation5234 vs. 57891A0BOnly the digit $$$5$$$ matches in both value and position.5634 vs. 65890A2BDigits $$$5$$$ and $$$6$$$ match only in value but are in different positions.1847 vs. 61491A1BThe digit $$$4$$$ matches in both value and position, while the digit $$$1$$$ only matches in value. You are given a base numeric code $$$n$$$, which can be one of $$$\{12, 123, 1234\}$$$. Consider all possible permutations of the digits of $$$n$$$, sorted in ascending order. Let the $$$j$$$-th and $$$k$$$-th permutations (1-indexed) be the two numeric codes chosen by the traveler.Your task is to compare these two permutations and determine their $$$x$$$A$$$y$$$B result, according to the rules above.InputEach test contains multiple test cases. The first line contains a single integer $$$t$$$, representing the number of tests the code master will conduct. The description of the test cases follows.The only line of each test case contains three integers $$$n$$$, $$$j$$$, and $$$k$$$, representing the base numeric code and the indices of the two permutations to be compared, respectively.  $$$1\le t \le 1000$$$  $$$n \in \{12,123,1234\}$$$  Both $$$j$$$ and $$$k$$$ are valid indices of permutations of the digits of $$$n$$$. OutputFor each test case, output the result in the format $$$x$$$A$$$y$$$B, where $$$x$$$ and $$$y$$$ are integers.ExamplesInput3
+12 1 2
+123 1 2
+123 2 5
+Output0A2B
+1A2B
+1A2B
+Input3
+1234 15 9
+1234 1 24
+1234 1 1
+Output2A2B
+0A4B
+4A0B

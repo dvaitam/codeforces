@@ -1,0 +1,2 @@
+F. ⅓ оf а Рrоblеmtime limit per test1 secondmemory limit per test256 megabytesinputstandard inputoutputstandard output$$$$$$a\qquad \mathord{4}\qquad \mathord{+}\qquad \mathord{-}\qquad \mathord{+}\qquad \mathord{-}\qquad \mathord{)}\qquad \mathord{2}$$$$$$ExampleInput0 1
+Output0

@@ -1,0 +1,13 @@
+E2. Beyond the Palindrome (Hard Version)time limit per test3 secondsmemory limit per test1024 megabytesinputstandard inputoutputstandard output   This is the hard version of the problem. The difference between the versions is that in this version, $$$n\le 2\cdot 10^7$$$, and the sum of $$$n$$$ over all test cases does not exceed $$$10^8$$$. You can hack only if you solved all versions of this problem. For a binary string$$$^{\text{∗}}$$$ $$$r$$$, we define $$$f(r)$$$ as the result of the following process: Delete all $$$\texttt{10}$$$ substrings$$$^{\text{†}}$$$ simultaneously from $$$r$$$;  Repeat the above operation until there are no $$$\texttt{10}$$$ substrings in $$$r$$$.For example, $$$f(\mathtt{100110001})=\mathtt{001}$$$ because $$$r$$$ changes as follows: $$$\mathtt{\underline{10}01\underline{10}001}\to \mathtt{0\underline{10}01}\to\mathtt{001}$$$.We call a binary string $$$s$$$ almost-palindrome if and only if $$$f(s)=f(\mathrm{rev}(s))$$$$$$^{\text{‡}}$$$.Aquawave has given you an integer $$$n$$$. You have to help him find the number of distinct almost-palindrome binary strings of length $$$n$$$, modulo $$$998\,244\,353$$$.$$$^{\text{∗}}$$$A binary string is a string where each character is either $$$\texttt{0}$$$ or $$$\texttt{1}$$$.$$$^{\text{†}}$$$A string $$$a$$$ is a substring of a string $$$b$$$ if $$$a$$$ can be obtained from $$$b$$$ by the deletion of several (possibly, zero or all) characters from the beginning and several (possibly, zero or all) characters from the end. $$$^{\text{‡}}$$$$$$\mathrm{rev}(s)$$$ is the string obtained by writing $$$s$$$ from right to left. For example, $$$\mathrm{rev(\mathtt{10100})=\mathtt{00101}}$$$.InputEach test contains multiple test cases. The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 10^4$$$). The description of the test cases follows. The only line of each test case contains a single integer $$$n$$$ ($$$1\le n\le 2\cdot 10^7$$$) — the length of the binary strings.It is guaranteed that the sum of $$$n$$$ over all test cases does not exceed $$$10^8$$$. OutputFor each test case, output a single integer — the number of distinct almost-palindrome binary strings of length $$$n$$$, modulo $$$998\,244\,353$$$.ExampleInput12123456789101001024Output2
+2
+4
+8
+12
+26
+44
+86
+164
+302
+307217648
+950903700
+NoteIn the first test case, all binary strings of length $$$1$$$ are almost-palindrome.In the second test case, all almost-palindrome binary strings of length $$$2$$$ are $$$\mathtt{00}$$$ and $$$\mathtt{11}$$$.In the third test case, all almost-palindrome binary strings of length $$$3$$$ are $$$\mathtt{000}$$$, $$$\mathtt{010}$$$, $$$\mathtt{101}$$$, and $$$\mathtt{111}$$$.

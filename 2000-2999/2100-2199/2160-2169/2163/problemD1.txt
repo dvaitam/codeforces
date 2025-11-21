@@ -1,0 +1,69 @@
+D1. Diadrash (Easy Version)time limit per test3 secondsmemory limit per test256 megabytesinputstandard inputoutputstandard output This is the Easy version of the problem. The difference between the versions is that in this version, you can make at most $$$\max(300, \lceil\frac{n}{2}\rceil+2)$$$ queries. You can hack only if you solved all versions of this problem. This problem is interactive.There is a permutation$$$^{\text{∗}}$$$ $$$p$$$ of the integers from $$$0$$$ to $$$n-1$$$ hidden from you. Additionally, you are given $$$q$$$ ranges $$$[l_1, r_1], [l_2, r_2], \ldots, [l_q, r_q]$$$ where $$$1 \le l_i \le r_i \le n$$$.You need to discover the maximum $$$\operatorname{MEX}$$$ among the values of $$$p$$$ in the $$$q$$$ ranges that are given to you in the input. Formally, you must discover the value of $$$\max _{i=1}^q {\operatorname{MEX}([p_{l_i}, p_{l_i+1}, \ldots, p_{r_i}])}$$$$$$^{\text{†}}$$$. To do this, you may make at most $$$\max(300, \lceil\frac{n}{2}\rceil+2)$$$ queries of the following form:  Choose any two integers $$$1 \le l \le r \le n$$$ and you will receive the value $$$\operatorname{MEX}([p_{l}, p_{l+1}, \ldots, p_{r}])$$$. $$$^{\text{∗}}$$$A permutation of the integers from $$$0$$$ to $$$n-1$$$ is a sequence of $$$n$$$ elements where every integer from $$$0$$$ to $$$n-1$$$ appears exactly once. For example, the sequence $$$[0, 3, 1, 2]$$$ is a permutation, but the sequence $$$[0, 0, 2, 1]$$$ is not.$$$^{\text{†}}$$$The $$$\operatorname{MEX}$$$ of a sequence is defined as the smallest non-negative integer that does not appear in that sequence. For example, $$$\operatorname{MEX}([0, 0, 1, 3]) = 2$$$ and $$$\operatorname{MEX}([1, 2, 2]) = 0.$$$InputEach test contains multiple test cases. The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 100$$$). The description of the test cases follows. The first line of each test case contains exactly two integers $$$n$$$ and $$$q$$$ ($$$4 \le n \le 10^4$$$, $$$1 \le q \le 3 \cdot 10^5$$$) — the size of the permutation and the number of ranges, respectively.The $$$i$$$-th of the next $$$q$$$ lines contains two integers $$$l_i, r_i$$$ ($$$1 \le l_i \le r_i \le n$$$).It is guaranteed that the sum of $$$n$$$ and $$$q$$$ do not exceed $$$10^4$$$ and $$$3 \cdot 10^5$$$ respectively over all test cases.Additional Constraint: it is guaranteed that no range is repeated in the same test case.InteractionTo ask a query, output a line in the following format (without the quotes):  "? $$$l$$$ $$$r$$$" ($$$1 \le l \le r \le n$$$) The jury will return a single integer, the value of $$$\operatorname{MEX}([p_{l}, p_{l+1}, \ldots, p_{r}])$$$.When you have found the answer, output a single line in the following format:  "! $$$x$$$" ($$$0 \le x \le n$$$). After that, proceed to process the next test case or terminate the program if it was the last test case. Printing the answer does not count as a query.The interactor is not adaptive, meaning that the values of the permutation are known before the participant asks the queries.If your program makes more than $$$\max(300, \lceil\frac{n}{2}\rceil+2)$$$ queries, your program should immediately terminate to receive the verdict Wrong Answer. Otherwise, you can get an arbitrary verdict because your solution will continue to read from a closed stream.After printing a query do not forget to output the end of line and flush the output. Otherwise, you may get the Idleness Limit Exceeded verdict. To do this, use:  fflush(stdout) or cout.flush() in C++  System.out.flush() in Java;  flush(output) in Pascal;  stdout.flush() in Python;  see the documentation for other languages. HacksFor hacks, use the following format.The first line of the input should contain a single integer $$$t$$$ ($$$1 \le t \le 100$$$) — the number of test cases.The first line of each test case should contain exactly two integers $$$n$$$ and $$$q$$$ ($$$4 \le n \le 10^4$$$, $$$1 \le q \le 3\cdot 10^5$$$) — the size of the permutation and the number of ranges you are given, respectively.The second line should contain $$$n$$$ integers $$$p_1, p_2, \ldots, p_n$$$ — where $$$p_i$$$ is the $$$i$$$-th element of the permutation. It should hold that $$$p$$$ is a permutation containing integers $$$0$$$ to $$$n-1$$$.The $$$i$$$-th of the next $$$q$$$ lines should contain two integers $$$l_i$$$, $$$r_i$$$ ($$$1 \le l_i \le r_i \le n$$$).It should hold that the sum of $$$n$$$ and $$$q$$$ do not exceed $$$10^4$$$ and $$$3 \cdot 10^5$$$ respectively over all test cases.Additional Constraint: no range should be repeated in the same test case.ExampleInput3
+4 3
+1 2
+2 4
+1 3
+
+2
+
+0
+
+1
+
+4
+
+6 6
+1 2
+2 4
+3 3
+4 6
+5 5
+6 6
+
+6
+
+1
+
+2
+
+4 4
+1 1
+2 2
+3 3
+4 4
+
+Output
+
+
+
+
+
+? 1 3
+
+? 4 4
+
+? 1 1
+
+? 1 4
+
+! 2
+
+
+
+
+
+
+
+? 1 6
+
+? 3 3
+
+? 2 4
+
+! 2
+
+
+
+
+
+! 1NoteIn the first example, the hidden permutation is $$$p = [0, 3, 1, 2]$$$ and the ranges are $$$[1, 2], [2, 4], [1, 3]$$$. The third range is optimal, as $$$\operatorname{MEX}([p_1, p_2, p_3]) = \operatorname{MEX}([0, 3, 1]) = 2$$$, which is maximum.In our first query, we ask about $$$l = 1, r = 3$$$ and the judge gives us the value $$$\operatorname{MEX}([p_1, p_2, p_3]) = 2$$$. In the second query, we ask about $$$l = 4, r = 4$$$ and the judge gives us the value $$$\operatorname{MEX}([p_4]) = 0$$$. Likewise, $$$\operatorname{MEX}([p_1]) = 1$$$ and $$$\operatorname{MEX}([p_1, p_2, p_3, p_4]) = 4$$$.Somehow, we figure out that the answer we are looking for is $$$2$$$.In the second example, $$$p = [3, 5, 0, 1, 4, 2]$$$.In the third example, $$$p = [0, 1, 2, 3]$$$.Note that this is just an explanation of the way the interaction works and does not show any strategy to solve the problem.

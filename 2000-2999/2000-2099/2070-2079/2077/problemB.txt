@@ -1,0 +1,24 @@
+B. Finding OR Sumtime limit per test2 secondsmemory limit per test256 megabytesinputstandard inputoutputstandard outputALTER EGO - Yuta Imai vs Qlarabelle This is an interactive problem.There are two hidden non-negative integers $$$x$$$ and $$$y$$$ ($$$0 \leq x, y < 2^{30}$$$). You can ask no more than $$$2$$$ queries of the following form.  Pick a non-negative integer $$$n$$$ ($$$0 \leq n < 2^{30}$$$). The judge will respond with the value of $$$(n \mathbin{|} x) + (n \mathbin{|} y)$$$, where $$$|$$$ denotes the bitwise OR operation. After this, the judge will give you another non-negative integer $$$m$$$ ($$$0 \leq m < 2^{30}$$$). You must answer the correct value of $$$(m \mathbin{|} x) + (m \mathbin{|} y)$$$.InputEach test contains multiple test cases. The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 10^4$$$). The description of the test cases follows. InteractionTwo hidden integers $$$x$$$ and $$$y$$$ are chosen ($$$0 \leq x, y < 2^{30}$$$). Note that $$$x$$$ and $$$y$$$ might be different for different test cases.The interactor in this task is not adaptive. In other words, the integers $$$x$$$ and $$$y$$$ do not change during the interaction.To ask a query, pick an integer $$$n$$$ ($$$0 \leq n < 2^{30}$$$) and print only the integer $$$n$$$ to a line.You will receive a single integer, the value of $$$(n \mathbin{|} x) + (n \mathbin{|} y)$$$.You may make no more than $$$2$$$ queries of the following form.After you finish your queries, output "!" in a line. You will receive an integer $$$m$$$ ($$$0 \leq m < 2^{30}$$$). Note that the value of $$$m$$$ is also fixed before interaction.You must output only the value of $$$(m \mathbin{|} x) + (m \mathbin{|} y)$$$ in a line. Note that this line is not considered a query and is not taken into account when counting the number of queries asked.After this, proceed to the next test case.If you make more than $$$2$$$ queries during an interaction, your program must terminate immediately, and you will receive the Wrong Answer verdict. Otherwise, you can get an arbitrary verdict because your solution will continue to read from a closed stream.After printing a query do not forget to output the end of line and flush the output. Otherwise, you will get Idleness limit exceeded. To do this, use: fflush(stdout) or cout.flush() in C++; System.out.flush() in Java; flush(output) in Pascal; stdout.flush() in Python; see the documentation for other languages.HacksTo hack, follow the test format below.The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 10^4$$$). The description of the test cases follows.The first and only line of each test case contains a single line with three integers $$$x, y, m$$$ ($$$0 \leq x, y, m < 2^{30}$$$).ExampleInput2
+
+3
+
+4
+
+1
+
+0
+
+1Output
+0
+
+1
+
+!
+
+4
+
+0
+
+!
+
+2NoteIn the first test, the interaction proceeds as follows. SolutionJuryExplanation$$$\texttt{2}$$$There are 2 test cases.$$$\texttt{}$$$In the first test case, $$$x=1$$$ and $$$y=2$$$.$$$\texttt{0}$$$$$$\texttt{3}$$$The solution requests $$$(0 \mathbin{|} 1) + (0 \mathbin{|} 2)$$$, and the jury responds with $$$3$$$.$$$\texttt{1}$$$$$$\texttt{4}$$$The solution requests $$$(1 \mathbin{|} 1) + (1 \mathbin{|} 2)$$$, and the jury responds with $$$4$$$.$$$\texttt{!}$$$$$$\texttt{1}$$$The solution requests the value of $$$m$$$, and the jury responds with $$$1$$$.$$$\texttt{4}$$$The solution knows that $$$(1 \mathbin{|} x) + (1 \mathbin{|} y)=4$$$ because of earlier queries.$$$\texttt{}$$$In the second test case, $$$x=0$$$ and $$$y=0$$$.$$$\texttt{0}$$$$$$\texttt{0}$$$The solution requests $$$(0 \mathbin{|} 0) + (0 \mathbin{|} 0)$$$, and the jury responds with $$$0$$$.$$$\texttt{!}$$$$$$\texttt{1}$$$The solution requests the value of $$$m$$$, and the jury responds with $$$1$$$.$$$\texttt{2}$$$The solution somehow deduces that $$$x=y=0$$$, so it responds with $$$(1 \mathbin{|} 0) + (1 \mathbin{|} 0)=2$$$. Note that the empty lines in the example input and output are for the sake of clarity and do not occur in the real interaction.

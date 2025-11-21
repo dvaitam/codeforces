@@ -1,0 +1,28 @@
+E1. Hidden Single (Version 1)time limit per test5 secondsmemory limit per test256 megabytesinputstandard inputoutputstandard outputAdhesiveWombat - Overdrive⠀The two versions have different constraints on $$$t$$$, $$$n$$$, and the maximum number of queries, and solving one of the two versions does not necessarily solve the other. You may want to read both versions. Hacks are disabled in both versions.This is an interactive problem.There is a hidden array $$$a_1, a_2, \ldots, a_{2n-1}$$$ containing all the numbers from $$$1$$$ to $$$n$$$, and all of them appear twice except one (which only appears once).You can ask queries in the following format, where $$$S$$$ is a subset of $$$\{1, 2, \ldots, 2n-1\}$$$ and $$$x$$$ is an integer in $$$[1, n]$$$:  $$$\texttt{ask(S, x)}$$$: does there exist $$$i \in S$$$ such that $$$a_i = x$$$? Find the number appearing exactly once, using at most $$$4n + 2 \lceil \log_2 n \rceil$$$ queries. You don't need to find its position.Note that the interactor is not adaptive, which means that the hidden array does not depend on the queries you make.InputEach test contains multiple test cases. The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 4000$$$). The description of the test cases follows. The first line of each test case contains a single integer $$$n$$$ ($$$1 \le n \le 300$$$) — the maximum value in the hidden array $$$a_1, a_2, \ldots, a_{2n-1}$$$.It is guaranteed that the sum of $$$n^2$$$ over all test cases does not exceed $$$4 \cdot 10^5$$$.There are exactly $$$80$$$ tests in this problem (including the example).InteractionFor each test case, first read a single integer $$$n$$$. If the integer you read is $$$-1$$$, it means that the answer to the previous test case was wrong, and you should exit immediately. You may ask up to $$$4n + 2 \lceil \log_2 n \rceil$$$ queries in each test case.To ask a query, print a line in the format $$$\texttt{? x |S| S_1 S_2 ... S_|S|}$$$ with $$$1 \leq x \leq n$$$, $$$1 \leq S_1, S_2, \ldots, S_{|S|} \leq 2n-1$$$, and all the $$$S_i$$$ distinct.As a response to the query, you will get $$$1$$$ if the answer is yes, $$$0$$$ if the answer is no, and $$$-1$$$ if you made an invalid query. You should exit immediately if you receive a $$$-1$$$.To output an answer, you should print $$$\texttt{! y}$$$, where $$$y$$$ is the number that appears exactly once. Printing the answer doesn't count as a query.See the interaction example for more clarity.If you ask too many queries, you ask a malformed query, or your answer is wrong, you will get $$$\texttt{Wrong answer}$$$.After printing a query, do not forget to output the end of line and flush the output. Otherwise, you will get $$$\texttt{Idleness limit exceeded}$$$. To do this, use:  $$$\texttt{fflush(stdout)}$$$ or $$$\texttt{cout.flush()}$$$ in C++;  $$$\texttt{System.out.flush()}$$$ in Java;  $$$\texttt{flush(output)}$$$ in Pascal;  $$$\texttt{stdout.flush()}$$$ in Python;  see the documentation for other languages. Note that the interactor is not adaptive, which means that the hidden arrays do not depend on the queries you make.ExampleInput2
+2
+
+0
+
+3
+
+1
+
+1
+
+1
+
+1Output
+
+? 1 2 1 2
+
+! 1
+
+? 1 2 1 4
+
+? 2 2 1 4
+
+? 2 1 2
+
+? 1 1 5
+
+! 3NoteIn the first test case, $$$n = 2$$$, so the hidden array has length $$$2n-1 = 3$$$. One possible hidden array consistent with the interaction is $$$[2, 2, 1]$$$, where $$$1$$$ appears once and $$$2$$$ appears twice. #Contestant printsInteractor repliesExplanation1? 1 2 1 20Query: does $$$a_1=1$$$ or $$$a_2=1$$$? No (they are both $$$2$$$). Therefore $$$1$$$ can appear at most once (only in position $$$3$$$), so the number appearing exactly once must be $$$1$$$.2! 1Output the answer. We have asked $$$1$$$ query (printing the answer does not count as a query), which is less than the maximum allowed number of queries ($$$4n + 2 \lceil \log_2 n \rceil = 10$$$).$$$\color{white}{2}$$$In the second testcase, $$$n = 3$$$, so the hidden array has length $$$5$$$. One possible hidden array consistent with the interaction is $$$[1, 2, 3, 2, 1]$$$, where $$$3$$$ appears once, and $$$1$$$ and $$$2$$$ appear twice. #Contestant printsInteractor repliesExplanation1? 1 2 1 41Check if $$$a_1$$$ or $$$a_4$$$ equals $$$1$$$. Yes ($$$a_1=1$$$).2? 2 2 1 41Check if $$$a_1$$$ or $$$a_4$$$ equals $$$2$$$. Yes ($$$a_4=2$$$).3? 2 1 21Check if $$$a_2=2$$$. Yes.4? 1 1 51Check if $$$a_5=1$$$. Yes.5! 3We know that $$$3$$$ cannot appear neither in positions $$$1$$$ and $$$4$$$ (which contain $$$1$$$ and $$$2$$$ in some order), nor in positions $$$2$$$ and $$$5$$$ (which contain $$$2$$$ and $$$1$$$, respectively). So the answer must be $$$3$$$.

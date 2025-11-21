@@ -1,0 +1,6 @@
+E. XOR Matrixtime limit per test2 secondsmemory limit per test512 megabytesinputstandard inputoutputstandard outputFor two arrays $$$a = [a_1, a_2, \dots, a_n]$$$ and $$$b = [b_1, b_2, \dots, b_m]$$$, we define the XOR matrix $$$X$$$ of size $$$n \times m$$$, where for each pair $$$(i,j)$$$ ($$$1 \le i \le n$$$; $$$1 \le j \le m$$$) it holds that $$$X_{i,j} = a_i \oplus b_j$$$. The symbol $$$\oplus$$$ denotes the bitwise XOR operation.You are given four integers $$$n, m, A, B$$$. Count the number of such pairs of arrays $$$(a, b)$$$ such that:  $$$a$$$ consists of $$$n$$$ integers, each of which is from $$$0$$$ to $$$A$$$;  $$$b$$$ consists of $$$m$$$ integers, each of which is from $$$0$$$ to $$$B$$$;  in the XOR matrix formed from these arrays, there are no more than two distinct values. InputThe first line contains one integer $$$t$$$ ($$$1 \le t \le 10^4$$$) — the number of test cases.Each test case consists of one line containing four integers $$$n, m, A, B$$$ ($$$2 \le n, m, A, B \le 2^{29} - 1$$$).OutputFor each test case, output one integer — the number of pairs of arrays $$$(a, b)$$$ that satisfy all three conditions. Since this number can be very large, output it modulo $$$998244353$$$.ExampleInput62 2 2 22 3 4 55 7 4 31337 42 1337 424 2 13 37536870902 536370902 536390912 466128231Output57
+864
+50360
+439988899
+112000
+732195491

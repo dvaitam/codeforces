@@ -1,0 +1,12 @@
+E1. Determinant Construction (Easy Version)time limit per test5 secondsmemory limit per test256 megabytesinputstandard inputoutputstandard output This is the easy version of the problem. The difference between the versions is that in this version, the constraints on the side length of $$$M$$$ is larger and the constraints on $$$t$$$ is smaller. You can hack only if you solved all versions of this problem. You are given a non-negative integer $$$x$$$. Your task is to construct a square matrix $$$M$$$ that satisfies all of the following conditions:   The side length of $$$M$$$ is at most $$$80$$$.  Each element of $$$M$$$ is either $$$-1$$$, $$$0$$$, or $$$1$$$.  The determinant of $$$M$$$ is equal to $$$x$$$.  Each row of $$$M$$$ can have at most $$$3$$$ non-zero positions, and each column of $$$M$$$ can have at most $$$3$$$ non-zero positions. It can be proven that such a matrix always exists.InputEach test contains multiple test cases. The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 100$$$). The description of the test cases follows. The first and only line of each test case contains an integer $$$x$$$ ($$$0 \le x \le 10^7$$$) — the target value of the determinant.OutputFor each test case, output a single integer $$$n$$$ ($$$1\le n\le 80$$$) representing the side length of the square matrix $$$M$$$.Then, output $$$n$$$ lines, the $$$i$$$-th line containing $$$n$$$ integers $$$M_{i, 1}, M_{i, 2}, \ldots, M_{i, n}$$$ ($$$M_{i, j} \in \{-1, 0, 1\}$$$), representing the elements of matrix $$$M$$$.If there are multiple matrices $$$M$$$ satisfying the conditions, you may output any of them.ExampleInput3124Output1
+1
+2
+1 -1 
+1 1 
+5
+1 -1 0 0 0 
+1 1 1 0 0 
+0 1 1 -1 0 
+0 0 1 1 -1 
+0 0 0 1 1 
+NoteNote that in the third test case, the following solution: $$$$$$\begin{pmatrix} 1 & 1 & -1 & 1 \\ -1 & -1 & -1 & 1 \\ 1 & -1 & 0 & -1 \\ 1 & -1 & -1 & -1 \end{pmatrix}$$$$$$ is not valid as there are four non-zero positions in the first row of the matrix.

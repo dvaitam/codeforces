@@ -1,0 +1,28 @@
+N. New Kingdomtime limit per test1 secondmemory limit per test256 megabytesinputstandard inputoutputstandard outputIn the upcoming strategy game Island Cartographer: Penultimate Chapter (ICPC), players take the role of bridge engineers employed by the Imperial Cartography & Planning Council to design a new kingdom spread across an archipelago of $$$n$$$ islands connected by a network of causeways. To achieve balance between stability and exploration, the council requires that the player's plan satisfy several strict rules.The first and fundamental requirement is that the kingdom must be simple and connected. That is, each causeway connects two different islands, no two causeways connect the same pair of islands, and for each pair of different islands, there exists a route between them using a sequence of causeways.After learning the ancient wisdom of the legendary tourist Euler, some visitors might be able to traverse every causeway exactly once in a single, seamless tour. If this is possible, then those visitors would not have enough time to enjoy their trips. To make them travel for longer, the council's second requirement is that exactly $$$k$$$ islands have an odd number of causeways connected to them.Some causeways are considered vital to the kingdom. A causeway is vital if removing it would make travel between some pair of islands impossible. These causeways are important for local development, cultural identity, and tourism, but having too many of them could lead to traffic congestion. Therefore, the council's third and final requirement is that the kingdom must contain exactly $$$b$$$ vital causeways.To complete a game of ICPC, the player must submit a plan to build causeways that satisfies all the requirements for the parameters $$$n$$$, $$$k$$$, and $$$b$$$ provided by the council. Before the game's release, you are tasked with testing the game by designing a valid kingdom plan as the player. In case the game is impossible to complete, please report so.InputEach test contains multiple test cases. The first line contains the number of test cases $$$t$$$. The description of the test cases follows.The only line of each test case contains three integers $$$n$$$, $$$k$$$, and $$$b$$$, representing the number of islands, the exact number of islands connected to an odd number of causeways, and the exact number of vital causeways, respectively.  $$$1\le n\le 10^5$$$  $$$0\le k \le n$$$  $$$0\le b \le n-1$$$  The sum of $$$n$$$ over all test cases does not exceed $$$10^5$$$. OutputFor each test case, if there are no solutions that fit the requirements for a valid plan, output "No" in a single line.Otherwise, output "Yes" in the first line. Then, output a single integer $$$m$$$ in the second line, indicating the number of causeways in your plan. In each of the next $$$m$$$ lines, output two integers $$$u_i$$$ and $$$v_i$$$ separated by a whitespace, meaning that the islands $$$u_i$$$ and $$$v_i$$$ are connected with a single causeway. If there are multiple valid plans, output any.Your output must satisfy:   $$$0\le m\le 5n$$$  For all $$$1\le i\le m$$$, $$$1\le u_i, v_i\le n$$$.  For all $$$1\le i\le m$$$, $$$u_i\neq v_i$$$.  For all $$$i\neq j$$$, $$$\{u_i, v_i\}\neq \{u_j, v_j\}$$$.  It can be proven that for every possible input that has a solution, there exists a solution that satisfies these constraints.ExampleInput4
+6 2 1
+3 1 2
+4 0 0
+5 4 2
+OutputYes
+7
+1 2
+1 3
+2 3
+3 4
+4 5
+4 6
+5 6
+No
+Yes
+4
+1 2
+2 3
+3 4
+4 1
+Yes
+5
+1 4
+1 2
+4 5
+5 1
+5 3

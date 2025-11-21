@@ -1,0 +1,10 @@
+D1. Infinite Sequence (Easy Version)time limit per test2 secondsmemory limit per test256 megabytesinputstandard inputoutputstandard output   This is the easy version of the problem. The difference between the versions is that in this version, $$$l=r$$$. You can hack only if you solved all versions of this problem. You are given a positive integer $$$n$$$ and the first $$$n$$$ terms of an infinite binary sequence $$$a$$$, which is defined as follows:  For $$$m>n$$$, $$$a_m = a_1 \oplus a_2 \oplus \ldots \oplus a_{\lfloor \frac{m}{2} \rfloor}$$$$$$^{\text{∗}}$$$. Your task is to compute the sum of elements in a given range $$$[l, r]$$$: $$$a_l + a_{l + 1} + \ldots + a_r$$$.$$$^{\text{∗}}$$$$$$\oplus$$$ denotes the bitwise XOR operation. InputEach test contains multiple test cases. The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 10^4$$$). The description of the test cases follows. The first line of each test case contains three integers $$$n$$$, $$$l$$$, and $$$r$$$ ($$$1 \le n \le 2 \cdot 10^5$$$, $$$1 \le l=r\le 10^{18}$$$).The second line contains $$$n$$$ integers $$$a_1, a_2, \ldots, a_n$$$ ($$$\color{red}{a_i \in \{0, 1\}}$$$) — the first $$$n$$$ terms of the sequence $$$a$$$.It is guaranteed that the sum of $$$n$$$ over all test cases does not exceed $$$2 \cdot 10^5$$$. OutputFor each test case, output a single integer — the sum of elements in the given range.ExampleInput91 1 112 3 31 03 5 51 1 11 234 23405 1111 11111 0 1 0 11 1000000000000000000 1000000000000000000110 87 870 1 1 1 1 1 1 1 0 012 69 691 0 0 0 0 1 0 1 0 1 1 013 46 460 1 0 1 1 1 1 1 1 0 1 1 1Output1
+1
+0
+0
+1
+0
+1
+0
+0
+NoteIn the first test case, the sequence $$$a$$$ is equal to $$$$$$[\underline{\color{red}{1}}, 1, 1, 0, 0, 1, 1, 1, 1, 1, \ldots]$$$$$$ where $$$l = 1$$$, and $$$r = 1$$$. The sum of elements in the range $$$[1, 1]$$$ is equal to $$$$$$a_1 = 1.$$$$$$In the second test case, the sequence $$$a$$$ is equal to $$$$$$[\color{red}{1}, \color{red}{0}, \underline{1}, 1, 1, 0, 0, 1, 1, 0, \ldots]$$$$$$ where $$$l = 3$$$, and $$$r = 3$$$. The sum of elements in the range $$$[3, 3]$$$ is equal to $$$$$$a_3 = 1.$$$$$$

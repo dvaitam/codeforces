@@ -6,3 +6,6 @@ click.scpt
 deploy.sh
 nohup.out
 *.bin
+\~/
+nohup_backfill.log
+codeForces-my-solutions/

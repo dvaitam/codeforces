@@ -1,0 +1,10 @@
+F. Choose Your Queriestime limit per test3 secondsmemory limit per test512 megabytesinputstandard inputoutputstandard outputYou are given an array $$$a$$$, consisting of $$$n$$$ integers (numbered from $$$1$$$ to $$$n$$$). Initially, they are all zeroes.You have to process $$$q$$$ queries. The $$$i$$$-th query consists of two different integers $$$x_i$$$ and $$$y_i$$$. During the $$$i$$$-th query, you have to choose an integer $$$p$$$ (which is either $$$x_i$$$ or $$$y_i$$$) and an integer $$$d$$$ (which is either $$$1$$$ or $$$-1$$$), and assign $$$a_p = a_p + d$$$.After each query, every element of $$$a$$$ should be a non-negative integer.Process all queries in such a way that the sum of all elements of $$$a$$$ after the last query is the minimum possible.InputThe first line contains two integers $$$n$$$ and $$$q$$$ ($$$2 \le n \le 3 \cdot 10^5$$$; $$$1 \le q \le 3 \cdot 10^5$$$) — the number of elements in $$$a$$$ and the number of queries, respectively.Then $$$q$$$ lines follow. The $$$i$$$-th of these lines contains two integers $$$x_i$$$ and $$$y_i$$$ ($$$1 \le x_i, y_i \le n$$$; $$$x_i \ne y_i$$$) — the description of the $$$i$$$-th query.OutputFor each query, print a line containing two characters:  the first character should be x if you choose $$$p=x_i$$$, or y if you choose $$$p=y_i$$$;  the second character should be + if you choose $$$d=1$$$, or - if you choose $$$d=-1$$$. If there are multiple answers, print any of them.ExamplesInput3 41 23 23 11 2Outputy+
+x+
+x-
+y-
+Input4 41 22 33 43 2Outputy+
+y+
+x-
+y-
+Input4 22 14 3Outputy+
+x+

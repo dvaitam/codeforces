@@ -1,0 +1,9 @@
+B. The Secret Numbertime limit per test2 secondsmemory limit per test256 megabytesinputstandard inputoutputstandard outputVadim has thought of a number $$$x$$$. To ensure that no one can guess it, he appended a positive number of zeros to the right of it, thus obtaining a new number $$$y$$$. However, as a precaution, Vadim decided to spread the number $$$n = x + y$$$. Find all suitable $$$x$$$ that Vadim could have thought of for the given $$$n$$$.InputEach test consists of several test cases. The first line contains a single integer $$$t$$$ $$$(1 \le t \le 10^4)$$$ — the number of test cases. The following lines describe the test cases.In a single line of each test case, there is an integer $$$n$$$ — the number spread by Vadim $$$(11 \le n \le 10^{18})$$$.OutputFor each number $$$n$$$, output $$$0$$$ if there are no suitable $$$x$$$. Otherwise, output the number of suitable $$$x$$$, followed by all suitable $$$x$$$ in ascending order.ExampleInput5111112559999999999999999991000000000000000000Output2
+11 101
+0
+1
+5
+3
+999999999 999000999000999 90909090909090909
+0
+NoteIn the first sample, to $$$11$$$ one can append two zeros to the right, then $$$11 + 1100 = 1111$$$, and to $$$101$$$ one can append one zero to the right, then $$$101 + 1010 = 1111$$$.In the second sample, it is impossible to obtain $$$12$$$ through the described actions.

@@ -1,0 +1,7 @@
+E. Min Max MEXtime limit per test2 secondsmemory limit per test256 megabytesinputstandard inputoutputstandard outputYou are given an array $$$a$$$ of length $$$n$$$ and a number $$$k$$$.A subarray is defined as a sequence of one or more consecutive elements of the array. You need to split the array $$$a$$$ into $$$k$$$ non-overlapping subarrays $$$b_1, b_2, \dots, b_k$$$ such that the union of these subarrays equals the entire array. Additionally, you need to maximize the value of $$$x$$$, which is equal to the minimum MEX$$$(b_i)$$$, for $$$i \in [1..k]$$$.MEX$$$(v)$$$ denotes the smallest non-negative integer that is not present in the array $$$v$$$.InputThe first line contains an integer $$$t$$$ $$$(1\leq t\leq 10^4)$$$  — the number of test cases.The first line of each test case contains two integers $$$n$$$, $$$k$$$ $$$(1\leq k \leq n \leq 2 \cdot 10^5)$$$  — the length of the array and the number of segments to split the array into.The second line of each test case contains $$$n$$$ integers $$$a_i$$$ $$$(0\leq a_i\leq 10^9)$$$  — the elements of the array.It is guaranteed that the sum of $$$n$$$ across all test cases does not exceed $$$2\cdot 10^5$$$.OutputFor each query, output a single number  — the maximum value $$$x$$$ such that there exists a partition of the array $$$a$$$ into $$$k$$$ subarrays where the minimum MEX equals $$$x$$$.ExampleInput71 105 10 1 3 2 46 22 1 0 0 1 25 50 0 0 0 05 22 3 4 5 66 20 0 1 1 2 24 41 0 0 0Output1
+5
+3
+1
+0
+1
+0

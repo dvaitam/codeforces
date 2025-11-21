@@ -1,0 +1,29 @@
+C3. Interactive RBS (Hard Version)time limit per test2 secondsmemory limit per test256 megabytesinputstandard inputoutputstandard outputThis is an interactive problem.This is the hard version of the problem. The only difference is the limit on the number of queries. You can make hacks only if all versions of the problem are solved.There is a hidden bracket sequence $$$s$$$ of length $$$n$$$, where $$$s$$$ only contains $$$\texttt{'('}$$$ and $$$\texttt{')'}$$$. It is guaranteed that $$$s$$$ contains at least one $$$\texttt{'('}$$$ and one $$$\texttt{')'}$$$.To find this bracket sequence, you can ask queries. Each query has the following form: you pick an integer $$$k$$$ and arbitrary indices $$$i_1, i_2, \ldots, i_k$$$ ($$$1 \le k \le 1000$$$, $$$1 \le i_1, i_2, \ldots, i_k \le n$$$). Note that the indices can be equal. Next, you receive an integer $$$f(s_{i_1}s_{i_2}\ldots s_{i_k})$$$ calculated by the jury.For a bracket sequence $$$t$$$, $$$f(t)$$$ is the number of non-empty regular bracket substrings in $$$t$$$ (the substrings must be contiguous). For example, $$$f(\texttt{"()())"}) = 3$$$.A bracket sequence is called regular if it can be constructed in the following way.   The empty sequence $$$\varnothing$$$ is regular.  If the bracket sequence $$$A$$$ is regular, then $$$\mathtt{(}A\mathtt{)}$$$ is also regular.  If the bracket sequences $$$A$$$ and $$$B$$$ are regular, then the concatenated sequence $$$A B$$$ is also regular. For example, the sequences $$$\texttt{"(())()"}$$$, $$$\texttt{"()"}$$$ are regular, while $$$\texttt{"(()"}$$$ and $$$\texttt{"())("}$$$ are not.Find the sequence $$$s$$$ using no more than $$$100$$$ queries.InputEach test contains multiple test cases. The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 20$$$). The description of the test cases follows. InteractionThe first line of each test case contains one integer $$$n$$$ ($$$2 \le n \le 1000$$$). At this moment, the bracket sequence $$$s$$$ is chosen. The interactor in this task is not adaptive. In other words, the bracket sequence $$$s$$$ is fixed in every test case and does not change during the interaction.To ask a query, you need to pick an integer $$$k$$$ and arbitrary indices $$$i_1$$$, $$$i_2 \ldots i_k$$$ ($$$1 \le k \leq 1000$$$, $$$1 \leq i_1, i_2, \ldots, i_k \leq n$$$) and print the line of the following form (without quotes):  "$$$?\ k\ i_1\ i_2 \ldots i_k$$$" After that, you receive an integer $$$f(s_{i_1}s_{i_2}\ldots s_{i_k})$$$.You can ask at most $$$100$$$ queries of this form.Next, if your program has found the bracket sequence $$$s$$$, print a line with the following format (without quotes):  "$$$!\ s_1s_2 \ldots s_n$$$" Note that this line is not considered a query and is not taken into account when counting the number of queries asked.After this, proceed to the next test case.If you ask more than $$$100$$$ queries during an interaction, your program must terminate immediately, and you will receive the Wrong Answer verdict. Otherwise, you can get an arbitrary verdict because your solution will continue to read from a closed stream.After printing a query or the answer for a test case, do not forget to output the end of the line and flush the output. Otherwise, you will get the verdict Idleness Limit Exceeded. To do this, use:  fflush(stdout) or cout.flush() in C++;  System.out.flush() in Java;  flush(output) in Pascal;  stdout.flush() in Python;  see the documentation for other languages. HacksTo hack, follow the test format below.The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 20$$$). The description of the test cases follows.The first line of each test case contains one integer $$$n$$$ ($$$2 \le n \le 1000$$$).The second line of each test case contains a bracket sequence $$$s_1 s_2\ldots s_{n}$$$, where $$$s_i= \texttt{'('}$$$ or $$$\texttt{')'}$$$.The bracket sequence $$$s$$$ must contain at least one $$$\texttt{'('}$$$ and one $$$\texttt{')'}$$$.ExampleInput2
+3
+
+0
+
+1
+
+1
+
+2
+
+3
+
+Output
+
+? 4 1 2 3 3
+
+? 2 2 1
+
+? 2 3 1
+
+! )((
+
+? 4 1 2 1 2
+
+! ()
+
+
+NoteIn the first test case, the hidden bracket sequence is $$$s=\texttt{")(("}$$$.For the query "? 4 1 2 3 3", the jury returns $$$0$$$ because $$$f(s_{1}s_{2}s_{3}s_{3}) = f(\texttt{")((("}) = 0$$$.For the query "? 2 2 1", the jury returns $$$1$$$ because $$$f(s_{2}s_{1}) = f(\texttt{"()"}) = 1$$$.For the query "? 2 3 1", the jury returns $$$1$$$ because $$$f(s_{3}s_{1}) = f(\texttt{"()"}) = 1$$$.In the second test case, the hidden bracket sequence is $$$s=\texttt{"()"}$$$.For the query "? 4 1 2 1 2", the jury returns $$$3$$$ because $$$f(s_{1}s_{2}s_{1}s_{2}) = f(\texttt{"()()"}) = 3$$$.Note that the example is only for understanding the statement and does not guarantee finding the unique bracket sequence $$$s$$$.

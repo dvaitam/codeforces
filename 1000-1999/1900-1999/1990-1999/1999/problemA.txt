@@ -1,0 +1,8 @@
+A. A+B Again?time limit per test1 secondmemory limit per test256 megabytesinputstandard inputoutputstandard outputGiven a two-digit positive integer $$$n$$$, find the sum of its digits.InputThe first line contains an integer $$$t$$$ ($$$1 \leq t \leq 90$$$) — the number of test cases.The only line of each test case contains a single two-digit positive integer $$$n$$$ ($$$10 \leq n \leq 99$$$).OutputFor each test case, output a single integer — the sum of the digits of $$$n$$$.ExampleInput87721403419841099Output14
+3
+4
+7
+10
+12
+1
+18

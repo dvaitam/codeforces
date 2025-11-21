@@ -1,0 +1,8 @@
+A. Add or XORtime limit per test1 secondmemory limit per test256 megabytesinputstandard inputoutputstandard outputr-906 & IA AI - Psychologic Disco You are given two non-negative integers $$$a, b$$$. You can apply two types of operations on $$$a$$$ any number of times and in any order:  $$$a \gets a + 1$$$. The cost of this operation is $$$x$$$;  $$$a \gets a \oplus 1$$$, where $$$\oplus$$$ denotes the bitwise XOR operation. The cost of this operation is $$$y$$$. Now you are asked to make $$$a = b$$$. If it's possible, output the minimum cost; otherwise, report it.InputEach test contains multiple test cases. The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 10^4$$$). The description of the test cases follows. The only line of each test case contains four integers $$$a, b, x, y$$$ ($$$1 \le a, b \le 100, 1 \le x, y \le 10^7$$$) — the two integers given to you and the respective costs of two types of operations.OutputFor each test case, output an integer — the minimum cost to make $$$a = b$$$, or $$$-1$$$ if it is impossible.ExampleInput71 4 1 21 5 2 13 2 2 11 3 2 12 1 1 23 1 1 21 100 10000000 10000000Output3
+6
+1
+3
+-1
+-1
+990000000
+NoteIn the first test case, the optimal strategy is to apply $$$a \gets a + 1$$$ three times. The total cost is $$$1+1+1=3$$$.In the second test case, the optimal strategy is to apply $$$a \gets a + 1$$$, $$$a \gets a \oplus 1$$$, $$$a \gets a + 1$$$, $$$a \gets a \oplus 1$$$ in order. The total cost is $$$2+1+2+1=6$$$.In the fifth test case, it can be proved that there isn't a way to make $$$a = b$$$.

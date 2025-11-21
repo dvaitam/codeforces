@@ -1,0 +1,14 @@
+E. Arithmetics Competitiontime limit per test3 secondsmemory limit per test256 megabytesinputstandard inputoutputstandard outputIn the arithmetic competition, participants need to achieve the highest possible sum from the cards they have. In the team "fst_ezik", Vadim has $$$n$$$ cards with numbers $$$a_i$$$, and Kostya has $$$m$$$ cards with numbers $$$b_i$$$. In each of the $$$q$$$ rounds, they want to win, but this time the rules of the competition are slightly different from the usual ones.In each round, the participants are given three numbers $$$x_i$$$, $$$y_i$$$, and $$$z_i$$$. The team "fst_ezik" must choose exactly $$$z_i$$$ cards from all the cards they have, but Vadim can choose no more than $$$x_i$$$ cards from his set, and Kostya can choose no more than $$$y_i$$$ cards from his set. Help them find the highest possible sum for each of the $$$q$$$ rounds.InputEach test consists of several test cases. The first line contains a single integer $$$t$$$ $$$(1 \le t \le 10^4)$$$ — the number of test cases. The descriptions of the test cases follow.In the first line of each test case, three integers $$$n$$$, $$$m$$$, $$$q$$$ are given $$$(1 \le n, m \le 2 \cdot 10^5, 1 \le q \le 10^5)$$$ — the number of cards Vadim has, the number of cards Kostya has, and the number of rounds in the competition.The second line contains $$$n$$$ integers $$$a_i$$$ — the numbers on Vadim's cards $$$(1 \le a_i \le 10^9)$$$.The third line contains $$$m$$$ integers $$$b_i$$$ — the numbers on Kostya's cards $$$(1 \le b_i \le 10^9)$$$.The following $$$q$$$ lines describe the rounds with three integers $$$x_i$$$, $$$y_i$$$, $$$z_i$$$ $$$(0 \le x_i \le n, 0 \le y_i \le m, 0 \le z_i \le x_i + y_i)$$$ — the limit on the number of cards Vadim can choose, the limit on the number of cards Kostya can choose, and the number of cards they need to select together.It is guaranteed that the sum of $$$n$$$ across all test cases does not exceed $$$2 \cdot 10^5$$$, the sum of $$$m$$$ across all test cases does not exceed $$$2 \cdot 10^5$$$, and the sum of $$$q$$$ across all test cases does not exceed $$$10^5$$$.OutputFor each test case, output $$$q$$$ numbers — the highest possible sum for the corresponding round.ExampleInput43 4 510 20 301 2 3 40 0 03 4 73 4 41 4 42 2 45 5 2500000000 300000000 100000000 900000000 700000000800000000 400000000 1000000000 600000000 2000000001 4 35 2 64 4 1100 100 20 20100 100 20 204 4 53 3 62 363 711286 121 1021 1 13 1 11 2 01 3 20 1 03 3 3Output0
+70
+64
+39
+57
+2700000000
+4200000000
+420
+711
+711
+0
+997
+0
+1360

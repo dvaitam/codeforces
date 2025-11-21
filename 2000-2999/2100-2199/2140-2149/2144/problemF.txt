@@ -1,0 +1,12 @@
+F. Bracket Groupstime limit per test2 secondsmemory limit per test512 megabytesinputstandard inputoutputstandard outputA regular bracket sequence is a bracket sequence that can be transformed into a correct arithmetic sequence. For example:   bracket sequences "()()" and "(())" are regular (the resulting expressions are: "(1)+(1)" and "((1+1)+1)");  bracket sequences ")(", "(" and ")" are not. You are given $$$n$$$ bracket sequences $$$s_1, s_2, \dots, s_n$$$ (not necessarily regular) and an even integer $$$k$$$. Your task is to split all of them into groups in such a way that:   every bracket sequence belongs to exactly one group;  for each group, there exists a regular bracket sequence of length exactly $$$k$$$ such that every bracket sequence assigned to this group is not a substring of it. What is the smallest number of groups that this can be achieved for? If it's impossible to do for any number of groups, report so. Otherwise, print the groups and any valid regular bracket sequence for each group. If there are multiple answers with the smallest number of groups, print any of them.InputThe first line contains two integers $$$n$$$ and $$$k$$$ ($$$1 \le n \le 50$$$; $$$2 \le k \le 50$$$; $$$k$$$ is even).The $$$i$$$-th of the next $$$n$$$ lines contains a bracket sequence $$$s_i$$$ ($$$2 \le |s_i| \le k$$$). It consists only of characters '(' and ')'.OutputIf it's impossible to split all bracket sequences into groups according to the rules, then print $$$-1$$$.Otherwise, print the smallest possible number of groups $$$m$$$ in the first line. Then, $$$m$$$ blocks of data should follow:   The first line of each block should contain a regular bracket sequence of length $$$k$$$.  The second line should contain a single integer $$$g$$$ — the number of bracket sequences in the current group.  The third line should contain $$$g$$$ integers from $$$1$$$ to $$$n$$$ — the indices of the bracket sequences that belong to the current group. None of these bracket sequences should be a substring of the chosen regular bracket sequence. Each index from $$$1$$$ to $$$n$$$ should belong to exactly one group.If there are multiple answers with the smallest $$$m$$$, print any of them.ExamplesInput3 6)))((((())Output1
+(()())
+3
+1 2 3
+Input4 6(()()(())((((((Output2
+(())()
+1
+2
+()()()
+3
+1 4 3
+Input2 6())(Output-1

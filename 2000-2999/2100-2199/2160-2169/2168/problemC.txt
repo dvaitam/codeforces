@@ -1,0 +1,29 @@
+C. Intercepting Butterfliestime limit per test3 secondsmemory limit per test512 megabytesinputstandard inputoutputstandard outputThis problem is a run-twice (communication) problem.Alice has an integer $$$x$$$ where $$$1 \le x \le 2^{15}$$$, which she needs to send to Bob (an astronaut on the Moon) as it is an important parameter for their secret project on the Moon.Fortunately, Alice has a secret storage device $$$S$$$, which contains a not necessarily non-empty subset of the set $$$\{1, 2, \ldots, 20\}$$$. She plans to send $$$S$$$ to Bob. Bob's goal is to recover the value of $$$x$$$ using only $$$S$$$.However, after Alice sends set $$$S$$$ on a spaceship and before Bob receives $$$S$$$, magical butterflies had intercepted the spaceship! When Bob finally receives $$$S$$$, one of the following had occurred:  An arbitrary element is removed from $$$S$$$. This can only be done if $$$S$$$ is non-empty.  An arbitrary element is added to $$$S$$$. This should still satisfy $$$S \subseteq \{1, 2, \ldots, 20\}$$$.  $$$S$$$ remained unchanged. Please devise a strategy for Alice and Bob so that Bob can determine the value of $$$x$$$ regardless of what happened to set $$$S$$$. Precisely, in this problem your code will be run exactly two times on each test. On the first run, you will act as Alice, and on the second Bob. No additional information other than the set $$$S$$$ can be transferred from Alice to Bob. To get an Accepted verdict, your code on the second run should be able to exactly recover the integers that were received on the first run.First RunInputThe first line of the input contains the string first. The purpose of this is so your program recognizes that this is its first run, and it should act as Alice.The second line of the input contains exactly one integer $$$t$$$ ($$$1 \le t \le 10^4$$$) — the number of test cases.The first and only line of the $$$i$$$-th test case contains an integer $$$x$$$ ($$$1 \le x \le 2^{15}$$$).OutputFor each test case, send $$$S$$$ to Bob by printing two lines in the following manner.  On the first line, output an integer $$$n$$$ ($$$0 \le n \le 20$$$) — the size of $$$S$$$.  On the second line, output $$$n$$$ space-separated integers $$$S_1,S_2,\ldots,S_n$$$ ($$$1 \le S_i \le 20$$$). Exceptionally, you may omit the second line if $$$n=0$$$. You may output elements of $$$S$$$ in any order. However, they must be pairwise distinct.Then, you will either proceed to the next test case, or your program must terminate if you have processed every test case.Second RunInputThe first line of the input contains the string second. The purpose of this is so your program recognizes that this is its second run, and it should act as Bob.The second line of the input contains exactly one integer $$$t$$$ ($$$1 \le t \le 10^4$$$) — the number of test cases. Note that this number is equal to $$$t$$$ from the first run input.The first line of each test case contains an integer $$$n'$$$ ($$$0 \leq n' \leq 20$$$) — the size of the set $$$S'$$$ that Bob receives, that is, possibly modified $$$S$$$.The second line of each test case contains $$$n$$$ integers $$$S'_1, S'_2, \ldots, S'_n$$$ ($$$1 \leq S'_i \leq 20$$$) — the elements of the $$$S'$$$ that Bob receives. The elements of $$$S'$$$ are sorted in increasing order, even if the original $$$S$$$ is not sorted in increasing order.Note that the test cases in the second run may be shuffled. Please see the example input for more details.OutputFor each test case, print a single line with the value of $$$x$$$ ($$$1 \leq x \leq 2^{15}$$$).ExamplesInputfirst
+4
+1
+20
+50
+32768
+Output0
+
+3
+13 4 9 
+4
+1 7 4 2
+10
+14 17 1 6 2 19 20 8 7 18
+Inputsecond
+4
+4
+4 5 9 13
+9
+1 2 6 7 8 14 17 18 19
+0
+
+5
+1 2 3 4 7
+Output20
+32768
+1
+50
+NoteFirst run: The input contains four test cases with $$$x=1, 20, 50, 32\,768$$$. According to some strategy agreed upon beforehand, Alice sends $$$\varnothing$$$ to Bob for $$$x=1$$$, the set $$$\{13,4,9\}$$$ for $$$x=20$$$, the set $$$\{1,7,4,2\}$$$ for $$$x=50$$$, and $$$\{14,17,1,6,2,19,20,8,7,18\}$$$ for $$$32\,768$$$.Second run: Note that the test cases from the first run are shuffled. They are given in the order $$$[20, 32\,768, 1, 50]$$$.For the first test case, the element $$$5$$$ is added to Alice's set. Note that although Alice gave the initial set as $$$\{13,4,9\}$$$, the set was given in increasing order to Bob.For the second test case, the number $$$20$$$ was removed from Alice's set. For the third test case, the set was unchanged.

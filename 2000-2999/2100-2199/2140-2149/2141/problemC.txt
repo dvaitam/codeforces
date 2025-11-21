@@ -1,0 +1,11 @@
+C. Minimum on Subarraystime limit per test1 secondmemory limit per test256 megabytesinputstandard inputoutputstandard outputThere is a variable $$$sum$$$, which is initially equal to $$$0$$$.There is also a data structure that can perform the following operations:  pushback x — adds an element with value $$$x$$$ to the end of the structure;  pushfront x — adds an element with value $$$x$$$ to the beginning of the structure;  popback — removes the last element from the structure;  popfront — removes the first element from the structure;  min — adds the value of the minimum element currently in the structure to the variable $$$sum$$$. The operations popback, popfront, and min cannot be applied to an empty structure!Using this structure, you would like to be able to find the sum of the minimums of all non-empty subarrays of an array $$$a$$$ of $$$n$$$ elements.More formally, your task is to find a sequence of no more than $$$n \cdot (n + 2)$$$ commands such that after all operations, the variable $$$sum$$$ will be equal to $$$\sum_{0 \le l \le r < n} \min(a[l],\dots, a[r])$$$ for any possible array $$$a$$$.InputThe first line contains a single integer $$$n$$$ ($$$1 \le n \le 500$$$) — the number of elements in the array.OutputOutput $$$k$$$ ($$$1 \le k \le n \cdot (n + 2)$$$) commands. Each command must be one of the following five lines:  "pushback a[i]", where $$$i$$$ — a number from $$$0$$$ to $$$n - 1$$$  "pushfront a[i]", where $$$i$$$ — a number from $$$0$$$ to $$$n - 1$$$  "popback"  "popfront"  "min" If there are multiple valid answers, output any.ExamplesInput1Output3
+pushback a[0]
+min
+popfront
+Input2Output6
+pushfront a[1]
+min
+pushback a[0]
+min
+popfront
+min

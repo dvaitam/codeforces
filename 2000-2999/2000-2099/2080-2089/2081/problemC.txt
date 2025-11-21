@@ -1,0 +1,23 @@
+C. Quaternary Matrixtime limit per test2 secondsmemory limit per test512 megabytesinputstandard inputoutputstandard outputA matrix is called quaternary if all its elements are $$$0$$$, $$$1$$$, $$$2$$$, or $$$3$$$.Ecrade calls a quaternary matrix $$$A$$$ good if the following two properties hold.  The bitwise XOR of all numbers in each row of matrix $$$A$$$ is equal to $$$0$$$.  The bitwise XOR of all numbers in each column of matrix $$$A$$$ is equal to $$$0$$$. Ecrade has a quaternary matrix of size $$$n \times m$$$. He is interested in the minimum number of elements that need to be changed for the matrix to become good, and he also wants to find one of the possible resulting matrices.However, it seems a little difficult, so please help him!InputEach test contains multiple test cases. The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 2 \cdot 10^5$$$). The description of the test cases follows. The first line of each test case contains two integers $$$n$$$ and $$$m$$$ ($$$1 \le n, m \le 10^3$$$).This is followed by $$$n$$$ lines, each containing exactly $$$m$$$ characters and consisting only of $$$0$$$, $$$1$$$, $$$2$$$, and $$$3$$$, describing the elements of Ecrade's matrix.It is guaranteed that the sum of $$$n\cdot m$$$ over all test cases does not exceed $$$10^6$$$.OutputFor each test case, print the minimum number of elements that need to be changed for the matrix to become good on the first line, then print $$$n$$$ lines, each containing exactly $$$m$$$ characters and consisting only of $$$0$$$, $$$1$$$, $$$2$$$, and $$$3$$$, describing one of the possible resulting matrices.If there are multiple possible resulting matrices, output any of them.ExampleInput53 33131213133 30000000004 401231230230130124 412322110312213114 41232211031221312Output3
+213
+101
+312
+0
+000
+000
+000
+0
+0123
+1230
+2301
+3012
+6
+0132
+2310
+3131
+1313
+5
+0132
+2310
+3120
+1302

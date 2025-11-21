@@ -1,0 +1,7 @@
+D. From 1 to Infinitytime limit per test1.5 secondsmemory limit per test256 megabytesinputstandard inputoutputstandard outputVadim wanted to understand the infinite sequence of digits that consists of the positive integers written consecutively from $$$1$$$ to infinity. That is, this sequence looks like $$$123456789101112131415 \ldots$$$To avoid looking into infinity, Vadim cut this sequence at the $$$k$$$-th digit and discarded everything after it. Thus, exactly $$$k$$$ digits remained in the sequence. Help him find the sum of the digits in the remaining sequence.InputEach test consists of several test cases. The first line contains a single integer $$$t$$$ $$$(1 \le t \le 2 \cdot 10^4)$$$ — the number of test cases. The following lines describe the test cases.In a single line of each test case, there is an integer $$$k$$$ — the number of digits in the remaining sequence $$$(1 \le k \le 10^{15})$$$.OutputFor each given $$$k$$$, output the sum of the digits in the sequence of length $$$k$$$.ExampleInput6510132910000000001000000000000000Output15
+46
+48
+100
+4366712386
+4441049382716054
+NoteIn the first sample, the remaining sequence will be $$$12345$$$.In the second sample, the remaining sequence will be $$$1234567891$$$.In the third sample, the remaining sequence will be $$$1234567891011$$$.

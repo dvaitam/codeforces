@@ -1,0 +1,21 @@
+F. Cycle Closingtime limit per test2 secondsmemory limit per test256 megabytesinputstandard inputoutputstandard outputKubbi - The Cairn⠀You are given an undirected, connected graph $$$G$$$ with $$$n$$$ nodes and $$$m$$$ edges. The graph does not contain self loops nor multiple edges.In one operation, you do the following, in order:   choose a positive integer $$$k$$$ ($$$1 \le k \le n$$$);  choose an integer $$$s$$$ ($$$0 \le s \le \frac{n \cdot (n - 1)}{2}$$$);  print $$$s$$$ simple paths of length $$$k-1$$$ ($$$v_{i,1} \leftrightarrow v_{i,2} \leftrightarrow \ldots \leftrightarrow v_{i,k}$$$);  for each $$$i = 1$$$ to $$$s$$$, add an edge $$$(v_{i,1}, v_{i,k})$$$ to the graph. Note that an edge added by some operation can only be used by future operations, because the edges are added at the end of printing all simple paths.Make $$$G$$$ complete in at most $$$2$$$ operations. Specifically, $$$G$$$ must contain every edge $$$(u, v)$$$ with $$$u < v$$$ exactly once.Note:  You are provided with the input files for the first $$$10$$$ tests of this problem, along with $$$2$$$ checkers (one in C++, one in Python) to verify your output. The checkers assume you follow the input and output formats of the problem. You can download the zip file from the Contest Materials section.InputEach test contains multiple test cases. The first line contains the number of test cases $$$t$$$ ($$$1 \le t \le 10^3$$$). The description of the test cases follows. The first line of each test case contains two integers $$$n$$$ and $$$m$$$ ($$$3 \leq n \leq 200$$$, $$$n - 1\leq m \leq n(n-1)/2$$$) — the number of nodes and edges in $$$G$$$, respectively.Each of the next $$$m$$$ lines contains two integers $$$u_i$$$, $$$v_i$$$ ($$$1 \leq u_i, v_i \leq n$$$, $$$u_i \neq v_i$$$), representing the edge $$$(u_i, v_i)$$$. The graph is connected and does not contain self loops nor multiple edges.It is guaranteed that the sum of $$$n^2$$$ does not exceed $$$4 \cdot 10^4$$$ over all testcases.OutputFor each test case, print the following.In the first line, print the number of operations $$$op$$$ ($$$0 \le op \le 2$$$) you want to perform. For each operation:   in the first line, output the value of $$$k$$$ ($$$1 \le k \le n$$$) you choose in the operation;  in the second line, output the number $$$s$$$ ($$$0 \le s \le \frac{n \cdot (n - 1)}{2}$$$) of simple paths you want to print;  in each of the following $$$s$$$ lines, print $$$k$$$ positive integers, representing the path $$$v_{i,1} \leftrightarrow v_{i,2} \leftrightarrow \ldots \leftrightarrow v_{i,k}$$$. ExampleInput34 31 21 31 43 31 21 32 35 44 22 33 55 1Output2
+3
+1
+2 1 3
+4
+2
+4 1 2 3
+4 1 3 2
+0
+2
+4
+2
+4 2 3 5
+2 3 5 1
+3
+4
+4 5 1
+4 5 3
+2 1 5
+3 2 1
+NoteHere is the explanation for the first test case:   Output token(s)Explanation$$$\texttt{2}$$$Number of operations to perform ($$$=2$$$).$$$\texttt{3}$$$Operation 1.  Value of $$$k$$$ ($$$k=3$$$, paths have length $$$2$$$).$$$\texttt{1}$$$Number $$$s$$$ of simple paths in this operation ($$$s=1$$$).$$$\texttt{2 1 3}$$$The only simple path printed; when the operation ends it adds the shortcut edge $$$(2,3)$$$.$$$\texttt{4}$$$Operation 2.  $$$k=4$$$ (path length $$$3$$$).$$$\texttt{2}$$$Two simple paths will be printed in this operation ($$$s=2$$$).$$$\texttt{4 1 2 3}$$$First path; after the operation it inserts edge $$$(3,4)$$$.$$$\texttt{4 1 3 2}$$$Second path; after the operation it inserts edge $$$(2,4)$$$. Note that the printing $$$\texttt{4 3 1 2}$$$ would not be valid because it uses edge $$$(3,4)$$$, which does not exist until after both paths of this operation are processed.
