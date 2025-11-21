@@ -70,19 +70,19 @@ func merge(a, b Node) Node {
 				if a.dp[la][lb][lm] == negInf {
 					continue
 				}
-				for rb := 0; rb < 2; rb++ {
-					for rc := 0; rc < 2; rc++ {
-						if rb == 1 && rc == 1 {
+				for rf := 0; rf < 2; rf++ { // right first
+					for rr := 0; rr < 2; rr++ { // right last
+						if lb == 1 && rf == 1 {
 							continue // adjacent selected, invalid
 						}
 						for rm := 0; rm < 4; rm++ {
-							if b.dp[rb][rc][rm] == negInf {
+							if b.dp[rf][rr][rm] == negInf {
 								continue
 							}
 							nm := lm | rm
-							val := a.dp[la][lb][lm] + b.dp[rb][rc][rm]
-							if val > res.dp[la][rc][nm] {
-								res.dp[la][rc][nm] = val
+							val := a.dp[la][lb][lm] + b.dp[rf][rr][rm]
+							if val > res.dp[la][rr][nm] {
+								res.dp[la][rr][nm] = val
 							}
 						}
 					}

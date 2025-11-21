@@ -1,160 +1,72 @@
 package main
-
 import (
     "fmt"
+    "math/rand"
 )
 
-const mod = 998244353
-
-const (
-    genA = 0
-    genB = 1
-    genb = 2
-)
-
-var inv = []int{0,2,1}
-
-type Enumerator struct {
-    next   [][]int
-    parent []int
-    size   []int
-    queue  []int
+func brute(a []int, b []int) int {
+    memo = map[int]map[int]int{}
+    return solve(a,b,0,1)
 }
 
-func NewEnumerator() *Enumerator {
-    e := &Enumerator{}
-    e.makeCoset()
-    return e
+var memo map[int]map[int]int
+
+func solve(a []int, b []int, mask int, cur int) int {
+    if memo[mask] == nil {memo[mask]=map[int]int{}}
+    if v,ok:=memo[mask][cur]; ok {return v}
+    idx:=cur-1
+    best:=0
+    // submit
+    nmask:=mask|(1<<idx)
+    nxt:=nextIdx(nmask, cur-1)
+    cand:=a[idx]
+    if nxt!=0 {cand+=solve(a,b,nmask,nxt)}
+    if cand>best {best=cand}
+    // skip
+    nxt=nextIdx(nmask, b[idx])
+    cand=0
+    if nxt!=0 {cand+=solve(a,b,nmask,nxt)}
+    if cand>best {best=cand}
+    memo[mask][cur]=best
+    return best
 }
 
-func (e *Enumerator) makeCoset() int {
-    id := len(e.next)
-    e.next = append(e.next, []int{-1, -1, -1})
-    e.parent = append(e.parent, id)
-    e.size = append(e.size, 1)
-    e.queue = append(e.queue, id)
-    return id
+func nextIdx(mask int,bound int) int {
+    for i:=bound;i>=1;i-- {
+        if mask&(1<<(i-1))==0 {return i}
+    }
+    return 0
 }
 
-func (e *Enumerator) find(x int) int {
-    if e.parent[x] != x {
-        e.parent[x] = e.find(e.parent[x])
+func greedySubmitAll(a []int, b []int) int {
+    mask:=0
+    cur:=1
+    score:=0
+    for cur!=0 {
+        idx:=cur-1
+        // always submit
+        score+=a[idx]
+        mask|=1<<idx
+        cur=nextIdx(mask, cur-1)
     }
-    return e.parent[x]
+    return score
 }
 
-func (e *Enumerator) link(a, g, b int) {
-    ra := e.find(a)
-    rb := e.find(b)
-    ta := e.next[ra][g]
-    if ta != -1 {
-        e.union(ta, rb)
-        return
-    }
-    e.next[ra][g] = rb
-    ig := inv[g]
-    tb := e.next[rb][ig]
-    if tb != -1 {
-        e.union(tb, ra)
-    } else {
-        e.next[rb][ig] = ra
-    }
-}
-
-func (e *Enumerator) union(a, b int) int {
-    ra := e.find(a)
-    rb := e.find(b)
-    if ra == rb {
-        return ra
-    }
-    if e.size[ra] < e.size[rb] {
-        ra, rb = rb, ra
-    }
-    e.parent[rb] = ra
-    e.size[ra] += e.size[rb]
-    for g := 0; g < 3; g++ {
-        ta := e.next[ra][g]
-        if ta != -1 {
-            ta = e.find(ta)
-            e.next[ra][g] = ta
+func main(){
+    for n:=1;n<=6;n++{
+        trials:=1000
+        for t:=0;t<trials;t++{
+            a:=make([]int,n)
+            b:=make([]int,n)
+            for i:=0;i<n;i++{
+                a[i]=rand.Intn(5)+1
+                b[i]=rand.Intn(n)+1
+            }
+            opt:=brute(a,b)
+            g:=greedySubmitAll(a,b)
+            if opt<g {panic("opt<g")}
         }
-        tb := e.next[rb][g]
-        if tb == -1 {
-            continue
-        }
-        tb = e.find(tb)
-        if ta == -1 {
-            e.link(ra, g, tb)
-        } else {
-            e.union(ta, tb)
-        }
+        fmt.Println("n",n,"ok")
     }
-    e.queue = append(e.queue, ra)
-    return ra
-}
-
-func (e *Enumerator) step(a, g int) int {
-    ra := e.find(a)
-    tgt := e.next[ra][g]
-    if tgt != -1 {
-        rt := e.find(tgt)
-        e.next[ra][g] = rt
-        return rt
-    }
-    d := e.makeCoset()
-    e.link(ra, g, d)
-    return e.find(e.next[ra][g])
-}
-
-func (e *Enumerator) impose(start int, rel []int) {
-    cur := e.find(start)
-    for _, g := range rel {
-        cur = e.step(cur, g)
-    }
-    e.union(cur, start)
-}
-
-func main() {
-    s := "ABAB"
-    relS := make([]int, len(s))
-    for i, ch := range s {
-        if ch == 'A' {
-            relS[i] = genA
-        } else {
-            relS[i] = genB
-        }
-    }
-    relations := [][]int{
-        {genA, genA},
-        {genB, genB, genB},
-        {genB, genb},
-        {genb, genB},
-        relS,
-    }
-    e := NewEnumerator()
-    seen := make(map[int]bool)
-    for len(e.queue) > 0 {
-        idx := e.queue[0]
-        e.queue = e.queue[1:]
-        root := e.find(idx)
-        if seen[root] {
-            continue
-        }
-        seen[root] = true
-        for _, rel := range relations {
-            e.impose(root, rel)
-        }
-        for _, g := range []int{genA, genB} {
-            nxt := e.step(root, g)
-            e.queue = append(e.queue, nxt)
-        }
-    }
-    reps := map[int]bool{}
-    for i := range e.next {
-        reps[e.find(i)] = true
-    }
-    fmt.Println("num reps", len(reps))
-    for rep := range reps {
-        fmt.Println(rep, e.next[rep])
-    }
+    fmt.Println("done")
 }
