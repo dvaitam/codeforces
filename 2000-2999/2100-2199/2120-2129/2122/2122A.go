@@ -14,9 +14,12 @@ func main() {
 	var t int
 	fmt.Fscan(in, &t)
 	for ; t > 0; t-- {
-		var n int64
-		fmt.Fscan(in, &n)
-		ans := (n*n)/4 + 1
-		fmt.Fprintln(out, ans)
+		var n, m int
+		fmt.Fscan(in, &n, &m)
+		if n == 1 || m == 1 {
+			fmt.Fprintln(out, "NO")
+		} else {
+			fmt.Fprintln(out, "YES")
+		}
 	}
 }

@@ -12,11 +12,16 @@ func main() {
 	defer out.Flush()
 
 	var t int
-	fmt.Fscan(in, &t)
+	if _, err := fmt.Fscan(in, &t); err != nil {
+		return
+	}
 	for ; t > 0; t-- {
-		var n int64
+		var n int
 		fmt.Fscan(in, &n)
-		ans := (n*n)/4 + 1
-		fmt.Fprintln(out, ans)
+		if n%4 == 0 {
+			fmt.Fprintln(out, "Bob")
+		} else {
+			fmt.Fprintln(out, "Alice")
+		}
 	}
 }
