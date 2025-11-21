@@ -4,8 +4,18 @@ import (
     "bufio"
     "fmt"
     "os"
-    "sort"
 )
+
+func canon(x, k int64) int64 {
+    r := x % k
+    if r == 0 {
+        return 0
+    }
+    if k-r < r {
+        return k - r
+    }
+    return r
+}
 
 func main() {
     in := bufio.NewReader(os.Stdin)
@@ -16,25 +26,32 @@ func main() {
     fmt.Fscan(in, &T)
     for ; T > 0; T-- {
         var n int
-        fmt.Fscan(in, &n)
-        s := make([]int, n)
-        tArr := make([]int, n)
+        var k int64
+        fmt.Fscan(in, &n, &k)
+        freqS := make(map[int64]int)
         for i := 0; i < n; i++ {
-            fmt.Fscan(in, &s[i])
+            var x int64
+            fmt.Fscan(in, &x)
+            freqS[canon(x, k)]++
         }
+        freqT := make(map[int64]int)
         for i := 0; i < n; i++ {
-            fmt.Fscan(in, &tArr[i])
+            var x int64
+            fmt.Fscan(in, &x)
+            freqT[canon(x, k)]++
         }
-        sort.Ints(s)
-        sort.Ints(tArr)
-        same := true
-        for i := 0; i < n; i++ {
-            if s[i] != tArr[i] {
-                same = false
-                break
+        ok := true
+        if len(freqS) != len(freqT) {
+            ok = false
+        } else {
+            for key, val := range freqS {
+                if freqT[key] != val {
+                    ok = false
+                    break
+                }
             }
         }
-        if same {
+        if ok {
             fmt.Fprintln(out, "YES")
         } else {
             fmt.Fprintln(out, "NO")

@@ -12,45 +12,33 @@ func main() {
 	defer out.Flush()
 
 	var t int
-	fmt.Fscan(in, &t)
+	if _, err := fmt.Fscan(in, &t); err != nil {
+		return
+	}
 	for ; t > 0; t-- {
 		var n, k int
 		fmt.Fscan(in, &n, &k)
 		a := make([]int, n)
+		freq := make(map[int]int)
 		for i := 0; i < n; i++ {
 			fmt.Fscan(in, &a[i])
+			rem := ((a[i] % k) + k) % k
+			freq[rem]++
 		}
-
-		ans := -1
+		ansIdx := -1
 		for i := 0; i < n; i++ {
-			winnable := true
-			for j := 0; j < n; j++ {
-				if i == j {
-					continue
-				}
-				if abs(a[i]-a[j])%k == 0 {
-					winnable = false
-					break
-				}
-			}
-			if winnable {
-				ans = i + 1
+			rem := ((a[i] % k) + k) % k
+			if freq[rem] == 1 {
+				ansIdx = i + 1
 				break
 			}
 		}
-
-		if ans == -1 {
+		if ansIdx == -1 {
 			fmt.Fprintln(out, "NO")
 		} else {
 			fmt.Fprintln(out, "YES")
-			fmt.Fprintln(out, ans)
+			fmt.Fprintln(out, ansIdx)
 		}
 	}
 }
 
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
-}

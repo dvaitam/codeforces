@@ -12,25 +12,24 @@ func main() {
 	defer out.Flush()
 
 	var t int
-	if _, err := fmt.Fscan(in, &t); err != nil {
-		return
-	}
+	fmt.Fscan(in, &t)
 	for ; t > 0; t-- {
 		var n int
 		fmt.Fscan(in, &n)
-		notes := make([]int, n)
+		b := make([]int64, n)
 		for i := 0; i < n; i++ {
-			fmt.Fscan(in, &notes[i])
+			fmt.Fscan(in, &b[i])
 		}
 		ok := true
-		for i := 1; i < n; i++ {
-			diff := notes[i] - notes[i-1]
-			if diff < 0 {
-				diff = -diff
-			}
-			if diff != 5 && diff != 7 {
+		prefixMin := b[0]
+		for i := 1; i < n && ok; i++ {
+			limit := prefixMin * (prefixMin + 1) / 2
+			if b[i] > limit {
 				ok = false
 				break
+			}
+			if b[i] < prefixMin {
+				prefixMin = b[i]
 			}
 		}
 		if ok {
@@ -40,4 +39,3 @@ func main() {
 		}
 	}
 }
-

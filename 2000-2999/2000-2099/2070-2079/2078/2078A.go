@@ -16,19 +16,19 @@ func main() {
 		return
 	}
 	for ; t > 0; t-- {
-		var n int
-		fmt.Fscan(in, &n)
-		counts := make(map[int]int)
-		maxFreq := 0
+		var n, x int
+		fmt.Fscan(in, &n, &x)
+		sum := 0
 		for i := 0; i < n; i++ {
 			var v int
 			fmt.Fscan(in, &v)
-			counts[v]++
-			if counts[v] > maxFreq {
-				maxFreq = counts[v]
-			}
+			sum += v
 		}
-		fmt.Fprintln(out, n-maxFreq)
+		if sum == n*x {
+			fmt.Fprintln(out, "YES")
+		} else {
+			fmt.Fprintln(out, "NO")
+		}
 	}
 }
 

@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-const MOD int = 998244353
+const MOD int64 = 998244353
 
 func main() {
 	in := bufio.NewReader(os.Stdin)
@@ -18,9 +18,8 @@ func main() {
 	for ; t > 0; t-- {
 		var n, m int
 		fmt.Fscan(in, &n, &m)
-
 		forbidden := make([][]bool, n)
-		for i := 0; i < n; i++ {
+		for i := range forbidden {
 			forbidden[i] = make([]bool, n+1)
 		}
 		for i := 0; i < m; i++ {
@@ -29,26 +28,33 @@ func main() {
 			forbidden[pos-1][val] = true
 		}
 
-		dp := make([]int, n+1)
+		dp := make([]int64, n+1)
 		dp[0] = 1
 		for pos := 0; pos < n; pos++ {
-			for s := 1; s <= n-pos; s++ {
-				seq := make([]int, s)
-				for i := 0; i < s; i++ {
-					seq[i] = i + 1
-				}
-				for shift := 0; shift < s; shift++ {
-					valid := true
-					for j := 0; j < s; j++ {
-						val := seq[(j+shift)%s]
-						if forbidden[pos+j][val] {
-							valid = false
+			if dp[pos] == 0 {
+				continue
+			}
+			for s := 1; pos+s <= n; s++ {
+				good := 0
+				for r := 1; r <= s; r++ {
+					ok := true
+					val := r
+					for offset := 0; offset < s; offset++ {
+						if forbidden[pos+offset][val] {
+							ok = false
 							break
 						}
+						val++
+						if val > s {
+							val = 1
+						}
 					}
-					if valid {
-						dp[pos+s] = (dp[pos+s] + dp[pos]) % MOD
+					if ok {
+						good++
 					}
+				}
+				if good > 0 {
+					dp[pos+s] = (dp[pos+s] + dp[pos]*int64(good)) % MOD
 				}
 			}
 		}

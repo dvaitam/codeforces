@@ -12,23 +12,24 @@ func main() {
 	defer out.Flush()
 
 	var t int
-	if _, err := fmt.Fscan(in, &t); err != nil {
-		return
-	}
+	fmt.Fscan(in, &t)
 	for ; t > 0; t-- {
 		var n int
 		fmt.Fscan(in, &n)
-		counts := make(map[int]int)
-		maxFreq := 0
+		seen := make(map[int]bool)
+		ok := false
 		for i := 0; i < n; i++ {
-			var v int
-			fmt.Fscan(in, &v)
-			counts[v]++
-			if counts[v] > maxFreq {
-				maxFreq = counts[v]
+			var x int
+			fmt.Fscan(in, &x)
+			if seen[x] {
+				ok = true
 			}
+			seen[x] = true
 		}
-		fmt.Fprintln(out, n-maxFreq)
+		if ok {
+			fmt.Fprintln(out, "YES")
+		} else {
+			fmt.Fprintln(out, "NO")
+		}
 	}
 }
-

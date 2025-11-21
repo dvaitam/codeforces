@@ -17,24 +17,58 @@ func main() {
 		var n int
 		fmt.Fscan(in, &n)
 		a := make([]int, n)
+		maxVal := 0
 		for i := 0; i < n; i++ {
 			fmt.Fscan(in, &a[i])
+			if a[i] > maxVal {
+				maxVal = a[i]
+			}
 		}
 
-		seen := make(map[int]struct{})
-		ans := 0
+		remain := make([]int, maxVal+2)
 		for _, x := range a {
-			if x != a[0] && len(seen) == 0 {
-				seen[a[0]] = struct{}{}
+			remain[x]++
+		}
+
+		firstSeg := make([]int, maxVal+2)
+		seenSeg := make([]int, maxVal+2)
+		for i := range firstSeg {
+			firstSeg[i] = -1
+			seenSeg[i] = -1
+		}
+
+		distinctSeen := 0
+		currSeg := 0
+		needLeft := 0
+		bad := 0
+		cuts := 0
+
+		for i := 0; i < n; i++ {
+			x := a[i]
+			remain[x]--
+			if remain[x] == 0 {
+				bad++
 			}
-			if _, ok := seen[x]; !ok {
-				seen = map[int]struct{}{x: {}}
-				ans++
-			} else {
-				seen[x] = struct{}{}
+
+			if firstSeg[x] == -1 {
+				firstSeg[x] = currSeg
+				distinctSeen++
+			}
+
+			if seenSeg[x] != currSeg {
+				seenSeg[x] = currSeg
+				if firstSeg[x] < currSeg {
+					needLeft--
+				}
+			}
+
+			if needLeft == 0 && bad == 0 && i < n-1 {
+				cuts++
+				currSeg++
+				needLeft = distinctSeen
 			}
 		}
-		ans++
-		fmt.Fprintln(out, ans)
+
+		fmt.Fprintln(out, cuts+1)
 	}
 }

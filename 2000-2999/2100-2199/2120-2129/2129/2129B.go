@@ -6,26 +6,26 @@ import (
 	"os"
 )
 
-type bit struct {
-	n    int
-	tree []int
+type fenwick struct {
+	n int
+	t []int
 }
 
-func newBIT(n int) *bit {
-	return &bit{n: n, tree: make([]int, n+2)}
+func newFenwick(n int) *fenwick {
+	return &fenwick{n: n, t: make([]int, n+2)}
 }
 
-func (b *bit) add(idx, val int) {
-	for idx <= b.n {
-		b.tree[idx] += val
+func (f *fenwick) add(idx, val int) {
+	for idx <= f.n {
+		f.t[idx] += val
 		idx += idx & -idx
 	}
 }
 
-func (b *bit) sum(idx int) int {
+func (f *fenwick) sum(idx int) int {
 	res := 0
 	for idx > 0 {
-		res += b.tree[idx]
+		res += f.t[idx]
 		idx -= idx & -idx
 	}
 	return res
@@ -45,27 +45,28 @@ func main() {
 		for i := 0; i < n; i++ {
 			fmt.Fscan(in, &p[i])
 		}
-		pref := make([]int64, n+1)
-		b1 := newBIT(n + 2)
-		for i := 1; i <= n; i++ {
-			val := p[i-1]
-			greater := (i - 1) - b1.sum(val)
-			pref[i] = pref[i-1] + int64(greater)
-			b1.add(val, 1)
+		fw := newFenwick(n + 2)
+		prevGreater := make([]int, n)
+		var base int64
+		for i := 0; i < n; i++ {
+			val := p[i]
+			sm := fw.sum(val)
+			prevGreater[i] = i - sm
+			base += int64(prevGreater[i])
+			fw.add(val, 1)
 		}
-		suff := make([]int64, n+2)
-		b2 := newBIT(2*n + 2)
+		fw = newFenwick(n + 2)
+		nextGreater := make([]int, n)
 		for i := n - 1; i >= 0; i-- {
-			val := 2*n - p[i]
-			less := b2.sum(val - 1)
-			suff[i+1] = suff[i+2] + int64(less)
-			b2.add(val, 1)
+			val := p[i]
+			nextGreater[i] = fw.sum(n+1) - fw.sum(val)
+			fw.add(val, 1)
 		}
-		ans := pref[n] + suff[n+1]
-		for t := 0; t <= n; t++ {
-			val := pref[t] + suff[t+1]
-			if val < ans {
-				ans = val
+		ans := base
+		for i := 0; i < n; i++ {
+			diff := nextGreater[i] - prevGreater[i]
+			if diff < 0 {
+				ans += int64(diff)
 			}
 		}
 		fmt.Fprintf(out, "%d \n", ans)
