@@ -1,0 +1,177 @@
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"math/rand"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+)
+
+const refSource = "2000-2999/2100-2199/2110-2119/2119/2119A.go"
+
+type testCase struct {
+	a, b int
+	x, y int64
+}
+
+type testSuite struct {
+	name  string
+	cases []testCase
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: go run verifierA.go /path/to/binary")
+		os.Exit(1)
+	}
+	candidate := os.Args[1]
+
+	refBin, cleanup, err := buildReference()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	suites := buildTests()
+
+	for idx, suite := range suites {
+		input := buildInput(suite.cases)
+
+		refOut, err := runProgram(refBin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "reference runtime error on test %d (%s): %v\ninput:\n%soutput:\n%s", idx+1, suite.name, err, input, refOut)
+			os.Exit(1)
+		}
+		expected, err := parseOutput(refOut, len(suite.cases))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "reference produced invalid output on test %d (%s): %v\ninput:\n%soutput:\n%s", idx+1, suite.name, err, input, refOut)
+			os.Exit(1)
+		}
+
+		candOut, err := runProgram(candidate, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "candidate runtime error on test %d (%s): %v\ninput:\n%soutput:\n%s", idx+1, suite.name, err, input, candOut)
+			os.Exit(1)
+		}
+		got, err := parseOutput(candOut, len(suite.cases))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "candidate output invalid on test %d (%s): %v\ninput:\n%soutput:\n%s", idx+1, suite.name, err, input, candOut)
+			os.Exit(1)
+		}
+		if !equalAnswers(expected, got) {
+			fmt.Fprintf(os.Stderr, "candidate mismatch on test %d (%s)\ninput:\n%soutput:\n%s", idx+1, suite.name, input, candOut)
+			os.Exit(1)
+		}
+	}
+
+	fmt.Printf("All %d test suites passed\n", len(suites))
+}
+
+func buildReference() (string, func(), error) {
+	dir, err := os.MkdirTemp("", "cf-2119A-ref-")
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to create temp dir: %v", err)
+	}
+	binPath := filepath.Join(dir, "ref2119A.bin")
+	cmd := exec.Command("go", "build", "-o", binPath, refSource)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		os.RemoveAll(dir)
+		return "", nil, fmt.Errorf("failed to build reference: %v\n%s", err, stderr.String())
+	}
+	cleanup := func() { _ = os.RemoveAll(dir) }
+	return binPath, cleanup, nil
+}
+
+func runProgram(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	err := cmd.Run()
+	return out.String(), err
+}
+
+func parseOutput(raw string, expected int) ([]int64, error) {
+	fields := strings.Fields(raw)
+	if len(fields) != expected {
+		return nil, fmt.Errorf("expected %d integers, got %d", expected, len(fields))
+	}
+	res := make([]int64, expected)
+	for i, tok := range fields {
+		val, err := strconv.ParseInt(tok, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid integer %q", tok)
+		}
+		res[i] = val
+	}
+	return res, nil
+}
+
+func equalAnswers(a, b []int64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func buildInput(cases []testCase) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d\n", len(cases)))
+	for _, tc := range cases {
+		sb.WriteString(fmt.Sprintf("%d %d %d %d\n", tc.a, tc.b, tc.x, tc.y))
+	}
+	return sb.String()
+}
+
+func buildTests() []testSuite {
+	sample := testSuite{
+		name: "samples",
+		cases: []testCase{
+			{a: 1, b: 4, x: 1, y: 2},
+			{a: 1, b: 5, x: 2, y: 1},
+			{a: 3, b: 2, x: 2, y: 1},
+			{a: 1, b: 3, x: 2, y: 1},
+			{a: 2, b: 1, x: 1, y: 2},
+			{a: 3, b: 1, x: 1, y: 2},
+			{a: 1, b: 100, x: 10000000, y: 10000000},
+		},
+	}
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	var randomCases []testCase
+	for i := 0; i < 8; i++ {
+		a := rng.Intn(101)
+		if a == 0 {
+			a = 1
+		}
+		b := rng.Intn(101)
+		if b == 0 {
+			b = 1
+		}
+		x := int64(rng.Intn(50) + 1)
+		y := int64(rng.Intn(50) + 1)
+		randomCases = append(randomCases, testCase{a: a, b: b, x: x, y: y})
+	}
+	randomSuite := testSuite{name: "random", cases: randomCases}
+
+	return []testSuite{sample, randomSuite}
+}
