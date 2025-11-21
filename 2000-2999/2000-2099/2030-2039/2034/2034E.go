@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 )
 
 func gcd(a, b int) int {
@@ -13,21 +15,45 @@ func gcd(a, b int) int {
 	return a
 }
 
-func buildPerm(n, step, shift int) []int {
-	p := make([]int, n)
-	for i := 0; i < n; i++ {
-		p[i] = (i*step + shift) % n
-		p[i]++
+func factorial(n int) int {
+	res := 1
+	for i := 2; i <= n; i++ {
+		res *= i
 	}
-	return p
+	return res
 }
 
-func factorialUpTo8(n int) int {
-	f := 1
-	for i := 2; i <= n; i++ {
-		f *= i
+// nextPermutation generates the next lexicographic permutation of p.
+// Returns false if it was the last permutation.
+func nextPermutation(p []int) bool {
+	n := len(p)
+	i := n - 2
+	for i >= 0 && p[i] >= p[i+1] {
+		i--
 	}
-	return f
+	if i < 0 {
+		return false
+	}
+	j := n - 1
+	for p[j] <= p[i] {
+		j--
+	}
+	p[i], p[j] = p[j], p[i]
+	for l, r := i+1, n-1; l < r; l, r = l+1, r-1 {
+		p[l], p[r] = p[r], p[l]
+	}
+	return true
+}
+
+func permKey(p []int) string {
+	var b strings.Builder
+	for i, v := range p {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		b.WriteString(strconv.Itoa(v))
+	}
+	return b.String()
 }
 
 func main() {
@@ -44,22 +70,11 @@ func main() {
 		var n, k int
 		fmt.Fscan(in, &n, &k)
 
-		// Quick impossibility checks.
+		// Basic impossibility checks.
 		if n == 1 {
 			if k == 1 {
 				fmt.Fprintln(out, "YES")
 				fmt.Fprintln(out, 1)
-			} else {
-				fmt.Fprintln(out, "NO")
-			}
-			continue
-		}
-
-		if n == 2 {
-			if k == 2 {
-				fmt.Fprintln(out, "YES")
-				fmt.Fprintln(out, "1 2")
-				fmt.Fprintln(out, "2 1")
 			} else {
 				fmt.Fprintln(out, "NO")
 			}
@@ -72,52 +87,57 @@ func main() {
 		}
 
 		if n <= 8 {
-			lim := factorialUpTo8(n)
-			if k > lim {
+			if k > factorial(n) {
 				fmt.Fprintln(out, "NO")
 				continue
 			}
 		}
 
 		perms := make([][]int, 0, k)
+		used := make(map[string]struct{})
 		remaining := k
-		blockUsed := false
 
-		// For odd k (and odd n), take one block of all cyclic shifts; the rest will be done with pairs.
+		// For odd k (and odd n with k >= n), use n cyclic shifts.
 		if remaining%2 == 1 {
-			blockUsed = true
 			for shift := 0; shift < n; shift++ {
-				perms = append(perms, buildPerm(n, 1, shift))
+				p := make([]int, n)
+				for i := 0; i < n; i++ {
+					p[i] = (i+shift)%n + 1
+				}
+				perms = append(perms, p)
+				used[permKey(p)] = struct{}{}
 			}
 			remaining -= n
 		}
 
-		pairs := remaining / 2
-		step := 1
-		if blockUsed {
-			step = 2 // avoid duplicating the step used in the full block
+		pairsNeeded := remaining / 2
+		cur := make([]int, n)
+		for i := 0; i < n; i++ {
+			cur[i] = i + 1
 		}
 
-		for pairs > 0 && step <= n {
-			if gcd(step, n) != 1 {
-				step++
-				continue
-			}
-			// Skip step=1 if already used in the block.
-			if blockUsed && step == 1 {
-				step++
-				continue
-			}
-			for shift := 0; shift < n && pairs > 0; shift++ {
-				base := buildPerm(n, step, shift)
+		for pairsNeeded > 0 {
+			key := permKey(cur)
+			if _, ok := used[key]; !ok {
 				comp := make([]int, n)
-				for i, v := range base {
+				for i, v := range cur {
 					comp[i] = n + 1 - v
 				}
-				perms = append(perms, base, comp)
-				pairs--
+				ckey := permKey(comp)
+				if _, ok2 := used[ckey]; !ok2 {
+					perms = append(perms, append([]int(nil), cur...))
+					perms = append(perms, comp)
+					used[key] = struct{}{}
+					used[ckey] = struct{}{}
+					pairsNeeded--
+					if pairsNeeded == 0 {
+						break
+					}
+				}
 			}
-			step++
+			if !nextPermutation(cur) {
+				break
+			}
 		}
 
 		if len(perms) != k {

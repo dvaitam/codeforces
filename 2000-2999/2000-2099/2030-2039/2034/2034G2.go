@@ -78,33 +78,31 @@ func tryTwoColors(ints []interval, comps [][2]int, colors []int) bool {
 	heap.Init(h)
 	idx := 0
 	prevEnd := -1 << 60
-	activeID := -1
 	for _, c := range comps {
 		L, R := c[0], c[1]
-		if activeID != -1 {
-			iv := ints[activeID]
-			if iv.l <= L && R <= iv.r {
-				continue // already covered by current chosen interval
+		pos := L
+		if prevEnd+1 > pos {
+			pos = prevEnd + 1
+		}
+		for pos <= R {
+			for idx < len(sorted) && sorted[idx].l <= pos {
+				if sorted[idx].l > prevEnd {
+					heap.Push(h, sorted[idx])
+				}
+				idx++
 			}
-		}
-		for idx < len(sorted) && sorted[idx].l <= L {
-			if sorted[idx].l > prevEnd {
-				heap.Push(h, sorted[idx])
+			for h.Len() > 0 && (*h)[0].r < pos {
+				heap.Pop(h)
 			}
-			idx++
+			if h.Len() == 0 {
+				return false
+			}
+			iv := heap.Pop(h).(interval)
+			colors[iv.id] = 2
+			prevEnd = iv.r
+			pos = prevEnd + 1
+			*h = (*h)[:0] // remaining intervals overlap the chosen one
 		}
-		for h.Len() > 0 && (*h)[0].r < R {
-			heap.Pop(h)
-		}
-		if h.Len() == 0 {
-			return false
-		}
-		iv := heap.Pop(h).(interval)
-		colors[iv.id] = 2
-		prevEnd = iv.r
-		activeID = iv.id
-		// All intervals currently in heap overlap the chosen one at point L, so discard them.
-		*h = (*h)[:0]
 	}
 	return true
 }
