@@ -28,30 +28,129 @@ func runProg(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-// compute expected output using reference solution 172E.go
+type node struct {
+	tag      string
+	children []*node
+}
+
+// parse the BHTML document into a tree
+func buildTree(doc string) *node {
+	root := &node{}
+	stack := []*node{root}
+	n := len(doc)
+
+	for i := 0; i < n; {
+		if doc[i] != '<' {
+			i++
+			continue
+		}
+
+		j := i + 1
+		closing := false
+		if j < n && doc[j] == '/' {
+			closing = true
+			j++
+		}
+
+		start := j
+		for j < n && doc[j] != '>' && doc[j] != '/' {
+			j++
+		}
+		name := doc[start:j]
+
+		selfClose := false
+		if !closing && j < n && doc[j] == '/' {
+			selfClose = true
+			j++
+		}
+		if j < n && doc[j] == '>' {
+			j++
+		}
+
+		if closing {
+			// pop matching opening tag
+			if len(stack) > 1 {
+				stack = stack[:len(stack)-1]
+			}
+			i = j
+			continue
+		}
+
+		cur := &node{tag: name}
+		parent := stack[len(stack)-1]
+		parent.children = append(parent.children, cur)
+		if !selfClose {
+			stack = append(stack, cur)
+		}
+		i = j
+	}
+
+	return root
+}
+
+// compute expected output using an internal implementation of the rules
 func expected(doc string, queries []string) ([]int, error) {
-	var input strings.Builder
-	input.WriteString(doc)
-	input.WriteByte('\n')
-	input.WriteString(fmt.Sprintf("%d\n", len(queries)))
-	for _, q := range queries {
-		input.WriteString(q)
-		input.WriteByte('\n')
+	tree := buildTree(doc)
+
+	// map tags to integer ids for faster comparison
+	tagToID := make(map[string]int)
+	getID := func(tag string) int {
+		if id, ok := tagToID[tag]; ok {
+			return id
+		}
+		id := len(tagToID)
+		tagToID[tag] = id
+		return id
 	}
-	out, err := runProg("172E.go", input.String())
-	if err != nil {
-		return nil, err
+
+	qIDs := make([][]int, len(queries))
+	for i, q := range queries {
+		parts := strings.Fields(q)
+		if len(parts) == 0 {
+			return nil, fmt.Errorf("empty query %d", i+1)
+		}
+		qIDs[i] = make([]int, len(parts))
+		for j, p := range parts {
+			qIDs[i][j] = getID(p)
+		}
 	}
-	scan := bufio.NewScanner(strings.NewReader(out))
-	res := []int{}
-	for scan.Scan() {
-		v, _ := strconv.Atoi(strings.TrimSpace(scan.Text()))
-		res = append(res, v)
+
+	results := make([]int, len(queries))
+
+	var dfs func(*node, []int)
+	dfs = func(u *node, path []int) {
+		if u.tag != "" {
+			path = append(path, getID(u.tag))
+			plen := len(path)
+			for qi, pat := range qIDs {
+				l := len(pat)
+				if l > plen {
+					continue
+				}
+				if matchChain(path[plen-l:], pat) {
+					results[qi]++
+				}
+			}
+		}
+		for _, ch := range u.children {
+			dfs(ch, path)
+		}
 	}
-	if len(res) != len(queries) {
-		return nil, fmt.Errorf("reference output length mismatch")
+
+	for _, ch := range tree.children {
+		dfs(ch, nil)
 	}
-	return res, nil
+
+	return results, nil
+}
+
+func matchChain(path, query []int) bool {
+	for i := range query {
+		if path[i] != query[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func main() {
