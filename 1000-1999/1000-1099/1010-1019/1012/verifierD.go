@@ -7,8 +7,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 )
@@ -95,8 +93,6 @@ func main() {
 		os.Exit(1)
 	}
 	candidate := os.Args[1]
-	_, filename, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(filename)
 
 	rand.Seed(1)
 	for t := 0; t < 100; t++ {

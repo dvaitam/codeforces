@@ -1,7 +1,7 @@
 module codeforces
 
-// Match environment's maximum supported Go version (1.19).
-go 1.24.0
+// Match the Go toolchain available in this environment.
+go 1.22
 
 // Use lib/pq driver for Postgres with database/sql.
 require github.com/lib/pq v1.10.9
