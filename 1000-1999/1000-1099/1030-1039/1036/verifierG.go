@@ -36,23 +36,31 @@ func genTests() []Test {
 	for i := 0; i < 100; i++ {
 		n := rand.Intn(4) + 2
 		m := rand.Intn(n*(n-1)/2 + 1)
+		order := rand.Perm(n)
+		for i := range order {
+			order[i]++
+		}
+
 		edges := make([][2]int, 0, m)
 		used := make(map[[2]int]bool)
 		for len(edges) < m {
-			a := rand.Intn(n) + 1
-			b := rand.Intn(n) + 1
-			if a == b {
+			aPos := rand.Intn(n)
+			bPos := rand.Intn(n)
+			if aPos == bPos {
 				continue
 			}
-			if a > b {
-				a, b = b, a
+			if aPos > bPos {
+				aPos, bPos = bPos, aPos
 			}
+			a := order[aPos]
+			b := order[bPos]
 			p := [2]int{a, b}
 			if !used[p] {
 				used[p] = true
 				edges = append(edges, p)
 			}
 		}
+
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
 		for _, e := range edges {
@@ -66,6 +74,7 @@ func genTests() []Test {
 		Test{"3 3\n1 2\n2 3\n1 3\n"},
 		Test{"4 0\n"},
 		Test{"3 1\n1 2\n"},
+		Test{"5 5\n1 5\n1 4\n1 2\n1 3\n2 3\n"},
 	)
 	return tests
 }
