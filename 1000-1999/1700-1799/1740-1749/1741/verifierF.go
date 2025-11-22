@@ -3,11 +3,10 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
@@ -18,8 +17,11 @@ type Case struct{ segs []Segment }
 
 func genCases() []Case {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	cases := make([]Case, 100)
-	for i := range cases {
+	// Add a deterministic case that previously failed the verifier.
+	fixed := Case{segs: []Segment{{12, 20, 1}, {1, 5, 2}, {10, 26, 3}, {17, 29, 1}, {2, 14, 2}}}
+
+	cases := []Case{fixed}
+	for i := 0; i < 99; i++ {
 		n := rng.Intn(5) + 1
 		segs := make([]Segment, n)
 		for j := range segs {
@@ -28,29 +30,13 @@ func genCases() []Case {
 			c := rng.Intn(3) + 1
 			segs[j] = Segment{l, r, c}
 		}
-		cases[i] = Case{segs: segs}
+		cases = append(cases, Case{segs: segs})
 	}
 	return cases
 }
 
-func buildRef() (string, error) {
-	_, self, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(self)
-	ref := filepath.Join(dir, "refF.bin")
-	cmd := exec.Command("go", "build", "-o", ref, filepath.Join(dir, "1741F.go"))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
-	}
-	return ref, nil
-}
-
 func runBinary(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -61,7 +47,59 @@ func runBinary(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func runCase(bin, ref string, c Case) error {
+func distance(a, b Segment) int {
+	if a.r < b.l {
+		return b.l - a.r
+	}
+	if b.r < a.l {
+		return a.l - b.r
+	}
+	return 0
+}
+
+func expectedOutputs(c Case) []int {
+	res := make([]int, len(c.segs))
+	for i, s := range c.segs {
+		best := math.MaxInt32
+		for j, t := range c.segs {
+			if i == j || s.c == t.c {
+				continue
+			}
+			d := distance(s, t)
+			if d < best {
+				best = d
+			}
+		}
+		res[i] = best
+	}
+	return res
+}
+
+func formatOutputs(ans []int) string {
+	var sb strings.Builder
+	for i, v := range ans {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(fmt.Sprint(v))
+	}
+	return sb.String()
+}
+
+func parseOutputs(got string, n int) ([]int, error) {
+	var res []int
+	reader := strings.NewReader(got)
+	for len(res) < n {
+		var x int
+		if _, err := fmt.Fscan(reader, &x); err != nil {
+			return nil, fmt.Errorf("unable to parse output: %v", err)
+		}
+		res = append(res, x)
+	}
+	return res, nil
+}
+
+func runCase(bin string, c Case) error {
 	var sb strings.Builder
 	sb.WriteString("1\n")
 	sb.WriteString(fmt.Sprintf("%d\n", len(c.segs)))
@@ -69,18 +107,37 @@ func runCase(bin, ref string, c Case) error {
 		sb.WriteString(fmt.Sprintf("%d %d %d\n", s.l, s.r, s.c))
 	}
 	input := sb.String()
-	exp, err := runBinary(ref, input)
-	if err != nil {
-		return fmt.Errorf("reference failed: %v", err)
-	}
 	got, err := runBinary(bin, input)
 	if err != nil {
 		return err
 	}
-	if exp != got {
-		return fmt.Errorf("expected %s got %s", exp, got)
+	expected := expectedOutputs(c)
+	parsed, err := parseOutputs(got, len(c.segs))
+	if err != nil {
+		return err
+	}
+	for i := range expected {
+		if expected[i] != parsed[i] {
+			return fmt.Errorf("expected %s got %s", formatOutputs(expected), got)
+		}
 	}
 	return nil
+}
+
+func buildBinary(bin string) (string, func(), error) {
+	if !strings.HasSuffix(bin, ".go") {
+		return bin, func() {}, nil
+	}
+	tmp, err := os.CreateTemp("", "verifierF_*")
+	if err != nil {
+		return "", nil, err
+	}
+	tmp.Close()
+	if err := exec.Command("go", "build", "-o", tmp.Name(), bin).Run(); err != nil {
+		os.Remove(tmp.Name())
+		return "", nil, fmt.Errorf("failed to build solution: %v", err)
+	}
+	return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
 }
 
 func main() {
@@ -91,16 +148,16 @@ func main() {
 		fmt.Println("usage: go run verifierF.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	ref, err := buildRef()
+	binPath, cleanup, err := buildBinary(os.Args[1])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.Remove(ref)
+	defer cleanup()
+
 	cases := genCases()
 	for i, c := range cases {
-		if err := runCase(bin, ref, c); err != nil {
+		if err := runCase(binPath, c); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput: %+v\n", i+1, err, c)
 			os.Exit(1)
 		}
