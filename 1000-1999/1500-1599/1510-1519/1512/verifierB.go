@@ -102,12 +102,80 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func validateCase(tc testCaseB, output string) error {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) != tc.n {
+		return fmt.Errorf("expected %d lines, got %d", tc.n, len(lines))
+	}
+	origStars := make(map[[2]int]struct{}, 2)
+	for i := 0; i < tc.n; i++ {
+		for j := 0; j < tc.n; j++ {
+			if tc.grid[i][j] == '*' {
+				origStars[[2]int{i, j}] = struct{}{}
+			}
+		}
+	}
+
+	stars := make(map[[2]int]struct{})
+	rowSet := make(map[int]struct{})
+	colSet := make(map[int]struct{})
+	for i := 0; i < tc.n; i++ {
+		if len(lines[i]) != tc.n {
+			return fmt.Errorf("line %d has length %d, expected %d", i+1, len(lines[i]), tc.n)
+		}
+		for j := 0; j < tc.n; j++ {
+			if lines[i][j] == '*' {
+				stars[[2]int{i, j}] = struct{}{}
+				rowSet[i] = struct{}{}
+				colSet[j] = struct{}{}
+			}
+		}
+	}
+
+	if len(stars) != 4 {
+		return fmt.Errorf("expected 4 stars, got %d", len(stars))
+	}
+	for pos := range origStars {
+		if _, ok := stars[pos]; !ok {
+			return fmt.Errorf("missing original star at %v", pos)
+		}
+	}
+	if len(rowSet) != 2 || len(colSet) != 2 {
+		return fmt.Errorf("stars do not form an axis-aligned rectangle")
+	}
+	var rows, cols [2]int
+	idx := 0
+	for r := range rowSet {
+		rows[idx] = r
+		idx++
+	}
+	idx = 0
+	for c := range colSet {
+		cols[idx] = c
+		idx++
+	}
+	corners := [][2]int{{rows[0], cols[0]}, {rows[0], cols[1]}, {rows[1], cols[0]}, {rows[1], cols[1]}}
+	for _, p := range corners {
+		if _, ok := stars[p]; !ok {
+			return fmt.Errorf("missing corner star at %v", p)
+		}
+	}
+	return nil
+}
+
 func main() {
-	if len(os.Args) != 2 {
+	if len(os.Args) < 2 {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+	if bin == "--" {
+		if len(os.Args) < 3 {
+			fmt.Println("usage: go run verifierB.go /path/to/binary")
+			os.Exit(1)
+		}
+		bin = os.Args[2]
+	}
 	cases, err := parseTestcasesB("testcasesB.txt")
 	if err != nil {
 		fmt.Println("failed to parse testcases:", err)
@@ -121,16 +189,13 @@ func main() {
 			sb.WriteString(tc.grid[i])
 			sb.WriteByte('\n')
 		}
-		expectedLines := solveB(tc.n, tc.grid)
-		expected := strings.Join(expectedLines, "\n")
 		got, err := run(bin, sb.String())
 		if err != nil {
 			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got = strings.TrimSpace(got)
-		if got != expected {
-			fmt.Printf("case %d failed: expected:\n%s\ngot:\n%s\n", idx+1, expected, got)
+		if err := validateCase(tc, got); err != nil {
+			fmt.Printf("case %d failed: %v\noutput:\n%s\n", idx+1, err, got)
 			os.Exit(1)
 		}
 	}
