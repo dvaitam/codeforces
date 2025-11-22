@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -52,10 +53,52 @@ func runCase(bin, oracle, input string) error {
 		return fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
 	}
 	got := strings.TrimSpace(out.String())
-	if got != expected {
+
+	expectedFloats, err := parseFloats(expected)
+	if err != nil {
+		return fmt.Errorf("parse expected output: %v", err)
+	}
+	gotFloats, err := parseFloats(got)
+	if err != nil {
+		return fmt.Errorf("parse contestant output: %v", err)
+	}
+	if !equalWithTolerance(expectedFloats, gotFloats, 1e-9) {
 		return fmt.Errorf("expected %s got %s", expected, got)
 	}
 	return nil
+}
+
+func parseFloats(s string) ([]float64, error) {
+	fields := strings.Fields(s)
+	res := make([]float64, len(fields))
+	for i, f := range fields {
+		v, err := parseFloat(f)
+		if err != nil {
+			return nil, fmt.Errorf("field %d (%q): %w", i, f, err)
+		}
+		res[i] = v
+	}
+	return res, nil
+}
+
+func parseFloat(s string) (float64, error) {
+	var v float64
+	if _, err := fmt.Sscan(s, &v); err != nil {
+		return 0, err
+	}
+	return v, nil
+}
+
+func equalWithTolerance(expected, got []float64, eps float64) bool {
+	if len(expected) != len(got) {
+		return false
+	}
+	for i := range expected {
+		if math.Abs(expected[i]-got[i]) > eps {
+			return false
+		}
+	}
+	return true
 }
 
 func main() {
