@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -29,48 +29,104 @@ func runBinary(path, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func max(x, y int64) int64 {
-	if x > y {
-		return x
-	}
-	return y
-}
-
-func solveE(r *bufio.Reader) string {
-	var t, a, b int64
-	if _, err := fmt.Fscan(r, &t, &a, &b); err != nil {
-		return ""
-	}
-	if t == 1 && a == 1 {
-		if b == 1 {
-			return "inf"
+func solveRef(t, a, b int64) string {
+	if t == 1 {
+		if a == 1 {
+			if b == 1 {
+				return "inf"
+			}
+			return "0"
 		}
-		return "0"
-	}
-	C := int64(0)
-	powA := int64(1)
-	aa := a
-	for aa > 0 {
-		d := aa % t
-		C += d * powA
-		aa /= t
-		if powA > (1<<62)/max(a, 1) {
-			powA = 0
-		} else {
-			powA *= a
+		cnt := 0
+		var search func(deg int, remSum int64, remVal int64)
+		search = func(deg int, remSum int64, remVal int64) {
+			powA := int64(1)
+			for i := 0; i < deg; i++ {
+				if math.MaxInt64/a < powA {
+					powA = math.MaxInt64
+				} else {
+					powA *= a
+				}
+			}
+			if powA > remVal {
+				if remSum == 0 && remVal == 0 {
+					cnt++
+				}
+				return
+			}
+			
+			limit := remSum
+			if powA > 0 {
+				l2 := remVal / powA
+				if l2 < limit {
+					limit = l2
+				}
+			}
+			
+			for c := int64(0); c <= limit; c++ {
+				search(deg+1, remSum-c, remVal-c*powA)
+			}
 		}
+		search(0, a, b)
+		return fmt.Sprintf("%d", cnt%1000000007)
+	} else {
+		cnt := 0
+		var search func(deg int, remA int64, currentB int64)
+		search = func(deg int, remA int64, currentB int64) {
+			powA := int64(1)
+			for i := 0; i < deg; i++ {
+				if math.MaxInt64/a < powA {
+					powA = math.MaxInt64
+				} else {
+					powA *= a
+				}
+			}
+			
+			if remA == 0 {
+				if currentB == b {
+					cnt++
+				}
+				return
+			}
+			
+			base := remA % t
+			for c := base; c <= remA; c += t {
+				termB := c
+				bad := false
+				// termB = c * a^deg
+				// Check overflow for a^deg
+				if powA == math.MaxInt64 {
+					bad = true
+				} else {
+					// check c * powA
+					if powA > 0 && c > math.MaxInt64/powA {
+						bad = true
+					} else {
+						termB = c * powA
+					}
+				}
+				
+				if bad || currentB > math.MaxInt64 - termB {
+					if currentB + termB > b {
+						break
+					}
+				}
+				if currentB + termB > b {
+					break
+				}
+				
+				search(deg+1, (remA-c)/t, currentB+termB)
+			}
+		}
+		search(0, a, 0)
+		return fmt.Sprintf("%d", cnt)
 	}
-	denom := t*a - 1
-	if denom <= 0 || b < C || (b-C)%denom != 0 {
-		return "0"
-	}
-	return "1"
 }
 
 func generateCaseE(rng *rand.Rand) string {
 	t := rng.Int63n(5) + 1
-	a := rng.Int63n(1000) + 1
-	b := rng.Int63n(1000) + 1
+	a := rng.Int63n(100) + 1 // Reduced for safety of recursive BF
+	b := rng.Int63n(100) + 1
 	return fmt.Sprintf("%d %d %d\n", t, a, b)
 }
 
@@ -83,7 +139,9 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		tc := generateCaseE(rng)
-		expect := solveE(bufio.NewReader(strings.NewReader(tc)))
+		var t, a, b int64
+		fmt.Sscan(tc, &t, &a, &b)
+		expect := solveRef(t, a, b)
 		got, err := runBinary(bin, tc)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, tc)

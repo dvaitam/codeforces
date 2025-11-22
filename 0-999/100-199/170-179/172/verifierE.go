@@ -107,7 +107,8 @@ func expected(doc string, queries []string) ([]int, error) {
 	for i, q := range queries {
 		parts := strings.Fields(q)
 		if len(parts) == 0 {
-			return nil, fmt.Errorf("empty query %d", i+1)
+			qIDs[i] = nil
+			continue
 		}
 		qIDs[i] = make([]int, len(parts))
 		for j, p := range parts {
@@ -118,39 +119,55 @@ func expected(doc string, queries []string) ([]int, error) {
 	results := make([]int, len(queries))
 
 	var dfs func(*node, []int)
-	dfs = func(u *node, path []int) {
+	dfs = func(u *node, states []int) {
+		var nextStates []int
 		if u.tag != "" {
-			path = append(path, getID(u.tag))
-			plen := len(path)
-			for qi, pat := range qIDs {
-				l := len(pat)
-				if l > plen {
+			tagID := getID(u.tag)
+			nextStates = make([]int, len(states))
+			for i, idx := range states {
+				pat := qIDs[i]
+				if pat == nil {
 					continue
 				}
-				if matchChain(path[plen-l:], pat) {
-					results[qi]++
+				plen := len(pat)
+
+				// Check if current node matches the target (last element)
+				// and we have matched all ancestors (idx == plen-1)
+				if idx == plen-1 && pat[plen-1] == tagID {
+					results[i]++
+				}
+
+				// Update state for children (ancestor matching)
+				// Greedy match: if current node matches the expected ancestor, advance index
+				if idx < plen-1 && pat[idx] == tagID {
+					nextStates[i] = idx + 1
+				} else {
+					nextStates[i] = idx
 				}
 			}
+		} else {
+			// Virtual root, pass states as is
+			nextStates = states
 		}
+
 		for _, ch := range u.children {
-			dfs(ch, path)
+			dfs(ch, nextStates)
 		}
 	}
 
-	for _, ch := range tree.children {
-		dfs(ch, nil)
-	}
+	initialStates := make([]int, len(queries))
+	dfs(tree, initialStates)
 
 	return results, nil
 }
 
 func matchChain(path, query []int) bool {
-	for i := range query {
-		if path[i] != query[i] {
-			return false
-		}
-	}
-	return true
+	// Deprecated, kept/removed as needed. 
+	// Since I am replacing the block, I should probably remove it or replace it with nothing if possible.
+	// The tool requires replacing exact text. 
+	// I will include it in old_string and remove it in new_string if I can capture it.
+	// But simpler to just define expected and let matchChain be unused (or remove it if I target it).
+	return false
 }
 
 func main() {

@@ -3,12 +3,9 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"math/rand"
-	"os"
 	"os/exec"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func runExe(bin, input string) (string, error) {

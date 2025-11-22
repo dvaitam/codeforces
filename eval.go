@@ -110,13 +110,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	dbWritable := true
 	// Ensure provider column exists for older deployments
-	if _, err = db.Exec(`ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS provider VARCHAR(255)`); err != nil {
-		panic(err)
-	}
+	execWrite(db, &dbWritable, "adding provider column", `ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS provider VARCHAR(255)`)
 	defer db.Close()
 
-	_, err = db.Exec(`
+	execWrite(db, &dbWritable, "creating evaluations table", `
 	                CREATE TABLE IF NOT EXISTS evaluations (
 	                        id SERIAL PRIMARY KEY,
 	                        run_id VARCHAR(255),
@@ -133,11 +132,8 @@ func main() {
 	                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	                )
 	       `)
-	if err != nil {
-		panic(err)
-	}
 
-	_, err = db.Exec(`
+	execWrite(db, &dbWritable, "creating leaderboard table", `
 	                CREATE TABLE IF NOT EXISTS leaderboard (
 	                        id SERIAL PRIMARY KEY,
 	                        run_id VARCHAR(255),
@@ -147,18 +143,27 @@ func main() {
 	                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	                )
 	        `)
-	if err != nil {
-		panic(err)
-	}
 	// Ensure lang column exists for older deployments
-	if _, err = db.Exec(`ALTER TABLE leaderboard ADD COLUMN IF NOT EXISTS lang VARCHAR(255)`); err != nil {
-		panic(err)
+	execWrite(db, &dbWritable, "adding lang column to leaderboard", `ALTER TABLE leaderboard ADD COLUMN IF NOT EXISTS lang VARCHAR(255)`)
+	if dbWritable {
+		if err = ensureSerialSequence(db, "evaluations", "id"); err != nil {
+			if isReadOnlyError(err) {
+				fmt.Println("Database is read-only; skipping sequence setup and future writes.")
+				dbWritable = false
+			} else {
+				panic(err)
+			}
+		}
 	}
-	if err = ensureSerialSequence(db, "evaluations", "id"); err != nil {
-		panic(err)
-	}
-	if err = ensureSerialSequence(db, "leaderboard", "id"); err != nil {
-		panic(err)
+	if dbWritable {
+		if err = ensureSerialSequence(db, "leaderboard", "id"); err != nil {
+			if isReadOnlyError(err) {
+				fmt.Println("Database is read-only; skipping sequence setup and future writes.")
+				dbWritable = false
+			} else {
+				panic(err)
+			}
+		}
 	}
 
 	runID := time.Now().Format("20060102-150405")
@@ -183,12 +188,18 @@ func main() {
 		if strings.TrimSpace(response) == "" {
 			fmt.Println("No response after retries; skipping build/fix.")
 			// Record the failed attempt and move to the next problem without invoking fixer.
-			_, err = db.Exec(
-				"INSERT INTO evaluations (run_id, provider, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-				runID, strings.ToLower(*provider), *model, lang, problem.ID, prompt, response, false, "", "No response from API",
-			)
-			if err != nil {
-				panic(err)
+			if dbWritable {
+				if _, err = db.Exec(
+					"INSERT INTO evaluations (run_id, provider, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+					runID, strings.ToLower(*provider), *model, lang, problem.ID, prompt, response, false, "", "No response from API",
+				); err != nil {
+					if isReadOnlyError(err) {
+						fmt.Println("Database is read-only; skipping evaluation writes for the rest of the run.")
+						dbWritable = false
+					} else {
+						panic(err)
+					}
+				}
 			}
 			estimatedRating -= 100
 			continue
@@ -255,12 +266,18 @@ func main() {
 			os.RemoveAll(filepath.Dir(tempBinAbs))
 		}
 
-		_, err = db.Exec(
-			"INSERT INTO evaluations (run_id, provider, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-			runID, strings.ToLower(*provider), *model, lang, problem.ID, prompt, finalResponse, success, verifierStdout, verifierStderr,
-		)
-		if err != nil {
-			panic(err)
+		if dbWritable {
+			if _, err = db.Exec(
+				"INSERT INTO evaluations (run_id, provider, model, lang, problem_id, prompt, response, success, stdout, stderr) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+				runID, strings.ToLower(*provider), *model, lang, problem.ID, prompt, finalResponse, success, verifierStdout, verifierStderr,
+			); err != nil {
+				if isReadOnlyError(err) {
+					fmt.Println("Database is read-only; skipping evaluation writes for the rest of the run.")
+					dbWritable = false
+				} else {
+					panic(err)
+				}
+			}
 		}
 
 		if success {
@@ -271,12 +288,18 @@ func main() {
 	}
 
 	// Insert into leaderboard
-	_, err = db.Exec(
-		"INSERT INTO leaderboard (run_id, model, lang, rating) VALUES ($1, $2, $3, $4)",
-		runID, *model, lang, estimatedRating,
-	)
-	if err != nil {
-		panic(err)
+	if dbWritable {
+		if _, err = db.Exec(
+			"INSERT INTO leaderboard (run_id, model, lang, rating) VALUES ($1, $2, $3, $4)",
+			runID, *model, lang, estimatedRating,
+		); err != nil {
+			if isReadOnlyError(err) {
+				fmt.Println("Database is read-only; skipping leaderboard write.")
+				dbWritable = false
+			} else {
+				panic(err)
+			}
+		}
 	}
 
 	fmt.Printf("Evaluation complete. Estimated Codeforces rating for model %s: %d\n", *model, estimatedRating)
@@ -670,6 +693,24 @@ func ensureSerialSequence(db *sql.DB, table, column string) error {
 		return err
 	}
 	return nil
+}
+
+func execWrite(db *sql.DB, writable *bool, desc, query string, args ...interface{}) {
+	if !*writable {
+		return
+	}
+	if _, err := db.Exec(query, args...); err != nil {
+		if isReadOnlyError(err) {
+			fmt.Printf("Database is read-only; skipping %s and future writes.\n", desc)
+			*writable = false
+			return
+		}
+		panic(err)
+	}
+}
+
+func isReadOnlyError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "read-only transaction")
 }
 
 func sendPrompt(provider, model, apiKey, prompt string, useResponses bool) string {

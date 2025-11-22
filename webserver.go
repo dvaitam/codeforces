@@ -745,6 +745,36 @@ func findVerifier(dir, letter string) string {
 	return ""
 }
 
+func problemPathsForPrompt(contestID, letter string) (string, string) {
+	dir, err := contestDir(contestID)
+	if err != nil {
+		return "", ""
+	}
+	letter = strings.ToUpper(letter)
+	stmtPath := filepath.Join(dir, "problem"+letter+".txt")
+	if abs, err := filepath.Abs(stmtPath); err == nil {
+		stmtPath = abs
+	}
+	verifierPath := findVerifier(dir, letter)
+	if verifierPath != "" {
+		if abs, err := filepath.Abs(verifierPath); err == nil {
+			verifierPath = abs
+		}
+	}
+	return stmtPath, verifierPath
+}
+
+func buildVerifierFixPrompt(contestID, letter, output, code string) string {
+	stmtPath, verifierPath := problemPathsForPrompt(contestID, letter)
+	if stmtPath == "" {
+		stmtPath = fmt.Sprintf("%s%s", contestID, letter)
+	}
+	if verifierPath == "" {
+		verifierPath = "verifier not found"
+	}
+	return fmt.Sprintf("For problem statement at %s this is a correct solution, but verifier at %s ends with %s can you fix the verifier? %s", stmtPath, verifierPath, output, code)
+}
+
 func detectJavaClassName(src []byte) string {
 	re := regexp.MustCompile(`(?m)^\s*public\s+(?:class|interface|enum|record)\s+([A-Za-z_][A-Za-z0-9_]*)`)
 	if m := re.FindSubmatch(src); m != nil {
@@ -1473,7 +1503,7 @@ func submissionFixPromptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	output := strings.TrimSpace(stdout + "\n" + stderr)
-	prompt := fmt.Sprintf("For problem %s%s this is a correct solution, but verifier ends with %s can you fix the verifier? %s", contestID, letter, output, code)
+	prompt := buildVerifierFixPrompt(contestID, letter, output, code)
 	textTmpl.Execute(w, prompt)
 }
 
@@ -1533,7 +1563,7 @@ func evaluationFixPromptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	output := strings.TrimSpace(stdout + "\n" + stderr)
-	prompt := fmt.Sprintf("For problem %s%s this is a correct solution, but verifier ends with %s can you fix the verifier? %s", contestID, letter, output, code)
+	prompt := buildVerifierFixPrompt(contestID, letter, output, code)
 	textTmpl.Execute(w, prompt)
 }
 

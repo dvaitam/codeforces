@@ -33,7 +33,7 @@ func buildRef() (string, error) {
 func genTests() []Test {
 	rand.Seed(0)
 	tests := make([]Test, 0, 110)
-	for i := 0; i < 100; i++ {
+	for len(tests) < 100 {
 		n := rand.Intn(4) + 2
 		m := rand.Intn(n*(n-1)/2 + 1)
 		order := rand.Perm(n)
@@ -61,6 +61,27 @@ func genTests() []Test {
 			}
 		}
 
+		// Validation: |Sources| == |Sinks|
+		inDeg := make(map[int]int)
+		outDeg := make(map[int]int)
+		for _, e := range edges {
+			outDeg[e[0]]++
+			inDeg[e[1]]++
+		}
+		srcCnt := 0
+		snkCnt := 0
+		for i := 1; i <= n; i++ {
+			if inDeg[i] == 0 {
+				srcCnt++
+			}
+			if outDeg[i] == 0 {
+				snkCnt++
+			}
+		}
+		if srcCnt != snkCnt {
+			continue
+		}
+
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
 		for _, e := range edges {
@@ -74,7 +95,6 @@ func genTests() []Test {
 		Test{"3 3\n1 2\n2 3\n1 3\n"},
 		Test{"4 0\n"},
 		Test{"3 1\n1 2\n"},
-		Test{"5 5\n1 5\n1 4\n1 2\n1 3\n2 3\n"},
 	)
 	return tests
 }

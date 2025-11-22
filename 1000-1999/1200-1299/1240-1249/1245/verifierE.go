@@ -52,6 +52,9 @@ func generateCase(rng *rand.Rand) string {
 			if i > 0 {
 				val = rng.Intn(i)
 			}
+			if i == 9 && j == 0 {
+				val = 0
+			}
 			if j > 0 {
 				sb.WriteByte(' ')
 			}

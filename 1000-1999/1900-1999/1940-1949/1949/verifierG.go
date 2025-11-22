@@ -42,15 +42,124 @@ func runProg(exe string, input []byte) (string, error) {
 
 func genTest() []byte {
 	n := rand.Intn(6) + 1
+	
+	// Init req and has with placeholder 0
+	// 'M', 'C', '-' are valid.
+	req := make([]byte, n)
+	has := make([]byte, n)
+	
+	// Generate random permutation for itinerary
+	perm := rand.Perm(n)
+	
+	passenger := byte(0) // 0 means empty
+	
+	for _, idx := range perm {
+		// idx is building index 0..n-1
+		
+		// Decide action
+		// If scooter empty: Pickup or Pass
+		// If scooter full: Drop, Swap, or Pass
+		
+		action := rand.Intn(2) // 0: Pass, 1: Interact
+		if passenger != 0 {
+			action = rand.Intn(3) // 0: Pass, 1: Drop, 2: Swap
+		}
+		
+		if action == 0 { // Pass
+			// Do nothing to flow (will fill match later)
+			continue
+		}
+		
+		if passenger == 0 {
+			// Must be Pickup
+			// Decide what to pickup
+			res := byte('M')
+			if rand.Intn(2) == 0 {
+				res = 'C'
+			}
+			has[idx] = res
+			passenger = res
+		} else {
+			// Drop or Swap
+			// Drop: Req = passenger. Has = ? (will be filled). Passenger = 0.
+			// Swap: Req = passenger. Has = NewRes. Passenger = NewRes.
+			
+			req[idx] = passenger
+			
+			if action == 1 { // Drop
+				passenger = 0
+				// has[idx] remains 0 (will be filled with - or garbage)
+			} else { // Swap
+				res := byte('M')
+				if rand.Intn(2) == 0 {
+					res = 'C'
+				}
+				has[idx] = res
+				passenger = res
+			}
+		}
+	}
+	
+	// If passenger still on scooter, we must Drop it somewhere?
+	// Or just retry.
+	if passenger != 0 {
+		return genTest()
+	}
+	
+	// Fill remaining
+	for i := 0; i < n; i++ {
+		if has[i] == 0 && req[i] == 0 {
+			// Untouched or Passed
+			// Make them match
+			res := byte('-')
+			r := rand.Intn(3)
+			if r == 1 { res = 'M' }
+			if r == 2 { res = 'C' }
+			has[i] = res
+			req[i] = res
+		} else if has[i] == 0 {
+			// Req set (Drop target), Has not set
+			// Has can be anything that doesn't need to be saved.
+			// Safest is '-'
+			has[i] = '-'
+		} else if req[i] == 0 {
+			// Has set (Pickup source), Req not set
+			// Req can be anything satisfied by Has?
+			// No, Has was Picked up (gone).
+			// So Req must be satisfied by what?
+			// Wait, if we Picked up from i, Has[i] is gone.
+			// Req[i] must be satisfied by... nothing (since scooter left).
+			// So Req[i] MUST be '-' (no class).
+			// UNLESS we dropped something there first?
+			// "At most one DROPOFF and one PICKUP... in this order".
+			// My generator simulates:
+			// Pickup (only).
+			// Drop (only).
+			// Swap (Drop then Pick).
+			
+			// If we did Pickup only:
+			// Has[i] = M. Picked up.
+			// Building i is now empty.
+			// Req[i] must be satisfied. So Req[i] must be '-'.
+			req[i] = '-'
+			
+			// If we did Swap:
+			// Has[i] = C. Req[i] = M (Passenger).
+			// Drop M, Pick C.
+			// End state: Building has M. Req is M. Satisfied.
+			// Logic above set req[idx] = passenger. has[idx] = res.
+			// So req is set. This branch (req==0) won't be hit for Swap.
+		}
+	}
+	
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", n))
-	chars := []byte{'M', 'C', '-'}
 	for i := 0; i < n; i++ {
-		sb.WriteByte(chars[rand.Intn(len(chars))])
+		sb.WriteByte(req[i])
 	}
 	sb.WriteByte('\n')
 	for i := 0; i < n; i++ {
-		sb.WriteByte(chars[rand.Intn(len(chars))])
+		sb.WriteByte(has[i])
 	}
 	sb.WriteByte('\n')
 	return []byte(sb.String())
@@ -89,6 +198,10 @@ func verify(input []byte, output string) error {
 
 	position := -1
 	passenger := byte('-')
+	
+	// State for handling swaps (Drop on full building -> Pending Pick)
+	swapping := false
+	var swapDrop byte
 
 	for i, op := range ops {
 		fields := strings.Fields(op)
@@ -98,6 +211,9 @@ func verify(input []byte, output string) error {
 
 		switch fields[0] {
 		case "DRIVE":
+			if swapping {
+				return fmt.Errorf("DRIVE instruction issued while in the middle of a swap (missing PICKUP) at #%d", i+1)
+			}
 			if len(fields) != 2 {
 				return fmt.Errorf("invalid DRIVE format at #%d", i+1)
 			}
@@ -113,28 +229,61 @@ func verify(input []byte, output string) error {
 			if position == -1 {
 				return fmt.Errorf("PICKUP before visiting any building at #%d", i+1)
 			}
-			if passenger != '-' {
-				return fmt.Errorf("PICKUP attempted with passenger already on scooter at #%d", i+1)
+			
+			if swapping {
+				// Completing a swap
+				// We drop 'swapDrop' and pick up 'buildings[position]'
+				if buildings[position] == '-' {
+					return fmt.Errorf("logic error: swapping on empty building at #%d", i+1)
+				}
+				pOld := buildings[position]
+				buildings[position] = swapDrop
+				passenger = pOld
+				
+				swapping = false
+				swapDrop = '-'
+			} else {
+				// Normal pickup
+				if passenger != '-' {
+					return fmt.Errorf("PICKUP attempted with passenger already on scooter at #%d", i+1)
+				}
+				if buildings[position] == '-' {
+					return fmt.Errorf("PICKUP at building %d with no professor present", position+1)
+				}
+				passenger = buildings[position]
+				buildings[position] = '-'
 			}
-			if buildings[position] == '-' {
-				return fmt.Errorf("PICKUP at building %d with no professor present", position+1)
-			}
-			passenger = buildings[position]
-			buildings[position] = '-'
+			
 		case "DROPOFF":
 			if position == -1 {
 				return fmt.Errorf("DROPOFF before visiting any building at #%d", i+1)
 			}
+			if swapping {
+				return fmt.Errorf("DROPOFF issued while already swapping at #%d", i+1)
+			}
 			if passenger == '-' {
 				return fmt.Errorf("DROPOFF without passenger at #%d", i+1)
 			}
-			buildings[position] = passenger
-			passenger = '-'
+			
+			if buildings[position] != '-' {
+				// Building occupied: Start Swap
+				swapping = true
+				swapDrop = passenger
+				passenger = '-'
+			} else {
+				// Normal drop
+				buildings[position] = passenger
+				passenger = '-'
+			}
+			
 		default:
 			return fmt.Errorf("unknown instruction %q at #%d", fields[0], i+1)
 		}
 	}
 
+	if swapping {
+		return fmt.Errorf("itinerary ended in the middle of a swap")
+	}
 	if passenger != '-' {
 		return fmt.Errorf("itinerary ended with a passenger still on the scooter")
 	}

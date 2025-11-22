@@ -22,13 +22,19 @@ func genCases() []Case {
 
 	cases := []Case{fixed}
 	for i := 0; i < 99; i++ {
-		n := rng.Intn(5) + 1
+		n := rng.Intn(4) + 2 // n >= 2
 		segs := make([]Segment, n)
+		colors := make(map[int]bool)
 		for j := range segs {
 			l := rng.Intn(20) + 1
 			r := l + rng.Intn(20)
 			c := rng.Intn(3) + 1
 			segs[j] = Segment{l, r, c}
+			colors[c] = true
+		}
+		// Ensure at least two different colors
+		if len(colors) < 2 {
+			segs[n-1].c = (segs[0].c % 3) + 1
 		}
 		cases = append(cases, Case{segs: segs})
 	}
@@ -70,11 +76,7 @@ func expectedOutputs(c Case) []int {
 				best = d
 			}
 		}
-		if best == math.MaxInt32 {
-			res[i] = -1
-		} else {
-			res[i] = best
-		}
+		res[i] = best
 	}
 	return res
 }

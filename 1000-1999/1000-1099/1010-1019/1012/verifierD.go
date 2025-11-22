@@ -87,6 +87,15 @@ func applyOps(s, t string, ops [][2]int) (string, string, error) {
 	return s, t, nil
 }
 
+func isPure(s string, char rune) bool {
+	for _, c := range s {
+		if c != char {
+			return false
+		}
+	}
+	return true
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: go run verifierD.go /path/to/binary\n")
@@ -127,7 +136,10 @@ func main() {
 			fmt.Fprintf(os.Stderr, "test %d: invalid operations: %v\n", t+1, err)
 			os.Exit(1)
 		}
-		if finalS != finalT {
+		
+		// Check if one string is all 'a' and the other is all 'b'
+		ok := (isPure(finalS, 'a') && isPure(finalT, 'b')) || (isPure(finalS, 'b') && isPure(finalT, 'a'))
+		if !ok {
 			fmt.Fprintf(os.Stderr, "test %d failed\ninput:\n%sfound %d operations\nfinal s: %s\nfinal t: %s\n", t+1, input, len(ops), finalS, finalT)
 			os.Exit(1)
 		}
