@@ -23,7 +23,7 @@ func runExe(path, input string) (string, error) {
 
 func buildRef() (string, error) {
 	ref := "./refG.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1036G.go")
+	cmd := exec.Command("g++", "-std=c++17", "-O2", "-pipe", "-o", ref, "solG.cpp")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build reference failed: %v: %s", err, string(out))
 	}
