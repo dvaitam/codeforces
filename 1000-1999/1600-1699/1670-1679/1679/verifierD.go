@@ -46,9 +46,10 @@ func run(path string, in []byte) (string, error) {
 
 func genTest(rng *rand.Rand) []byte {
 	n := rng.Intn(6) + 1
-	m := rng.Intn(n*(n-1)) + 1
-	if m > n*(n-1) {
-		m = n * (n - 1)
+	maxEdges := n * (n - 1)
+	m := 0
+	if maxEdges > 0 {
+		m = rng.Intn(maxEdges) + 1
 	}
 	k := rng.Intn(n) + 1
 	var sb strings.Builder
