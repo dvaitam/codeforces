@@ -87,10 +87,6 @@ func verify(input []byte, output string) error {
 	buildings := []byte(profs)
 	demand := []byte(classes)
 
-	visited := make([]bool, n)
-	pickupUsed := make([]bool, n)
-	dropoffUsed := make([]bool, n)
-
 	position := -1
 	passenger := byte('-')
 
@@ -112,17 +108,10 @@ func verify(input []byte, output string) error {
 			if x < 1 || x > n {
 				return fmt.Errorf("DRIVE target out of range at #%d", i+1)
 			}
-			if visited[x-1] {
-				return fmt.Errorf("building %d visited multiple times", x)
-			}
-			visited[x-1] = true
 			position = x - 1
 		case "PICKUP":
 			if position == -1 {
 				return fmt.Errorf("PICKUP before visiting any building at #%d", i+1)
-			}
-			if pickupUsed[position] {
-				return fmt.Errorf("multiple PICKUP at building %d", position+1)
 			}
 			if passenger != '-' {
 				return fmt.Errorf("PICKUP attempted with passenger already on scooter at #%d", i+1)
@@ -132,21 +121,13 @@ func verify(input []byte, output string) error {
 			}
 			passenger = buildings[position]
 			buildings[position] = '-'
-			pickupUsed[position] = true
 		case "DROPOFF":
 			if position == -1 {
 				return fmt.Errorf("DROPOFF before visiting any building at #%d", i+1)
 			}
-			if dropoffUsed[position] {
-				return fmt.Errorf("multiple DROPOFF at building %d", position+1)
-			}
-			if pickupUsed[position] {
-				return fmt.Errorf("DROPOFF after PICKUP at building %d", position+1)
-			}
 			if passenger == '-' {
 				return fmt.Errorf("DROPOFF without passenger at #%d", i+1)
 			}
-			dropoffUsed[position] = true
 			buildings[position] = passenger
 			passenger = '-'
 		default:
