@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -14,47 +15,6 @@ type Test struct{ n int64 }
 
 func (t Test) Input() string {
 	return fmt.Sprintf("1\n%d\n", t.n)
-}
-
-func expected(t Test) string {
-	n := t.n
-	days := 0
-	for (1<<days)-1 < int(n) {
-		days++
-	}
-	days--
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d\n", days))
-	rem := n - 1
-	last := int64(1)
-	for i := days; i >= 1; i-- {
-		low := last
-		high := last * 2
-		ans := high
-		for low <= high {
-			mid := (low + high) / 2
-			mn := int64(i) * mid
-			mx := int64((1<<i)-1) * mid
-			if mn > rem {
-				high = mid - 1
-			} else if mx < rem {
-				low = mid + 1
-			} else {
-				ans = mid
-				break
-			}
-		}
-		sb.WriteString(fmt.Sprintf("%d", ans-last))
-		if i > 1 {
-			sb.WriteString(" ")
-		}
-		rem -= ans
-		last = ans
-	}
-	if days >= 1 {
-		sb.WriteString("\n")
-	}
-	return strings.TrimSpace(sb.String())
 }
 
 func runProg(bin, input string) (string, error) {
@@ -80,6 +40,51 @@ func genTest(rng *rand.Rand) Test {
 	return Test{n}
 }
 
+// checkOutput validates a contestant's output for a single test case.
+// The solution prints k followed by k non-negative integers d[i].
+// Let v[0] = 1 and v[i] = v[i-1] + d[i]. The construction is valid when
+// each v[i] <= 2 * v[i-1] and the total sum of all v values equals n.
+func checkOutput(n int64, out string) error {
+	fields := strings.Fields(out)
+	if len(fields) == 0 {
+		return fmt.Errorf("empty output")
+	}
+
+	k, err := strconv.ParseInt(fields[0], 10, 64)
+	if err != nil || k < 0 {
+		return fmt.Errorf("invalid k value: %s", fields[0])
+	}
+
+	if int(k)+1 != len(fields) {
+		return fmt.Errorf("expected %d numbers, got %d", k+1, len(fields))
+	}
+
+	last := int64(1)
+	total := last
+	for i := 0; i < int(k); i++ {
+		d, err := strconv.ParseInt(fields[i+1], 10, 64)
+		if err != nil {
+			return fmt.Errorf("invalid number at position %d", i+1)
+		}
+		if d < 0 {
+			return fmt.Errorf("negative increment at position %d", i+1)
+		}
+
+		cur := last + d
+		if cur > last*2 {
+			return fmt.Errorf("value %d exceeds twice previous value %d", cur, last)
+		}
+		total += cur
+		last = cur
+	}
+
+	if total != n {
+		return fmt.Errorf("sum of values %d does not equal %d", total, n)
+	}
+
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("Usage: go run verifierD.go /path/to/binary")
@@ -90,14 +95,13 @@ func main() {
 	const cases = 100
 	for i := 0; i < cases; i++ {
 		tc := genTest(rng)
-		expect := expected(tc)
 		got, err := runProg(bin, tc.Input())
 		if err != nil {
 			fmt.Printf("case %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
-			fmt.Printf("case %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, tc.Input(), expect, got)
+		if err := checkOutput(tc.n, strings.TrimSpace(got)); err != nil {
+			fmt.Printf("case %d failed\ninput:\n%serror: %v\noutput: %s\n", i+1, tc.Input(), err, got)
 			os.Exit(1)
 		}
 	}
