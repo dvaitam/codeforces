@@ -6,6 +6,9 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -24,13 +27,20 @@ func run(bin, input string) (string, error) {
 func genCase(rng *rand.Rand) string {
 	n := rng.Intn(10) + 1
 	h := rng.Int63n(50) + 1
+	xs := make([]int64, n)
+	xs[0] = rng.Int63n(200) + 1
+	for i := 1; i < n; i++ {
+		xs[i] = xs[i-1] + rng.Int63n(200) + 1
+	}
+	sort.Slice(xs, func(i, j int) bool { return xs[i] < xs[j] })
+
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d %d\n", n, h))
-	for i := 0; i < n; i++ {
+	for i, v := range xs {
 		if i > 0 {
 			sb.WriteByte(' ')
 		}
-		sb.WriteString(strconv.FormatInt(rng.Int63n(200), 10))
+		sb.WriteString(strconv.FormatInt(v, 10))
 	}
 	sb.WriteByte('\n')
 	return sb.String()
@@ -42,8 +52,11 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+
+	_, filename, _, _ := runtime.Caller(0)
+	refSrc := filepath.Join(filepath.Dir(filename), "1776B.go")
 	ref := "./_refB.bin"
-	if err := exec.Command("go", "build", "-o", ref, "1776B.go").Run(); err != nil {
+	if err := exec.Command("go", "build", "-o", ref, refSrc).Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
 		os.Exit(1)
 	}
