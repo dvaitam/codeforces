@@ -7,16 +7,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleE")
+func buildOracle(baseDir string) (string, error) {
+	oracle := filepath.Join(baseDir, "oracleE")
 	cmd := exec.Command("go", "build", "-o", oracle, "479E.go")
+	cmd.Dir = baseDir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}
@@ -29,14 +27,17 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
+	_, filename, _, _ := runtime.Caller(0)
+	baseDir := filepath.Dir(filename)
+
+	oracle, err := buildOracle(baseDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 	defer os.Remove(oracle)
 
-	file, err := os.Open("testcasesE.txt")
+	file, err := os.Open(filepath.Join(baseDir, "testcasesE.txt"))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
 		os.Exit(1)
