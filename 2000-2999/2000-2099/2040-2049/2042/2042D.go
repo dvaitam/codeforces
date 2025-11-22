@@ -120,15 +120,16 @@ func main() {
 			ints[i] = interval{l: l[i], r: r[i], idx: i}
 		}
 
-		sort.Slice(ints, func(i, j int) bool {
-			return ints[i].l < ints[j].l
-		})
+	sort.Slice(ints, func(i, j int) bool {
+		return ints[i].l < ints[j].l
+	})
 
-		bitMaxL := newBitMax(m)
-		bitMinR := newBitMin(m)
+	const infVal = int(1e9 + 7)
+	bitMaxL := newBitMax(m)
+	bitMinR := newBitMin(m)
 
-		Lmax := make([]int, n)
-		Rmin := make([]int, n)
+	Lmax := make([]int, n)
+	Rmin := make([]int, n)
 
 		for i := 0; i < n; {
 			j := i
@@ -136,22 +137,76 @@ func main() {
 			for j < n && ints[j].l == curL {
 				j++
 			}
+
+			// group statistics for r values
+			cnt := make(map[int]int)
+			rVals := make([]int, 0, j-i)
+			for k := i; k < j; k++ {
+				cnt[ints[k].r]++
+			}
+			for v := range cnt {
+				rVals = append(rVals, v)
+			}
+			sort.Ints(rVals)
+
+			maxR := rVals[len(rVals)-1]
+			countMax := cnt[maxR]
+			posMap := make(map[int]int, len(rVals))
+			for idx, v := range rVals {
+				posMap[v] = idx
+			}
+
+			// answer queries for this group using only earlier intervals + other same-l intervals
+			for k := i; k < j; k++ {
+				idxR := revIdx(ints[k].r)
+				oldL := bitMaxL.query(idxR)
+				oldR := bitMinR.query(idxR)
+
+				groupL := -1
+				if j-i >= 2 {
+					if ints[k].r < maxR || (ints[k].r == maxR && countMax > 1) {
+						groupL = curL
+					}
+				}
+
+				groupR := infVal
+				if cnt[ints[k].r] >= 2 {
+					groupR = ints[k].r
+				} else {
+					pos := posMap[ints[k].r]
+					if pos+1 < len(rVals) {
+						groupR = rVals[pos+1]
+					}
+				}
+
+				if oldL > groupL {
+					groupL = oldL
+				}
+				if oldR < groupR {
+					groupR = oldR
+				}
+
+				Lmax[ints[k].idx] = groupL
+				Rmin[ints[k].idx] = groupR
+			}
+
 			// insert all intervals with this l
 			for k := i; k < j; k++ {
 				idxR := revIdx(ints[k].r)
 				bitMaxL.update(idxR, ints[k].l)
 				bitMinR.update(idxR, ints[k].r)
 			}
-			// answer queries for this group
-			for k := i; k < j; k++ {
-				idxR := revIdx(ints[k].r)
-				Lmax[ints[k].idx] = bitMaxL.query(idxR)
-				Rmin[ints[k].idx] = bitMinR.query(idxR)
-			}
 			i = j
 		}
 
 		for i := 0; i < n; i++ {
+			if Lmax[i] == -1 || Rmin[i] == infVal {
+				if i > 0 {
+					fmt.Fprint(out, " ")
+				}
+				fmt.Fprint(out, 0)
+				continue
+			}
 			ans := int64(l[i]-Lmax[i]) + int64(Rmin[i]-r[i])
 			if i > 0 {
 				fmt.Fprint(out, " ")

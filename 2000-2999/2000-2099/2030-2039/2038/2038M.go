@@ -226,63 +226,40 @@ func main() {
 	ans := 0.0
 
 	// counts per suit of royals drawn x[i], and bad xBad, sum 5
-	var x [4]int
-	var dfs func(pos, left int, remBad int, probNum float64)
-	dfs = func(pos, left int, remBad int, probNum float64) {
-		if pos == n {
-			xBad := left
-			if xBad < 0 || xBad > remBad {
-				return
-			}
-			num := probNum * comb[remBad][xBad]
+var x [4]int
+var dfs func(pos, left int, probNum float64)
+dfs = func(pos, left int, probNum float64) {
+	if pos == n {
+		xBad := left
+		if xBad < 0 || xBad > totalBad {
+			return
+		}
+		num := probNum * comb[totalBad][xBad]
 
-			var st State
-			for i := 0; i < 4; i++ {
-				if i < n {
-					st.hand[i] = uint8(x[i])
-					st.rem[i] = uint8(5 - x[i])
-				} else {
-					st.hand[i] = 0
-					st.rem[i] = 0
-				}
+		var st State
+		for i := 0; i < 4; i++ {
+			if i < n {
+				st.hand[i] = uint8(x[i])
+				st.rem[i] = uint8(5 - x[i])
 			}
-			st.handBad = uint8(xBad)
-			st.remBad = uint8(totalBad - xBad)
+		}
+		st.handBad = uint8(xBad)
+		st.remBad = uint8(totalBad - xBad)
 
 			prob := num / denom
 			ans += prob * solve(st)
 			return
 		}
-		maxTake := left
-		if maxTake > 5 {
-			maxTake = 5
-		}
-		if maxTake > 5 { // redundant
-			maxTake = 5
-		}
-		if maxTake > 5-pos { // placeholder
-		}
-		for t := 0; t <= 5 && t <= left && t <= 5; t++ {
-			if t > 5 {
-				break
-			}
-			if t > 5 {
-				break
-			}
-			if t > 5 {
-				break
-			}
-			if t > 5 {
-				break
-			}
-			if t > 5-pos {
-				// ignore; no real constraint
-			}
-			x[pos] = t
-			dfs(pos+1, left-t, remBad, probNum*comb[5][t])
-		}
+	maxTake := left
+	if maxTake > 5 {
+		maxTake = 5
 	}
-	dfs(0, 5, totalBad, 1)
+	for t := 0; t <= maxTake; t++ {
+		x[pos] = t
+		dfs(pos+1, left-t, probNum*comb[5][t])
+	}
+}
+dfs(0, 5, 1)
 
 	fmt.Printf("%.9f\n", ans)
 }
