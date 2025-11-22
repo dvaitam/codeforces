@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -15,34 +16,55 @@ type test struct {
 }
 
 func solve(input string) string {
-	reader := strings.NewReader(input)
+	reader := bufio.NewReader(strings.NewReader(input))
 	var t int
 	fmt.Fscan(reader, &t)
+
 	var out strings.Builder
-	const mask30 int64 = (1 << 30) - 1
+
 	for ; t > 0; t-- {
-		var n int
-		var x int64
+		var n, x int
 		fmt.Fscan(reader, &n, &x)
-		mask := (^x) & mask30
-		px := int64(0)
-		base := int64(0)
-		segments := 0
+
+		p := make([]int, n+1)
+		currentXor := 0
 		for i := 0; i < n; i++ {
-			var v int64
+			var v int
 			fmt.Fscan(reader, &v)
-			px ^= v & mask
-			if px == base {
-				segments++
-				base = px
+			currentXor ^= v
+			p[i+1] = currentXor
+		}
+
+		finalXor := p[n]
+		maxK := -1
+
+		check := func(mask int) {
+			if (finalXor & ^mask) != 0 {
+				return
+			}
+
+			cnt := 0
+			for i := 1; i <= n; i++ {
+				if (p[i] & ^mask) == 0 {
+					cnt++
+				}
+			}
+			if cnt > maxK {
+				maxK = cnt
 			}
 		}
-		if px == base {
-			out.WriteString(fmt.Sprintf("%d\n", segments))
-		} else {
-			out.WriteString("-1\n")
+
+		check(x)
+		for b := 0; b < 30; b++ {
+			if (x>>b)&1 == 1 {
+				mask := (x &^ ((1 << (b + 1)) - 1)) | ((1 << b) - 1)
+				check(mask)
+			}
 		}
+
+		out.WriteString(fmt.Sprintf("%d\n", maxK))
 	}
+
 	return strings.TrimSpace(out.String())
 }
 
