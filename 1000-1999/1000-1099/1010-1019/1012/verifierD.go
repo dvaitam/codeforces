@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -8,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -31,6 +33,62 @@ func randString(n int) string {
 	return string(b)
 }
 
+// parseCandidate parses the output produced by a solution. It expects the
+// number of operations followed by that many pairs of integers.
+func parseCandidate(out string) ([][2]int, error) {
+	scanner := bufio.NewScanner(strings.NewReader(out))
+	scanner.Split(bufio.ScanWords)
+	nextInt := func() (int, error) {
+		if !scanner.Scan() {
+			if err := scanner.Err(); err != nil {
+				return 0, err
+			}
+			return 0, fmt.Errorf("unexpected end of output")
+		}
+		v, err := strconv.Atoi(scanner.Text())
+		if err != nil {
+			return 0, fmt.Errorf("invalid integer %q", scanner.Text())
+		}
+		return v, nil
+	}
+
+	k, err := nextInt()
+	if err != nil {
+		return nil, err
+	}
+	if k < 0 || k > 200000 {
+		return nil, fmt.Errorf("invalid operation count %d", k)
+	}
+	ops := make([][2]int, 0, k)
+	for i := 0; i < k; i++ {
+		a, err := nextInt()
+		if err != nil {
+			return nil, err
+		}
+		b, err := nextInt()
+		if err != nil {
+			return nil, err
+		}
+		ops = append(ops, [2]int{a, b})
+	}
+	return ops, nil
+}
+
+// applyOps simulates the prefix swap operations.
+func applyOps(s, t string, ops [][2]int) (string, string, error) {
+	for idx, op := range ops {
+		a, b := op[0], op[1]
+		if a < 0 || a > len(s) || b < 0 || b > len(t) {
+			return s, t, fmt.Errorf("operation %d uses invalid prefix lengths %d and %d", idx+1, a, b)
+		}
+		u := s[:a]
+		v := t[:b]
+		s = v + s[a:]
+		t = u + t[b:]
+	}
+	return s, t, nil
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: go run verifierD.go /path/to/binary\n")
@@ -39,13 +97,6 @@ func main() {
 	candidate := os.Args[1]
 	_, filename, _, _ := runtime.Caller(0)
 	dir := filepath.Dir(filename)
-	ref := filepath.Join(dir, "refD")
-	cmd := exec.Command("go", "build", "-o", ref, filepath.Join(dir, "1012D.go"))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build reference solution: %v\n%s", err, out)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 
 	rand.Seed(1)
 	for t := 0; t < 100; t++ {
@@ -65,17 +116,23 @@ func main() {
 		input := b.String()
 
 		candOut, cErr := runBinary(candidate, input)
-		refOut, rErr := runBinary(ref, input)
 		if cErr != nil {
 			fmt.Fprintf(os.Stderr, "test %d: candidate error: %v\n", t+1, cErr)
 			os.Exit(1)
 		}
-		if rErr != nil {
-			fmt.Fprintf(os.Stderr, "test %d: reference error: %v\n", t+1, rErr)
+
+		ops, err := parseCandidate(candOut)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: failed to parse output: %v\n", t+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(candOut) != strings.TrimSpace(refOut) {
-			fmt.Fprintf(os.Stderr, "test %d failed\ninput:\n%sexpected:%s\nactual:%s\n", t+1, input, refOut, candOut)
+		finalS, finalT, err := applyOps(s, tStr, ops)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: invalid operations: %v\n", t+1, err)
+			os.Exit(1)
+		}
+		if finalS != finalT {
+			fmt.Fprintf(os.Stderr, "test %d failed\ninput:\n%sfound %d operations\nfinal s: %s\nfinal t: %s\n", t+1, input, len(ops), finalS, finalT)
 			os.Exit(1)
 		}
 	}
