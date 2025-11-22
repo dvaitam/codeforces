@@ -33,9 +33,19 @@ func main() {
 	// mapping tag-> per-query positions
 	tagMap := make(map[string]map[int][]int)
 	scanner := bufio.NewScanner(reader)
-	for i := 0; i < m; i++ {
-		scanner.Scan()
-		line := scanner.Text()
+
+	// fmt.Fscan leaves the trailing newline of the line containing m in the
+	// buffer, so the first call to scanner.Scan would otherwise return an empty
+	// line and drop the first query. Consume any empty lines explicitly and
+	// keep scanning until we collect exactly m queries.
+	for i := 0; i < m; {
+		if !scanner.Scan() {
+			break
+		}
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
 		parts := bufio.NewScanner(strings.NewReader(line))
 		parts.Split(bufio.ScanWords)
 		for parts.Scan() {
@@ -47,6 +57,7 @@ func main() {
 			tagMap[token][i] = append(tagMap[token][i], len(queries[i]))
 		}
 		lengths[i] = len(queries[i])
+		i++
 	}
 	// build occurrences list per tag
 	occMap := make(map[string][]occ)
