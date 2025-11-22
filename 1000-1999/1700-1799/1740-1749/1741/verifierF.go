@@ -70,7 +70,11 @@ func expectedOutputs(c Case) []int {
 				best = d
 			}
 		}
-		res[i] = best
+		if best == math.MaxInt32 {
+			res[i] = -1
+		} else {
+			res[i] = best
+		}
 	}
 	return res
 }
