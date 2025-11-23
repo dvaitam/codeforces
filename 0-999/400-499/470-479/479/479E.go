@@ -1,69 +1,81 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
+	"bufio"
+	"fmt"
+	"os"
 )
 
-const mod = 1000000007
-
 func main() {
-   in := bufio.NewReader(os.Stdin)
-   out := bufio.NewWriter(os.Stdout)
-   defer out.Flush()
+	reader := bufio.NewReader(os.Stdin)
+	var n, a, b, k int
+	fmt.Fscan(reader, &n, &a, &b, &k)
 
-   var n, a, b, k int
-   fmt.Fscan(in, &n, &a, &b, &k)
-   // dp[x]: ways to be at floor x
-   dp := make([]int, n+2)
-   dp[a] = 1
-   for step := 1; step <= k; step++ {
-       // prefix sums
-       pref := make([]int, n+2)
-       for i := 1; i <= n; i++ {
-           pref[i] = pref[i-1] + dp[i]
-           if pref[i] >= mod {
-               pref[i] -= mod
-           }
-       }
-       newdp := make([]int, n+2)
-       for x := 1; x <= n; x++ {
-           if x == b {
-               continue
-           }
-           d := b - x
-           if d < 0 {
-               d = -d
-           }
-           // allowed y: |y-x| < d => y in [x-d+1, x+d-1]
-           l := x - d + 1
-           if l < 1 {
-               l = 1
-           }
-           r := x + d - 1
-           if r > n {
-               r = n
-           }
-           total := pref[r] - pref[l-1]
-           if total < 0 {
-               total += mod
-           }
-           // exclude staying at x
-           total = total - dp[x]
-           if total < 0 {
-               total += mod
-           }
-           newdp[x] = total
-       }
-       dp = newdp
-   }
-   ans := 0
-   for i := 1; i <= n; i++ {
-       ans += dp[i]
-       if ans >= mod {
-           ans -= mod
-       }
-   }
-   fmt.Fprintln(out, ans)
+	const MOD = 1000000007
+
+	dp := make([]int, n+1)
+	dp[a] = 1
+
+	P := make([]int, n+1)
+	newDp := make([]int, n+1)
+
+	for step := 0; step < k; step++ {
+		currentSum := 0
+		for i := 1; i <= n; i++ {
+			currentSum += dp[i]
+			if currentSum >= MOD {
+				currentSum -= MOD
+			}
+			P[i] = currentSum
+		}
+
+		for i := range newDp {
+			newDp[i] = 0
+		}
+
+		if a < b {
+			for y := 1; y < b; y++ {
+				limit := (b + y - 1) / 2
+				if limit < 1 {
+					continue
+				}
+				val := P[limit]
+				if y <= limit {
+					val -= dp[y]
+					if val < 0 {
+						val += MOD
+					}
+				}
+				newDp[y] = val
+			}
+		} else {
+			for y := b + 1; y <= n; y++ {
+				start := (b + y) / 2 + 1
+				if start > n {
+					continue
+				}
+				val := P[n] - P[start-1]
+				if val < 0 {
+					val += MOD
+				}
+				if y >= start {
+					val -= dp[y]
+					if val < 0 {
+						val += MOD
+					}
+				}
+				newDp[y] = val
+			}
+		}
+		dp, newDp = newDp, dp
+	}
+
+	ans := 0
+	for _, v := range dp {
+		ans += v
+		if ans >= MOD {
+			ans -= MOD
+		}
+	}
+	fmt.Println(ans)
 }

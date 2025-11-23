@@ -50,7 +50,7 @@ func buildAutomaton(patterns []string) *automaton {
 				link = append(link, 0)
 				next[v][ci] = len(next) - 1
 			}
-			v = next[v][ci]
+		v = next[v][ci]
 		}
 		out[v] = append(out[v], len(p))
 	}
@@ -111,11 +111,24 @@ func countStrings(n int, patterns []string) int {
 							maxP = L
 						}
 					}
-					t := k + 1
-					if maxP > t {
-						maxP = t
+					
+					// k is the number of uncovered characters at the end of the previous prefix.
+					// We add one character, so initially we have k+1 uncovered characters.
+					// If we have a match of length maxP ending at the new position,
+					// it covers the last maxP characters.
+					// If maxP >= k+1, then the 'gap' (which is at distance k+1) is covered.
+					// Thus, the uncovered length becomes 0.
+					// If maxP < k+1, the 'gap' is NOT covered. The new uncovered length is k+1.
+					// Note: We do not subtract maxP from k+1 because covering an island at the end
+					// does not help bridge the gap to the main covered prefix.
+					
+					var k2 int
+					if maxP >= k+1 {
+						k2 = 0
+					} else {
+						k2 = k + 1
 					}
-					k2 := t - maxP
+					
 					if k2 < M {
 						dpNext[k2][ns] = (dpNext[k2][ns] + ways) % MOD
 					}

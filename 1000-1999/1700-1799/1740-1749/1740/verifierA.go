@@ -6,23 +6,9 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
-
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleA")
-	cmd := exec.Command("go", "build", "-o", oracle, "1740A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
-}
 
 func isPrime(n int) bool {
 	if n < 2 {
@@ -38,21 +24,24 @@ func isPrime(n int) bool {
 
 func randPrime(rng *rand.Rand) int {
 	for {
-		v := rng.Intn(100000-1) + 2
+		v := rng.Intn(100000-2) + 2
 		if isPrime(v) {
 			return v
 		}
 	}
 }
 
-func genCase(rng *rand.Rand) string {
+func genCase(rng *rand.Rand) (string, []int) {
 	t := rng.Intn(10) + 1
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", t))
+	nums := make([]int, t)
 	for i := 0; i < t; i++ {
-		sb.WriteString(fmt.Sprintf("%d\n", randPrime(rng)))
+		n := randPrime(rng)
+		nums[i] = n
+		sb.WriteString(fmt.Sprintf("%d\n", n))
 	}
-	return sb.String()
+	return sb.String(), nums
 }
 
 func run(bin, input string) (string, error) {
@@ -72,34 +61,45 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func check(inputs []int, output string) error {
+	reader := strings.NewReader(output)
+	var m int
+	for i, n := range inputs {
+		if _, err := fmt.Fscan(reader, &m); err != nil {
+			return fmt.Errorf("failed to read output for case %d (n=%d): %v", i+1, n, err)
+		}
+
+		// Check 1: m is prime
+		if !isPrime(m) {
+			return fmt.Errorf("case %d (n=%d): output m=%d is not prime", i+1, n, m)
+		}
+
+		// Check 2: n + m is not prime
+		sum := n + m
+		if isPrime(sum) {
+			return fmt.Errorf("case %d (n=%d): n+m=%d is prime (should be composite)", i+1, n, sum)
+		}
+	}
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierA.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 1; i <= 100; i++ {
-		input := genCase(rng)
-		expect, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", i, err)
-			os.Exit(1)
-		}
+		input, inputs := genCase(rng)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i, err, input)
 			os.Exit(1)
 		}
-		if got != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i, expect, got, input)
+		if err := check(inputs, got); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s\noutput:\n%s\n", i, err, input, got)
 			os.Exit(1)
 		}
 	}

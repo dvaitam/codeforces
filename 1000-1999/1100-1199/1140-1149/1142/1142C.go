@@ -1,82 +1,76 @@
 package main
 
 import (
-   "io"
-   "os"
-   "sort"
-   "strconv"
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
 )
 
-// Point represents a 2D point with integer coordinates.
-type Point struct { x, y int64 }
-
 func main() {
-   data, _ := io.ReadAll(os.Stdin)
-   var idx int
-   // readInt parses the next integer from data.
-   readInt := func() int64 {
-       // skip non-digit, non-minus bytes
-       for idx < len(data) && (data[idx] < '0' || data[idx] > '9') && data[idx] != '-' {
-           idx++
-       }
-       neg := false
-       if idx < len(data) && data[idx] == '-' {
-           neg = true
-           idx++
-       }
-       var x int64
-       for idx < len(data) && data[idx] >= '0' && data[idx] <= '9' {
-           x = x*10 + int64(data[idx]-'0')
-           idx++
-       }
-       if neg {
-           x = -x
-       }
-       return x
-   }
+	in := bufio.NewReader(os.Stdin)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
 
-   n := int(readInt())
-   P := make([]Point, n)
-   for i := 0; i < n; i++ {
-       xi := readInt()
-       yi := readInt()
-       P[i].x = xi
-       // transform y coordinate as in original solution
-       P[i].y = yi - xi*xi
-   }
-   // sort by x asc, and by y desc for equal x
-   sort.Slice(P, func(i, j int) bool {
-       if P[i].x != P[j].x {
-           return P[i].x < P[j].x
-       }
-       return P[i].y > P[j].y
-   })
-   // build lower convex hull
-   C := make([]Point, 0, n)
-   for i := 0; i < n; i++ {
-       if i > 0 && P[i].x == P[i-1].x {
-           continue
-       }
-       for len(C) > 1 && cross(sub(C[len(C)-1], C[len(C)-2]), sub(P[i], C[len(C)-1])) >= 0 {
-           C = C[:len(C)-1]
-       }
-       C = append(C, P[i])
-   }
-   res := 0
-   if len(C) > 0 {
-       // number of segments is hull points minus one
-       res = len(C) - 1
-   }
-   // output result
-   os.Stdout.WriteString(strconv.Itoa(res))
-}
+	var n int
+	fmt.Fscan(in, &n)
 
-// sub returns the vector a - b.
-func sub(a, b Point) Point {
-   return Point{a.x - b.x, a.y - b.y}
-}
+	type point struct {
+		x, y int64
+	}
 
-// cross returns the cross product of vectors a and b.
-func cross(a, b Point) int64 {
-   return a.x*b.y - a.y*b.x
+	raw := make([]point, n)
+	for i := 0; i < n; i++ {
+		fmt.Fscan(in, &raw[i].x, &raw[i].y)
+	}
+
+	// Sort points by x coordinate, then by y coordinate.
+	sort.Slice(raw, func(i, j int) bool {
+		if raw[i].x != raw[j].x {
+			return raw[i].x < raw[j].x
+		}
+		return raw[i].y < raw[j].y
+	})
+
+	var hull []point
+	for i := 0; i < n; i++ {
+		// If the current point has the same x as the next one, it is not the highest point
+		// for this x coordinate (due to sorting). We only care about the highest point.
+		if i+1 < n && raw[i].x == raw[i+1].x {
+			continue
+		}
+
+		// Transform coordinates: Y = y - x^2, X = x
+		// We are looking for the upper convex hull of these transformed points.
+		p := point{raw[i].x, raw[i].y - raw[i].x*raw[i].x}
+
+		for len(hull) >= 2 {
+			a := hull[len(hull)-2]
+			b := hull[len(hull)-1]
+			
+			// Check for convexity. We want the upper hull.
+			// Slopes must be strictly decreasing.
+			// If slope(a, b) <= slope(b, p), then b is below or on the segment a-p,
+			// so we remove b.
+			// Inequality: (b.y - a.y) / (b.x - a.x) <= (p.y - b.y) / (p.x - b.x)
+			// Cross-multiplication (denominators are positive because sorted by x):
+			// (b.y - a.y) * (p.x - b.x) <= (p.y - b.y) * (b.x - a.x)
+			
+			lhs := (b.y - a.y) * (p.x - b.x)
+			rhs := (p.y - b.y) * (b.x - a.x)
+
+			if lhs <= rhs {
+				hull = hull[:len(hull)-1]
+			} else {
+				break
+			}
+		}
+		hull = append(hull, p)
+	}
+
+	ans := 0
+	if len(hull) > 1 {
+		ans = len(hull) - 1
+	}
+	fmt.Fprintln(out, ans)
 }

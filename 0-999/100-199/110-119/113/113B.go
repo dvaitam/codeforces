@@ -1,66 +1,114 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
 )
 
 func main() {
-   reader := bufio.NewReader(os.Stdin)
-   var s, b, e string
-   if _, err := fmt.Fscan(reader, &s, &b, &e); err != nil {
-       return
-   }
-   ns, nb, ne := len(s), len(b), len(e)
-   nn := nb
-   if ne > nn {
-       nn = ne
-   }
+	// Use buffered I/O for speed
+	reader := bufio.NewReader(os.Stdin)
 
-   fb := make([]bool, ns)
-   fe := make([]bool, ns)
-   // mark prefix and suffix match positions
-   for i := 0; i+nb <= ns; i++ {
-       if s[i:i+nb] == b {
-           fb[i] = true
-       }
-   }
-   for i := 0; i+ne <= ns; i++ {
-       if s[i:i+ne] == e {
-           fe[i] = true
-       }
-   }
+	// Read input strings
+	t, _ := reader.ReadString('\n')
+	t = strings.TrimSpace(t)
 
-   // compute longest common prefix lengths for all suffix pairs
-   p := make([]int, ns+1)
-   q := make([]int, ns+1)
-   h := make([]int, ns)
-   for i := 0; i < ns; i++ {
-       for j := i - 1; j >= 0; j-- {
-           if s[i] == s[j] {
-               q[j+1] = p[j] + 1
-           } else {
-               q[j+1] = 0
-           }
-           if q[j+1] > h[i] {
-               h[i] = q[j+1]
-           }
-       }
-       // swap p and q for next iteration
-       p, q = q, p
-   }
+	sBegin, _ := reader.ReadString('\n')
+	sBegin = strings.TrimSpace(sBegin)
 
-   // count valid substrings
-   w := 0
-   for i := ns - 1; i >= 0; i-- {
-       if !fb[i] {
-           continue
-       }
-       for j := i + nn; j <= ns; j++ {
-           if fe[j-ne] && h[j-1] < j-i {
-               w++
-           }
-       }
-   }
-   fmt.Println(w)
+	sEnd, _ := reader.ReadString('\n')
+	sEnd = strings.TrimSpace(sEnd)
+
+	n := len(t)
+	nb := len(sBegin)
+	ne := len(sEnd)
+
+	// Basic constraint check
+	if nb > n || ne > n {
+		fmt.Println(0)
+		return
+	}
+
+	// Rolling Hash Constants
+	// Hash 1: Explicit Modulo 10^9 + 7
+	mod1 := uint64(1000000007)
+	base1 := uint64(131)
+	// Hash 2: Implicit Modulo 2^64 (uint64 overflow)
+	base2 := uint64(13331)
+
+	// Precompute hash arrays
+	h1 := make([]uint64, n+1)
+	p1 := make([]uint64, n+1)
+	h2 := make([]uint64, n+1)
+	p2 := make([]uint64, n+1)
+
+	p1[0] = 1
+	p2[0] = 1
+
+	for i := 0; i < n; i++ {
+		c := uint64(t[i])
+		h1[i+1] = (h1[i]*base1 + c) % mod1
+		p1[i+1] = (p1[i] * base1) % mod1
+
+		h2[i+1] = h2[i]*base2 + c
+		p2[i+1] = p2[i] * base2
+	}
+
+	// Identify valid start positions for sBegin
+	// starts[i] is true if t starts with sBegin at index i
+	starts := make([]bool, n+1)
+	for i := 0; i <= n-nb; i++ {
+		if t[i:i+nb] == sBegin {
+			starts[i] = true
+		}
+	}
+
+	// Identify valid end positions for sEnd
+	// ends[j] is true if t ends with sEnd at index j (exclusive)
+	ends := make([]bool, n+1)
+	for i := ne; i <= n; i++ {
+		if t[i-ne:i] == sEnd {
+			ends[i] = true
+		}
+	}
+
+	// Determine minimum length of valid substring
+	minLen := nb
+	if ne > minLen {
+		minLen = ne
+	}
+
+	// Store unique hashes
+	type pair struct {
+		h1, h2 uint64
+	}
+	seen := make(map[pair]struct{})
+
+	// Iterate over all valid start indices
+	for i := 0; i <= n; i++ {
+		if !starts[i] {
+			continue
+		}
+		// Iterate over all valid end indices
+		for j := i + minLen; j <= n; j++ {
+			if !ends[j] {
+				continue
+			}
+
+			// Compute hash of t[i:j]
+			// len = j - i
+			
+			// Hash 1
+			val1 := (h1[j] + mod1 - (h1[i]*p1[j-i])%mod1) % mod1
+			
+			// Hash 2
+			val2 := h2[j] - h2[i]*p2[j-i]
+
+			seen[pair{val1, val2}] = struct{}{}
+		}
+	}
+
+	fmt.Println(len(seen))
+}

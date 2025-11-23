@@ -59,6 +59,9 @@ func simulate(n int, s string, ops string, p int) string {
 			}
 		}
 	}
+	if cur == 0 {
+		return ""
+	}
 	for prev[cur] != 0 {
 		cur = prev[cur]
 	}
@@ -125,7 +128,6 @@ func generateCase(rng *rand.Rand) (string, string) {
 	prev[1] = 0
 	cur := p
 	var ops []byte
-	length := n
 	for len(ops) < m {
 		choices := []byte{'L', 'R', 'D'}
 		op := choices[rng.Intn(len(choices))]
@@ -145,7 +147,9 @@ func generateCase(rng *rand.Rand) (string, string) {
 			if l > r {
 				l, r = r, l
 			}
-			if length-(r-l+1) == 0 {
+			lp := prev[l]
+			rn := next[r]
+			if lp == 0 && rn == 0 {
 				valid = false
 			}
 		}
@@ -172,7 +176,6 @@ func generateCase(rng *rand.Rand) (string, string) {
 			if rn != 0 {
 				prev[rn] = lp
 			}
-			length -= r - l + 1
 			if rn != 0 {
 				cur = rn
 			} else {

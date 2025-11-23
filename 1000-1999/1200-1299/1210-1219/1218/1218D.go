@@ -6,126 +6,125 @@ import (
 	"os"
 )
 
-const MOD int64 = 1000000007
+const MOD1 = 1000000007
+const MOD2 = 666666667
+const SZ = 131072
 
-type Edge struct {
-	to int
-	id int
+var q [][]int
+var e [][]pair
+var p []int
+var g []int
+var st []bool
+var n, m int
+
+type pair struct {
+	to, w int
 }
 
-type EdgeInfo struct {
-	u, v, w int
+func dfs(x int) {
+	st[x] = true
+	for _, edge := range e[x] {
+		y, w := edge.to, edge.w
+		if p[y] == 0 {
+			p[y] = x
+			g[y] = w
+			dfs(y)
+		} else if st[y] && y != p[x] {
+			t := []int{w}
+			curr := x
+			for curr != y {
+				t = append(t, g[curr])
+				curr = p[curr]
+			}
+			q = append(q, t)
+		}
+	}
+	st[x] = false
+}
+
+func wht(a []int, mod int) {
+	for i := 1; i < SZ; i <<= 1 {
+		for j := 0; j < SZ; j++ {
+			if (j & i) != 0 {
+				u := a[j-i]
+				v := a[j]
+				
+				val1 := u + v
+				if val1 >= mod {
+					val1 -= mod
+				}
+				
+				val2 := u - v
+				if val2 < 0 {
+					val2 += mod
+				}
+				
+				a[j-i] = val1
+				a[j] = val2
+			}
+		}
+	}
 }
 
 func main() {
-	in := bufio.NewReader(os.Stdin)
-	var n, m int
-	if _, err := fmt.Fscan(in, &n, &m); err != nil {
+	reader := bufio.NewReader(os.Stdin)
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
+
+	if _, err := fmt.Fscan(reader, &n, &m); err != nil {
 		return
 	}
-	edges := make([]EdgeInfo, m)
-	g := make([][]Edge, n)
-	xorTotal := 0
+
+	e = make([][]pair, n+1)
+	p = make([]int, n+1)
+	g = make([]int, n+1)
+	st = make([]bool, n+1)
+
+	sve := 0
 	for i := 0; i < m; i++ {
 		var u, v, w int
-		fmt.Fscan(in, &u, &v, &w)
-		u--
-		v--
-		edges[i] = EdgeInfo{u, v, w}
-		g[u] = append(g[u], Edge{v, i})
-		g[v] = append(g[v], Edge{u, i})
-		xorTotal ^= w
+		fmt.Fscan(reader, &u, &v, &w)
+		e[u] = append(e[u], pair{v, w})
+		e[v] = append(e[v], pair{u, w})
+		sve ^= w
 	}
-	deg := make([]int, n)
-	for i := 0; i < n; i++ {
-		deg[i] = len(g[i])
-	}
-	edgeRemoved := make([]bool, m)
-	queue := make([]int, 0)
-	for i := 0; i < n; i++ {
-		if deg[i] == 1 {
-			queue = append(queue, i)
+
+	p[1] = 1
+	dfs(1)
+
+	sol1 := make([]int, SZ)
+	sol2 := make([]int, SZ)
+	sol1[sve] = 1
+	sol2[sve] = 1
+
+	wht(sol1, MOD1)
+	wht(sol2, MOD2)
+
+	for _, vec := range q {
+		t1 := make([]int, SZ)
+		t2 := make([]int, SZ)
+		for _, x := range vec {
+			t1[x]++
+			t2[x]++
+		}
+		wht(t1, MOD1)
+		wht(t2, MOD2)
+		for i := 0; i < SZ; i++ {
+			sol1[i] = int(int64(sol1[i]) * int64(t1[i]) % MOD1)
+			sol2[i] = int(int64(sol2[i]) * int64(t2[i]) % MOD2)
 		}
 	}
-	for len(queue) > 0 {
-		v := queue[0]
-		queue = queue[1:]
-		for _, e := range g[v] {
-			if edgeRemoved[e.id] {
-				continue
-			}
-			edgeRemoved[e.id] = true
-			deg[e.to]--
-			if deg[e.to] == 1 {
-				queue = append(queue, e.to)
-			}
+
+	wht(sol1, MOD1)
+	wht(sol2, MOD2)
+
+	invSZ1 := 742744451 
+
+	for i := 0; i < SZ; i++ {
+		if sol1[i] != 0 || sol2[i] != 0 {
+			ans := int64(sol1[i]) * int64(invSZ1) % MOD1
+			fmt.Fprintln(writer, i, ans)
+			return
 		}
 	}
-	visitedV := make([]bool, n)
-	visitedE := make([]bool, m)
-	cycles := make([][]int, 0)
-	for i := 0; i < n; i++ {
-		if deg[i] > 0 && !visitedV[i] {
-			cur := i
-			prev := -1
-			cycle := []int{}
-			for {
-				visitedV[cur] = true
-				var next Edge
-				for _, e := range g[cur] {
-					if edgeRemoved[e.id] {
-						continue
-					}
-					if e.id == prev {
-						continue
-					}
-					next = e
-					break
-				}
-				if visitedE[next.id] {
-					break
-				}
-				visitedE[next.id] = true
-				cycle = append(cycle, next.id)
-				cur = next.to
-				prev = next.id
-				if cur == i {
-					break
-				}
-			}
-			cycles = append(cycles, cycle)
-		}
-	}
-	limit := 1
-	for limit <= 100000 {
-		limit <<= 1
-	}
-	dp := make([]int64, limit)
-	dp[0] = 1
-	for _, cyc := range cycles {
-		cnt := make(map[int]int)
-		for _, id := range cyc {
-			w := edges[id].w
-			cnt[w]++
-		}
-		ndp := make([]int64, limit)
-		for x := 0; x < limit; x++ {
-			if dp[x] == 0 {
-				continue
-			}
-			for w, c := range cnt {
-				nx := x ^ w
-				ndp[nx] = (ndp[nx] + dp[x]*int64(c)) % MOD
-			}
-		}
-		dp = ndp
-	}
-	minX := 0
-	for ; minX < limit; minX++ {
-		if dp[minX] > 0 {
-			break
-		}
-	}
-	cost := xorTotal ^ minX
-	fmt.Printf("%d %d\n", cost, dp[minX]%MOD)
 }

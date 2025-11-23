@@ -44,7 +44,7 @@ func expected(s, t string) int {
 		for j := 1; j <= m; j++ {
 			costDel := dp[i-1][j] + int(s[i-1]-'a'+1)
 			costIns := dp[i][j-1] + int(t[j-1]-'a'+1)
-			diff := int(s[i-1] - t[j-1])
+			diff := int(s[i-1]) - int(t[j-1])
 			if diff < 0 {
 				diff = -diff
 			}

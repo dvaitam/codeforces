@@ -10,15 +10,114 @@ import (
 	"time"
 )
 
-func buildRef() (string, error) {
-	ref := "./refC_bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1099C.go")
-	cmd.Stdout = new(bytes.Buffer)
-	cmd.Stderr = new(bytes.Buffer)
-	if err := cmd.Run(); err != nil {
-		return "", err
+type unit struct {
+	char rune
+	mod  rune // 0, '?', or '*'
+}
+
+func parseUnits(s string) []unit {
+	var parsed []unit
+	raw := []rune(s)
+	n := len(raw)
+	for i := 0; i < n; i++ {
+		u := unit{char: raw[i], mod: 0}
+		if i+1 < n {
+			if raw[i+1] == '?' || raw[i+1] == '*' {
+				u.mod = raw[i+1]
+				i++
+			}
+		}
+		parsed = append(parsed, u)
 	}
-	return ref, nil
+	return parsed
+}
+
+func getBounds(units []unit) (int, int) {
+	minLen := 0
+	hasSnow := false
+	for _, u := range units {
+		if u.mod == 0 {
+			minLen++
+		}
+		if u.mod == '*' {
+			hasSnow = true
+		}
+	}
+	maxLen := len(units) // count of base chars
+	if hasSnow {
+		maxLen = 1000000 // effectively infinite
+	}
+	return minLen, maxLen
+}
+
+func isValid(s string, k int, out string) bool {
+	units := parseUnits(s)
+	minLen, maxLen := getBounds(units)
+
+	// Logic check for "Impossible"
+	isPossible := k >= minLen && k <= maxLen
+	
+	if !isPossible {
+		return out == "Impossible"
+	}
+
+	if out == "Impossible" {
+		// It was possible but candidate said Impossible
+		return false
+	}
+
+	if len(out) != k {
+		return false
+	}
+
+	// DP check
+	m := len(units)
+	n := len(out)
+	outRunes := []rune(out)
+
+	// dp[i][j] = can units[i:] match out[j:]
+	dp := make([][]bool, m+1)
+	for i := range dp {
+		dp[i] = make([]bool, n+1)
+	}
+	dp[m][n] = true
+
+	for i := m - 1; i >= 0; i-- {
+		u := units[i]
+		for j := n; j >= 0; j-- {
+			// Option 1: Skip unit (for ? and *)
+			if (u.mod == '?' || u.mod == '*') && dp[i+1][j] {
+				dp[i][j] = true
+				continue
+			}
+
+			// Option 2: Match character
+			if j < n && outRunes[j] == u.char {
+				if u.mod == 0 {
+					if dp[i+1][j+1] {
+						dp[i][j] = true
+					}
+				} else if u.mod == '?' {
+					if dp[i+1][j+1] {
+						dp[i][j] = true
+					}
+				} else if u.mod == '*' {
+					// For *, we can match char and stay at i (to match more)
+					// or move to i+1 (handled by skip logic via recursion if we were doing recursion,
+					// but here we need to explicitely link to states)
+					
+					// Actually, dp[i][j] = skip || (match && dp[i][j+1])
+					// "skip" corresponds to matching 0.
+					// "match && dp[i][j+1]" corresponds to matching 1+, because from dp[i][j+1] we can eventually skip.
+					if dp[i][j+1] {
+						dp[i][j] = true
+					}
+				}
+			}
+		}
+	}
+
+	return dp[0][0]
 }
 
 func runBinary(path, input string) (string, error) {
@@ -28,7 +127,7 @@ func runBinary(path, input string) (string, error) {
 	cmd.Stdout = &out
 	cmd.Stderr = new(bytes.Buffer)
 	err := cmd.Run()
-	return out.String(), err
+	return strings.TrimSpace(out.String()), err
 }
 
 func genTests() []string {
@@ -60,23 +159,25 @@ func main() {
 		os.Exit(1)
 	}
 	cand := os.Args[1]
-	ref, err := buildRef()
-	if err != nil {
-		fmt.Println("failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 
 	tests := genTests()
+	// Add the failing test case manually to ensure it passes
+	tests = append(tests, "q?u*s*r?e?d*w?t?o*\n20\n")
+
 	for idx, input := range tests {
-		exp, err1 := runBinary(ref, input)
-		out, err2 := runBinary(cand, input)
-		if err1 != nil || err2 != nil {
+		out, err := runBinary(cand, input)
+		if err != nil {
 			fmt.Printf("runtime error on test %d\n", idx+1)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(exp) != strings.TrimSpace(out) {
-			fmt.Printf("wrong answer on test %d\ninput:\n%sexpected:\n%s\ngot:\n%s", idx+1, input, exp, out)
+		
+		lines := strings.Split(strings.TrimSpace(input), "\n")
+		s := lines[0]
+		var k int
+		fmt.Sscanf(lines[1], "%d", &k)
+
+		if !isValid(s, k, out) {
+			fmt.Printf("wrong answer on test %d\ninput:\n%sgot:\n%s\n", idx+1, input, out)
 			os.Exit(1)
 		}
 	}

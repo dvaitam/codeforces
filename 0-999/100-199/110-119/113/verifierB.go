@@ -10,52 +10,47 @@ import (
 	"time"
 )
 
-func solveB(s, b, e string) int {
-	ns, nb, ne := len(s), len(b), len(e)
-	nn := nb
-	if ne > nn {
-		nn = ne
+// Naive implementation to serve as reference
+func solveNaive(t, sBegin, sEnd string) int {
+	n := len(t)
+	nb := len(sBegin)
+	ne := len(sEnd)
+	
+	if nb > n || ne > n {
+		return 0
 	}
-	fb := make([]bool, ns)
-	fe := make([]bool, ns)
-	for i := 0; i+nb <= ns; i++ {
-		if s[i:i+nb] == b {
-			fb[i] = true
-		}
+	
+	minLen := nb
+	if ne > minLen {
+		minLen = ne
 	}
-	for i := 0; i+ne <= ns; i++ {
-		if s[i:i+ne] == e {
-			fe[i] = true
-		}
+	if nb + ne <= n && nb + ne > minLen {
+		// They might overlap, but the total length must at least accommodate the max(nb, ne).
+		// Actually, the condition is that the substring starts with sBegin and ends with sEnd.
+		// The length of the substring must be at least max(len(sBegin), len(sEnd)).
+		// Overlap is allowed. e.g. sBegin="aba", sEnd="bab", substring "abab" is valid.
+		// length is 4. max(3,3) is 3. 4 >= 3. Correct.
 	}
-	p := make([]int, ns+1)
-	q := make([]int, ns+1)
-	h := make([]int, ns)
-	for i := 0; i < ns; i++ {
-		for j := i - 1; j >= 0; j-- {
-			if s[i] == s[j] {
-				q[j+1] = p[j] + 1
-			} else {
-				q[j+1] = 0
-			}
-			if q[j+1] > h[i] {
-				h[i] = q[j+1]
-			}
-		}
-		p, q = q, p
-	}
-	w := 0
-	for i := ns - 1; i >= 0; i-- {
-		if !fb[i] {
-			continue
-		}
-		for j := i + nn; j <= ns; j++ {
-			if fe[j-ne] && h[j-1] < j-i {
-				w++
+
+
+unique := make(map[string]struct{})
+	
+	for i := 0; i <= n-nb; i++ {
+		if t[i:i+nb] == sBegin {
+			for j := i + minLen; j <= n; j++ {
+				// Check end
+				// The substring is t[i:j]. It ends with sEnd if t[j-ne:j] == sEnd.
+				// BUT we must ensure that the length j-i is sufficient.
+				// We already ensured j >= i + minLen, where minLen = max(len(sBegin), len(sEnd)).
+				// So j-i >= len(sEnd) is guaranteed.
+				if t[j-ne:j] == sEnd {
+				
+unique[t[i:j]] = struct{}{}
+				}
 			}
 		}
 	}
-	return w
+	return len(unique)
 }
 
 func randStr(rng *rand.Rand, n int) string {
@@ -71,8 +66,12 @@ func generateCase(rng *rand.Rand) (string, string) {
 	s := randStr(rng, n)
 	b := randStr(rng, rng.Intn(3)+1)
 	e := randStr(rng, rng.Intn(3)+1)
-	input := fmt.Sprintf("%s %s %s\n", s, b, e)
-	exp := fmt.Sprintf("%d", solveB(s, b, e))
+	// The problem input format is "t \n sBegin \n sEnd \n" (on separate lines usually, 
+	// or space separated if using Fscan for all).
+	// The solution provided uses reader.ReadString('\n') so it expects newlines.
+	// Let's format with newlines to be safe for bufio.ReadString or Fscan.
+	input := fmt.Sprintf("%s\n%s\n%s\n", s, b, e)
+	exp := fmt.Sprintf("%d", solveNaive(s, b, e))
 	return input, exp
 }
 
@@ -99,24 +98,22 @@ func main() {
 	}
 	exe := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	edge := []struct{ s, b, e string }{
-		{"abc", "a", "c"},
-		{"aaaa", "aa", "aa"},
-		{"ababab", "ab", "ab"},
-		{"abcde", "x", "y"},
-		{"zzz", "z", "z"},
-	}
+	
+	// Edge cases from problem description or logic
+	edge := []struct{ s, b, e string }{{"abc", "a", "c"},{"aaaa", "aa", "aa"},{"ababab", "ab", "ab"},{"abcde", "x", "y"},{"zzz", "z", "z"}}
 	for i, tc := range edge {
-		input := fmt.Sprintf("%s %s %s\n", tc.s, tc.b, tc.e)
-		if err := runCase(exe, input, fmt.Sprintf("%d", solveB(tc.s, tc.b, tc.e))); err != nil {
-			fmt.Fprintf(os.Stderr, "edge case %d failed: %v\ninput:%s", i+1, err, input)
+		input := fmt.Sprintf("%s\n%s\n%s\n", tc.s, tc.b, tc.e)
+		exp := fmt.Sprintf("%d", solveNaive(tc.s, tc.b, tc.e))
+		if err := runCase(exe, input, exp); err != nil {
+			fmt.Fprintf(os.Stderr, "edge case %d failed: %v\ninput:\n%s", i+1, err, strings.ReplaceAll(input, "\n", " "))
 			os.Exit(1)
 		}
 	}
+	
 	for i := 0; i < 100; i++ {
 		in, exp := generateCase(rng)
 		if err := runCase(exe, in, exp); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:%s", i+1, err, in)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, strings.ReplaceAll(in, "\n", " "))
 			os.Exit(1)
 		}
 	}
