@@ -1,0 +1,78 @@
+
+# **A. Dungeon Equilibrium**
+
+### **Time limit:** 1 second
+
+### **Memory limit:** 256 megabytes
+
+An array is called **balanced** if every integer **x** that occurs at least once occurs **exactly x times** in the array.
+
+For example:
+
+* `[1, 4, 2, 4, 4, 4, 2]` is balanced
+* `[2]` and `[2, 2, 2]` are not balanced.
+
+You are given an array **a** of **n** elements:
+`[a₁, a₂, …, aₙ]`
+
+The array may not be balanced. You are allowed to **delete** some elements.
+Your task is to find the **minimum number of elements** you need to delete so that the array becomes balanced.
+
+---
+
+# **Input**
+
+Each test contains multiple test cases.
+
+* The first line contains **t** — the number of test cases
+  (1 ≤ t ≤ 500)
+
+Each test case consists of:
+
+* A line containing integer **n** (1 ≤ n ≤ 100) — size of the array
+* A line containing **n** integers
+  `a₁, a₂, …, aₙ`
+  where 0 ≤ aᵢ ≤ n
+
+There are **no constraints** on the sum of n across test cases.
+
+---
+
+# **Output**
+
+For each test case, print a single integer:
+the minimum number of elements to remove to make the array balanced.
+
+---
+
+# **Example**
+
+**Input**
+
+```
+4
+3
+1 2 2
+5
+1 1 2 2 3
+10
+1 2 3 2 4 4 4 4 5 2
+1
+0
+```
+
+**Output**
+
+```
+0
+2
+3
+1
+```
+
+**Explanation**
+
+* Test 1: `[1, 2, 2]` is already balanced → answer = 0
+* Test 2: Remove one `1` and one `3`, resulting in `[1, 2, 2]` → balanced
+* Others follow similarly.
+

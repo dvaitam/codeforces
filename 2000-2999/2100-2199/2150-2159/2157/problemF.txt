@@ -1,0 +1,117 @@
+
+# **F. Git Gud**
+
+**Time limit:** 2 seconds
+**Memory limit:** 256 megabytes
+
+You are an adventurer working for the futuristic corporation **RoboCorp**.
+
+Your current skill level is an integer **s** in the range:
+
+[
+1 \le s \le n
+]
+
+—but you **don’t know its exact value**.
+
+Your goal is to reach **skill ≥ n** by completing missions.
+Each mission costs robocoins.
+
+You can choose missions of **any difficulty y** (positive integer) and **any positive duration l** (hours).
+
+The cost of a mission depends on:
+
+* the new mission’s **duration l**
+* the relation between the new mission’s **difficulty y** and your **most recent mission’s difficulty x**
+
+Let **x** be the difficulty of your most recent mission.
+
+If you want to undertake a new mission with **difficulty y** and **duration l**:
+
+* If it is your **first mission**, or if **y ≤ x**,
+  **cost = l**
+
+* If **y > x**,
+  **cost = l + 1000**
+
+Your skill improves only when you do a mission whose difficulty **exactly equals** your **current unknown skill**.
+
+* If **y = s**, then your new skill becomes **s += l**
+* Otherwise, the skill does not change
+
+After each mission, you *still don’t know your skill*.
+
+You start with a budget of **10⁶ robocoins**.
+
+Your task is to produce **any sequence of missions** that **never exceeds this budget**, and **guarantees** that your final skill is **at least n**, regardless of the initial skill.
+
+---
+
+# **Input**
+
+A single integer **n** (either `4` or `250000`):
+the required final skill level.
+
+There are **2 tests** in this problem (including the example).
+
+* Example input is **n = 4**
+* The real system test uses **n = 250000**
+
+Hacks are disabled.
+
+---
+
+# **Output**
+
+* First line: integer **k** — number of missions you will take.
+* Next **k** lines: two integers per line
+  **y, l** — the mission’s difficulty and duration
+  with
+  [
+  1 \le y, l \le 10^6
+  ]
+
+These missions must guarantee that your final skill ≥ n for *any* starting skill in `[1, n]`.
+
+---
+
+# **Example**
+
+**Input**
+
+```
+4
+```
+
+**Output**
+
+```
+4
+1 4
+3 1
+2 1
+3 1
+```
+
+---
+
+# **Explanation (from PDF)**
+
+For the target skill **n = 4**, a valid strategy:
+
+1. Mission difficulty **1**, duration **4**
+   Cost = 4
+
+2. Mission difficulty **3**, duration **1**
+   Previous was 1, so 3 > 1 → Cost = 1 + 1000 = 1001
+
+3. Mission difficulty **2**, duration **1**
+   Previous was 3, so 2 ≤ 3 → Cost = 1
+
+4. Mission difficulty **3**, duration **1**
+   Previous was 2 → 3 > 2 → Cost = 1 + 1000 = 1001
+
+Total cost = 2007 ≤ 10⁶ (budget ok)
+
+This strategy guarantees skill ≥ 4 for any initial skill 1–4.
+

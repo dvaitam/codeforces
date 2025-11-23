@@ -33,6 +33,8 @@ func main() {
 	dsn := flag.String("dsn", "", "database connection string (defaults to $DB_DSN or local postgres)")
 	dryRun := flag.Bool("dry-run", false, "log planned upserts without touching the database")
 	limit := flag.Int("limit", 0, "maximum number of rows to write (0 = no limit)")
+	contestFilter := flag.String("contest", "", "only sync this contest id")
+	problemFilter := flag.String("problem", "", "only sync a single problem, e.g. 1994A")
 	flag.Parse()
 
 	connStr := *dsn
@@ -66,7 +68,19 @@ func main() {
 		log.Fatalf("failed to initialize id allocator: %v", err)
 	}
 
-	assets, err := collectProblemAssets(*root)
+	contestFilterVal := strings.TrimSpace(*contestFilter)
+	problemContest, problemIndex, err := parseProblemArg(*problemFilter)
+	if err != nil {
+		log.Fatalf("invalid -problem value: %v", err)
+	}
+	if problemContest != "" && contestFilterVal != "" && problemContest != contestFilterVal {
+		log.Fatalf("-problem contest %s does not match -contest %s", problemContest, contestFilterVal)
+	}
+	if contestFilterVal == "" {
+		contestFilterVal = problemContest
+	}
+
+	assets, err := collectProblemAssets(*root, contestFilterVal, problemContest, problemIndex)
 	if err != nil {
 		log.Fatalf("failed to scan repository: %v", err)
 	}
@@ -106,7 +120,7 @@ func main() {
 	log.Printf("Finished: %d inserted, %d updated, %d total processed.", inserted, updated, written)
 }
 
-func collectProblemAssets(root string) ([]problemAsset, error) {
+func collectProblemAssets(root, contestFilter, problemContest, problemIndex string) ([]problemAsset, error) {
 	var list []problemAsset
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -126,6 +140,12 @@ func collectProblemAssets(root string) ([]problemAsset, error) {
 		dir := filepath.Dir(path)
 		contest := filepath.Base(dir)
 		if _, err := strconv.Atoi(contest); err != nil {
+			return nil
+		}
+		if contestFilter != "" && contest != contestFilter {
+			return nil
+		}
+		if problemIndex != "" && (contest != problemContest || strings.ToUpper(index) != problemIndex) {
 			return nil
 		}
 		stmtData, err := os.ReadFile(path)
@@ -149,6 +169,32 @@ func collectProblemAssets(root string) ([]problemAsset, error) {
 		return nil
 	})
 	return list, err
+}
+
+func parseProblemArg(val string) (string, string, error) {
+	v := strings.TrimSpace(val)
+	if v == "" {
+		return "", "", nil
+	}
+	split := -1
+	for i, r := range v {
+		if r < '0' || r > '9' {
+			split = i
+			break
+		}
+	}
+	if split <= 0 || split >= len(v) {
+		return "", "", fmt.Errorf("expected contest digits followed by index, e.g. 1994A")
+	}
+	contest := v[:split]
+	if _, err := strconv.Atoi(contest); err != nil {
+		return "", "", fmt.Errorf("contest must be numeric: %w", err)
+	}
+	index := strings.ToUpper(strings.TrimSpace(v[split:]))
+	if index == "" {
+		return "", "", fmt.Errorf("missing problem index")
+	}
+	return contest, index, nil
 }
 
 func ensureProblemsSchema(ctx context.Context, db *sql.DB) error {

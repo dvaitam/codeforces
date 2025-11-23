@@ -1,0 +1,121 @@
+
+# **I. Hyper Smawk Bros**
+
+**Time limit:** 4 seconds
+**Memory limit:** 1024 megabytes
+
+You and Bob are fighting a single boss with **health = n**.
+
+You and Bob take turns; **you go first**.
+
+On each turn, a player may choose an integer **x** in ([1, m]) and deal **x damage**, replacing:
+
+[
+n \leftarrow n - x
+]
+
+**Restriction:**
+A player **cannot** use the same value of **x** that the opponent used **on the previous turn**.
+(But on the **very first move**, you may choose any (x \in [1,m]).)
+
+The first player to make the boss’s health **≤ 0** wins the game.
+
+Your task:
+Determine **whether you can force a win** assuming Bob plays optimally.
+
+---
+
+# **Input**
+
+The input contains **multiple test cases**.
+
+* First line: integer (t), number of test cases
+  [
+  1 \le t \le 10^4
+  ]
+
+Each test case consists of:
+
+* Two integers (n, m)
+  [
+  1 \le n \le 10^6,\quad 2 \le m \le 10^6
+  ]
+
+There are **no constraints** on the sum of all (n) or all (m).
+
+---
+
+# **Output**
+
+For each test case, print:
+
+* **YES** — if you can force a win
+* **NO** — otherwise
+
+(case-insensitive)
+
+---
+
+# **Example**
+
+**Input**
+
+```
+8
+6 9
+20 10
+69 2
+42 9
+42 10
+44 9
+44 10
+400000 400000
+```
+
+**Output**
+
+```
+YES
+YES
+NO
+NO
+YES
+YES
+NO
+YES
+```
+
+---
+
+# **Explanation (from PDF)**
+
+### Test 1: `6 9`
+
+You can deal **8 damage** immediately, making health (6 - 8 = -2).
+You win → **YES**
+
+---
+
+### Test 2: `20 10`
+
+* You can deal **10** first.
+* Bob must deal something in ([1,10]\setminus{10}).
+* Then you can again deal **10** and win.
+
+So → **YES**
+
+---
+
+### Test 3: `69 2`
+
+Possible move patterns are forced:
+
+* If you play 1 → Bob must play 2 → you must play 1 → Bob plays 2 → ...
+
+Or reversed:
+
+* If you play 2 → Bob must play 1 → you play 2 → Bob plays 1 → ...
+
+Bob always delivers the final blow.
+So → **NO**
+

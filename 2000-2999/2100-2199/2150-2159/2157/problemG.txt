@@ -1,0 +1,168 @@
+
+# **G. Isaac’s Queries**
+
+**Time limit:** 4 seconds
+**Memory limit:** 256 megabytes
+
+You have reached the final level of the roguelike game **“Isaac’s Keybindings.”**
+Instead of a boss, you meet a shopkeeper who has a **hidden array**:
+
+[
+a_1, a_2, \ldots, a_n
+]
+
+where for each (i \in [1,n]):
+
+[
+0 \le a_i < 2^{30}
+]
+
+It is guaranteed that the array is **randomly generated**
+(i.e., each (a_i) is chosen uniformly at random from ([0,2^{30})))
+in all tests **except the example**.
+
+Define
+
+[
+f(u,v) = a_u \oplus a_{u+1} \oplus \cdots \oplus a_v
+]
+
+(bitwise XOR).
+
+You may ask queries of the form:
+
+```
+? u v
+```
+
+where (1 \le u \le v \le n).
+
+The answer to the query is:
+
+* **−1**, if (f(u,v) = 0)
+* **⌊log₂(f(u,v))⌋**, otherwise
+
+Each query costs **1 / (v − u + 1)** robocoins.
+
+You are given **300 robocoins** per test, and must solve up to **30 test cases**.
+Your average budget allowed is 10 robocoins per test case.
+
+If your robocoin balance ever goes negative — you lose.
+Balances may be fractional.
+
+Your task:
+**Determine the answer to all possible queries** for the current test case, without going negative.
+
+---
+
+# **Input**
+
+Each test contains multiple test cases.
+
+* First line: integer (t) ( (1 \le t \le 30) )
+
+For each test case:
+
+* First line: integer (n) (either **3** or **100**).
+  Non-example tests always have (n = 100).
+  The example uses (n = 3).
+
+The array itself is **hidden**.
+
+There are exactly 30 tests:
+
+* Test 1: example with (n=3)
+* Test 2–30: random with (n=100)
+
+Hacks disabled.
+
+---
+
+# **Interaction Protocol**
+
+For each test case:
+
+1. Read a single integer.
+
+   * If it is **−1**, your answer to the previous test case was wrong → exit immediately.
+
+2. To ask a query, print:
+
+```
+? u v
+```
+
+with (1 \le u \le v \le n).
+
+3. Judge responds:
+
+   * **−2** for invalid query (format wrong OR going negative balance) → exit immediately
+   * Otherwise: the answer value for this query
+
+4. When you have determined the answer to **all** possible queries, print:
+
+```
+!
+```
+
+Then print **n lines**, the i-th line containing answers to queries:
+
+[
+?,i,i,\ ?,i,i+1,\ \ldots,\ ?,i,n
+]
+
+(i.e., answers for all u=i, v=i..n)
+
+Remember to flush after each print.
+
+---
+
+# **Example**
+
+**Input**
+
+```
+1
+3
+2
+-1
+1
+```
+
+**Output**
+
+```
+? 1 2
+? 1 3
+? 2 3
+!
+1 2 -1
+2 1
+2
+```
+
+---
+
+# **Explanation (from example)**
+
+Hidden array is:
+
+[
+[a_1, a_2, a_3] = [2,4,6]
+]
+
+Queries:
+
+* `? 1 2` → (2 \oplus 4 = 6) → ⌊log₂(6)⌋ = 2
+* `? 1 3` → (2\oplus4\oplus6 = 0) → answer = −1
+* `? 2 3` → (4\oplus6 = 2) → ⌊log₂(2)⌋ = 1
+
+You then output answers to all pairs (including unasked ones).
+Total cost spent:
+
+[
+1/2 + 1/3 + 1/2 = 4/3
+]
+
+within the allowed 300.
+

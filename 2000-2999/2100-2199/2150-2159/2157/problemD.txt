@@ -1,0 +1,125 @@
+
+# **D. Billion Players Game**
+
+**Time limit:** 2 seconds
+**Memory limit:** 256 megabytes
+
+There are (10^9) players in the world championship of the **Billion Players Game**.
+You want to predict the final ranking of **Godflex**, your favorite streamer.
+
+You are certain that Godflex will finish with a final rank:
+
+[
+l \le p \le r
+]
+
+—but you do not know anything else about the exact value of (p).
+
+There are **n offers** made by the in-game bookmaker.
+
+In the (i)-th offer, the bookmaker gives an estimated final ranking (a_i) for Godflex.
+
+For each offer, you must choose **exactly one** of these three actions:
+
+1. **Ignore** the offer.
+2. **Accept** the offer claiming that
+   [
+   p \le a_i
+   ]
+   If correct, you **earn** (|,p - a_i,|) robocoins;
+   if wrong, you **lose** (|,p - a_i,|) robocoins.
+3. **Accept** the offer claiming that
+   [
+   p \ge a_i
+   ]
+   If correct, you **earn** (|,p - a_i,|);
+   if wrong, you **lose** (|,p - a_i,|).
+
+After you select an action for all offers, the actual game is played.
+Godflex ends up with some rank (p \in [l, r]).
+All accepted offers are then settled.
+
+Your **total score** is the number of robocoins you are **guaranteed** to earn —
+that is, the **minimum** outcome over all possible (p \in [l, r]).
+
+You must compute the **maximum** possible guaranteed score.
+
+---
+
+# **Input**
+
+The first line has an integer
+[
+t \quad (1 \le t \le 10^4)
+]
+
+Each test case contains:
+
+* A line with integers
+  [
+  n,\ l,\ r \quad (1 \le n \le 2\cdot10^5,\ 1 \le l \le r \le 10^9)
+  ]
+* A line with
+  [
+  a_1, a_2, \ldots, a_n \quad (1 \le a_i \le 10^9)
+  ]
+
+The total sum of all (n) across test cases ≤ (2 \cdot 10^5).
+
+---
+
+# **Output**
+
+For each test case, print **one integer** —
+the maximum guaranteed number of robocoins you can secure.
+
+---
+
+# **Example**
+
+**Input**
+
+```
+4
+1 1 5
+3
+2 100 100
+50 200
+5 1 10
+5 7 3 9 1
+5 6 10
+9 3 1 7 5
+```
+
+**Output**
+
+```
+0
+150
+12
+13
+```
+
+---
+
+# **Explanation (from PDF)**
+
+### Test case 1
+
+* Ignore → guaranteed 0
+* Claim (p \le 3) → worst case at (p=5): lose (|5-3|=2)
+* Claim (p \ge 3) → worst case at (p=1): lose (|1-3|=2)
+
+Max guaranteed = **0**
+
+### Test case 2
+
+Claim
+
+* (p \ge 50)
+* (p \le 200)
+
+Since actual (p) must be 100:
+
+You gain (|100 - 50| + |100 - 200| = 150).
+

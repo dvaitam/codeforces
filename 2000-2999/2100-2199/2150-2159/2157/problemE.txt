@@ -1,0 +1,130 @@
+
+# **E. Adjusting Drones**
+
+**Time limit:** 2 seconds
+**Memory limit:** 256 megabytes
+
+You are managing a fleet of **n** drones.
+Each drone has an initial energy level:
+
+[
+a_1, a_2, \ldots, a_n
+]
+
+You are also given a positive integer **k**, which represents the **maximum number of drones allowed to share the same energy level**.
+
+To prevent overloads, the drones automatically perform **energy balancing operations** as follows:
+
+While there exists an energy value **x** such that the number of drones with energy **x** is **strictly more than k**, they do:
+
+1. Every drone whose energy (a_i = x) appears **earlier** in the array
+   (i.e., there exists (j < i) with (a_j = x)) is **marked**.
+   (Only the *first* k occurrences of x remain unmarked.)
+
+2. For each marked drone, its energy is **increased by 1**.
+
+3. All marks are removed.
+
+The process stops once no energy value appears more than k times.
+
+Your task is to compute the **total number of balancing operations** performed.
+
+---
+
+# **Input**
+
+Each test contains multiple test cases.
+
+* First line: integer **t** (1 ≤ t ≤ 10⁴)
+
+Each test case:
+
+* A line containing integers **n**, **k**
+  (1 ≤ k ≤ n ≤ 2·10⁵)
+
+* A line containing the n energy levels
+  (a_1, a_2, \ldots, a_n)
+  (1 ≤ (a_i) ≤ 2n)
+
+The sum of all n over all test cases does not exceed 2·10⁵.
+
+---
+
+# **Output**
+
+For each test case, output a single integer — the number of balancing operations performed.
+
+---
+
+# **Example**
+
+**Input**
+
+```
+5
+6 3
+1 1 1 1 1 1
+5 1
+1 3 2 1 4
+6 2
+1 1 1 2 3 3
+4 1
+8 8 8 8
+2 2
+1 2
+```
+
+**Output**
+
+```
+3
+4
+4
+3
+0
+```
+
+---
+
+# **Explanation (from PDF)**
+
+### Test case 1
+
+Initial energies:
+
+```
+[1, 1, 1, 1, 1, 1]
+```
+
+Operation 1:
+
+```
+[1, 2, 2, 2, 2, 2]
+```
+
+Operation 2:
+
+```
+[1, 2, 3, 3, 3, 3]
+```
+
+Operation 3:
+
+```
+[1, 2, 3, 4, 4, 4]
+```
+
+After 3 operations, every energy level appears at most k=3 times.
+
+### Test case 2
+
+Sequence:
+
+```
+[1,3,2,1,4] → [1,3,2,2,4] → [1,3,2,3,4] → [1,3,2,4,4] → [1,3,2,4,5]
+```
+
+Process stops after 4 operations.
+
+If you want, I can convert **Problem F**, or help you solve any of these problems in **Go/C++/Python**.
+

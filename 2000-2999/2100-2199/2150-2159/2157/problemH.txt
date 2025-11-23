@@ -1,0 +1,120 @@
+
+# **H. Keygen 3**
+
+**Time limit:** 4 seconds
+**Memory limit:** 256 megabytes
+
+A permutation of length **n** is called **valid** if it satisfies **both** of the following:
+
+1. It is **bitonic**.
+2. **Exactly m** of its subsets are **cycles**.
+
+Let **k** denote the number of permutations satisfying these conditions.
+Your task is to **find and print**:
+
+[
+\min(k,\ 2000)
+]
+
+examples of such permutations.
+
+---
+
+## **Definitions**
+
+### 1️⃣ Bitonic permutation
+
+A permutation ( p_1, p_2, \ldots, p_n ) is **bitonic** if there exists an index
+[
+i \ (1 \le i \le n)
+]
+such that:
+
+* ( p_{j-1} \le p_j ) for (2 \le j \le i) (non-decreasing prefix)
+* ( p_j \ge p_{j+1} ) for (i \le j \le n-1) (non-increasing suffix)
+
+This means the permutation goes **up**, reaches a **peak**, then goes **down**.
+
+---
+
+### 2️⃣ Cycle subset
+
+A subset ( C \subseteq {1, 2, \ldots, n} ) is a **cycle** if:
+
+* (C) is **non-empty**
+* For every (x \in C), we have (p_x \in C)  (C is closed under p-mapping)
+* **Minimality:** There is **no** proper subset (C') such that
+
+  * (C' \subset C)
+  * (C') is also a cycle
+
+So each cycle is a **minimal closed subset** under the permutation mapping.
+
+---
+
+## **Input**
+
+A single line with:
+
+[
+n,\ m \quad (1 \le m \le n \le 100)
+]
+
+---
+
+## **Output**
+
+* Print one integer **r**, the number of permutations you will output.
+  Must satisfy:
+  [
+  r = \min(k, 2000)
+  ]
+* Then print **r lines**, each containing one **bitonic permutation** of length **n** having **exactly m cycles**.
+
+---
+
+## **Example**
+
+### **Input**
+
+```
+6 3
+```
+
+### **Output (one valid solution)**
+
+```
+9
+1 4 5 6 3 2
+6 5 4 3 2 1
+1 2 4 5 6 3
+1 2 5 6 4 3
+1 3 4 6 5 2
+1 5 6 4 3 2
+3 5 6 4 2 1
+1 3 6 5 4 2
+2 6 5 4 3 1
+```
+
+### Explanation (PDF page):
+
+For (n=6), there are **9** valid permutations with exactly **3 cycles**, so we print all 9.
+
+Example permutation:
+[
+[3,5,6,4,2,1]
+]
+
+* Bitonic with peak at (i=3)
+* Cycle decomposition is:
+
+  * ({1,3,6})
+  * ({2,5})
+  * ({4})
+
+Exactly 3 cycles ✔
+Bitonic ✔
+
+Thus valid.
+
+

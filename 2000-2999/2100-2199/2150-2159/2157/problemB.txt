@@ -1,0 +1,87 @@
+
+# **B. Expansion Plan 2**
+
+**Time limit:** 1 second
+**Memory limit:** 256 megabytes
+
+You are working with an infinite 2D grid of coordinates (X, Y).
+
+* The cell above (0, 0) is (0, 1).
+* The cell to the right of (0, 0) is (1, 0).
+  Initially, only the cell (0, 0) is black.
+
+You are given a string **a₁ a₂ … aₙ** of length **n**, consisting of characters `"4"` and `"8"`, which describes **n expansion operations**.
+
+For each i from 1 to n, **all cells update simultaneously** as follows:
+
+* If **aᵢ = "4"**:
+  Every cell that is **orthogonally adjacent** (shares a side) to a black cell becomes black.
+
+* If **aᵢ = "8"**:
+  Every cell that is **orthogonally or diagonally adjacent** (shares a side or a corner) to a black cell becomes black.
+
+Your task is to determine whether the cell **(x, y)** is black **after all operations**.
+
+---
+
+# **Input**
+
+Each test contains multiple test cases.
+
+* First line: integer **t** (1 ≤ t ≤ 10⁴) — number of test cases.
+
+Each test case contains:
+
+* A line with three integers
+  **n**, **x**, **y**
+  where
+  1 ≤ n ≤ 2·10⁵
+  −10⁹ ≤ x, y ≤ 10⁹
+* A line with string **s** of length n made of characters `"4"` and `"8"`.
+
+The total sum of **n** across all test cases does not exceed **2·10⁵**.
+
+---
+
+# **Output**
+
+For each test case:
+
+* Print **YES** if cell (x, y) is black after all expansions.
+* Otherwise print **NO**.
+
+The judge is case-insensitive (`YES`, `yes`, `yEs`, etc. are all accepted).
+
+---
+
+# **Example**
+
+**Input**
+
+```
+6
+3 3 3
+888
+4 5 1
+4884
+4 3 -3
+4884
+7 -7 -5
+4884884
+10 0 0
+4884884888
+1 1 1
+4
+```
+
+**Output**
+
+```
+YES
+NO
+YES
+NO
+YES
+NO
+```
+
