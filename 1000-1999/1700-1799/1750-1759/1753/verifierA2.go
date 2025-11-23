@@ -5,11 +5,13 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 type testCase struct {
@@ -24,6 +26,26 @@ type segment struct {
 type partition struct {
 	possible bool
 	segs     []segment
+}
+
+func generateTests() []byte {
+	var buf bytes.Buffer
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	t := 100 // Number of test cases
+	fmt.Fprintf(&buf, "%d\n", t)
+	for i := 0; i < t; i++ {
+		n := rng.Intn(100) + 1 // Length up to 100
+		fmt.Fprintf(&buf, "%d\n", n)
+		for j := 0; j < n; j++ {
+			val := rng.Intn(3) - 1 // -1, 0, 1
+			fmt.Fprintf(&buf, "%d", val)
+			if j < n-1 {
+				buf.WriteString(" ")
+			}
+		}
+		buf.WriteString("\n")
+	}
+	return buf.Bytes()
 }
 
 func runProgram(path string, input []byte) (string, error) {
@@ -131,20 +153,48 @@ func validatePartition(tc testCase, part partition) error {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("usage: go run verifierA2.go /path/to/binary")
+		fmt.Println("usage: go run verifierA2.go [--] /path/to/binary")
 		os.Exit(1)
 	}
+
+	// Find the target binary path argument.
+	// Skip flags if any (none implemented yet, but just in case)
+	// We handle the "--" convention manually if needed, or just take the last arg.
 	target := os.Args[len(os.Args)-1]
 	if target == "--" {
 		fmt.Println("usage: go run verifierA2.go /path/to/binary")
 		os.Exit(1)
 	}
+	// Basic check to avoid taking flags as target if placed at end (unlikely here)
 
-	inputData, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to read input: %v\n", err)
-		os.Exit(1)
+	var inputData []byte
+	var err error
+
+	stat, _ := os.Stdin.Stat()
+	if (stat.Mode() & os.ModeCharDevice) == 0 {
+		// Data is being piped or redirected to stdin
+		inputData, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to read input: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		// Interactive mode, generate random tests
+		fmt.Println("No input piped, generating random tests...")
+		inputData = generateTests()
 	}
+
+	if len(inputData) == 0 {
+		// Even if piped, if empty, maybe generate? 
+		// Or just fail?
+		// Let's generate if empty, assuming the user might have piped empty file by mistake or wants random.
+		// But usually empty pipe means empty input. 
+		// However, the problem requires T test cases. Empty input is invalid.
+		// So let's generate.
+		fmt.Println("Empty input provided, generating random tests...")
+		inputData = generateTests()
+	}
+
 	tests, err := parseInput(inputData)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -154,6 +204,14 @@ func main() {
 	_, src, _, _ := runtime.Caller(0)
 	baseDir := filepath.Dir(src)
 	refPath := filepath.Join(baseDir, "1753A2.go")
+
+	// Check if refPath exists
+	if _, err := os.Stat(refPath); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "reference solution not found at %s\n", refPath)
+		// If ref doesn't exist, we can't compare. But maybe we can still validate?
+		// The logic below runs ref first.
+		os.Exit(1)
+	}
 
 	refOut, err := runProgram(refPath, inputData)
 	if err != nil {

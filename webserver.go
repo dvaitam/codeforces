@@ -752,14 +752,10 @@ func problemPathsForPrompt(contestID, letter string) (string, string) {
 	}
 	letter = strings.ToUpper(letter)
 	stmtPath := filepath.Join(dir, "problem"+letter+".txt")
-	if abs, err := filepath.Abs(stmtPath); err == nil {
-		stmtPath = abs
-	}
+	stmtPath = filepath.Clean(stmtPath)
 	verifierPath := findVerifier(dir, letter)
 	if verifierPath != "" {
-		if abs, err := filepath.Abs(verifierPath); err == nil {
-			verifierPath = abs
-		}
+		verifierPath = filepath.Clean(verifierPath)
 	}
 	return stmtPath, verifierPath
 }

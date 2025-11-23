@@ -2,53 +2,71 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"os"
+	"strconv"
 )
 
 func main() {
-	reader := bufio.NewReader(os.Stdin)
+	// Set up fast I/O
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
+
+	// Helper to read the next integer
+	next := func() int {
+		scanner.Scan()
+		val, _ := strconv.Atoi(scanner.Text())
+		return val
+	}
+
 	writer := bufio.NewWriter(os.Stdout)
 	defer writer.Flush()
 
-	var n, m, k int
-	if _, err := fmt.Fscan(reader, &n, &m, &k); err != nil {
-		return
-	}
+	// Read dimensions and number of operations
+	n := next()
+	m := next()
+	k := next()
 
-	rowTime := make([]int, n+1)
-	rowColor := make([]int, n+1)
-	colTime := make([]int, m+1)
-	colColor := make([]int, m+1)
+	// Arrays to store the time (operation index) and color for rows and columns
+	// Using 1-based indexing matching the problem statement
+	rTime := make([]int, n+1)
+	rColor := make([]int, n+1)
+	cTime := make([]int, m+1)
+	cColor := make([]int, m+1)
 
-	for i := 1; i <= k; i++ {
-		var t, idx int
-		var color int
-		fmt.Fscan(reader, &t, &idx, &color)
-		if t == 1 {
-			rowTime[idx] = i
-			rowColor[idx] = color
+	// Process operations
+	for t := 1; t <= k; t++ {
+		opType := next()
+		idx := next()
+		color := next()
+
+		if opType == 1 {
+			// Row operation
+			rTime[idx] = t
+			rColor[idx] = color
 		} else {
-			colTime[idx] = i
-			colColor[idx] = color
+			// Column operation
+			cTime[idx] = t
+			cColor[idx] = color
 		}
 	}
 
-	for r := 1; r <= n; r++ {
-		for c := 1; c <= m; c++ {
-			val := 0
-			if rowTime[r] > colTime[c] {
-				val = rowColor[r]
+	// Construct and print the resulting table
+	for i := 1; i <= n; i++ {
+		for j := 1; j <= m; j++ {
+			if j > 1 {
+				writer.WriteByte(' ')
+			}
+
+			// Determine the color of cell (i, j)
+			// The color is determined by the latest operation that affected this row or column
+			var ans int
+			if rTime[i] > cTime[j] {
+				ans = rColor[i]
 			} else {
-				val = colColor[c]
+				ans = cColor[j]
 			}
-			if c > 1 {
-				fmt.Fprint(writer, " ")
-			}
-			fmt.Fprint(writer, val)
+			writer.WriteString(strconv.Itoa(ans))
 		}
-		if r < n {
-			fmt.Fprintln(writer)
-		}
+		writer.WriteByte('\n')
 	}
 }
