@@ -6,37 +6,27 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"sort"
 	"strings"
 )
 
-func solveC(n, k int) []int {
-	s := []int{}
-	present := make(map[int]bool)
-	if n >= 1 {
-		s = append(s, 1)
-		present[1] = true
-	}
-	if n >= 2 {
-		s = append(s, 2)
-		present[2] = true
-	}
-	cnt := 2
-	for i := 4; i <= k && len(s) < n; {
-		s = append(s, i)
-		present[i] = true
-		cnt++
-		i += cnt
-	}
-	if len(s) < n {
-		for x := k; x >= 1 && len(s) < n; x-- {
-			if !present[x] {
-				s = append(s, x)
-			}
+func solveC(k, n int) []int {
+	seq := make([]int, 0, k)
+	current := 1
+	diff := 1
+	seq = append(seq, current)
+
+	for len(seq) < k {
+		remaining := k - len(seq) - 1
+		if current+diff+remaining <= n {
+			current += diff
+			diff++
+		} else {
+			current++
 		}
+		seq = append(seq, current)
 	}
-	sort.Ints(s)
-	return s
+
+	return seq
 }
 
 func expectedC(input string) string {
@@ -46,10 +36,10 @@ func expectedC(input string) string {
 	var out strings.Builder
 	idx := 1
 	for i := 0; i < t; i++ {
-		var n, k int
-		fmt.Sscanf(lines[idx], "%d %d", &n, &k)
+		var k, n int
+		fmt.Sscanf(lines[idx], "%d %d", &k, &n)
 		idx++
-		ans := solveC(n, k)
+		ans := solveC(k, n)
 		for j, v := range ans {
 			if j > 0 {
 				out.WriteByte(' ')
@@ -72,8 +62,8 @@ func genTestsC() []string {
 		sb.WriteString(fmt.Sprintf("%d\n", t))
 		for i := 0; i < t; i++ {
 			n := rand.Intn(39) + 2
-			k := rand.Intn(40-n+1) + n
-			sb.WriteString(fmt.Sprintf("%d %d\n", n, k))
+			k := rand.Intn(n-1) + 2
+			sb.WriteString(fmt.Sprintf("%d %d\n", k, n))
 		}
 		tests = append(tests, sb.String())
 	}
