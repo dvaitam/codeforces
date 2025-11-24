@@ -42,7 +42,7 @@ func genTest() string {
 			if j > 0 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(fmt.Sprint(rand.Intn(50) + 1))
+			sb.WriteString(fmt.Sprint(rand.Intn(n) + 1))
 		}
 		sb.WriteByte('\n')
 	}
