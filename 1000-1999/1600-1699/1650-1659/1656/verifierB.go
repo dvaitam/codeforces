@@ -44,7 +44,9 @@ func run(bin, input string) (string, error) {
 
 func genCase(r *rand.Rand) string {
 	n := r.Intn(10) + 1
-	k := r.Intn(10)
+	// The problem constrains k to be strictly positive, so keep generation
+	// within 1..10 instead of allowing zero.
+	k := r.Intn(10) + 1
 	var sb strings.Builder
 	sb.WriteString("1\n")
 	sb.WriteString(fmt.Sprintf("%d %d\n", n, k))
