@@ -59,7 +59,12 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	src, err := filepath.Abs(refSource)
+	if err != nil {
+		return "", err
+	}
+
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), src)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -71,11 +76,16 @@ func buildReference() (string, error) {
 }
 
 func runProgram(bin, input string) (string, error) {
+	absBin, err := filepath.Abs(bin)
+	if err != nil {
+		return "", err
+	}
+
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", filepath.Clean(bin))
+		cmd = exec.Command("go", "run", absBin)
 	} else {
-		cmd = exec.Command(bin)
+		cmd = exec.Command(absBin)
 	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
