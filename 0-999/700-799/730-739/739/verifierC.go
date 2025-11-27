@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -24,8 +26,11 @@ func runExe(path, input string) (string, error) {
 }
 
 func buildRef() (string, error) {
-	ref := "./refC.bin"
+	_, filename, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(filename)
+	ref := filepath.Join(dir, "refC.bin")
 	cmd := exec.Command("go", "build", "-o", ref, "739C.go")
+	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build reference failed: %v: %s", err, string(out))
 	}
@@ -57,6 +62,8 @@ func genTests() []Test {
 		tests = append(tests, Test{sb.String()})
 	}
 	tests = append(tests, Test{"1\n1\n1\n1 1 1\n"})
+	// Regression test for a hill that spans the entire array after an update.
+	tests = append(tests, Test{"5\n8 9 8 6 1\n2\n2 3 2\n3 5 5\n"})
 	return tests
 }
 
