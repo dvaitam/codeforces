@@ -101,7 +101,14 @@ func buildReference() (string, func(), error) {
 		return "", nil, err
 	}
 	bin := filepath.Join(dir, "ref1129A1.bin")
-	cmd := exec.Command("go", "build", "-o", bin, refSourceA1)
+	srcDir, err := filepath.Abs(filepath.Dir(refSourceA1))
+	if err != nil {
+		os.RemoveAll(dir)
+		return "", nil, fmt.Errorf("failed to resolve reference directory: %v", err)
+	}
+	cmd := exec.Command("go", "build", "-o", bin, "./"+filepath.Base(refSourceA1))
+	cmd.Dir = srcDir
+	cmd.Env = append(os.Environ(), "GO111MODULE=on")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
