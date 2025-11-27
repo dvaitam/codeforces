@@ -59,12 +59,19 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	src, err := filepath.Abs(refSource)
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if strings.TrimSpace(src) == "" {
+		src = refSource
+	}
+	absSrc, err := filepath.Abs(src)
 	if err != nil {
 		return "", err
 	}
+	srcDir := filepath.Dir(absSrc)
+	srcFile := filepath.Base(absSrc)
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), src)
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), srcFile)
+	cmd.Dir = srcDir
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -91,7 +98,7 @@ func runProgram(bin, input string) (string, error) {
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
-	err := cmd.Run()
+	err = cmd.Run()
 	return out.String(), err
 }
 

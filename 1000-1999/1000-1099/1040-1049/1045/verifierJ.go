@@ -55,7 +55,23 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if strings.TrimSpace(src) == "" {
+		src = refSource
+	}
+	absSrc, err := filepath.Abs(src)
+	if err != nil {
+		return "", err
+	}
+	srcDir := filepath.Dir(absSrc)
+	srcFile := filepath.Base(absSrc)
+
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), srcFile)
+	cmd.Dir = srcDir
+	cmd.Env = append(os.Environ(),
+		"GO111MODULE=off",
+		"GOWORK=off",
+	)
 	var combined bytes.Buffer
 	cmd.Stdout = &combined
 	cmd.Stderr = &combined

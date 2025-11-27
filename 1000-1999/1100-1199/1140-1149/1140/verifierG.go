@@ -55,9 +55,12 @@ func runRef(bin string, input string) (string, error) {
 }
 
 func genCase(rng *rand.Rand) string {
-	n := rng.Intn(4) + 2
+	n := rng.Intn(4) + 2 // keep small to keep verifier fast
+
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", n))
+
+	// Weights of vertical edges (odd-even pairs).
 	for i := 1; i <= n; i++ {
 		if i > 1 {
 			sb.WriteByte(' ')
@@ -65,18 +68,26 @@ func genCase(rng *rand.Rand) string {
 		sb.WriteString(fmt.Sprintf("%d", rng.Intn(10)+1))
 	}
 	sb.WriteByte('\n')
+
+	// Build a connected tree: connect node i to a previous node.
 	for i := 2; i <= n; i++ {
-		x := rng.Intn(i-1) + 1
-		y := rng.Intn(i-1) + 1
+		parent := rng.Intn(i-1) + 1
 		w1 := rng.Intn(10) + 1
 		w2 := rng.Intn(10) + 1
-		sb.WriteString(fmt.Sprintf("%d %d %d %d\n", x, y, w1, w2))
+		sb.WriteString(fmt.Sprintf("%d %d %d %d\n", i, parent, w1, w2))
 	}
+
 	q := rng.Intn(5) + 1
 	sb.WriteString(fmt.Sprintf("%d\n", q))
 	for i := 0; i < q; i++ {
-		ta := rng.Intn(2*n) + 1
-		tb := rng.Intn(2*n) + 1
+		var ta, tb int
+		for {
+			ta = rng.Intn(2*n) + 1
+			tb = rng.Intn(2*n) + 1
+			if ta != tb {
+				break
+			}
+		}
 		sb.WriteString(fmt.Sprintf("%d %d\n", ta, tb))
 	}
 	return sb.String()

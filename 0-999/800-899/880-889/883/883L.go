@@ -4,52 +4,33 @@ import (
 	"bufio"
 	"container/heap"
 	"fmt"
+	"math"
 	"os"
+	"strconv"
 )
 
-type Car struct {
-	id        int
-	availFrom int64
-}
+const (
+	infVal = int64(3e18)
+	infPos = int(1e9)
+)
 
-type CarHeap []Car
-
-func (h CarHeap) Len() int { return len(h) }
-func (h CarHeap) Less(i, j int) bool {
-	if h[i].availFrom == h[j].availFrom {
-		return h[i].id < h[j].id
-	}
-	return h[i].availFrom < h[j].availFrom
-}
-func (h CarHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
-func (h *CarHeap) Push(x interface{}) { *h = append(*h, x.(Car)) }
-func (h *CarHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[:n-1]
-	return x
-}
-
-// Busy event for a car currently servicing a ride
-type Busy struct {
+type carInfo struct {
 	time int64
 	id   int
-	pos  int
 }
 
-type BusyHeap []Busy
+type carHeap []carInfo
 
-func (h BusyHeap) Len() int { return len(h) }
-func (h BusyHeap) Less(i, j int) bool {
-	if h[i].time == h[j].time {
-		return h[i].id < h[j].id
+func (h carHeap) Len() int { return len(h) }
+func (h carHeap) Less(i, j int) bool {
+	if h[i].time != h[j].time {
+		return h[i].time < h[j].time
 	}
-	return h[i].time < h[j].time
+	return h[i].id < h[j].id
 }
-func (h BusyHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
-func (h *BusyHeap) Push(x interface{}) { *h = append(*h, x.(Busy)) }
-func (h *BusyHeap) Pop() interface{} {
+func (h carHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *carHeap) Push(x interface{}) { *h = append(*h, x.(carInfo)) }
+func (h *carHeap) Pop() interface{} {
 	old := *h
 	n := len(old)
 	x := old[n-1]
@@ -57,71 +38,140 @@ func (h *BusyHeap) Pop() interface{} {
 	return x
 }
 
-// Segment tree to find nearest positions with available cars
-type SegTree struct {
-	n, size int
-	tree    []int
+type busyCar struct {
+	finish int64
+	id     int
+	pos    int
 }
 
-func NewSegTree(n int) *SegTree {
-	size := 1
-	for size < n {
-		size <<= 1
-	}
-	return &SegTree{n: n, size: size, tree: make([]int, 2*size)}
+type busyHeap []busyCar
+
+func (h busyHeap) Len() int { return len(h) }
+func (h busyHeap) Less(i, j int) bool {
+	return h[i].finish < h[j].finish
+}
+func (h busyHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *busyHeap) Push(x interface{}) { *h = append(*h, x.(busyCar)) }
+func (h *busyHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[:n-1]
+	return x
 }
 
-func (st *SegTree) add(pos, delta int) {
-	p := pos + st.size - 1
-	st.tree[p] += delta
-	for p > 1 {
-		p >>= 1
-		st.tree[p] = st.tree[p<<1] + st.tree[p<<1|1]
-	}
+type nodeRight struct {
+	pos  int
+	time int64
+	id   int
+}
+type nodeLeft struct {
+	negPos int
+	time   int64
+	id     int
 }
 
-func (st *SegTree) findPrevRec(l, r, pos, idx int) int {
-	if pos < l || st.tree[idx] == 0 {
-		return -1
+var (
+	treeRight []nodeRight
+	treeLeft  []nodeLeft
+	locHeaps  []carHeap
+	nHouses   int
+)
+
+func lessRight(a, b nodeRight) bool {
+	if a.pos != b.pos {
+		return a.pos < b.pos
 	}
+	if a.time != b.time {
+		return a.time < b.time
+	}
+	return a.id < b.id
+}
+
+func lessLeft(a, b nodeLeft) bool {
+	if a.negPos != b.negPos {
+		return a.negPos < b.negPos
+	}
+	if a.time != b.time {
+		return a.time < b.time
+	}
+	return a.id < b.id
+}
+
+func build(idx, l, r int) {
 	if l == r {
-		if l <= st.n {
-			return l
-		}
-		return -1
+		treeRight[idx] = nodeRight{pos: infPos, time: infVal, id: infPos}
+		treeLeft[idx] = nodeLeft{negPos: infPos, time: infVal, id: infPos}
+		return
 	}
 	mid := (l + r) / 2
-	if pos > mid {
-		res := st.findPrevRec(mid+1, r, pos, idx*2+1)
-		if res != -1 {
-			return res
-		}
-	}
-	return st.findPrevRec(l, mid, pos, idx*2)
+	build(2*idx, l, mid)
+	build(2*idx+1, mid+1, r)
+	treeRight[idx] = treeRight[2*idx]
+	treeLeft[idx] = treeLeft[2*idx]
 }
 
-func (st *SegTree) findNextRec(l, r, pos, idx int) int {
-	if pos > r || st.tree[idx] == 0 {
-		return -1
-	}
+func update(idx, l, r, pos int) {
 	if l == r {
-		if l <= st.n {
-			return l
+		if len(locHeaps[pos]) > 0 {
+			best := locHeaps[pos][0]
+			treeRight[idx] = nodeRight{pos: pos, time: best.time, id: best.id}
+			treeLeft[idx] = nodeLeft{negPos: -pos, time: best.time, id: best.id}
+		} else {
+			treeRight[idx] = nodeRight{pos: infPos, time: infVal, id: infPos}
+			treeLeft[idx] = nodeLeft{negPos: infPos, time: infVal, id: infPos}
 		}
-		return -1
+		return
 	}
 	mid := (l + r) / 2
 	if pos <= mid {
-		res := st.findNextRec(l, mid, pos, idx*2)
-		if res != -1 {
-			return res
-		}
+		update(2*idx, l, mid, pos)
+	} else {
+		update(2*idx+1, mid+1, r, pos)
 	}
-	return st.findNextRec(mid+1, r, pos, idx*2+1)
+	if lessRight(treeRight[2*idx], treeRight[2*idx+1]) {
+		treeRight[idx] = treeRight[2*idx]
+	} else {
+		treeRight[idx] = treeRight[2*idx+1]
+	}
+	if lessLeft(treeLeft[2*idx], treeLeft[2*idx+1]) {
+		treeLeft[idx] = treeLeft[2*idx]
+	} else {
+		treeLeft[idx] = treeLeft[2*idx+1]
+	}
 }
 
-func (st *SegTree) findPrev(pos int) int { return st.findPrevRec(1, st.size, pos, 1) }
-func (st *SegTree) findNext(pos int) int { return st.findNextRec(1, st.size, pos, 1) }
+func queryR(idx, l, r, ql, qr int) nodeRight {
+	if ql > r || qr < l {
+		return nodeRight{pos: infPos, time: infVal, id: infPos}
+	}
+	if ql <= l && r <= qr {
+		return treeRight[idx]
+	}
+	mid := (l + r) / 2
+	v1 := queryR(2*idx, l, mid, ql, qr)
+	v2 := queryR(2*idx+1, mid+1, r, ql, qr)
+	if lessRight(v1, v2) {
+		return v1
+	}
+	return v2
+}
+
+func queryL(idx, l, r, ql, qr int) nodeLeft {
+	if ql > r || qr < l {
+		return nodeLeft{negPos: infPos, time: infVal, id: infPos}
+	}
+	if ql <= l && r <= qr {
+		return treeLeft[idx]
+	}
+	mid := (l + r) / 2
+	v1 := queryL(2*idx, l, mid, ql, qr)
+	v2 := queryL(2*idx+1, mid+1, r, ql, qr)
+	if lessLeft(v1, v2) {
+		return v1
+	}
+	return v2
+}
 
 func abs(x int) int {
 	if x < 0 {
@@ -130,121 +180,150 @@ func abs(x int) int {
 	return x
 }
 
+var scanner *bufio.Scanner
+
+func scanInt() int {
+	scanner.Scan()
+	x, _ := strconv.Atoi(scanner.Text())
+	return x
+}
+
+func scanInt64() int64 {
+	scanner.Scan()
+	x, _ := strconv.ParseInt(scanner.Text(), 10, 64)
+	return x
+}
+
 func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
-	defer out.Flush()
+	scanner = bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
 
-	var n, k, m int
-	if _, err := fmt.Fscan(in, &n, &k, &m); err != nil {
-		return
-	}
+	n := scanInt()
+	k := scanInt()
+	m := scanInt()
 
-	heaps := make([]*CarHeap, n+1)
-	seg := NewSegTree(n)
+	nHouses = n
+	locHeaps = make([]carHeap, n+1)
+	treeRight = make([]nodeRight, 4*n+100)
+	treeLeft = make([]nodeLeft, 4*n+100)
+
+	build(1, 1, n)
 
 	for i := 1; i <= k; i++ {
-		var x int
-		fmt.Fscan(in, &x)
-		if heaps[x] == nil {
-			h := &CarHeap{}
-			heap.Init(h)
-			heaps[x] = h
-		}
-		heap.Push(heaps[x], Car{id: i, availFrom: 0})
-		seg.add(x, 1)
+		pos := scanInt()
+		c := carInfo{time: 0, id: i}
+		heap.Push(&locHeaps[pos], c)
+		update(1, 1, n, pos)
 	}
 
-	type Req struct {
-		t    int64
-		a, b int
-	}
-
-	reqs := make([]Req, m)
-	for i := 0; i < m; i++ {
-		fmt.Fscan(in, &reqs[i].t, &reqs[i].a, &reqs[i].b)
-	}
-
-	busy := &BusyHeap{}
-	heap.Init(busy)
+	busyHeap := &busyHeap{}
+	heap.Init(busyHeap)
 
 	for i := 0; i < m; i++ {
-		t := reqs[i].t
-		a := reqs[i].a
-		b := reqs[i].b
-		// release cars finished by time t
-		for busy.Len() > 0 && (*busy)[0].time <= t {
-			e := heap.Pop(busy).(Busy)
-			pos := e.pos
-			id := e.id
-			avail := e.time
-			if heaps[pos] == nil {
-				h := &CarHeap{}
-				heap.Init(h)
-				heaps[pos] = h
-			}
-			heap.Push(heaps[pos], Car{id: id, availFrom: avail})
-			seg.add(pos, 1)
-		}
+		tj := scanInt64()
+		aj := scanInt()
+		bj := scanInt()
 
-		// if no cars available, wait for next available time
-		if seg.tree[1] == 0 && busy.Len() > 0 {
-			t = (*busy)[0].time
-			for busy.Len() > 0 && (*busy)[0].time <= t {
-				e := heap.Pop(busy).(Busy)
-				pos := e.pos
-				id := e.id
-				avail := e.time
-				if heaps[pos] == nil {
-					h := &CarHeap{}
-					heap.Init(h)
-					heaps[pos] = h
-				}
-				heap.Push(heaps[pos], Car{id: id, availFrom: avail})
-				seg.add(pos, 1)
-			}
-		}
+		currTime := tj
 
-		left := seg.findPrev(a)
-		right := seg.findNext(a)
-
-		choosePos := -1
-		if left == -1 && right == -1 {
-			// should not happen
-			fmt.Fprintln(out, -1, 0)
-			continue
-		} else if left == -1 {
-			choosePos = right
-		} else if right == -1 {
-			choosePos = left
-		} else {
-			distL := abs(a - left)
-			distR := abs(right - a)
-			lc := (*heaps[left])[0]
-			rc := (*heaps[right])[0]
-			if distL < distR {
-				choosePos = left
-			} else if distL > distR {
-				choosePos = right
+		// Release cars that have finished by current time.
+		for busyHeap.Len() > 0 {
+			top := (*busyHeap)[0]
+			if top.finish <= currTime {
+				heap.Pop(busyHeap)
+				c := carInfo{time: top.finish, id: top.id}
+				heap.Push(&locHeaps[top.pos], c)
+				update(1, 1, n, top.pos)
 			} else {
-				if lc.availFrom < rc.availFrom {
-					choosePos = left
-				} else if lc.availFrom > rc.availFrom {
-					choosePos = right
-				} else if lc.id < rc.id {
-					choosePos = left
+				break
+			}
+		}
+
+		// If no cars are available, fast-forward to next finish time and release.
+		if treeRight[1].id == infPos && busyHeap.Len() > 0 {
+			currTime = (*busyHeap)[0].finish
+			for busyHeap.Len() > 0 {
+				top := (*busyHeap)[0]
+				if top.finish <= currTime {
+					heap.Pop(busyHeap)
+					c := carInfo{time: top.finish, id: top.id}
+					heap.Push(&locHeaps[top.pos], c)
+					update(1, 1, n, top.pos)
 				} else {
-					choosePos = right
+					break
 				}
 			}
 		}
 
-		h := heaps[choosePos]
-		car := heap.Pop(h).(Car)
-		seg.add(choosePos, -1)
-		wait := t + int64(abs(choosePos-a)) - reqs[i].t
-		fmt.Fprintln(out, car.id, wait)
-		finish := t + int64(abs(choosePos-a)+abs(a-b))
-		heap.Push(busy, Busy{time: finish, id: car.id, pos: b})
+		candR := queryR(1, 1, n, aj, n)
+		candL := queryL(1, 1, n, 1, aj)
+
+		bestIsR := false
+		distR := int64(math.MaxInt64)
+		if candR.id != infPos {
+			distR = int64(candR.pos - aj)
+		}
+		distL := int64(math.MaxInt64)
+		if candL.id != infPos {
+			distL = int64(aj + candL.negPos)
+		}
+
+		if candR.id == infPos {
+			bestIsR = false
+		} else if candL.id == infPos {
+			bestIsR = true
+		} else {
+			if distR < distL {
+				bestIsR = true
+			} else if distL < distR {
+				bestIsR = false
+			} else {
+				if candR.time < candL.time {
+					bestIsR = true
+				} else if candL.time < candR.time {
+					bestIsR = false
+				} else {
+					if candR.id < candL.id {
+						bestIsR = true
+					} else {
+						bestIsR = false
+					}
+				}
+			}
+		}
+
+		var selPos, selID int
+		var selTime int64
+
+		if bestIsR {
+			selPos = candR.pos
+			selID = candR.id
+			selTime = candR.time
+		} else {
+			selPos = -candL.negPos
+			selID = candL.id
+			selTime = candL.time
+		}
+
+		// Remove from heap; the chosen car might have a later availability.
+		heap.Pop(&locHeaps[selPos])
+		update(1, 1, n, selPos)
+
+		pickupTime := max64(currTime+int64(abs(selPos-aj)), selTime+int64(abs(selPos-aj)))
+		waitTime := pickupTime - tj
+		dropTime := pickupTime + int64(abs(aj-bj))
+
+		fmt.Fprintf(writer, "%d %d\n", selID, waitTime)
+
+		heap.Push(busyHeap, busyCar{finish: dropTime, id: selID, pos: bj})
 	}
+}
+
+func max64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
 }

@@ -81,7 +81,7 @@ func generateTests() []testCaseC {
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
-		return
+		os.Exit(1)
 	}
 	bin := os.Args[1]
 	tests := generateTests()
@@ -116,11 +116,11 @@ func main() {
 		output, err := runBinary(bin, input)
 		if err != nil {
 			fmt.Printf("test %d: execution error: %v\n", i+1, err)
-			return
+			os.Exit(1)
 		}
 		if strings.TrimSpace(output) != expected {
 			fmt.Printf("test %d failed:\ninput:%sexpected %s got %s\n", i+1, input, expected, output)
-			return
+			os.Exit(1)
 		}
 	}
 	fmt.Printf("all %d tests passed\n", len(tests))
