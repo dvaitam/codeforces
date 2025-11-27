@@ -145,6 +145,10 @@ func main() {
 			fmt.Fprintf(os.Stderr, "test %d: reference error: %v\n", t+1, rErr)
 			os.Exit(1)
 		}
+		if strings.TrimSpace(refOut) != strings.TrimSpace(expect) {
+			fmt.Fprintf(os.Stderr, "test %d: reference does not match expected output\ninput:\n%sexpected:%sreference:%s\n", t+1, input, expect, refOut)
+			os.Exit(1)
+		}
 		if strings.TrimSpace(candOut) != strings.TrimSpace(refOut) {
 			fmt.Fprintf(os.Stderr, "test %d failed\ninput:\n%sexpected:%sactual:%s\n", t+1, input, refOut, candOut)
 			os.Exit(1)
