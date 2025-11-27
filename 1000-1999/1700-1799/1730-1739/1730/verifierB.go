@@ -28,7 +28,7 @@ func runCandidate(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func expected(n int, x, t []int) string {
+func expected(n int, x, t []int) float64 {
 	minDiff := int64(1<<63 - 1)
 	maxSum := int64(-1 << 63)
 	for i := 0; i < n; i++ {
@@ -41,8 +41,29 @@ func expected(n int, x, t []int) string {
 			maxSum = sum
 		}
 	}
-	res := float64(minDiff+maxSum) * 0.5
-	return fmt.Sprintf("%.6f", res)
+	return float64(minDiff+maxSum) * 0.5
+}
+
+func isClose(a, b float64) bool {
+	const eps = 1e-6
+	diff := a - b
+	if diff < 0 {
+		diff = -diff
+	}
+	if diff <= eps {
+		return true
+	}
+	if b < 0 {
+		b = -b
+	}
+	if a < 0 {
+		a = -a
+	}
+	maxAB := a
+	if b > maxAB {
+		maxAB = b
+	}
+	return diff <= eps*maxAB
 }
 
 func main() {
@@ -95,8 +116,13 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx, err)
 			os.Exit(1)
 		}
-		if got != expect {
-			fmt.Printf("case %d failed: expected %s got %s\n", idx, expect, got)
+		gotVal, err := strconv.ParseFloat(strings.Fields(got)[0], 64)
+		if err != nil {
+			fmt.Printf("case %d failed: unable to parse output %q\n", idx, got)
+			os.Exit(1)
+		}
+		if !isClose(gotVal, expect) {
+			fmt.Printf("case %d failed: expected %.6f got %.8f\n", idx, expect, gotVal)
 			os.Exit(1)
 		}
 	}
