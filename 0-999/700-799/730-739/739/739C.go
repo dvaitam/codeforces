@@ -1,149 +1,72 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
+	"bufio"
+	"fmt"
+	"os"
 )
 
-type Node struct {
-   len        int
-   lVal, rVal int64
-   preInc, preDec  int
-   sufInc, sufDec  int
-   maxHill    int
-   add        int64
-}
+// This reference solution keeps the logic intentionally simple to avoid
+// corner-case mistakes when generating expected outputs for the verifier.
+// After each range addition we recompute the longest hill in O(n) time using
+// pre-computed increasing/decreasing run lengths.
 
-var (
-   n int
-   a []int64
-   tree []Node
-   reader *bufio.Reader
-   writer *bufio.Writer
-)
+func longestHill(heights []int64) int {
+	n := len(heights)
+	if n == 0 {
+		return 0
+	}
 
-func max(a, b int) int {
-   if a > b {
-       return a
-   }
-   return b
-}
+	inc := make([]int, n)
+	for i := 0; i < n; i++ {
+		inc[i] = 1
+		if i > 0 && heights[i-1] < heights[i] {
+			inc[i] = inc[i-1] + 1
+		}
+	}
 
-func newNode(v int64) Node {
-   return Node{len:1, lVal:v, rVal:v,
-       preInc:1, preDec:1, sufInc:1, sufDec:1,
-       maxHill:1, add:0}
-}
+	dec := make([]int, n)
+	for i := n - 1; i >= 0; i-- {
+		dec[i] = 1
+		if i+1 < n && heights[i] > heights[i+1] {
+			dec[i] = dec[i+1] + 1
+		}
+	}
 
-func merge(left, right Node) Node {
-   if left.len == 0 {
-       return right
-   }
-   if right.len == 0 {
-       return left
-   }
-   var res Node
-   res.len = left.len + right.len
-   res.lVal = left.lVal
-   res.rVal = right.rVal
-   // prefix increasing
-   res.preInc = left.preInc
-   if left.preInc == left.len && left.rVal < right.lVal {
-       res.preInc = left.len + right.preInc
-   }
-   // prefix decreasing
-   res.preDec = left.preDec
-   if left.preDec == left.len && left.rVal > right.lVal {
-       res.preDec = left.len + right.preDec
-   }
-   // suffix increasing
-   res.sufInc = right.sufInc
-   if right.sufInc == right.len && left.rVal < right.lVal {
-       res.sufInc = right.len + left.sufInc
-   }
-   // suffix decreasing
-   res.sufDec = right.sufDec
-   if right.sufDec == right.len && left.rVal > right.lVal {
-       res.sufDec = right.len + left.sufDec
-   }
-   // max hill
-   res.maxHill = max(left.maxHill, right.maxHill)
-   // pure increasing merge
-   if left.rVal < right.lVal {
-       res.maxHill = max(res.maxHill, left.sufInc + right.preInc)
-   }
-   // pure decreasing merge
-   if left.rVal > right.lVal {
-       res.maxHill = max(res.maxHill, left.sufDec + right.preDec)
-       // hill with peak at boundary
-       res.maxHill = max(res.maxHill, left.sufInc + right.preDec)
-   }
-   return res
-}
-
-func build(idx, l, r int) {
-   if l == r {
-       tree[idx] = newNode(a[l])
-       return
-   }
-   mid := (l + r) >> 1
-   lc, rc := idx<<1, idx<<1|1
-   build(lc, l, mid)
-   build(rc, mid+1, r)
-   tree[idx] = merge(tree[lc], tree[rc])
-}
-
-func applyAdd(idx int, v int64) {
-   node := &tree[idx]
-   node.lVal += v
-   node.rVal += v
-   node.add += v
-}
-
-func push(idx int) {
-   v := tree[idx].add
-   if v != 0 {
-       applyAdd(idx<<1, v)
-       applyAdd(idx<<1|1, v)
-       tree[idx].add = 0
-   }
-}
-
-func update(idx, l, r, ql, qr int, v int64) {
-   if ql <= l && r <= qr {
-       applyAdd(idx, v)
-       return
-   }
-   push(idx)
-   mid := (l + r) >> 1
-   if ql <= mid {
-       update(idx<<1, l, mid, ql, qr, v)
-   }
-   if qr > mid {
-       update(idx<<1|1, mid+1, r, ql, qr, v)
-   }
-   tree[idx] = merge(tree[idx<<1], tree[idx<<1|1])
+	best := 1
+	for i := 0; i < n; i++ {
+		// A hill centered at i has length inc[i] + dec[i] - 1.
+		if length := inc[i] + dec[i] - 1; length > best {
+			best = length
+		}
+	}
+	return best
 }
 
 func main() {
-   reader = bufio.NewReader(os.Stdin)
-   writer = bufio.NewWriter(os.Stdout)
-   defer writer.Flush()
-   var m int
-   fmt.Fscan(reader, &n)
-   a = make([]int64, n+1)
-   for i := 1; i <= n; i++ {
-       fmt.Fscan(reader, &a[i])
-   }
-   fmt.Fscan(reader, &m)
-   tree = make([]Node, 4*(n+1))
-   build(1, 1, n)
-   for i := 0; i < m; i++ {
-       var l, r int
-       var d int64
-       fmt.Fscan(reader, &l, &r, &d)
-       update(1, 1, n, l, r, d)
-       fmt.Fprintln(writer, tree[1].maxHill)
-   }
+	in := bufio.NewReader(os.Stdin)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+
+	var n, m int
+	fmt.Fscan(in, &n)
+
+	heights := make([]int64, n)
+	for i := 0; i < n; i++ {
+		fmt.Fscan(in, &heights[i])
+	}
+
+	fmt.Fscan(in, &m)
+	for i := 0; i < m; i++ {
+		var l, r int
+		var d int64
+		fmt.Fscan(in, &l, &r, &d)
+
+		// Apply update (convert to zero-based indices).
+		for j := l - 1; j < r; j++ {
+			heights[j] += d
+		}
+
+		fmt.Fprintln(out, longestHill(heights))
+	}
 }
