@@ -1,13 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -55,65 +54,26 @@ func main() {
 	}
 	defer os.Remove(oracle)
 
-	f, err := os.Open("testcasesD.txt")
+	inputBytes, err := io.ReadAll(os.Stdin)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to read input: %v\n", err)
 		os.Exit(1)
 	}
-	defer f.Close()
+	input := string(inputBytes)
 
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		parts := strings.Fields(line)
-		if len(parts) < 4 {
-			fmt.Printf("test %d invalid line\n", idx)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(parts[0])
-		m, _ := strconv.Atoi(parts[1])
-		k, _ := strconv.Atoi(parts[2])
-		q, _ := strconv.Atoi(parts[3])
-		expectedLen := 4 + 2*k + 2*q
-		if len(parts) != expectedLen {
-			fmt.Printf("test %d invalid number of values\n", idx)
-			os.Exit(1)
-		}
-		pos := 4
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d %d %d %d\n", n, m, k, q))
-		for i := 0; i < k; i++ {
-			sb.WriteString(fmt.Sprintf("%s %s\n", parts[pos], parts[pos+1]))
-			pos += 2
-		}
-		for i := 0; i < q; i++ {
-			sb.WriteString(fmt.Sprintf("%s %s\n", parts[pos], parts[pos+1]))
-			pos += 2
-		}
-		input := sb.String()
-		expected, err := runProg(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on test %d: %v\n", idx, err)
-			os.Exit(1)
-		}
-		got, err := runProg(bin, input)
-		if err != nil {
-			fmt.Printf("test %d: %v\n", idx, err)
-			os.Exit(1)
-		}
-		if got != expected {
-			fmt.Printf("test %d failed\nexpected: %s\n got: %s\n", idx, expected, got)
-			os.Exit(1)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
+	expected, err := runProg(oracle, input)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "oracle error: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+	got, err := runProg(bin, input)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "runtime error: %v\n", err)
+		os.Exit(1)
+	}
+	if got != expected {
+		fmt.Printf("mismatch\nexpected: %s\n got: %s\n", expected, got)
+		os.Exit(1)
+	}
+	fmt.Println("ok")
 }
