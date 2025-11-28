@@ -7,10 +7,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
-const refSourceC = "2000-2999/2000-2099/2040-2049/2046/2046C.go"
+const refSourceC = "2046C.go"
 
 type caseData struct {
 	points [][2]int64
@@ -34,7 +35,13 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, err := buildReference(refSourceC)
+	refPath, err := resolveReferencePath(refSourceC)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to find reference source: %v\n", err)
+		os.Exit(1)
+	}
+
+	refBin, err := buildReference(refPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
 		os.Exit(1)
@@ -86,6 +93,23 @@ func main() {
 	}
 
 	fmt.Printf("All %d tests passed\n", len(tests))
+}
+
+func resolveReferencePath(name string) (string, error) {
+	// First, try relative to the current working directory.
+	if _, err := os.Stat(name); err == nil {
+		return filepath.Abs(name)
+	}
+
+	// Fall back to the directory where this verifier source resides.
+	if _, currentFile, _, ok := runtime.Caller(0); ok {
+		candidate := filepath.Join(filepath.Dir(currentFile), name)
+		if _, err := os.Stat(candidate); err == nil {
+			return filepath.Abs(candidate)
+		}
+	}
+
+	return "", fmt.Errorf("reference source %s not found", name)
 }
 
 func buildReference(source string) (string, error) {
