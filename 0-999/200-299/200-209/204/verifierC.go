@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"sort"
 	"strings"
 )
@@ -86,7 +87,7 @@ func solveC(a, b string) string {
 		}
 	}
 	div := float64(n) * float64(n+1) * float64(2*n+1) / 6.0
-	return fmt.Sprintf("%.10f", res/div)
+	return fmt.Sprintf("%.20f", res/div)
 }
 
 func generateTests() []testCase {
@@ -123,10 +124,42 @@ func main() {
 			fmt.Printf("test %d: execution failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if out != expect {
-			fmt.Printf("test %d failed: expected %q got %q\n", i+1, expect, out)
+		expectVal, err := strconv.ParseFloat(expect, 64)
+		if err != nil {
+			fmt.Printf("test %d: failed to parse expected value %q: %v\n", i+1, expect, err)
+			os.Exit(1)
+		}
+		outVal, err := strconv.ParseFloat(out, 64)
+		if err != nil {
+			fmt.Printf("test %d: failed to parse actual value %q: %v\n", i+1, out, err)
+			os.Exit(1)
+		}
+
+		if !isClose(expectVal, outVal, 1e-9) {
+			fmt.Printf("test %d failed: expected %.20f got %.20f\n", i+1, expectVal, outVal)
 			os.Exit(1)
 		}
 	}
 	fmt.Println("All tests passed")
+}
+
+func isClose(a, b, epsilon float64) bool {
+	return (a == b) || (abs(a-b) <= epsilon * max(1.0, abs(a), abs(b)))
+}
+
+func abs(x float64) float64 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func max(args ...float64) float64 {
+	m := args[0]
+	for _, val := range args {
+		if val > m {
+			m = val
+		}
+	}
+	return m
 }

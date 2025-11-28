@@ -1,12 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 func expected(a, b string) string {
@@ -21,13 +22,7 @@ func expected(a, b string) string {
 	return "NO"
 }
 
-func runCase(bin string, line string, idx int) error {
-	fields := strings.Fields(line)
-	if len(fields) != 2 {
-		return fmt.Errorf("test %d: need two strings", idx)
-	}
-	a := fields[0]
-	b := fields[1]
+func runCase(bin string, a, b string, idx int) error {
 	input := a + "\n" + b + "\n"
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
@@ -45,34 +40,53 @@ func runCase(bin string, line string, idx int) error {
 	return nil
 }
 
+func generateString(rng *rand.Rand, n int, forceZero bool) string {
+	b := make([]byte, n)
+	for i := 0; i < n; i++ {
+		if forceZero {
+			b[i] = '0'
+		} else {
+			if rng.Intn(2) == 0 {
+				b[i] = '0'
+			} else {
+				b[i] = '1'
+			}
+		}
+	}
+	return string(b)
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesC.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "cannot open testcasesC.txt: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	for i := 1; i <= 100; i++ {
+		n := rng.Intn(50) + 1
+		m := n
+		// 10% chance of different lengths
+		if rng.Intn(10) == 0 {
+			m = rng.Intn(50) + 1
+			if m == n {
+				m++
+			}
 		}
-		idx++
-		if err := runCase(bin, line, idx); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
+
+		// Generate A and B with some probability of being all zeros
+		isZeroA := rng.Intn(5) == 0
+		a := generateString(rng, n, isZeroA)
+
+		isZeroB := rng.Intn(5) == 0
+		b := generateString(rng, m, isZeroB)
+
+		if err := runCase(bin, a, b, i); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\nInput:\n%s\n%s\n", i, err, a, b)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Println("All 100 tests passed")
 }

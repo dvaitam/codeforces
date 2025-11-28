@@ -11,85 +11,44 @@ import (
 )
 
 func solve(n, m int, grid [][]byte) int64 {
-	up := make([][]int, n)
-	down := make([][]int, n)
-	right := make([][]int, n)
-	for i := 0; i < n; i++ {
-		up[i] = make([]int, m)
-		down[i] = make([]int, m)
-		right[i] = make([]int, m)
-	}
-	for j := 0; j < m; j++ {
-		for i := 0; i < n; i++ {
-			if i > 0 && grid[i][j] == grid[i-1][j] {
-				up[i][j] = up[i-1][j] + 1
-			} else {
-				up[i][j] = 1
-			}
-		}
-	}
-	for j := 0; j < m; j++ {
-		for i := n - 1; i >= 0; i-- {
-			if i+1 < n && grid[i][j] == grid[i+1][j] {
-				down[i][j] = down[i+1][j] + 1
-			} else {
-				down[i][j] = 1
-			}
-		}
-	}
-	for i := 0; i < n; i++ {
-		for j := m - 1; j >= 0; j-- {
-			if j+1 < m && grid[i][j] == grid[i][j+1] {
-				right[i][j] = right[i][j+1] + 1
-			} else {
-				right[i][j] = 1
-			}
-		}
-	}
 	var ans int64
-	for j := 0; j < m; j++ {
-		for i := 0; i < n; i++ {
-			h2 := up[i][j]
-			midEnd := i
-			topEnd := midEnd - h2
-			if topEnd < 0 {
-				continue
-			}
-			botStart := midEnd + 1
-			if botStart >= n {
-				continue
-			}
-			h1 := up[topEnd][j]
-			h3 := down[botStart][j]
-			c2 := grid[midEnd][j]
-			c1 := grid[topEnd][j]
-			c3 := grid[botStart][j]
-			if c1 == c2 || c2 == c3 {
-				continue
-			}
-			h := h2
-			if h1 < h {
-				h = h1
-			}
-			if h3 < h {
-				h = h3
-			}
-			minW := m
-			for u := 0; u < h; u++ {
-				rTop := topEnd - u
-				if right[rTop][j] < minW {
-					minW = right[rTop][j]
-				}
-				rMid := midEnd - u
-				if right[rMid][j] < minW {
-					minW = right[rMid][j]
-				}
-				rBot := botStart + u
-				if right[rBot][j] < minW {
-					minW = right[rBot][j]
+	for r := 0; r < n; r++ {
+		for c := 0; c < m; c++ {
+			// Try every possible stripe height h >= 1
+			for h := 1; r+3*h <= n; h++ {
+				// Try every possible width w >= 1
+				for w := 1; c+w <= m; w++ {
+					// Check if this h x w flag is valid
+					valid := true
+					
+					// Colors of the three stripes
+					c1 := grid[r][c]
+					c2 := grid[r+h][c]
+					c3 := grid[r+2*h][c]
+					
+					if c1 == c2 || c2 == c3 {
+						valid = false
+					} else {
+						for i := 0; i < h; i++ {
+							for j := 0; j < w; j++ {
+								if grid[r+i][c+j] != c1 ||
+								   grid[r+h+i][c+j] != c2 ||
+								   grid[r+2*h+i][c+j] != c3 {
+									valid = false
+									break
+								}
+							}
+							if !valid {
+								break
+							}
+						}
+					}
+					
+					if valid {
+						ans++
+					}
 				}
 			}
-			ans += int64(minW)
 		}
 	}
 	return ans

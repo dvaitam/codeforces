@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -13,15 +15,15 @@ import (
 const mod = 1000000007
 
 func solveC(n, q, t int, arr []int, pairs [][2]int) int {
-	indegree := make([]int, n)
-	out := make([]int, n)
-	nxt := make([]int, n)
+	indegree := make([]int, n+1)
+	out := make([]int, n+1)
+	nxt := make([]int, n+1)
 	for i := range nxt {
-		nxt[i] = -1
+		nxt[i] = 0
 	}
-	prev := make([]int, n)
+	prev := make([]int, n+1)
 	for i := range prev {
-		prev[i] = -1
+		prev[i] = 0
 	}
 	for _, p := range pairs {
 		b := p[0]
@@ -34,67 +36,74 @@ func solveC(n, q, t int, arr []int, pairs [][2]int) int {
 		nxt[b] = c
 		prev[c] = b
 	}
-	visited := make([]bool, n)
-	weights := make([]int, 0, n)
-	C := 0
-	for i := 0; i < n; i++ {
-		if indegree[i] == 0 {
+	visited := make([]bool, n+1)
+	var weights []int
+	var totalOffset int64
+	
+	for i := 1; i <= n; i++ {
+		if indegree[i] == 0 && !visited[i] {
 			path := []int{}
-			cur := i
-			for cur != -1 {
-				path = append(path, cur)
-				visited[cur] = true
-				cur = nxt[cur]
+			curr := i
+			for curr != 0 && curr <= n && !visited[curr] {
+				visited[curr] = true
+				path = append(path, curr)
+				curr = nxt[curr]
 			}
+            
 			k := len(path)
-			prefix := make([]int, k)
-			sum := 0
-			for j, v := range path {
-				sum += arr[v]
-				prefix[j] = sum
+			
+			for j := 0; j < k; j++ {
+				idx := path[j]
+				totalOffset += int64(arr[idx]) * int64(j)
 			}
-			weights = append(weights, prefix...)
-			for j, v := range path {
-				C += (k - 1 - j) * arr[v]
+
+			suffixSum := 0
+			for j := k - 1; j >= 0; j-- {
+				suffixSum += arr[path[j]]
+				weights = append(weights, suffixSum)
 			}
 		}
 	}
-	for i := 0; i < n; i++ {
+
+	for i := 1; i <= n; i++ {
 		if !visited[i] {
 			return 0
 		}
 	}
-	T := t - C
-	if T < 0 {
+
+	target := t - int(totalOffset)
+	if target < 0 {
 		return 0
 	}
-	dp := make([]int, T+1)
+	
+	dp := make([]int, target+1)
 	dp[0] = 1
+
 	for _, w := range weights {
-		for s := w; s <= T; s++ {
-			dp[s] += dp[s-w]
+		for s := w; s <= target; s++ {
+			dp[s] = (dp[s] + dp[s-w]) % mod
 			if dp[s] >= mod {
 				dp[s] -= mod
 			}
 		}
 	}
-	return dp[T]
+	return dp[target]
 }
 
 func generateCase(rng *rand.Rand) (string, int) {
-	n := rng.Intn(6) + 1
+	n := rng.Intn(298) + 2 // N between 2 and 300
 	q := rng.Intn(n + 1)
-	t := rng.Intn(50) + 1
-	arr := make([]int, n)
-	for i := range arr {
-		arr[i] = rng.Intn(10) + 1
+	t := rng.Intn(100000) + 1 // T between 1 and 100,000
+	arr := make([]int, n+1) // 1-based indexing for coins
+	for i := 1; i <= n; i++ {
+		arr[i] = rng.Intn(100000) + 1 // coin values up to 10^5
 	}
 	usedB := make(map[int]bool)
 	usedC := make(map[int]bool)
 	pairs := make([][2]int, 0, q)
 	for len(pairs) < q {
-		b := rng.Intn(n)
-		c := rng.Intn(n)
+		b := rng.Intn(n) + 1 // 1-based node ID
+		c := rng.Intn(n) + 1 // 1-based node ID
 		if b == c || usedB[b] || usedC[c] {
 			continue
 		}
@@ -104,32 +113,33 @@ func generateCase(rng *rand.Rand) (string, int) {
 	}
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d %d %d\n", n, q, t))
-	for i, v := range arr {
-		if i > 0 {
-			sb.WriteByte(' ')
+	for i := 1; i <= n; i++ {
+		if i > 1 {
+			sb.WriteString(" ")
 		}
-		sb.WriteString(fmt.Sprint(v))
+		sb.WriteString(strconv.Itoa(arr[i]))
 	}
 	sb.WriteString("\n")
 	for _, p := range pairs {
-		sb.WriteString(fmt.Sprintf("%d %d\n", p[0]+1, p[1]+1))
+		sb.WriteString(fmt.Sprintf("%d %d\n", p[0], p[1]))
 	}
 	ans := solveC(n, q, t, arr, pairs)
 	return sb.String(), ans
 }
 
 func runCase(bin, input string, exp int) error {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second) // Increased timeout
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("timeout (1s): potential infinite loop or too slow")
+		}
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
 	var val int
@@ -143,11 +153,15 @@ func runCase(bin, input string, exp int) error {
 }
 
 func main() {
-	if len(os.Args) != 2 {
+	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "--" {
+		args = args[1:]
+	}
+	if len(args) != 1 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
+	bin := args[0]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		in, exp := generateCase(rng)

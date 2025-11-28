@@ -4,70 +4,71 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 )
 
-const limit int64 = 1e18
-
 func main() {
-	reader := bufio.NewReader(os.Stdin)
-	writer := bufio.NewWriter(os.Stdout)
-	defer writer.Flush()
-
-	var n int64
-	fmt.Fscan(reader, &n)
-	var k string
-	fmt.Fscan(reader, &k)
-
-	s := k
-	L := len(s)
-	pow := make([]int64, L+1)
-	pow[0] = 1
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
+	
+	scanner.Scan()
+	nStr := scanner.Text()
+	n, _ := strconv.ParseUint(nStr, 10, 64)
+	
+	scanner.Scan()
+	k := scanner.Text()
+	
+	L := len(k)
+	// dp[i] stores the minimum value x such that converting x to base n 
+	// yields the prefix k[0...i-1]
+	dp := make([]uint64, L+1)
+	
+	// Initialize with max uint64 (infinity representation)
 	for i := 1; i <= L; i++ {
-		if pow[i-1] > limit/n {
-			pow[i] = limit + 1
-		} else {
-			pow[i] = pow[i-1] * n
-			if pow[i] > limit {
-				pow[i] = limit + 1
-			}
-		}
+		dp[i] = ^uint64(0)
 	}
-
-	dp := make([]map[int]int64, L+1)
-	dp[L] = map[int]int64{0: 0}
-
-	for pos := L - 1; pos >= 0; pos-- {
-		dp[pos] = make(map[int]int64)
-		var val int64
-		for length := 1; length <= 9 && pos+length <= L; length++ {
-			if length > 1 && s[pos] == '0' {
+	dp[0] = 0
+	
+	for i := 1; i <= L; i++ {
+		// Try to form the last digit from k[j:i]
+		for j := i - 1; j >= 0; j-- {
+			// A base-n digit cannot have a leading zero unless it is "0"
+			if k[j] == '0' && (i-j) > 1 {
+				continue
+			}
+			
+			// Optimization: if substring is too long, it will exceed uint64 or n
+			if (i - j) > 20 {
 				break
 			}
-			digit := int64(s[pos+length-1] - '0')
-			val = val*10 + digit
-			if val >= n {
+			
+			// Parse current digit candidate
+			val, err := strconv.ParseUint(k[j:i], 10, 64)
+			// If parse fails (overflow) or value is not a valid digit in base n, stop extending
+			if err != nil || val >= n {
 				break
 			}
-			for d, nextVal := range dp[pos+length] {
-				if pow[d] > limit/val {
+			
+			// If prefix k[0...j] is valid
+			if dp[j] != ^uint64(0) {
+				prev := dp[j]
+				
+				// Check for overflow when computing: prev * n + val
+				if prev > (^uint64(0))/n {
 					continue
 				}
-				candidate := val*pow[d] + nextVal
-				if candidate > limit {
+				prod := prev * n
+				if prod > (^uint64(0)) - val {
 					continue
 				}
-				if cur, ok := dp[pos][d+1]; !ok || candidate < cur {
-					dp[pos][d+1] = candidate
+				newVal := prod + val
+				
+				if newVal < dp[i] {
+					dp[i] = newVal
 				}
 			}
 		}
 	}
-
-	ans := int64(-1)
-	for _, v := range dp[0] {
-		if ans == -1 || v < ans {
-			ans = v
-		}
-	}
-	fmt.Fprintln(writer, ans)
+	
+	fmt.Println(dp[L])
 }

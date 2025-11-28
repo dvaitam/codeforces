@@ -33,7 +33,11 @@ func generateCase(rng *rand.Rand) string {
 	digits := make([]int, length)
 	var sb strings.Builder
 	for i := 0; i < length; i++ {
-		digits[i] = rng.Intn(n)
+		if i == 0 && length > 1 {
+			digits[i] = rng.Intn(n-1) + 1
+		} else {
+			digits[i] = rng.Intn(n)
+		}
 		sb.WriteString(fmt.Sprintf("%d", digits[i]))
 	}
 	k := sb.String()

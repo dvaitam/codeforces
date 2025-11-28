@@ -38,9 +38,20 @@ func generateTests() []testCase {
 		n := rng.Intn(20) + 3
 		arrA := make([]int, n)
 		arrB := make([]int, n)
+		
+		seen := make(map[string]bool)
 		for j := 0; j < n; j++ {
-			arrA[j] = rng.Intn(5)
-			arrB[j] = rng.Intn(5)
+			for {
+				a := rng.Intn(n) + 1
+				b := rng.Intn(n) + 1
+				key := fmt.Sprintf("%d,%d", a, b)
+				if !seen[key] {
+					seen[key] = true
+					arrA[j] = a
+					arrB[j] = b
+					break
+				}
+			}
 		}
 		var sb strings.Builder
 		sb.WriteString("1\n")
@@ -55,12 +66,7 @@ func generateTests() []testCase {
 }
 
 func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -72,11 +78,15 @@ func run(bin, input string) (string, error) {
 }
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierD.go /path/to/binary")
+	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "--" {
+		args = args[1:]
+	}
+	if len(args) != 1 {
+		fmt.Printf("usage: go run verifierD.go /path/to/binary. Got args: %v\n", os.Args)
 		os.Exit(1)
 	}
-	bin := os.Args[1]
+	bin := args[0]
 	cases := generateTests()
 	for i, tc := range cases {
 		out, err := run(bin, tc.input)

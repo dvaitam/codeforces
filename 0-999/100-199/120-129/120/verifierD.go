@@ -15,17 +15,36 @@ import (
 
 func runBinary(path, input string) (string, error) {
 	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
+	var workDir string
+
+	if abs, err := filepath.Abs(path); err == nil {
+		workDir = filepath.Dir(abs)
+		cmd = exec.Command(abs)
+		cmd.Dir = workDir
 	} else {
 		cmd = exec.Command(path)
 	}
+
+	if workDir != "" {
+		inputFile := filepath.Join(workDir, "input.txt")
+		_ = os.WriteFile(inputFile, []byte(input), 0644)
+		defer os.Remove(inputFile)
+		defer os.Remove(filepath.Join(workDir, "output.txt"))
+	}
+
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	err := cmd.Run()
-	return out.String(), err
+
+	output := out.String()
+	if workDir != "" && strings.TrimSpace(output) == "" {
+		if content, _ := os.ReadFile(filepath.Join(workDir, "output.txt")); len(content) > 0 {
+			return string(content), err
+		}
+	}
+	return output, err
 }
 
 func expected(n, m int, grid [][]int, A, B, C int) string {

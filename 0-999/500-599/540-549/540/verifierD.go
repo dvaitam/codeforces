@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -49,22 +50,32 @@ func solveCase(r, s, p int) string {
 	return fmt.Sprintf("%.9f %.9f %.9f", rProb, sProb, pProb)
 }
 
+func isClose(a, b float64) bool {
+	const eps = 1e-9 // Problem requires 10^-9
+	absA, absB := math.Abs(a), math.Abs(b)
+	diff := math.Abs(a - b)
+
+	if diff <= eps {
+		return true
+	}
+	// Relative error
+	if diff <= eps*math.Max(absA, absB) {
+		return true
+	}
+	return false
+}
+
 func genCase(rng *rand.Rand) (string, string) {
-	r := rng.Intn(10) + 1
-	s := rng.Intn(10) + 1
-	p := rng.Intn(10) + 1
+	r := rng.Intn(100) + 1 // r,s,p up to 100
+	s := rng.Intn(100) + 1
+	p := rng.Intn(100) + 1
 	input := fmt.Sprintf("%d %d %d\n", r, s, p)
 	expected := solveCase(r, s, p)
 	return input, expected
 }
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+func runBinary(bin, input string) (string, error) {
+	cmd := exec.Command(bin) // Removed .go check
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -76,22 +87,46 @@ func run(bin, input string) (string, error) {
 }
 
 func main() {
-	if len(os.Args) != 2 {
+	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "--" {
+		args = args[1:]
+	}
+	if len(args) != 1 {
 		fmt.Println("usage: go run verifierD.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
+	bin := args[0]
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	const cases = 100
 	for i := 0; i < cases; i++ {
-		inp, expect := genCase(rng)
-		got, err := run(bin, inp)
+		inp, expectStr := genCase(rng)
+		gotStr, err := runBinary(bin, inp)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d: %v\n", i+1, err)
+			fmt.Fprintf(os.Stderr, "case %d: %v\ninput:%s", i+1, err, inp)
 			os.Exit(1)
 		}
-		if got != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed\nexpected: %s\ngot: %s\ninput:%s", i+1, expect, got, inp)
+
+		// Parse expected values
+		var eR, eS, eP float64
+		_, err = fmt.Sscanf(expectStr, "%f %f %f", &eR, &eS, &eP)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: failed to parse expected output %q: %v\n", i+1, expectStr, err)
+			os.Exit(1)
+		}
+
+		// Parse got values
+		var gR, gS, gP float64
+		_, err = fmt.Sscanf(gotStr, "%f %f %f", &gR, &gS, &gP)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: failed to parse candidate output %q: %v\n", i+1, gotStr, err)
+			os.Exit(1)
+		}
+
+		// Compare with tolerance
+		if !isClose(eR, gR) || !isClose(eS, gS) || !isClose(eP, gP) {
+			fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %.9f %.9f %.9f\ngot: %.12f %.12f %.12f\ninput:%s",
+				i+1, eR, eS, eP, gR, gS, gP, inp)
 			os.Exit(1)
 		}
 	}

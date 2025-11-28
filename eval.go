@@ -220,7 +220,7 @@ func main() {
 			tempBinAbs = builtBinAbs
 			if !buildSuccess {
 				if attempt == *maxAttempts {
-					verifierStderr = buildErrMsg
+					verifierStderr = sanitizeText(buildErrMsg)
 					break
 				}
 				fixPrompt := fmt.Sprintf("The following %s code has compilation errors: %s\n\nFix the errors and output only the corrected code with no comments or explanation.", lang, buildErrMsg)
@@ -236,8 +236,8 @@ func main() {
 
 			// Build succeeded, now verify
 			verifySuccess, vOut, vErr := runVerifier(verifierFile, tempBinAbs)
-			verifierStdout = vOut
-			verifierStderr = vErr
+			verifierStdout = sanitizeText(vOut)
+			verifierStderr = sanitizeText(vErr)
 			// Truncate verifier stdout/stderr to fit MySQL TEXT column (64KB limit)
 			const maxTextLen = 64000
 			if len(verifierStdout) > maxTextLen {
@@ -418,6 +418,13 @@ func buildSolution(code, language string) (bool, string, string) {
 	default:
 		return false, "unsupported language", ""
 	}
+}
+
+// sanitizeText strips NUL bytes and invalid UTF-8 to keep database inserts safe.
+func sanitizeText(s string) string {
+	clean := bytes.ReplaceAll([]byte(s), []byte{0}, []byte{})
+	clean = bytes.ToValidUTF8(clean, []byte{})
+	return string(clean)
 }
 
 func runVerifier(verifierFile, tempBinAbs string) (bool, string, string) {

@@ -18,8 +18,18 @@ type Cup struct {
 }
 
 func expected(n, m int, d int64, phys, info []Cup) int64 {
-	sort.Slice(phys, func(i, j int) bool { return phys[i].c > phys[j].c })
-	sort.Slice(info, func(i, j int) bool { return info[i].c > info[j].c })
+	sort.Slice(phys, func(i, j int) bool {
+		if phys[i].c == phys[j].c {
+			return phys[i].w < phys[j].w
+		}
+		return phys[i].c > phys[j].c
+	})
+	sort.Slice(info, func(i, j int) bool {
+		if info[i].c == info[j].c {
+			return info[i].w < info[j].w
+		}
+		return info[i].c > info[j].c
+	})
 	wp := make([]int64, n+1)
 	sp := make([]int64, n+1)
 	for i := 1; i <= n; i++ {

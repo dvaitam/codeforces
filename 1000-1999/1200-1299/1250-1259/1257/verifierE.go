@@ -26,10 +26,10 @@ func expected(owner []int) int {
 		}
 		newDp1 := dp1 + cost1
 		newDp2 := min(dp1, dp2) + cost2
-		newDp3 := min(dp2, dp3) + cost3
+		newDp3 := min(min(dp1, dp2), dp3) + cost3
 		dp1, dp2, dp3 = newDp1, newDp2, newDp3
 	}
-	return dp3
+	return min(dp1, min(dp2, dp3))
 }
 
 func min(a, b int) int {

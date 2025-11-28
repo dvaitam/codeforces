@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -16,13 +17,23 @@ type TestCase struct {
 	expect string
 }
 
-func runCandidate(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+func isClose(a, b float64) bool {
+	const eps = 1e-6 // Problem requires 10^-6
+	absA, absB := math.Abs(a), math.Abs(b)
+	diff := math.Abs(a - b)
+
+	if diff <= eps {
+		return true
 	}
+	// Relative error
+	if diff <= eps*math.Max(absA, absB) {
+		return true
+	}
+	return false
+}
+
+func runBinary(bin, input string) (string, error) {
+	cmd := exec.Command(bin) // Removed .go check
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -83,21 +94,40 @@ func genCase(rng *rand.Rand) TestCase {
 }
 
 func main() {
-	if len(os.Args) != 2 {
+	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "--" {
+		args = args[1:]
+	}
+	if len(args) != 1 {
 		fmt.Println("usage: go run verifierA.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
+	bin := args[0]
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		tc := genCase(rng)
-		out, err := runCandidate(bin, tc.input)
+		gotStr, err := runBinary(bin, tc.input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, tc.input)
 			os.Exit(1)
 		}
-		if out != tc.expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, tc.expect, out, tc.input)
+
+		// Parse expected and got values
+		var expectVal, gotVal float64
+		_, err = fmt.Sscan(tc.expect, &expectVal)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: failed to parse expected output %q: %v\n", i+1, tc.expect, err)
+			os.Exit(1)
+		}
+		_, err = fmt.Sscan(gotStr, &gotVal)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: failed to parse candidate output %q: %v\n", i+1, gotStr, err)
+			os.Exit(1)
+		}
+
+		if !isClose(expectVal, gotVal) {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, tc.expect, gotStr, tc.input)
 			os.Exit(1)
 		}
 	}

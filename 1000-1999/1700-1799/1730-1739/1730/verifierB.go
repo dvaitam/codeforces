@@ -1,22 +1,18 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func runCandidate(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errb bytes.Buffer
@@ -66,6 +62,35 @@ func isClose(a, b float64) bool {
 	return diff <= eps*maxAB
 }
 
+func generateCase(rng *rand.Rand) (string, int, []int, []int) {
+	n := rng.Intn(100) + 1
+	xs := make([]int, n)
+	ts := make([]int, n)
+	var sb strings.Builder
+	sb.WriteString("1\n")
+	sb.WriteString(strconv.Itoa(n))
+	sb.WriteString("\n")
+	
+	for i := 0; i < n; i++ {
+		xs[i] = rng.Intn(100000000)
+		if i > 0 {
+			sb.WriteString(" ")
+		}
+		sb.WriteString(strconv.Itoa(xs[i]))
+	}
+	sb.WriteString("\n")
+	
+	for i := 0; i < n; i++ {
+		ts[i] = rng.Intn(100000000)
+		if i > 0 {
+			sb.WriteString(" ")
+		}
+		sb.WriteString(strconv.Itoa(ts[i]))
+	}
+	sb.WriteString("\n")
+	return sb.String(), n, xs, ts
+}
+
 func main() {
 	arg := ""
 	if len(os.Args) == 2 {
@@ -77,43 +102,20 @@ func main() {
 		os.Exit(1)
 	}
 	bin := arg
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcasesB.txt: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		parts := strings.Fields(line)
-		if len(parts) < 1 {
-			fmt.Printf("test %d: invalid line\n", idx)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(parts[0])
-		if len(parts) != 1+2*n {
-			fmt.Printf("test %d: invalid number of values\n", idx)
-			os.Exit(1)
-		}
-		xs := make([]int, n)
-		ts := make([]int, n)
-		for i := 0; i < n; i++ {
-			xs[i], _ = strconv.Atoi(parts[1+i])
-		}
-		for i := 0; i < n; i++ {
-			ts[i], _ = strconv.Atoi(parts[1+n+i])
-		}
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	
+	for idx := 1; idx <= 100; idx++ {
+		input, n, xs, ts := generateCase(rng)
 		expect := expected(n, xs, ts)
-		input := fmt.Sprintf("1\n%d\n%s\n%s\n", n, strings.Join(parts[1:1+n], " "), strings.Join(parts[1+n:], " "))
+		
 		got, err := runCandidate(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx, err)
+			os.Exit(1)
+		}
+		if got == "" {
+			fmt.Printf("case %d failed: empty output\n", idx)
 			os.Exit(1)
 		}
 		gotVal, err := strconv.ParseFloat(strings.Fields(got)[0], 64)
@@ -123,12 +125,9 @@ func main() {
 		}
 		if !isClose(gotVal, expect) {
 			fmt.Printf("case %d failed: expected %.6f got %.8f\n", idx, expect, gotVal)
+			fmt.Printf("Input:\n%s\n", input)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "scanner error:", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All 100 tests passed\n")
 }
