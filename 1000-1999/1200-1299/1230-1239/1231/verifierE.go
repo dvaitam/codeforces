@@ -7,12 +7,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 )
-
-const refSource = "1000-1999/1200-1299/1230-1239/1231/1231E.go"
 
 type testCase struct {
 	name  string
@@ -73,7 +72,7 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	refPath, err := filepath.Abs(refSource)
+	refPath, err := referencePath()
 	if err != nil {
 		os.Remove(tmp.Name())
 		return "", err
@@ -86,6 +85,14 @@ func buildReference() (string, error) {
 		return "", fmt.Errorf("%v\n%s", err, string(out))
 	}
 	return tmp.Name(), nil
+}
+
+func referencePath() (string, error) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", fmt.Errorf("unable to determine caller path")
+	}
+	return filepath.Abs(filepath.Join(filepath.Dir(thisFile), "1231E.go"))
 }
 
 func runBinary(path, input string) (string, error) {
