@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -16,7 +17,11 @@ func buildRef() (string, error) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
 	}
-	return ref, nil
+	absRef, err := filepath.Abs(ref)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute path for reference: %v", err)
+	}
+	return absRef, nil
 }
 
 func run(bin, input string) (string, error) {
