@@ -95,7 +95,13 @@ func buildReference(source string) (string, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(source))
+	abspath, err := filepath.Abs(source)
+	if err != nil {
+		os.Remove(tmp.Name())
+		return "", err
+	}
+
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), abspath)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
