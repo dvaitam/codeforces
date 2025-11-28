@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -18,7 +19,11 @@ func buildRef() (string, error) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
 	}
-	return ref, nil
+	abspath, err := filepath.Abs(ref)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve reference path: %v", err)
+	}
+	return abspath, nil
 }
 
 func runExe(bin, input string) (string, error) {
