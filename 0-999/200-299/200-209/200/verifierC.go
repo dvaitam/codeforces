@@ -11,6 +11,109 @@ import (
 	"strings"
 )
 
+const testcasesC = `20
+A B 5:5
+A C 2:2
+BERLAND C 4:1
+B C 4:0
+BERLAND B 4:5
+BERLAND B 4:3
+BERLAND C 4:2
+A B 0:0
+B C 2:3
+A C 2:3
+A C 1:1
+BERLAND A 0:1
+A B 2:1
+BERLAND C 1:4
+B C 4:2
+BERLAND A 5:4
+A B 2:4
+A C 2:2
+BERLAND B 3:1
+B C 3:5
+BERLAND A 3:4
+A B 4:2
+B C 5:3
+BERLAND B 3:2
+A C 4:5
+BERLAND B 2:5
+BERLAND A 1:4
+A B 2:3
+B C 2:2
+A C 5:4
+A B 3:4
+BERLAND A 2:5
+BERLAND B 4:0
+A C 2:5
+B C 0:1
+BERLAND B 2:4
+A C 1:5
+A B 0:4
+B C 1:2
+BERLAND A 1:1
+A B 2:1
+BERLAND C 1:5
+B C 0:0
+BERLAND B 0:0
+A C 0:0
+A C 1:5
+B C 1:4
+BERLAND B 5:0
+A B 3:4
+BERLAND A 0:1
+A B 2:2
+A C 3:0
+BERLAND C 2:3
+B C 4:4
+BERLAND B 5:0
+A B 0:5
+BERLAND A 5:2
+B C 0:0
+BERLAND C 3:1
+A C 4:4
+B C 2:2
+BERLAND C 4:3
+BERLAND A 5:0
+A B 5:4
+A C 1:5
+BERLAND C 1:0
+B C 3:5
+A C 1:4
+BERLAND B 5:0
+A B 1:1
+A B 4:1
+B C 4:4
+BERLAND B 5:2
+BERLAND A 2:5
+A C 3:2
+A B 3:1
+A C 0:4
+B C 5:0
+BERLAND B 1:0
+BERLAND A 0:0
+B C 4:5
+A B 3:3
+A C 2:4
+BERLAND B 5:3
+BERLAND C 1:5
+BERLAND C 4:4
+BERLAND B 0:3
+A B 4:4
+B C 1:0
+A C 5:3
+A C 2:5
+BERLAND C 2:2
+A B 0:5
+B C 3:0
+BERLAND A 0:2
+A B 5:3
+BERLAND C 3:1
+B C 4:4
+A C 0:0
+BERLAND B 2:0
+`
+
 type Team struct {
 	name     string
 	points   int
@@ -116,11 +219,7 @@ func main() {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesC.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesC.txt:", err)
-		os.Exit(1)
-	}
+	data := []byte(testcasesC)
 	scanLines := bufio.NewScanner(bytes.NewReader(data))
 	if !scanLines.Scan() {
 		fmt.Println("bad file")
