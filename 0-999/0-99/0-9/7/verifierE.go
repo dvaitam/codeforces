@@ -11,6 +11,207 @@ import (
 	"unicode"
 )
 
+const testcasesE = `1
+#define A0 y-1*y
+z
+
+3
+#define A0 x
+#define A1 z-2/y/y
+#define A2 8*x*4
+y*z
+
+3
+#define A0 x-z-9+z
+#define A1 2+8+3
+#define A2 x
+x
+
+3
+#define A0 y-y+2
+#define A1 1/6/y
+#define A2 z/z*4
+x*z-z
+
+0
+6*8+1
+
+2
+#define A0 x*6
+#define A1 1
+9-5+z
+
+0
+x+3/z
+
+2
+#define A0 9
+#define A1 z*2
+y/y
+
+3
+#define A0 4
+#define A1 z
+#define A2 z*z
+z-x-z
+
+3
+#define A0 x+1+y
+#define A1 9
+#define A2 y
+2
+
+1
+#define A0 3
+y/5
+
+0
+x
+
+0
+8-x*y
+
+2
+#define A0 7
+#define A1 6/1
+8/z/7*8
+
+3
+#define A0 9
+#define A1 y
+#define A2 1
+y/z
+
+0
+1/4/2
+
+1
+#define A0 x+z*z
+z
+
+1
+#define A0 z
+3
+
+0
+4
+
+3
+#define A0 6/y/4-y
+#define A1 z/x-2/8
+#define A2 x
+9-7*z
+
+2
+#define A0 7
+#define A1 x
+x
+
+3
+#define A0 y/z+y
+#define A1 4+z-x-y
+#define A2 5*1+2
+y
+
+0
+z
+
+2
+#define A0 7
+#define A1 8
+x
+
+2
+#define A0 8
+#define A1 6/y*z
+y
+
+0
+5-z+x+8
+
+1
+#define A0 y-z+3
+9
+
+3
+#define A0 7
+#define A1 8
+#define A2 y/y*x
+2/z/4
+
+1
+#define A0 4*3*5
+y
+
+3
+#define A0 y
+#define A1 y/z+1
+#define A2 9-x*9+y
+2+x/2
+
+0
+z-1*z
+
+0
+y+y
+
+1
+#define A0 2/8/8
+1
+
+2
+#define A0 9
+#define A1 1
+8+1-7
+
+1
+#define A0 8
+y
+
+3
+#define A0 1
+#define A1 8
+#define A2 x
+4
+
+1
+#define A0 2
+8/y*6
+
+2
+#define A0 x
+#define A1 2+y
+y
+
+1
+#define A0 8+z/z
+7
+
+0
+y*7*7/8
+
+2
+#define A0 z+y/x
+#define A1 z
+1
+
+0
+z
+
+2
+#define A0 2+8
+#define A1 x-1-5
+z-9+x
+
+0
+y+4
+
+3
+#define A0 8/y*9+5
+#define A1 2
+#define A2 2-x-y
+4`
+
 type Node struct {
 	op    rune
 	val   string
@@ -230,12 +431,7 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesE.txt")
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesE))
 	idx := 0
 	var lines []string
 	for scanner.Scan() {
