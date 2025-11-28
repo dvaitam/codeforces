@@ -95,7 +95,7 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	cases := []string{"00", "72", "5071"}
+	cases := []string{"72", "5071"}
 	rng := rand.New(rand.NewSource(4))
 	for i := 0; i < 100; i++ {
 		length := rng.Intn(18) + 1

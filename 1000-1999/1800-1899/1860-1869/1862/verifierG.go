@@ -129,7 +129,18 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Runtime error on case %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != want {
+		wantFields := strings.Fields(want)
+		gotFields := strings.Fields(got)
+		match := len(wantFields) == len(gotFields)
+		if match {
+			for k, w := range wantFields {
+				if w != gotFields[k] {
+					match = false
+					break
+				}
+			}
+		}
+		if !match {
 			fmt.Fprintf(os.Stderr, "Wrong answer on case %d\nInput:\n%sExpected:\n%s\nGot:\n%s\n", i+1, tc, want, got)
 			os.Exit(1)
 		}

@@ -1,26 +1,19 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func compileRef() (string, error) {
-	bin := filepath.Join(os.TempDir(), "1141F1_ref")
-	cmd := exec.Command("go", "build", "-o", bin, "1141F1.go")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("compile reference: %v\n%s", err, out)
-	}
-	return bin, nil
-}
-
+// Run candidate solution
 func run(bin, input string) (string, error) {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
@@ -31,11 +24,44 @@ func run(bin, input string) (string, error) {
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("%v\n%s", err, out.String())
+		return "", fmt.Errorf("execution error: %v", err)
 	}
-	return strings.TrimSpace(out.String()), nil
+	return out.String(), nil
+}
+
+// Correct solver for F1 (N <= 50)
+func solveCorrect(n int, a []int) int {
+	type Interval struct{ l, r int }
+	bySum := make(map[int][]Interval)
+	for i := 0; i < n; i++ {
+		sum := 0
+		for j := i; j < n; j++ {
+			sum += a[j]
+			bySum[sum] = append(bySum[sum], Interval{i + 1, j + 1})
+		}
+	}
+
+	maxK := 0
+	for _, intervals := range bySum {
+		// Greedy interval scheduling
+		sort.Slice(intervals, func(i, j int) bool {
+			return intervals[i].r < intervals[j].r
+		})
+		count := 0
+		lastR := -1
+		for _, iv := range intervals {
+			if iv.l > lastR {
+				count++
+				lastR = iv.r
+			}
+		}
+		if count > maxK {
+			maxK = count
+		}
+	}
+	return maxK
 }
 
 func genCase(rng *rand.Rand) string {
@@ -53,34 +79,121 @@ func genCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
+func verify(n int, a []int, output string, expectedK int) error {
+	sc := bufio.NewScanner(strings.NewReader(output))
+	sc.Split(bufio.ScanWords)
+
+	if !sc.Scan() {
+		return fmt.Errorf("no output produced")
+	}
+	kStr := sc.Text()
+	k, err := strconv.Atoi(kStr)
+	if err != nil {
+		return fmt.Errorf("invalid k: %v", err)
+	}
+
+	if k != expectedK {
+		return fmt.Errorf("expected k=%d, got k=%d", expectedK, k)
+	}
+
+	if k == 0 {
+		return nil
+	}
+
+	type Seg struct{ l, r int }
+	var segs []Seg
+
+	for i := 0; i < k; i++ {
+		if !sc.Scan() {
+			return fmt.Errorf("expected l for segment %d", i+1)
+		}
+		lStr := sc.Text()
+		if !sc.Scan() {
+			return fmt.Errorf("expected r for segment %d", i+1)
+		}
+		rStr := sc.Text()
+		l, err := strconv.Atoi(lStr)
+		if err != nil {
+			return fmt.Errorf("invalid l: %v", err)
+		}
+		r, err := strconv.Atoi(rStr)
+		if err != nil {
+			return fmt.Errorf("invalid r: %v", err)
+		}
+
+		if l < 1 || r > n || l > r {
+			return fmt.Errorf("invalid segment boundaries: %d %d (n=%d)", l, r, n)
+		}
+		segs = append(segs, Seg{l, r})
+	}
+
+	// Check overlap
+	sort.Slice(segs, func(i, j int) bool {
+		return segs[i].l < segs[j].l
+	})
+
+	for i := 0; i < k-1; i++ {
+		if segs[i].r >= segs[i+1].l {
+			return fmt.Errorf("overlapping segments: [%d, %d] and [%d, %d]", segs[i].l, segs[i].r, segs[i+1].l, segs[i+1].r)
+		}
+	}
+
+	// Check sums equality
+	// Calculate sum of first segment
+	targetSum := 0
+	for i := segs[0].l - 1; i < segs[0].r; i++ {
+		targetSum += a[i]
+	}
+
+	for i := 1; i < k; i++ {
+		s := 0
+		for j := segs[i].l - 1; j < segs[i].r; j++ {
+			s += a[j]
+		}
+		if s != targetSum {
+			return fmt.Errorf("segment sums mismatch: seg #1 sum=%d, seg %d sum=%d", targetSum, i+1, s)
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierF1.go /path/to/binary")
 		os.Exit(1)
 	}
 	candidate := os.Args[1]
-	ref, err := compileRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
 	for i := 0; i < 100; i++ {
-		input := genCase(rng)
-		want, err := run(ref, input)
+		inputStr := genCase(rng)
+
+		// Parse input to pass to solver
+		var n int
+		var a []int
+		{
+			sc := bufio.NewScanner(strings.NewReader(inputStr))
+			sc.Split(bufio.ScanWords)
+			sc.Scan()
+			n, _ = strconv.Atoi(sc.Text())
+			a = make([]int, n)
+			for j := 0; j < n; j++ {
+				sc.Scan()
+				a[j], _ = strconv.Atoi(sc.Text())
+			}
+		}
+
+		expectedK := solveCorrect(n, a)
+		gotStr, err := run(candidate, inputStr)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failure: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Test %d failed execution: %v\nInput:\n%s", i+1, err, inputStr)
 			os.Exit(1)
 		}
-		got, err := run(candidate, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d runtime error: %v\ninput:\n%s", i+1, err, input)
-			os.Exit(1)
-		}
-		if got != want {
-			fmt.Fprintf(os.Stderr, "case %d failed\ninput:\n%sexpected:%s\ngot:%s\n", i+1, input, want, got)
+
+		if err := verify(n, a, gotStr, expectedK); err != nil {
+			fmt.Fprintf(os.Stderr, "Test %d failed.\nInput:\n%s\nError: %v\nOutput:\n%s\n", i+1, inputStr, err, gotStr)
 			os.Exit(1)
 		}
 	}

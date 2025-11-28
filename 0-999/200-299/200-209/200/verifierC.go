@@ -235,33 +235,26 @@ func main() {
 		}
 		cases[i] = lines
 	}
-	expected := make([]string, t)
+	
 	for i, lns := range cases {
-		expected[i] = compute(lns)
-	}
-	cmd := exec.Command(os.Args[1])
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println("execution failed:", err)
-		os.Exit(1)
-	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
-	for i := 0; i < t; i++ {
-		if !outScan.Scan() {
-			fmt.Printf("missing output for test %d\n", i+1)
+		expected := compute(lns)
+		inputData := strings.Join(lns, "\n") + "\n"
+		
+		cmd := exec.Command(os.Args[1])
+		cmd.Stdin = strings.NewReader(inputData)
+		out, err := cmd.CombinedOutput()
+		
+		if err != nil {
+			fmt.Printf("test %d execution failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		got := outScan.Text()
-		if got != expected[i] {
-			fmt.Printf("test %d failed: expected %s got %s\n", i+1, expected[i], got)
+		
+		got := strings.TrimSpace(string(out))
+		if got != expected {
+			fmt.Printf("test %d failed: expected %s got %s\n", i+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
-		os.Exit(1)
-	}
+
 	fmt.Println("All tests passed!")
 }

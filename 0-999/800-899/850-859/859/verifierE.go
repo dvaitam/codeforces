@@ -17,96 +17,107 @@ type CaseE struct {
 	expected int
 }
 
+// Reference solver based on DSU
 func solveE(n int, pairs [][2]int) int {
-	seatIndex := make(map[int]int)
-	idx := 0
+	// Map coordinates to 1..limit to handle potentially sparse (though generator makes them dense)
+	// Actually generator guarantees 1..2n.
+	// Max coordinate
+	maxCoord := 0
 	for _, p := range pairs {
-		if _, ok := seatIndex[p[0]]; !ok {
-			seatIndex[p[0]] = idx
-			idx++
+		if p[0] > maxCoord {
+			maxCoord = p[0]
 		}
-		if _, ok := seatIndex[p[1]]; !ok {
-			seatIndex[p[1]] = idx
-			idx++
+		if p[1] > maxCoord {
+			maxCoord = p[1]
 		}
 	}
-	m := idx
-	parent := make([]int, n+m)
-	size := make([]int, n+m)
-	for i := range parent {
+
+	parent := make([]int, maxCoord+1)
+	sz := make([]int, maxCoord+1)
+	hasLoop := make([]bool, maxCoord+1)
+	selfLoop := make([]bool, maxCoord+1)
+	
+	for i := 1; i <= maxCoord; i++ {
 		parent[i] = i
-		size[i] = 1
+		sz[i] = 1
 	}
+
 	var find func(int) int
-	find = func(x int) int {
-		for parent[x] != x {
-			parent[x] = parent[parent[x]]
-			x = parent[x]
+	find = func(i int) int {
+		if parent[i] == i {
+			return i
 		}
-		return x
+		parent[i] = find(parent[i])
+		return parent[i]
 	}
-	union := func(a, b int) {
-		a = find(a)
-		b = find(b)
-		if a == b {
-			return
-		}
-		if size[a] < size[b] {
-			a, b = b, a
-		}
-		parent[b] = a
-		size[a] += size[b]
-	}
-	for i, p := range pairs {
-		union(i, n+seatIndex[p[0]])
-		union(i, n+seatIndex[p[1]])
-	}
-	type comp struct {
-		t, s int
-		self bool
-	}
-	comps := make(map[int]*comp)
-	for i, p := range pairs {
-		r := find(i)
-		if comps[r] == nil {
-			comps[r] = &comp{}
-		}
-		c := comps[r]
-		c.t++
-		if p[0] == p[1] {
-			c.self = true
+
+	union := func(i, j int) {
+		rootI := find(i)
+		rootJ := find(j)
+		if rootI != rootJ {
+			parent[rootI] = rootJ
+			sz[rootJ] += sz[rootI]
+			if hasLoop[rootI] { hasLoop[rootJ] = true }
+			if hasLoop[rootJ] { hasLoop[rootJ] = true } // redundant but clear
+			if selfLoop[rootI] { selfLoop[rootJ] = true }
+			if selfLoop[rootJ] { selfLoop[rootJ] = true }
+		} else {
+			hasLoop[rootI] = true
 		}
 	}
-	for _, idx := range seatIndex {
-		r := find(n + idx)
-		if comps[r] == nil {
-			comps[r] = &comp{}
+
+	// Process edges
+	for _, p := range pairs {
+		u, v := p[0], p[1]
+		if u == v {
+			root := find(u)
+			hasLoop[root] = true
+			selfLoop[root] = true
+		} else {
+			union(u, v)
 		}
-		comps[r].s++
 	}
-	res := 1
-	for _, c := range comps {
-		if c.s == c.t+1 {
-			res = res * c.s % modE
-		} else if c.s == c.t {
-			if c.self {
-				res = res * 1 % modE
-			} else {
-				res = res * 2 % modE
+
+	// Calculate answer
+	ans := 1
+	
+	// Use map to collect unique roots for iteration
+	roots := make(map[int]bool)
+	for _, p := range pairs {
+		roots[find(p[0])] = true
+	}
+	
+	for r := range roots {
+		if hasLoop[r] {
+			if !selfLoop[r] {
+				ans = (ans * 2) % modE
 			}
+		} else {
+			ans = (ans * sz[r]) % modE
 		}
 	}
-	return res % modE
+	
+	return ans
 }
 
 func generateCaseE(rng *rand.Rand) CaseE {
 	n := rng.Intn(20) + 1
-	pairs := make([][2]int, n)
-	for i := range pairs {
-		x := rng.Intn(50) + 1
-		y := rng.Intn(50) + 1
-		pairs[i] = [2]int{x, y}
+	
+	// Generate distinct starting seats u from 1..2n
+	seats := rng.Perm(2 * n)
+	for i := range seats {
+		seats[i]++ // 1-based
 	}
+	
+	uList := seats[:n]
+	
+	pairs := make([][2]int, n)
+	for i := 0; i < n; i++ {
+		u := uList[i]
+		v := rng.Intn(2*n) + 1
+		pairs[i] = [2]int{u, v}
+	}
+	
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", n))
 	for _, p := range pairs {
@@ -145,15 +156,16 @@ func main() {
 		os.Exit(1)
 	}
 	exe := os.Args[1]
-	pairs := [][2]int{{1, 2}}
-	cases := []CaseE{{"1\n1 2\n", solveE(1, pairs)}}
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	
+	cases := make([]CaseE, 0, 100)
 	for i := 0; i < 100; i++ {
 		cases = append(cases, generateCaseE(rng))
 	}
+	
 	for i, tc := range cases {
 		if err := runCase(exe, tc.input, tc.expected); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:%s", i+1, err, tc.input)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, tc.input)
 			os.Exit(1)
 		}
 	}
