@@ -4,136 +4,23 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"unicode"
 )
 
-// Node represents an AST node: either leaf or binary op
-type Node struct {
-	op    rune   // '+', '-', '*', '/' for op nodes
-	val   string // for leaf: variable or number
-	left  *Node
-	right *Node
+const (
+	P_ADD  = 0 // +, -
+	P_MUL  = 1 // *, /
+	P_ATOM = 2 // ( ), var, num
+)
+
+type MacroInfo struct {
+	prio       int
+	suspicious bool
 }
 
-// parse expression into AST
-type parser struct {
-	tokens []string
-	pos    int
-}
+var macros map[string]MacroInfo
 
-func (p *parser) parseExpr() *Node {
-	node := p.parseTerm()
-	for p.pos < len(p.tokens) {
-		t := p.tokens[p.pos]
-		if t == "+" || t == "-" {
-			op := rune(t[0])
-			p.pos++
-			right := p.parseTerm()
-			node = &Node{op: op, left: node, right: right}
-			continue
-		}
-		break
-	}
-	return node
-}
-
-func (p *parser) parseTerm() *Node {
-	node := p.parseFactor()
-	for p.pos < len(p.tokens) {
-		t := p.tokens[p.pos]
-		if t == "*" || t == "/" {
-			op := rune(t[0])
-			p.pos++
-			right := p.parseFactor()
-			node = &Node{op: op, left: node, right: right}
-			continue
-		}
-		break
-	}
-	return node
-}
-
-func (p *parser) parseFactor() *Node {
-	if p.pos >= len(p.tokens) {
-		return nil
-	}
-	t := p.tokens[p.pos]
-	if t == "(" {
-		p.pos++
-		node := p.parseExpr()
-		if p.pos < len(p.tokens) && p.tokens[p.pos] == ")" {
-			p.pos++
-		}
-		return node
-	}
-	// leaf
-	p.pos++
-	return &Node{val: t}
-}
-
-// equal checks if two ASTs are identical
-func equal(a, b *Node) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	if a.op != 0 || b.op != 0 {
-		if a.op != b.op {
-			return false
-		}
-		return equal(a.left, b.left) && equal(a.right, b.right)
-	}
-	// both leaf
-	return a.val == b.val
-}
-
-// normalize flattens safe multiplication/division nodes by associativity where allowed
-func normalize(n *Node) *Node {
-	if n == nil {
-		return nil
-	}
-	if n.op == 0 {
-		return n
-	}
-	// normalize children first
-	n.left = normalize(n.left)
-	n.right = normalize(n.right)
-	// attempt to flatten patterns
-	for {
-		if (n.op == '*' || n.op == '/') && n.right != nil {
-			r := n.right
-			// check safe flattening condition: right child op is '*' or '/' and (n.op=='*' or (n.op=='/' and r.op=='*'))
-			if (r.op == '*' || r.op == '/') && (n.op == '*' || (n.op == '/' && r.op == '*')) {
-				A := n.left
-				B := r.left
-				C := r.right
-				// build new left node
-				var newLeft *Node
-				if n.op == '*' {
-					newLeft = &Node{op: '*', left: A, right: B}
-				} else {
-					newLeft = &Node{op: '/', left: A, right: B}
-				}
-				// determine new root op
-				if n.op == '*' && r.op == '*' {
-					n = &Node{op: '*', left: newLeft, right: C}
-				} else {
-					// cases: * followed by /, or / followed by *
-					n = &Node{op: '/', left: newLeft, right: C}
-				}
-				// normalize the new subtree
-				n.left = normalize(n.left)
-				n.right = normalize(n.right)
-				continue
-			}
-		}
-		break
-	}
-	return n
-}
-
-// tokenize splits into identifiers, numbers, operators, parentheses
 func tokenize(s string) []string {
 	var toks []string
 	i := 0
@@ -143,111 +30,200 @@ func tokenize(s string) []string {
 			i++
 			continue
 		}
-		if unicode.IsLetter(r) {
-			j := i + 1
-			for j < len(s) && unicode.IsLetter(rune(s[j])) {
-				j++
-			}
-			toks = append(toks, s[i:j])
-			i = j
-		} else if unicode.IsDigit(r) {
-			j := i + 1
-			for j < len(s) && unicode.IsDigit(rune(s[j])) {
-				j++
-			}
-			toks = append(toks, s[i:j])
-			i = j
-		} else if strings.ContainsRune("+-*/()", r) {
+		if strings.ContainsRune("+-*/()", r) {
 			toks = append(toks, string(r))
 			i++
 		} else {
-			// skip unknown
-			i++
+			j := i
+			for j < len(s) {
+				rj := rune(s[j])
+				if strings.ContainsRune("+-*/()", rj) || unicode.IsSpace(rj) {
+					break
+				}
+				j++
+			}
+			toks = append(toks, s[i:j])
+			i = j
 		}
 	}
 	return toks
 }
 
-var macros map[string]string
-
-// expandOrdTokens does ordinary macro expansion
-func expandOrdTokens(s string) []string {
-	toks := tokenize(s)
-	var res []string
-	for _, t := range toks {
-		if def, ok := macros[t]; ok {
-			inner := expandOrdTokens(def)
-			res = append(res, inner...)
-		} else {
-			res = append(res, t)
-		}
-	}
-	return res
+type parser struct {
+	toks []string
+	pos  int
+	err  bool
 }
 
-// expandSafeTokens expands macros with parentheses
-func expandSafeTokens(s string) []string {
-	toks := tokenize(s)
-	var res []string
-	for _, t := range toks {
-		if def, ok := macros[t]; ok {
-			res = append(res, "(")
-			inner := expandSafeTokens(def)
-			res = append(res, inner...)
-			res = append(res, ")")
+func (p *parser) peek() string {
+	if p.pos < len(p.toks) {
+		return p.toks[p.pos]
+	}
+	return ""
+}
+
+func (p *parser) next() string {
+	t := p.peek()
+	if t != "" {
+		p.pos++
+	}
+	return t
+}
+
+// expr: term { ('+'|'-') term }
+func (p *parser) parseExpr() int {
+	lhs := p.parseTerm()
+	if p.err {
+		return 0
+	}
+
+	for {
+		op := p.peek()
+		if op == "+" || op == "-" {
+			p.next()
+			rhs := p.parseTerm()
+			if p.err {
+				return 0
+			}
+
+			// Validity Check
+			if op == "-" {
+				// For A - B, B must be >= P_MUL (cannot have exposed + or -)
+				if rhs < P_MUL {
+					p.err = true
+					return 0
+				}
+			}
+			// For +, rhs >= P_ADD is sufficient (always true)
+
+			lhs = P_ADD
 		} else {
-			res = append(res, t)
+			break
 		}
 	}
-	return res
+	return lhs
+}
+
+// term: factor { ('*'|'/') factor }
+func (p *parser) parseTerm() int {
+	lhs := p.parseFactor()
+	if p.err {
+		return 0
+	}
+
+	for {
+		op := p.peek()
+		if op == "*" || op == "/" {
+			p.next()
+			rhs := p.parseFactor()
+			if p.err {
+				return 0
+			}
+
+			// Check LHS
+			if lhs < P_MUL {
+				p.err = true
+				return 0
+			}
+
+			// Check RHS
+			if op == "*" {
+				if rhs < P_MUL {
+					p.err = true
+					return 0
+				}
+			} else { // op == "/"
+				if rhs < P_ATOM {
+					p.err = true
+					return 0
+				}
+			}
+
+			lhs = P_MUL
+		} else {
+			break
+		}
+	}
+	return lhs
+}
+
+func (p *parser) parseFactor() int {
+	t := p.next()
+	if t == "(" {
+		p.parseExpr()
+		if p.peek() == ")" {
+			p.next()
+		}
+		if p.err {
+			return 0
+		}
+		return P_ATOM
+	}
+
+	// Identifier or Number
+	if val, ok := macros[t]; ok {
+		if val.suspicious {
+			p.err = true
+		}
+		return val.prio
+	}
+	return P_ATOM
 }
 
 func main() {
-	reader := bufio.NewReader(os.Stdin)
-	line, _ := reader.ReadString('\n')
-	line = strings.TrimSpace(line)
-	n, _ := strconv.Atoi(line)
-	macros = make(map[string]string)
+	scanner := bufio.NewScanner(os.Stdin)
+	if !scanner.Scan() {
+		return
+	}
+	var n int
+	fmt.Sscan(scanner.Text(), &n)
+
+	macros = make(map[string]MacroInfo)
+
 	for i := 0; i < n; i++ {
-		l, _ := reader.ReadString('\n')
-		l = strings.TrimSpace(l)
-		if l == "" {
-			i--
+		if !scanner.Scan() {
+			break
+		}
+		line := scanner.Text()
+		fullToks := tokenize(line)
+		
+		// Identify macro name
+		// Format: # define NAME ... or #define NAME ...
+		name := ""
+		exprStart := 0
+		
+		// Scan tokens to find "define" or "#define" then next is NAME
+		for k := 0; k < len(fullToks); k++ {
+			if fullToks[k] == "define" || fullToks[k] == "#define" {
+				if k+1 < len(fullToks) {
+					name = fullToks[k+1]
+					exprStart = k + 2
+				}
+				break
+			}
+		}
+		
+		if name == "" {
 			continue
 		}
-		fields := strings.Fields(l)
-		idx := 0
-		if fields[0] == "#" {
-			idx = 2 // # define
-		} else if fields[0] == "#define" {
-			idx = 1
-		} else {
-			// unexpected, skip
-		}
-		name := fields[idx]
-		expr := strings.Join(fields[idx+1:], "")
-		macros[name] = expr
+
+		exprToks := fullToks[exprStart:]
+		
+		p := &parser{toks: exprToks, pos: 0}
+		prio := p.parseExpr()
+		// Don't exit on error, just mark suspicious
+		macros[name] = MacroInfo{prio: prio, suspicious: p.err}
 	}
-	// read target expression
-	targ, _ := reader.ReadString('\n')
-	targ = strings.TrimSpace(targ)
-	// ordinary expansion
-	ordToks := expandOrdTokens(targ)
-	ord := strings.Join(ordToks, "")
-	// safe expansion
-	safeToks := expandSafeTokens(targ)
-	safe := strings.Join(safeToks, "")
-	// parse both
-	p1 := &parser{tokens: tokenize(ord)}
-	ast1 := p1.parseExpr()
-	p2 := &parser{tokens: tokenize(safe)}
-	ast2 := p2.parseExpr()
-	// normalize multiplication/division associativity where safe
-	ast1 = normalize(ast1)
-	ast2 = normalize(ast2)
-	if equal(ast1, ast2) {
-		fmt.Println("OK")
-	} else {
+
+	if !scanner.Scan() {
+		return
+	}
+	target := scanner.Text()
+	p := &parser{toks: tokenize(target), pos: 0}
+	p.parseExpr()
+	if p.err {
 		fmt.Println("Suspicious")
+	} else {
+		fmt.Println("OK")
 	}
 }
