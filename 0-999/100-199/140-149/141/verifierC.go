@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -11,17 +10,126 @@ import (
 	"strings"
 )
 
+// Embedded copy of testcasesC.txt so the verifier is self-contained.
+const testcasesRaw = `1 C 1
+2 ITG 2 S 2
+2 UMZX 2 ROQ 1
+1 L 1
+3 NQFR 1 HA 1 FEQ 2
+5 FOZNX 4 ZSL 2 FYMW 5 UQHP 2 QQZL 5
+4 LSXR 3 VHKW 1 IYPJJ 4 QQUTS 3
+3 PQ 2 CZKXA 1 B 0
+3 HVDYQ 1 HGB 3 B 2
+3 HV 0 D 0 B 0
+3 EFX 1 WAMSB 1 BA 2
+5 J 2 AJOR 4 I 3 WEPHC 5 DAO 1
+5 YMPQK 1 IIT 3 W 4 VB 2 E 1
+2 O 2 QW 0
+2 WO 0 CSH 2
+5 IVN 2 YAEBM 3 DQ 5 H 0 A 1
+2 G 0 VOOJR 2
+4 VY 1 NQAS 4 N 4 FDVZP 2
+1 DTLJW 1
+3 V 3 D 2 YV 0
+4 N 3 GSTC 0 ALJ 0 YP 1
+1 LMWOE 1
+4 I 0 C 4 UMG 0 T 3
+1 JLOE 1
+3 QPXX 3 VJMH 1 TIRN 0
+5 DCLFR 1 CZCV 5 E 2 HWVV 2 FQJD 1
+5 DKQH 5 IFFOW 1 LZYS 5 OO 5 Z 4
+4 MQ 0 IMIW 3 LRKW 0 RT 1
+4 UAKO 4 UFDA 3 XS 4 GDMR 1
+3 SGPZT 1 T 3 IQSF 3
+6 YC 2 P 4 Y 4 VKOI 4 ACTY 2 YY 6
+4 VUZ 1 F 3 OVJE 0 ROA 2
+1 MSOGV 1
+4 PW 4 CIK 2 UZJ 3 CQUGM 4
+5 ZQ 5 J 0 OR 1 IBDDV 3 GKL 0
+3 LFPO 2 EWOU 1 KFD 1
+4 YV 2 LE 1 IZ 4 MZXK 2
+6 QSWXK 5 YWWU 6 RTU 5 L 2 PFIL 3 CFKM 1
+1 L 0
+3 X 3 R 2 TM 2
+4 LK 1 DEZG 2 ENL 2 K 1
+2 XT 0 LUY 2
+1 FC 1
+4 EKQ 4 K 4 HBMY 3 TKRT 4
+1 QRVPM 1
+2 MQOB 0 SEDV 2
+2 M 1 ZWAI 0
+6 HFA 1 VCKU 3 P 1 P 1 AEWQR 0 G 4
+1 KVQHE 1
+4 E 4 H 0 GZBT 1 KTUM 4
+5 QD 1 FM 1 KNE 3 MK 2 R 0
+4 JQY 3 HNW 1 VDATR 1 GM 4
+1 UA 1
+6 RBXY 6 ET 2 W 1 E 5 FYCVO 5 GFK 5
+3 SCNNV 0 JVDU 2 G 3
+3 RXM 1 YEWF 3 LMPT 2
+5 SP 3 YP 4 JCF 2 UPHYT 5 EVJGR 2
+1 Z 0
+2 BKR 1 OCN 1
+6 J 4 EGEFT 6 XCUS 3 UCP 3 ES 2 GT 5
+3 TWMQN 1 RB 2 ET 3
+4 O 3 PMJG 1 BR 4 T 4
+6 B 3 MHQI 0 QLQ 6 SCWO 5 IA 0 BEUE 1
+3 RB 1 YDU 0 NW 1
+1 QVI 1
+1 LYKVD 1
+1 ZLLZU 1
+4 QTE 0 K 3 L 4 V 0
+6 QTYNN 3 ZF 1 BASYX 6 VFJ 0 H 4 MC 2
+1 CHHRG 0
+1 CQIS 0
+1 QQMNZ 0
+2 EOXL 0 FQONT 2
+4 PT 1 EAI 1 UN 4 OPO 1
+4 IYHL 0 TANJ 0 PSIVI 1 WOLQ 4
+4 RR 1 JYLN 0 VHXUV 3 N 4
+4 QOCXM 3 YWWXL 4 FEH 1 OPWX 1
+4 KSM 2 VKV 0 SBGO 0 A 2
+3 KXMFX 2 Q 3 THOD 0
+3 J 3 WW 0 K 3
+4 APUSG 1 KFKJY 3 TXPOY 2 Q 1
+5 HLL 1 RZ 5 HGSOH 3 SGQ 1 M 3
+6 UFV 1 FPTAZ 5 GW 1 T 0 YUGX 1 MTA 0
+3 J 0 LPMDC 3 EZ 3
+6 I 1 RCZQ 5 JAR 4 CN 1 SJ 3 BW 2
+4 E 1 LUJZW 0 EH 0 DID 2
+1 ZWTEL 0
+4 JR 0 K 1 R 0 XP 3
+6 PVJ 2 U 1 A 6 E 2 JY 4 ECHSX 6
+6 ZK 0 VN 1 UVBK 3 URLF 4 V 6 E 5
+4 NY 1 TRW 0 Q 4 FGVTV 0
+5 EQH 1 VMOD 2 BL 0 ASDX 2 RHK 3
+2 E 0 XF 1
+2 U 1 OADN 0
+6 B 1 AGZM 6 EFI 6 ZIS 1 JJSNP 3 YJMF 5
+4 ZSO 4 SWKR 0 AINSO 0 RPQUI 1
+2 DXH 0 EQGQ 1
+2 J 1 YQ 0
+6 VFH 6 BNRBM 4 HFX 3 GS 6 QI 4 TIF 0
+6 MQWBB 6 GRKJ 5 O 2 OB 1 IXO 2 IBXKA 3`
+
 type Info struct {
 	name string
 	p    int
 	h    int
 }
 
-func expected(n int, arr []Info) string {
-	sort.Slice(arr, func(i, j int) bool { return arr[i].p < arr[j].p })
-	id := make([]bool, n+5)
-	for i := n - 1; i >= 0; i-- {
-		x := (i - arr[i].p) + 1
+type testCase struct {
+	n   int
+	arr []Info
+}
+
+func solveCase(tc testCase) string {
+	v := make([]Info, len(tc.arr))
+	copy(v, tc.arr)
+	sort.Slice(v, func(i, j int) bool { return v[i].p < v[j].p })
+	id := make([]bool, tc.n+5)
+	for i := tc.n - 1; i >= 0; i-- {
+		x := (i - v[i].p) + 1
 		p := 1
 		if x <= 0 {
 			return "-1"
@@ -36,13 +144,78 @@ func expected(n int, arr []Info) string {
 			p++
 		}
 		id[p] = true
-		arr[i].h = p
+		v[i].h = p
 	}
 	var sb strings.Builder
-	for i := 0; i < n; i++ {
-		sb.WriteString(fmt.Sprintf("%s %d\n", arr[i].name, arr[i].h))
+	for i := 0; i < tc.n; i++ {
+		sb.WriteString(fmt.Sprintf("%s %d\n", v[i].name, v[i].h))
 	}
 	return strings.TrimSpace(sb.String())
+}
+
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(testcasesRaw, "\n")
+	var cases []testCase
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: invalid n: %v", idx+1, err)
+		}
+		if len(fields) != 1+2*n {
+			return nil, fmt.Errorf("line %d: expected %d fields got %d", idx+1, 1+2*n, len(fields))
+		}
+		arr := make([]Info, n)
+		pos := 1
+		for i := 0; i < n; i++ {
+			arr[i].name = fields[pos]
+			pos++
+			p, err := strconv.Atoi(fields[pos])
+			if err != nil {
+				return nil, fmt.Errorf("line %d: parse p for #%d: %v", idx+1, i+1, err)
+			}
+			arr[i].p = p
+			pos++
+		}
+		cases = append(cases, testCase{n: n, arr: arr})
+	}
+	if len(cases) == 0 {
+		return nil, fmt.Errorf("no embedded testcases")
+	}
+	return cases, nil
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
@@ -50,63 +223,38 @@ func main() {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	f, err := os.Open("testcasesC.txt")
+
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Println("failed to open testcasesC.txt:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer f.Close()
-	sc := bufio.NewScanner(f)
-	tests := 0
-	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if line == "" {
-			continue
-		}
-		parts := strings.Fields(line)
-		if len(parts) < 1 {
-			continue
-		}
-		n, _ := strconv.Atoi(parts[0])
-		if len(parts) != 1+2*n {
-			fmt.Printf("test %d: invalid line\n", tests+1)
-			os.Exit(1)
-		}
-		arr := make([]Info, n)
-		idx := 1
-		for i := 0; i < n; i++ {
-			arr[i].name = parts[idx]
-			idx++
-			arr[i].p, _ = strconv.Atoi(parts[idx])
-			idx++
-		}
-		expect := expected(n, append([]Info(nil), arr...))
-		// build input
+
+	bin, cleanup, err := buildIfGo(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	for i, tc := range cases {
 		var input strings.Builder
-		input.WriteString(fmt.Sprintf("%d\n", n))
-		for i := 0; i < n; i++ {
-			input.WriteString(fmt.Sprintf("%s %d\n", arr[i].name, arr[i].p))
+		fmt.Fprintf(&input, "%d\n", tc.n)
+		for _, info := range tc.arr {
+			fmt.Fprintf(&input, "%s %d\n", info.name, info.p)
 		}
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input.String())
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		err := cmd.Run()
+
+		got, err := runCandidate(bin, input.String())
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\n", tests+1, err)
+			fmt.Printf("test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
-		if got != expect {
-			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", tests+1, expect, got)
+		expect := solveCase(tc)
+		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
+			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", i+1, expect, got)
 			os.Exit(1)
 		}
-		tests++
 	}
-	if err := sc.Err(); err != nil {
-		fmt.Println("scanner error:", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", tests)
+
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

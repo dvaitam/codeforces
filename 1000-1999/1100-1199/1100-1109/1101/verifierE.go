@@ -20,6 +20,7 @@ type testcase struct {
 	ops []op
 }
 
+// Embedded copy of testcasesE.txt so the verifier is self-contained.
 const testcasesRaw = `100
 + 4 8
 ? 15 23
@@ -60,76 +61,62 @@ const testcasesRaw = `100
 + 4 6
 ? 26 23
 ? 17 32
-+ 30 23
-? 26 40
-? 9 29
-+ 1 33
-? 11 33
++ 9 6
+? 26 36
+? 12 35
++ 13 1
+? 15 21
+? 21 20
++ 13 7
+? 20 30
 ? 19 32
-+ 5 21
-? 19 15
-? 14 18
-+ 23 17
-? 42 33
-? 11 43
-+ 18 21
-? 17 39
-? 19 40
-+ 9 16
-? 28 31
-? 19 23
-+ 20 5
-? 27 20
-? 13 13
-+ 25 8
-? 20 26
-? 14 22
-+ 6 2
-? 24 12
-? 16 20
-+ 28 8
-? 17 37
-? 23 31
-+ 25 12
-? 22 40
-? 21 38
-+ 29 7
-? 19 29
-? 10 27
-+ 19 27
-? 18 45
-? 9 37
-+ 5 1
-? 21 27
-? 16 18
-+ 10 32
-? 20 33
-? 19 24
-+ 16 38
-? 28 42
-? 26 34
-+ 30 32
-? 23 37
-? 36 42
-+ 27 26
-? 34 44
-? 21 33
-+ 26 18
-? 23 35
-? 30 33
-+ 32 14
-? 34 45
-? 24 31
-+ 14 3
-? 34 26
-? 19 30
-+ 37 1
-? 28 44
-? 24 27
-+ 14 27
-? 39 45
-? 20 35
-+ 37 27
++ 20 17
+? 34 31
+? 22 33
++ 1 19
+? 30 39
+? 24 29
++ 12 17
+? 27 35
+? 37 34
++ 9 12
+? 25 25
+? 22 27
++ 15 11
+? 37 20
+? 28 35
++ 20 10
+? 24 20
+? 20 34
++ 17 6
+? 23 32
+? 36 30
++ 18 5
+? 18 35
+? 30 34
++ 15 12
+? 17 26
+? 35 26
++ 3 16
+? 21 22
+? 33 37
++ 13 20
+? 25 26
+? 19 33
++ 1 18
+? 32 30
+? 17 26
++ 20 10
+? 30 34
+? 33 29
++ 3 2
+? 19 31
+? 29 40
++ 14 13
+? 37 40
+? 24 29
++ 16 13
+? 34 20
 ? 37 33
 + 10 16
 ? 21 32
@@ -153,20 +140,26 @@ func mustParseTestcases(raw string) []testcase {
 		return v
 	}
 
-	t := nextInt()
-	cases := make([]testcase, 0, t)
-	for i := 0; i < t; i++ {
-		if !scanner.Scan() {
-			panic(fmt.Sprintf("missing op marker at case %d", i+1))
+	var cases []testcase
+	for scanner.Scan() {
+		q, err := strconv.Atoi(scanner.Text())
+		if err != nil {
+			panic(fmt.Sprintf("invalid integer %q: %v", scanner.Text(), err))
 		}
-		marker := scanner.Text()
-		if len(marker) != 2 || marker[0] != '+' && marker[0] != '?' || marker[1] != '+' && marker[1] != '?' {
-			// marker combines two chars to avoid newline splitting; treat marker[0] as op and marker[1] as indicator of test count start
+		ops := make([]op, 0, q)
+		for i := 0; i < q; i++ {
+			if !scanner.Scan() {
+				panic(fmt.Sprintf("missing op marker at operation %d", i+1))
+			}
+			marker := scanner.Text()
+			if marker != "+" && marker != "?" && marker != "++" && marker != "+?" && marker != "?+" && marker != "??" {
+				panic(fmt.Sprintf("invalid op marker %q", marker))
+			}
+			add := marker[0] == '+'
+			x := nextInt()
+			y := nextInt()
+			ops = append(ops, op{add: add, x: int64(x), y: int64(y)})
 		}
-		opChar := marker[0]
-		x := nextInt()
-		y := nextInt()
-		ops := []op{{add: opChar == '+', x: int64(x), y: int64(y)}}
 		cases = append(cases, testcase{ops: ops})
 	}
 
@@ -176,7 +169,7 @@ func mustParseTestcases(raw string) []testcase {
 	return cases
 }
 
-// solve replicates 1101E.go behavior over a sequence of operations.
+// solve replicates the logic from 1101E.go for a single testcase.
 func solve(tc testcase) []string {
 	var mxx, mxy int64
 	res := []string{}

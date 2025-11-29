@@ -10,19 +10,25 @@ import (
 	"strings"
 )
 
-type Edge struct {
+const modVal int64 = 1_000_000_007
+const infNeg int64 = -1 << 60
+
+type edge struct {
 	u, v int
 	w    int64
 }
 
-type Line struct {
+type line struct {
 	k int64
 	b int64
 }
 
-const MOD int64 = 1_000_000_007
-const INF_NEG int64 = -1 << 60
+type testcase struct {
+	n, m, q int
+	edges   []edge
+}
 
+// Embedded copy of testcasesF.txt so the verifier is self-contained.
 const testcasesRaw = `4 5 10 3 1 4 4 1 1 1 2 3 2 4 4 2 1 5
 4 3 7 2 1 1 3 1 4 4 2 2
 3 2 2 3 2 2 2 1 5
@@ -123,323 +129,56 @@ const testcasesRaw = `4 5 10 3 1 4 4 1 1 1 2 3 2 4 4 2 1 5
 3 3 8 3 2 1 1 2 3 2 1 4
 4 4 6 4 3 1 2 1 2 3 2 4 1 3 4
 3 2 6 2 1 1 3 1 4`
-6 10 9 3 10 6 5 6 10 4 5 10 1 10 1 4 8 2 4 9 2 6 5 1 4 10 4 1 7 9 4
-2 1 6 2 1 2
-8 7 6 6 7 8 2 5 4 5 7 3 6 2 1 6 3 3 3 8 1 3 5 5 1 8 7
-4 3 3 2 1 4 3 1 2 3 4 7 2
-2 1 4 2 1 1
-10 19 3 2 7 8 2 4 6 2 3 9 1 9 7 3 4 3 2 6 3 10 1 7 6 1 10 2 8 4 3 7 8 3 5 10 3 7 10 3 4 8 3 1 8 4 5 10 4 7 8 8 2 2 8 6 1 8
-5 7 5 4 7 5 3 4 4 2 1 3 4 1 3 3 1 5 7 4 10 3 9
-7 10 6 2 7 2 2 8 2 4 6 1 10 5 4 6 1 8 10 3 9 10 1 3 5
-9 12 3 3 9 1 2 9 3 5 7 2 3 3 7 3 3 1 8 2 10 6 2 7 6 2 1 1 8 1 10 8 3 3 7 6 2
-8 9 10 3 6 10 3 5 9 2 4 10 3 10 1 3 6 1 7 2 3 6 5 4 4 2 7 5 1
-3 3 8 3 1 6 2 1 1 2 3 9 1 2
-6 9 7 3 4 10 1 4 5 1 5 5 4 6 1 2 7 4 5 9 2 3 8 4 2
-7 11 9 5 8 2 3 5 4 3 6 3 5 9 1 4 8 5 1 7 10 1 6 10 2 5 4 4 1 3 3 8 1 1 9
-10 17 9 5 10 5 1 10 2 5 9 2 5 7 2 8 10 4 5 8 3 4 1 5 6 5 9 7 2 3 8 1 10 4 2 5 9 3 2 10 9 2 10 1 3 8 3 6 10 4 9 2
-6 8 8 6 7 6 3 8 4 1 5 8 3 2 6 6 2 1 2 8 6
-3 2 10 2 1 4 3 1 7
-10 16 2 3 4 1 1 4 5 3 5 6 1 5 8 2 5 3 5 4 5 10 5 5 6 7 1 9 4 2 10 8 1 8 8 5 2 7 5 8 3 3 5 6 7 8 5 2
-8 7 3 1 3 7 3 5 5 2 1 7 1 2 6 2 2 3 9 4 1 3 5
-9 10 2 2 10 3 5 7 7 3 4 5 9 2 9 3 2 5 4 5 6 10 1 3 4 8 1 1
-3 3 5 3 2 10 2 1 7 3 1 2 5
-10 19 10 2 5 2 1 5 4 4 6 10 1 5 8 2 10 1 9 3 2 8 7 4 9 9 5 10 6 9 1 2 1 1 2 1 9 2 7 5 8 1 8 10 7 2 5 3 8 9 1 9 9 10 6 7 8 8 8
-4 2 9 3 2 5 3 1 6 4 1 2 8 2 1
-9 11 7 5 7 3 1 6 5 2 9 8 5 1 5 7 1 8 4 2 5 5 3 7 6 3 8 1 2 8 1 2 6 7 2
-2 1 5 2 1 3
-10 13 6 2 4 9 4 6 9 4 10 9 3 9 2 4 9 3 8 2 3 2 6 6 2 8 2 8 2 10 1 7 4 10 1 8 4 7 5 2 6 5 6 1
-10 16 9 4 9 7 2 10 5 3 9 1 1 2 9 1 9 4 5 2 1 5 5 4 10 8 2 4 1 2 7 5 2 6 6 4 3 5 5 2 3 2 2 2 2 7 4 6 2 7
-8 9 6 1 3 3 3 6 1 1 6 5 2 8 3 5 5 3 7 3 5 5 5 1 10 5
-9 12 4 2 9 4 1 6 4 3 6 10 1 7 5 3 5 8 4 6 10 1 10 8 3 3 4 6 2 1 4 3 2 1 4 2 6 4
-5 7 5 3 4 1 1 5 9 1 5 6 1 5 2 2 6 10 5 6 10
-5 6 1 1 5 8 2 5 10 1 4 6 4 4 7 8 1
-8 10 1 5 10 9 4 6 3 4 7 3 1 7 7 1 7 4 1 10 2 5 5
-8 9 2 6 8 8 3 7 7 4 7 2 1 8 2 1 9 2 6 1 3 1 3 7 6
-9 10 1 9 10 6 3 8 9 2 6 7 2 9 10 4 3 8 5 8 7 9 6 2 4 2 9 7 8 5 7 10
-5 6 1 5 2 9 4 1 1 1 4 2 4 1 3 8
-5 9 8 4 6 3 4 4 10 3 1 8 1 4 9 2 2 9 1 5 4 1 8 3 1
-7 11 9 1 6 8 5 9 2 2 6 1 3 1 1 5 5 5 9 4 1 5 6 3 4 5 1 2 7 8 4 3 2 3 9 2
-2 1 8 2 1 7
-8 7 2 1 2 3 1 4 9 3 1 4 4 3 5 4 1 6 6 1 3 5 8
-8 7 4 5 6 6 1 6 9 2 3 8 4 6 8 4 5 1 3 7 5 7 5
-4 2 3 2 1 9 1 2 10 3 1
-4 3 9 4 3 3 2 3 2 3 2 1 2 1 7
-4 3 8 1 2 4 3 1 2 2 1 1 3 3
-4 2 10 4 2 5 1 2 8 1 2 3 5 1 3
-6 10 3 5 10 10 2 4 9 5 5 6 5 3 6 5 10 9 2 10 8 2 9 1 4 1
-7 8 8 2 7 9 2 5 3 3 6 7 3 5 7 2 2 7 2 5 7 1 7
-6 8 5 6 7 2 3 6 3 2 1 6 9 3 3 6 9 2 9 8 2
-7 10 6 3 9 10 5 6 2 1 9 4 6 10 3 2 10 4 1 7 6 1 2 3 1
-8 7 5 2 7 1 3 6 5 4 7 6 5 1 7 4 1 5 4 3 5 3 4
-7 10 9 2 3 6 1 6 3 1 3 6 2 3 2 10 1 9 4 2 8 4 4 7 9
-9 13 1 5 11 9 1 9 5 2 9 8 1 7 2 2 4 8 2 3 10 2 2 10 7 1 9 3 1 6 3 3 8 1 5 6 9 1
-5 9 7 4 6 6 1 4 2 4 6 1 1 10 3 3 6 10 4 1 8 1 3 3 3 7 9 5 3 10
-6 5 6 1 4 2 2 6 2 2 8 4 7 3 2 2 3
-8 8 7 7 8 1 4 8 10 5 7 8 3 3 6 2 2 5 4 5 3 9 5 2 4 7
-10 19 4 1 10 7 4 8 6 1 5 3 5 4 5 2 1 3 7 5 5 9 1 10 10 4 2 4 10 1 6 5 2 9 10 2 9 8 5 10 1 8 8 2 4 9 9 1 8 6 8 8 6 7
-6 10 7 5 9 3 2 10 6 5 10 6 5 9 9 1 10 5 1 10 5 1 6 8 3 6 10 4 8 8 3
-7 9 2 2 8 3 4 8 7 1 7 7 3 6 6 1 8 5 2 4 4 3 2 2 9 2 1
-7 10 4 2 7 10 3 7 9 1 5 9 2 9 3 4 4 2 1 3 9 8 9 4 8 10 4 2
-4 4 6 1 3 8 4 1 8 1 3 10 3
-4 4 6 4 2 4 4 1 6 3 2 4 6
-3 2 9 2 1 3 2 2 4
-4 2 9 4 2 5 4 2 3 1 3
-8 7 6 7 8 1 1 2 6 3 1 7 3 2 3 7 3 5 2 10 3 4 9
-6 8 10 6 7 10 3 4 8 4 8 5 1 6 3 1 9 5 3 5 1 1 2
-6 9 6 1 4 4 1 5 9 1 3 1 3 6 1 2 2 8 1 1 3 2 6 2 2
-5 7 7 1 5 1 1 5 6 1 4 7 3 1 4 2 4 5 6 5 8
-2 1 8 2 1 6
-10 13 6 2 8 10 2 10 8 1 3 1 1 2 9 3 1 8 8 4 4 7 3 5 9 2 10 6 2 6 8 1 5 2 1 5 6 6 3 9 2 9 10
-9 13 4 5 6 8 4 9 9 3 4 4 5 3 2 1 5 8 1 8 2 1 10 7 2 8 3 6 10 6 1 5 6 2 3 3 8 7 2
-7 6 9 2 6 2 2 5 5 5 6 1 3 4 3 5 3 4 5 1 6 3
-7 8 4 1 8 1 5 6 8 2 5 3 1 6 7 5 2 3 7 1 10
-10 19 7 1 7 8 1 10 9 5 6 2 1 4 7 2 3 6 1 3 9 1 6 8 5 4 1 7 1 1 2 5 9 1 5 8 4 1 6 1 6 10 2 6 1 6 1 4 3 6 5 2 1 10 6 1 5 7 1 10
-6 9 7 5 8 10 4 9 10 4 5 9 1 10 9 1 4 10 3 2 8 3 3 4 9
-2 1 3 2 1 7
-8 7 6 6 7 8 1 6 5 3 6 9 3 7 4 2 5 2 3 10 3 2 7
-4 4 9 2 3 6 2 3 3 2 1 2 6 3 1
-5 5 10 4 5 3 4 3 8 2 2 5 9 4 5 10 1 2
-2 1 9 2 1 7
-8 7 4 4 7 10 3 5 7 4 7 3 1 6 2 6 2 2 8 2 2 7 2
-4 4 7 1 3 6 3 1 8 2 3 8 1
-9 10 2 3 5 6 3 10 10 5 6 7 4 5 3 4 10 2 1 9 1
-9 13 4 5 6 3 3 10 10 1 5 4 2 10 4 1 3 10 1 5 1 3 1 2 1 6 3 1 5 1 9 6 4 6 10 2 4 4 3 7 1 4
-8 8 7 5 8 9 4 9 2 2 7 5 2 7 3 1 7 2 6 3 9 4 5 2
-7 10 5 3 9 7 5 8 2 4 8 3 7 9 5 10 3 2 8 2 1 5 4 2 9
-7 10 7 4 10 1 3 10 4 5 7 5 8 6 2 8 5 9 5 9 10 4 1 7 3
-6 5 7 6 5 6 5 4 2 1 3 2 1 5 3 4 4 7 3
-8 9 6 2 6 3 4 10 7 4 10 8 2 1 6 4 1 2 2 7 10 4 5 2 4 5 3
-5 8 6 1 4 6 2 3 5 1 5 2 8 1 4 5 5 3 4 2 2
-9 11 6 4 10 1 1 9 6 1 10 10 2 9 3 1 3 2 3 3 9 1 3 5 2 1 7 2 4 6 2 1 9 2
-10 15 7 4 10 8 1 4 7 3 10 10 1 3 9 1 9 10 1 10 2 2 6 5 1 3 10 5 7 9 2 3 3 1 3 4 7 4 1 3 10 2 1 5 2 6 8 4 2 2 5
-6 6 2 6 4 4 3 5 7 4 5 9 1 6 9 1 9 6 5 2
-10 19 7 3 7 10 2 8 8 1 5 6 3 3 8 2 5 9 2 2 2 2 1 6 4 3 7 1 2 6 3 2 3 5 2 6 1 5 10 1 9 2 2 10 9 1 6 9 4 4 3 5 7 8
-8 9 9 5 9 9 4 10 6 1 7 5 2 6 8 3 3 7 2 9 5 5 2 10 3 2 6 3 4
-2 1 5 2 1 4
-5 9 10 1 9 10 1 6 10 1 10 2 4 3 7 4 3 6 1 6 7 4 3 4 5 3 9 3 3 9
-7 8 7 3 4 8 1 3 4 2 7 10 2 8 9 1 8 9 2 7 3 2 4 5 2 6
-2 1 9 2 1 10
-5 6 10 4 6 4 2 3 10 2 2 10 5 1 7 2 3 8 1 5 3
-8 10 6 3 4 6 3 10 6 5 10 7 4 5 8 1 10 1 3 5 4 10 8 2 6 4 5
-3 2 7 2 1 8 3 1 9
-7 8 10 7 8 6 2 4 7 1 7 10 4 10 6 1 10 10 2 9 7 3 5
-10 17 7 5 10 6 1 5 3 1 8 2 2 8 8 5 10 10 1 4 10 2 1 3 2 7 5 2 5 9 1 5 2 7 1 9 9 3 5 5 1 8 5 3 3 5 3 1 10 8 5 8 2 6 1
-8 9 10 1 4 6 3 5 3 4 5 2 6 7 2 8 6 1 9 7 4 8 9 4 7 4 3 6 4
-6 5 5 3 6 3 2 4 7 1 5 2 2 5 9 4 3 8
-7 7 2 7 6 3 1 5 4 3 2 9 2 4 2 1 7 5 4
-5 9 1 1 4 1 4 7 1 4 8 3 3 10 2 4 8 4 2 9 2 8 6 2 8
-3 3 7 2 3 6 1 3 1 1 3 7 1 3
-10 17 1 5 9 2 3 8 8 4 6 2 2 5 1 4 2 2 9 1 3 9 1 3 5 1 3 2 10 2 6 2 1 7 1 8 5 1 7 2 3 10 4 3 5 8 1 4 5 2 3 4 10 2 5 5
-8 10 6 7 9 1 3 4 9 4 1 3 5 1 5 7 4 5 8 4 3 8 7 2 2 1 7 3 2 3 4
-5 9 8 4 9 5 2 5 4 1 4 6 2 1 2 9 2 10 5 2 2 8 2 5 9 8
-6 7 7 1 6 3 4 7 6 2 4 8 3 6 3 5 2 6 2 1
-4 3 9 3 2 5 2 1 4 2 1 3 2
-9 13 6 3 5 2 1 8 4 4 10 4 1 3 5 4 2 4 9 2 6 1 3 4 4 3 2 6 4 2 1 7 1 4 2 1 1 7 3 3 2 10
-3 2 1 2 1 7 3 2 2
-8 9 10 3 5 10 4 6 6 4 10 4 7 8 4 3 7 3 5 5 5 4 8 1 5 6 4 3 3
-2 1 2 2 1 9
-7 6 7 3 4 5 1 7 5 1 4 7 2 3 10 1 4 6 2 4 4
-4 4 9 1 2 3 4 2 2 9 2 3 2 1 2 7 3
-7 7 4 5 7 2 3 5 5 3 5 10 3 7 1 3 6 3 1
-7 7 1 1 2 5 1 3 8 2 5 1 4 10 1 4 3 3 6 3 3
-5 6 2 2 4 8 1 4 6 4 5 1 4 3 2
-9 12 7 3 6 2 4 8 5 4 9 10 5 4 5 7 1 6 1 3 10 1 2 9 4 2 2 7 10 1 5 7 4 3 1
-8 7 1 5 6 8 3 6 3 4 8 3 7 4 2 2 3 7 2 4 9 4
-7 9 4 5 7 9 2 8 6 4 7 2 1 4 3 2 10 2 1 10 4 4 8
-3 3 2 3 1 6 3 2 5 3
-10 19 6 1 3 4 3 4 7 3 2 6 4 2 8 4 5 8 3 3 7 1 5 8 1 5 7 5 1 5 10 2 6 6 2 5 1 3 4 2 4 9 1 10 2 1 7 1 6 2 3 9 7 2 8 4 1 7 10 2 9
-2 1 9 2 1 9
-8 9 5 1 3 7 3 4 8 4 7 4 4 4 1 4 5 1 10 1 10 1 3 9 1
-10 12 7 1 6 3 4 10 3 5 7 1 8 8 2 8 2 4 10 4 6 6 2 9 10 4 3 2 6 5 9 2 4 4 10 2 2 10
-5 6 3 4 5 3 1 5 5 3 6 10 1 6 7 4
-6 8 3 2 5 10 4 7 1 4 8 1 4 8 4 2 8 5 3 9
-9 12 7 2 6 8 4 7 10 4 10 2 4 10 7 1 6 2 3 4 8 5 2 6 9 3 2 2 5 3 3 3 2 3 5 1 8 3
-9 13 1 1 4 5 2 6 8 2 3 9 4 3 8 2 5 6 3 4 5 4 10 1 8 7 1 10 7 3 9 2 9 1 9 5 1 2 7 3 1 10
-8 8 6 1 5 9 3 8 4 2 6 7 5 1 4 6 3 7 7 3 3 6 7 3 1
-6 6 1 4 6 1 1 4 4 1 2 2 3 3 6 3 3
-2 1 5 2 1 1
-6 8 8 4 5 8 1 3 5 2 1 5 2 3 3 4 2 1 5 1 6 4 4
-5 6 9 3 6 8 4 1 5 2 3 7 2 1 6 5 2 1 7 10 5
-3 3 8 2 1 6 1 2 2 2 1 2 2 1
-10 19 5 2 10 5 3 10 7 1 6 4 5 8 9 1 3 3 3 2 4 1 1 7 1 10 9 1 5 6 1 3 7 3 2 2 6 9 5 4 8 9 9 7 8 2 5 3 7 10 3 8 10 6 3 10 1 9
-7 10 3 2 8 6 2 8 9 4 5 3 1 10 2 1 9 1 9 9 4 1 3 5 4 1 4 8 1
-10 14 3 1 4 8 2 3 8 3 7 10 1 6 3 4 4 3 7 2 3 2 10 10 3 9 2 1 8 1 7 3 4 1 3 8 3 1 5 3 4 5 5 1 7 2
-5 5 7 4 5 4 2 4 7 1 2 9 3 1 10 2 5 6 3
-4 2 8 1 2 9 1 2 5 3 2
-3 2 6 1 2 4 2 1 5
-8 8 6 7 8 10 3 7 8 1 5 7 1 7 5 1 4 7 4 3 9 4 1 6 1
-3 3 10 3 1 4 1 2 9 3 2 2 1 2 1 7 2
-9 12 5 4 12 8 4 8 5 1 10 4 1 8 4 4 9 6 1 10 8 4 5 4 2 7 1 7 6 2 2 8 3 3 3 5 3 3
-7 8 5 5 8 9 4 8 8 1 8 9 1 8 9 3 2 2 5 4 5 2 4
-4 4 10 3 4 8 2 4 2 1 2 8 2 1
-7 9 9 2 4 9 3 7 10 1 7 10 1 5 6 1 6 10 1 10 4 2 4 6 3 2 6 7
-4 2 9 4 2 8 4 2 2 4 2
-4 4 8 3 2 5 3 1 4 2 3 1 2 2 2 10 1
-6 5 9 3 5 1 1 5 5 3 5 4 1 4 3 3 1 6 4
-10 15 5 1 10 5 1 9 3 5 6 4 4 7 2 2 7 1 2 8 3 4 6 7 1 2 3 5 6 5 1 2 9 5 4 5 7 3 9 2 4 9 3 2
-3 2 2 2 1 9 1 2 9
-8 10 2 4 10 10 2 3 10 1 7 7 3 5 5 4 2 8 3 4 10 4 3 5 1 9 7
-10 19 10 5 11 5 5 8 8 3 5 2 5 2 1 8 4 3 2 4 1 6 10 4 7 8 5 8 1 5 6 5 6 8 5 5 4 2 6 8 6 9 1 4 1 6 10 1 1 10 5 5 6
-5 5 1 4 5 1 2 4 8 3 4 6 3 1 2
-10 13 1 4 9 10 1 6 5 4 8 2 3 2 5 3 2 4 1 6 1 2 2 5 7 1 6 8 5 10 6 3 4 8 2 3 6 5 2 4 5 2
-2 1 1 2 1 4
-8 10 2 2 3 6 2 10 8 5 6 2 4 9 2 3 8 2 9 4 4 4 9 9 6 2 8 8
-10 18 2 3 6 5 3 8 4 2 4 1 1 7 8 1 4 5 1 6 6 1 5 6 2 10 3 6 6 5 4 5 2 10 4 5 7 5 1 3 9 7 4 5 5 4 7 1 2 7 1 2 7
-3 2 2 3 2 7 1 2 10
-2 1 10 2 1 9
-2 1 3 2 1 7
-3 2 10 1 2 7 1 2 7
-7 6 9 2 5 4 1 7 8 2 6 10 4 3 9 1 4 9 4 2 4
-5 7 5 3 4 6 3 4 8 4 5 8 4 4 9 1 6 1 2 3 9
-5 6 8 4 5 2 2 6 1 1 5 6 4 5 6 4 1
-7 8 8 5 7 1 5 7 6 3 6 9 1 8 6 4 7 8 2 8 4 2 8
-9 13 4 4 6 1 4 11 9 1 5 2 2 7 1 3 3 1 2 10 1 8 1 8 6 2 7 1 4 10 2 1 2 7 3 3 7 3 1
-8 9 7 2 6 9 4 7 5 4 7 1 5 8 2 6 1 1 5 5 2 8 8 5 10 2 8 3 10 4 9
-7 7 5 2 6 1 4 6 6 3 6 5 1 6 6 1 9 2 3 10 1
-3 2 10 2 1 10 3 1 7
-8 10 1 1 9 5 3 9 4 5 6 3 1 3 6 2 9 5 4 4 10 2 3
-10 14 10 5 10 2 4 5 1 5 10 1 10 9 1 10 6 3 7 10 2 6 9 4 5 8 5 1 2 2 8 1 7 3 4 4 4 8 3 9 8 3 3
-7 11 9 2 11 9 2 10 7 3 7 6 4 3 5 4 1 7 8 2 8 6 2 6 3 2 4 2 10 4 6 8 2 3 2 9
-4 4 7 1 3 10 4 3 5 1 2 8 3
-10 12 7 4 5 10 3 10 4 1 8 8 5 10 5 5 4 4 9 1 2 7 4 2 9 7 4 3 9 2 1 10 4 2 2 2 5 3
-5 9 9 2 7 7 1 9 7 1 10 8 3 8 3 2 4 3 2 7 4 2 9 7 3 7 2
-5 6 4 5 6 2 4 6 1 2 5 1 2 3 5
-6 9 1 1 3 5 2 4 9 4 4 7 3 4 2 2 10 4 3 10
-8 8 3 2 5 4 3 7 7 3 5 7 2 8 1 2 2 5 1 6 8 4 5 8 4
-8 10 3 5 9 6 3 9 2 2 7 4 3 6 3 3 6 4 1 4 5 4 4 6 4 8 6 2 9 2 1
-8 9 1 6 9 8 3 7 10 1 3 6 5 8 7 3 3 10 1 2 6 2 1 4 7 1 8 10
-5 8 9 1 8 4 3 5 9 4 8 5 5 10 2 3 8 1 10 6 1 4 9 2 1 2
-3 2 1 2 1 8 1 2 6
-6 6 5 2 6 7 1 6 2 2 4 8 4 1 4 2 2
-5 6 9 4 6 10 3 6 10 2 3 5 2 1 2 2 3 1 7 10
-5 6 6 3 6 5 3 5 7 3 3 4 2 5 9 4 2 1 7 8
-10 14 3 5 9 6 3 10 8 4 8 1 4 9 3 5 1 9 5 5 2 1 5 3 9 5 5 7 9 4 9 1 6 8 9 2 4 6 4 10 1 1
-3 3 1 3 2 10 3 2 6
-9 11 7 5 11 10 4 8 5 4 10 5 3 5 10 3 7 6 4 9 3 2 7 8 1 8 1 2 1 5 1 6 1 6 9
-4 4 8 4 4 5 4 4 3 1 4 1 4 1 3
-3 3 5 3 1 10 3 2 10 1 3 4 2 1
-7 9 4 4 9 8 2 5 8 4 9 7 1 8 2 1 2 6 3 1 8 9
-5 7 10 1 3 10 4 5 5 2 1 7 2 3 6 2 9 5 5 8 7 5
-5 5 3 3 5 4 2 5 1 2 1 5 1 4 4
-8 8 2 4 8 7 5 8 8 4 8 5 1 7 9 1 6 3 6 4 9 3 8 4
-2 1 6 2 1 9
-9 10 1 6 8 2 1 8 6 1 6 7 2 4 9 3 4 2 2 3 9
-7 10 6 1 8 4 3 9 7 5 10 3 8 1 2 10 4 1 9 5 4 4 8 5 1 4 8
-7 6 4 3 6 2 3 4 3 3 6 1 6 8 3 5 5 1 5
-10 12 2 3 5 9 3 6 6 3 6 2 5 10 2 7 10 3 3 6 9 2 6 10 1 10 7 8 1 9 4 7 3 4 1 3 10 4
-6 6 4 3 5 6 1 5 2 3 7 8 5 2 2 4 10 4 3
-2 1 1 2 1 3
-7 8 10 3 8 5 2 7 9 4 8 7 3 4 10 3 8 9 4 8 3 4 1 10 5
-9 12 7 1 10 1 3 6 5 5 7 6 4 8 6 5 2 7 1 5 7 1 6 3 3 6 2 6 3 9 2 10 2 10 2
-5 7 5 4 7 7 1 6 9 1 3 7 3 1 5 3 3 2 1
-2 1 9 2 1 3
-3 2 10 1 2 3 2 1 5
-5 6 6 2 6 4 3 6 7 2 6 2 3 6 7 1 2 10
-2 1 5 2 1 3
-8 9 9 5 8 10 4 8 6 4 10 5 2 7 9 4 5 2 4 7 4 1 2 7 10 1 8 7 3
-9 10 9 5 9 9 2 5 6 1 9 9 3 6 9 3 9 9 4 4 6 6 4 6 1 2 10 2 3 6
-4 2 1 1 2 10 3 1 4
-10 12 5 5 11 10 3 5 4 4 6 8 2 4 5 5 1 9 4 1 5 9 3 4 8 4 3 8 1 2 3 2 4 2 6 2 7 10 8 2 6 9
-5 6 6 5 5 3 1 3 9 1 2 6 1 1 10 2 1 10 2
-9 11 9 5 11 8 2 10 9 1 6 6 2 10 2 5 7 2 9 1 3 6 3 7 2 10 2 8 1 3 5 4 2 10 8 3 9 4 3
-10 13 6 1 9 9 1 7 8 1 8 6 5 6 3 5 10 3 7 1 1 8 3 1 6 3 6 8 2 4 8 3 5 3 6 10 1 10 6 2 10 7
-2 1 7 2 1 1
-7 8 1 2 8 6 2 4 6 1 7 2 1 6 10 2 7 6 2 10 10
-7 11 1 5 10 6 3 7 3 4 10 4 5 5 2 5 2 4 3 1 10 8 1 9 3
-3 2 9 1 2 3 3 2 4
-9 12 10 1 5 10 1 8 5 1 7 8 4 8 2 1 10 2 2 8 1 2 4 8 5 2 10 6 3 8 6 3 2 6 6 4
-10 16 8 1 10 6 3 4 9 4 10 10 3 10 1 3 6 1 6 1 2 7 1 10 10 2 7 8 3 8 7 1 8 5 2 3 1 3 8 4 5 6 4 2 3 7 5 7 4 1
-6 8 3 5 8 10 1 5 7 2 4 6 1 10 4 1 9 1 10 8 1 3 7 4 2
-2 1 9 2 1 6
-8 10 8 7 9 3 2 10 6 3 10 2 5 8 4 1 6 5 2 10 10 1 3 5 3 6 10 2 7 4 7
-10 15 2 1 8 10 4 7 8 5 6 8 2 8 9 4 8 10 1 5 10 4 1 9 8 1 7 9 2 5 9 4 1 6 6 5 10 10 10 5 6 2 9 5 8
-9 13 6 1 10 2 1 7 7 2 6 2 3 10 3 2 9 1 10 8 2 6 5 4 2 8 4 3 6 7 2 9 1 1 10 7 2 1 2 10
-7 6 1 2 4 3 1 7 7 1 7 5 3 8 4 3 10
-4 4 2 4 3 2 1 1 6 2 2 3 9 2 4
-4 4 3 4 3 6 1 2 4 3 1 4 7 3
-6 10 6 1 3 4 3 6 9 1 7 9 2 7 9 4 7 8 3 9 2 5 3 9 7 4 5 10 3
-10 17 8 5 10 2 4 9 8 1 8 5 4 5 5 1 4 8 4 2 5 2 5 1 9 5 9 2 10 10 1 3 9 1 1 6 4 5 1 3 3 1 5 9 3 6 3 1 6
-3 2 3 1 2 6 2 1 9
-4 4 3 4 3 7 1 3 9 4 2 4 6 2 1
-8 7 5 3 6 5 3 6 7 3 5 1 4 7 4 5 8 3 4 1 5 9 2
-10 15 8 3 4 2 2 6 8 2 5 10 1 3 9 1 10 9 5 5 8 4 7 5 1 10 3 1 5 10 4 6 3 3 9 4 2 10 3 5 4 2 9 1 7 8 4 10 3
-6 8 3 4 5 2 2 5 3 1 7 9 4 3 9 3 4 7 4 1
-4 4 3 2 4 10 3 4 1 3 7 2 1 2 1
-7 8 6 3 5 3 5 6 4 1 7 7 1 7 1 4 6 2 4 7 1 1 8 1 10 2
-3 3 1 2 3 6 2 3 4
-2 1 6 2 1 7
-8 7 7 4 7 8 1 6 9 4 5 8 1 5 10 4 9 5 4 6 5 2 10
-6 6 8 3 4 3 3 5 1 4 6 3 7 1 4 1 1 8 3 4
-4 2 8 3 2 9 2 1 10 4 3
-3 2 6 2 1 8 2 1 1
-5 6 6 1 3 8 3 6 7 2 5 1 1 9 2 2 6 8 4 2 4
-7 10 2 3 6 7 2 6 10 1 8 8 3 10 10 2 8 9 1 9 4 1 4
-10 14 5 2 3 1 4 3 9 4 6 7 4 8 1 2 8 1 3 2 8 3 1 8 4 4 8 8 4 1 10 9 5 9 2 6 9 5 2 4 5
-3 3 2 1 3 3 2 1 3 2 2 6
-6 8 9 5 6 4 5 8 1 4 7 3 2 4 7 3 1 4 5 5 3 5 6 2 2
-8 8 10 5 7 7 2 5 3 4 7 3 1 5 6 5 1 6 5 2 6 8 2 10 1 8 1 8
-6 8 5 4 5 8 1 5 5 1 7 9 3 8 7 1 8 9 3 4 7
-4 3 4 1 3 6 2 3 10 2 2 10 1
-4 4 2 3 4 2 1 2 6 2 1 1 9 2 6
-2 1 6 2 1 1`
 
-type testCase struct {
-	n, m, q int
-	edges   []Edge
-}
-
-func parseTestcases(raw string) []testCase {
-	lines := strings.Split(strings.TrimSpace(raw), "\n")
-	tests := make([]testCase, 0, len(lines))
-	for idx, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
+func parseTestcases() ([]testcase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
+	cases := make([]testcase, 0, len(lines))
+	for idx, ln := range lines {
+		ln = strings.TrimSpace(ln)
+		if ln == "" {
 			continue
 		}
-		fields := strings.Fields(line)
+		fields := strings.Fields(ln)
 		if len(fields) < 3 {
-			panic(fmt.Sprintf("line %d malformed", idx+1))
+			return nil, fmt.Errorf("line %d: expected at least 3 fields", idx+1)
 		}
 		n, err := strconv.Atoi(fields[0])
 		if err != nil {
-			panic(fmt.Sprintf("line %d bad n: %v", idx+1, err))
+			return nil, fmt.Errorf("line %d: parse n: %v", idx+1, err)
 		}
 		m, err := strconv.Atoi(fields[1])
 		if err != nil {
-			panic(fmt.Sprintf("line %d bad m: %v", idx+1, err))
+			return nil, fmt.Errorf("line %d: parse m: %v", idx+1, err)
 		}
 		q, err := strconv.Atoi(fields[2])
 		if err != nil {
-			panic(fmt.Sprintf("line %d bad q: %v", idx+1, err))
+			return nil, fmt.Errorf("line %d: parse q: %v", idx+1, err)
 		}
-		expectedFields := 3 + 3*m
-		if len(fields) != expectedFields {
-			panic(fmt.Sprintf("line %d expected %d numbers got %d", idx+1, expectedFields, len(fields)))
+		if (len(fields)-3)%3 != 0 || len(fields) != 3+3*m {
+			return nil, fmt.Errorf("line %d: expected %d fields, got %d", idx+1, 3+3*m, len(fields))
 		}
-		edges := make([]Edge, m)
-		pos := 3
+		edges := make([]edge, m)
 		for i := 0; i < m; i++ {
-			u, err := strconv.Atoi(fields[pos])
+			u, err := strconv.Atoi(fields[3+3*i])
 			if err != nil {
-				panic(fmt.Sprintf("line %d bad u at edge %d: %v", idx+1, i+1, err))
+				return nil, fmt.Errorf("line %d: parse u%d: %v", idx+1, i+1, err)
 			}
-			v, err := strconv.Atoi(fields[pos+1])
+			v, err := strconv.Atoi(fields[4+3*i])
 			if err != nil {
-				panic(fmt.Sprintf("line %d bad v at edge %d: %v", idx+1, i+1, err))
+				return nil, fmt.Errorf("line %d: parse v%d: %v", idx+1, i+1, err)
 			}
-			w, err := strconv.ParseInt(fields[pos+2], 10, 64)
+			w, err := strconv.ParseInt(fields[5+3*i], 10, 64)
 			if err != nil {
-				panic(fmt.Sprintf("line %d bad w at edge %d: %v", idx+1, i+1, err))
+				return nil, fmt.Errorf("line %d: parse w%d: %v", idx+1, i+1, err)
 			}
-			edges[i] = Edge{u: u, v: v, w: w}
-			pos += 3
+			edges[i] = edge{u: u, v: v, w: w}
 		}
-		tests = append(tests, testCase{n: n, m: m, q: q, edges: edges})
+		cases = append(cases, testcase{n: n, m: m, q: q, edges: edges})
 	}
-	return tests
+	return cases, nil
 }
 
-func isBad(a, b, c Line) bool {
+func isBad(a, b, c line) bool {
 	leftNum := (b.b - a.b) * (b.k - c.k)
 	rightNum := (c.b - b.b) * (a.k - b.k)
 	return leftNum >= rightNum
@@ -456,16 +195,18 @@ func floorDiv(a, b int64) int64 {
 }
 
 func mod(x int64) int64 {
-	x %= MOD
+	x %= modVal
 	if x < 0 {
-		x += MOD
+		x += modVal
 	}
 	return x
 }
 
-func expected(tc testCase) int64 {
+// solve implements the logic from 1366F.go for a single testcase.
+func solve(tc testcase) string {
 	n, m, q := tc.n, tc.m, tc.q
 	edges := tc.edges
+
 	maxW := make([]int64, n+1)
 	for _, e := range edges {
 		if e.w > maxW[e.u] {
@@ -481,70 +222,71 @@ func expected(tc testCase) int64 {
 		for i := range dp {
 			dp[i] = make([]int64, n+1)
 			for j := 1; j <= n; j++ {
-				dp[i][j] = INF_NEG
+				dp[i][j] = infNeg
 			}
 		}
 		dp[0][1] = 0
 		ans := int64(0)
 		for t := 1; t <= q; t++ {
 			for j := 1; j <= n; j++ {
-				dp[t][j] = INF_NEG
+				dp[t][j] = infNeg
 			}
 			for _, e := range edges {
-				if dp[t-1][e.u] != INF_NEG {
+				if dp[t-1][e.u] != infNeg {
 					if val := dp[t-1][e.u] + e.w; val > dp[t][e.v] {
 						dp[t][e.v] = val
 					}
 				}
-				if dp[t-1][e.v] != INF_NEG {
+				if dp[t-1][e.v] != infNeg {
 					if val := dp[t-1][e.v] + e.w; val > dp[t][e.u] {
 						dp[t][e.u] = val
 					}
 				}
 			}
-			best := INF_NEG
+			best := infNeg
 			for i := 1; i <= n; i++ {
 				if dp[t][i] > best {
 					best = dp[t][i]
 				}
 			}
-			ans = (ans + mod(best)) % MOD
+			ans = (ans + mod(best)) % modVal
 		}
-		return ans
+		return strconv.FormatInt(ans, 10)
 	}
 
+	// q > m
 	dp := make([][]int64, m+1)
 	for i := range dp {
 		dp[i] = make([]int64, n+1)
 		for j := 1; j <= n; j++ {
-			dp[i][j] = INF_NEG
+			dp[i][j] = infNeg
 		}
 	}
 	dp[0][1] = 0
 	partial := int64(0)
 	for t := 1; t <= m; t++ {
 		for j := 1; j <= n; j++ {
-			dp[t][j] = INF_NEG
+			dp[t][j] = infNeg
 		}
 		for _, e := range edges {
-			if dp[t-1][e.u] != INF_NEG {
+			if dp[t-1][e.u] != infNeg {
 				if val := dp[t-1][e.u] + e.w; val > dp[t][e.v] {
 					dp[t][e.v] = val
 				}
 			}
-			if dp[t-1][e.v] != INF_NEG {
+			if dp[t-1][e.v] != infNeg {
 				if val := dp[t-1][e.v] + e.w; val > dp[t][e.u] {
 					dp[t][e.u] = val
 				}
 			}
 		}
-		best := INF_NEG
+		best := infNeg
 		for i := 1; i <= n; i++ {
 			if dp[t][i] > best {
 				best = dp[t][i]
 			}
 		}
-		partial = (partial + mod(best)) % MOD
+		partial = (partial + mod(best)) % modVal
 	}
 
 	lineMap := make(map[int64]int64)
@@ -553,9 +295,9 @@ func expected(tc testCase) int64 {
 		if slope == 0 {
 			continue
 		}
-		best := INF_NEG
+		best := infNeg
 		for t := 0; t <= m; t++ {
-			if dp[t][v] == INF_NEG {
+			if dp[t][v] == infNeg {
 				continue
 			}
 			val := dp[t][v] - int64(t)*slope
@@ -568,9 +310,9 @@ func expected(tc testCase) int64 {
 		}
 	}
 
-	lines := make([]Line, 0, len(lineMap))
+	lines := make([]line, 0, len(lineMap))
 	for k, b := range lineMap {
-		lines = append(lines, Line{k: int64(k), b: b})
+		lines = append(lines, line{k: int64(k), b: b})
 	}
 	sort.Slice(lines, func(i, j int) bool {
 		if lines[i].k == lines[j].k {
@@ -578,7 +320,7 @@ func expected(tc testCase) int64 {
 		}
 		return lines[i].k < lines[j].k
 	})
-	hull := make([]Line, 0)
+	hull := make([]line, 0)
 	for _, ln := range lines {
 		if len(hull) > 0 && hull[len(hull)-1].k == ln.k {
 			if hull[len(hull)-1].b >= ln.b {
@@ -613,53 +355,79 @@ func expected(tc testCase) int64 {
 		}
 		count := right - pos + 1
 		sumX := (pos + right) * count / 2
-		term := (mod(hull[i].k) * mod(sumX)) % MOD
-		term = (term + mod(hull[i].b)*mod(count)) % MOD
-		ans = (ans + term) % MOD
+		term := (mod(hull[i].k) * mod(sumX)) % modVal
+		term = (term + mod(hull[i].b)*mod(count)) % modVal
+		ans = (ans + term) % modVal
 		pos = right + 1
 	}
-
-	return ans % MOD
+	return strconv.FormatInt(ans, 10)
 }
 
-func run(bin string, input string) (string, error) {
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
-	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierF.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	tests := parseTestcases(testcasesRaw)
-	for idx, tc := range tests {
-		var input strings.Builder
-		input.WriteString(fmt.Sprintf("%d %d %d\n", tc.n, tc.m, tc.q))
-		for i, e := range tc.edges {
-			input.WriteString(fmt.Sprintf("%d %d %d", e.u, e.v, e.w))
-			if i < tc.m-1 {
-				input.WriteByte('\n')
-			}
+
+	cases, err := parseTestcases()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	bin, cleanup, err := buildIfGo(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	for idx, tc := range cases {
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "%d %d %d\n", tc.n, tc.m, tc.q)
+		for _, e := range tc.edges {
+			fmt.Fprintf(&sb, "%d %d %d\n", e.u, e.v, e.w)
 		}
-		input.WriteByte('\n')
-		want := expected(tc)
-		gotStr, err := run(bin, input.String())
+		input := sb.String()
+		expect := solve(tc)
+		got, err := runCandidate(bin, input)
 		if err != nil {
-			fmt.Printf("Test %d: runtime error: %v\n%s", idx+1, err, gotStr)
+			fmt.Printf("case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(gotStr)
-		if got != fmt.Sprintf("%d", want) {
-			fmt.Printf("Test %d failed\ninput:\n%s\nexpected: %d\ngot: %s\n", idx+1, input.String(), want, got)
+		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
+			fmt.Printf("case %d failed\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", idx+1, input, expect, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(tests))
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

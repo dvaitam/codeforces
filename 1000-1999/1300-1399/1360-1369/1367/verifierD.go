@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,8 +9,62 @@ import (
 	"strings"
 )
 
+// solve embeds the logic from 1367D.go.
+func solve(s string, b []int) string {
+	m := len(b)
+	freq := make([]int, 26)
+	for _, ch := range s {
+		freq[int(ch-'a')]++
+	}
+
+	res := make([]byte, m)
+	used := make([]bool, m)
+	remaining := m
+	ch := 25
+	for remaining > 0 {
+		zeros := make([]int, 0)
+		for i := 0; i < m; i++ {
+			if !used[i] && b[i] == 0 {
+				zeros = append(zeros, i)
+			}
+		}
+		if len(zeros) == 0 {
+			break
+		}
+		for ch >= 0 && freq[ch] < len(zeros) {
+			ch--
+		}
+		if ch < 0 {
+			break
+		}
+		for _, pos := range zeros {
+			res[pos] = byte('a' + ch)
+			used[pos] = true
+		}
+		freq[ch] -= len(zeros)
+		ch--
+		remaining -= len(zeros)
+		for i := 0; i < m; i++ {
+			if used[i] {
+				continue
+			}
+			sum := 0
+			for _, pos := range zeros {
+				if i > pos {
+					sum += i - pos
+				} else {
+					sum += pos - i
+				}
+			}
+			b[i] -= sum
+		}
+	}
+	return string(res)
+}
+
 // Embedded testcases from testcasesD.txt.
-const testcasesRaw = `100
+const testcaseData = `
+100
 sreltpusctapirhg
 8
 34 35 30 25 40 9 14 40
@@ -311,98 +364,77 @@ tfhvqideozznatmdhrnxfccpazfhktkpwojcdzlssbalkbcf
 7 1 18 43 45
 puanwmbikerlguxckzsjrxumemicwsgpvqcmjctx
 9
-35 48 20 43 15 12 14 33 46`
+35 48 20 43 15 12 14 33 46
+`
 
+// testCase represents a single query.
 type testCase struct {
 	s string
 	m int
 	b []int
 }
 
-// referenceSolution replicates the logic from 1367D.go.
-func referenceSolution(s string, m int, b []int) string {
-	freq := make([]int, 26)
-	for _, ch := range s {
-		freq[int(ch-'a')]++
+func parseTestcases() ([]testCase, error) {
+	tokens := strings.Fields(testcaseData)
+	if len(tokens) == 0 {
+		return nil, fmt.Errorf("no testcases found")
+	}
+	idx := 0
+	next := func() (string, error) {
+		if idx >= len(tokens) {
+			return "", fmt.Errorf("unexpected end of test data")
+		}
+		val := tokens[idx]
+		idx++
+		return val, nil
 	}
 
-	res := make([]byte, m)
-	used := make([]bool, m)
-	remaining := m
-	ch := 25
-	for remaining > 0 {
-		zeros := make([]int, 0)
-		for i := 0; i < m; i++ {
-			if !used[i] && b[i] == 0 {
-				zeros = append(zeros, i)
-			}
-		}
-		if len(zeros) == 0 {
-			break
-		}
-		for ch >= 0 && freq[ch] < len(zeros) {
-			ch--
-		}
-		if ch < 0 {
-			break
-		}
-		for _, pos := range zeros {
-			res[pos] = byte('a' + ch)
-			used[pos] = true
-		}
-		freq[ch] -= len(zeros)
-		ch--
-		remaining -= len(zeros)
-		for i := 0; i < m; i++ {
-			if used[i] {
-				continue
-			}
-			sum := 0
-			for _, pos := range zeros {
-				if i > pos {
-					sum += i - pos
-				} else {
-					sum += pos - i
-				}
-			}
-			b[i] -= sum
-		}
+	tStr, err := next()
+	if err != nil {
+		return nil, err
 	}
-	return string(res)
-}
-
-func parseTestcases() []testCase {
-	scan := bufio.NewScanner(strings.NewReader(testcasesRaw))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		panic("no test count")
+	t, err := strconv.Atoi(tStr)
+	if err != nil {
+		return nil, fmt.Errorf("bad test count: %v", err)
 	}
-	t, _ := strconv.Atoi(scan.Text())
-	tests := make([]testCase, 0, t)
+	cases := make([]testCase, 0, t)
 	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			panic("missing string")
+		s, err := next()
+		if err != nil {
+			return nil, fmt.Errorf("case %d: missing string", i+1)
 		}
-		s := scan.Text()
-		if !scan.Scan() {
-			panic("missing m")
+		mStr, err := next()
+		if err != nil {
+			return nil, fmt.Errorf("case %d: missing m", i+1)
 		}
-		m, _ := strconv.Atoi(scan.Text())
+		m, err := strconv.Atoi(mStr)
+		if err != nil {
+			return nil, fmt.Errorf("case %d: bad m: %v", i+1, err)
+		}
 		b := make([]int, m)
 		for j := 0; j < m; j++ {
-			if !scan.Scan() {
-				panic("missing b value")
+			vStr, err := next()
+			if err != nil {
+				return nil, fmt.Errorf("case %d: missing b[%d]", i+1, j)
 			}
-			val, _ := strconv.Atoi(scan.Text())
-			b[j] = val
+			v, err := strconv.Atoi(vStr)
+			if err != nil {
+				return nil, fmt.Errorf("case %d: bad b[%d]: %v", i+1, j, err)
+			}
+			b[j] = v
 		}
-		tests = append(tests, testCase{s: s, m: m, b: b})
+		cases = append(cases, testCase{s: s, m: m, b: b})
 	}
-	return tests
+	return cases, nil
 }
 
 func runCandidate(bin string, input string) (string, error) {
-	cmd := exec.Command(bin)
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errb bytes.Buffer
@@ -415,46 +447,44 @@ func runCandidate(bin string, input string) (string, error) {
 }
 
 func main() {
-	if len(os.Args) != 2 {
+	args := os.Args[1:]
+	if len(args) == 2 && args[0] == "--" {
+		args = args[1:]
+	}
+	if len(args) != 1 {
 		fmt.Println("usage: go run verifierD.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
+	bin := args[0]
 
-	tests := parseTestcases()
-	for idx, tc := range tests {
-		// normalize b so the minimal value becomes 0 (avoids solver panic on malformed data).
-		bNorm := append([]int(nil), tc.b...)
-		minVal := bNorm[0]
-		for _, v := range bNorm {
-			if v < minVal {
-				minVal = v
-			}
-		}
-		for i := range bNorm {
-			bNorm[i] -= minVal
-		}
+	cases, err := parseTestcases()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 
+	for i, tc := range cases {
 		input := &strings.Builder{}
 		fmt.Fprintf(input, "1\n%s\n%d\n", tc.s, tc.m)
-		for i, v := range bNorm {
-			if i > 0 {
+		for j, v := range tc.b {
+			if j > 0 {
 				input.WriteByte(' ')
 			}
 			input.WriteString(strconv.Itoa(v))
 		}
 		input.WriteByte('\n')
 
-		expected := referenceSolution(tc.s, tc.m, append([]int(nil), bNorm...))
+		expected := solve(tc.s, append([]int(nil), tc.b...))
 		got, err := runCandidate(bin, input.String())
 		if err != nil {
-			fmt.Printf("test %d failed: %v\n", idx+1, err)
+			fmt.Printf("test %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
 		if strings.TrimSpace(got) != strings.TrimSpace(expected) {
-			fmt.Printf("test %d failed: expected %s got %s\n", idx+1, expected, got)
+			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input.String(), expected, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(tests))
+
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

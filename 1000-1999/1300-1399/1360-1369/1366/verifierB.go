@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,11 +9,163 @@ import (
 	"strings"
 )
 
-type Interval struct{ l, r int }
+type interval struct{ l, r int }
 
-func solveCase(n, x, m int, segs []Interval) int {
-	l, r := x, x
-	for _, s := range segs {
+type testcase struct {
+	n, x, m int
+	segs    []interval
+}
+
+// Embedded copy of testcasesB.txt so the verifier is self-contained.
+const testcasesRaw = `138 17 5 31 94 116 131 98 111 25 87 8 107
+444 312 1 357 414
+273 118 10 53 134 16 27 14 18 196 223 217 263 15 128 225 256 120 208 119 175 236 254
+949 23 7 858 929 945 945 191 835 742 817 124 884 341 853 433 627
+311 146 10 256 310 259 284 302 302 246 277 207 260 89 182 281 309 192 203 225 309 261 267
+798 168 9 403 592 502 517 481 503 316 676 630 781 593 693 663 706 173 687 233 245
+790 205 9 562 621 415 678 353 786 592 682 471 608 676 746 624 625 393 772 525 591
+532 211 7 58 304 374 519 205 463 424 486 366 472 355 355 340 457
+615 29 4 182 463 599 604 94 355 34 106
+86 3 8 2 37 32 49 15 38 45 63 9 30 21 53 68 73 85 86
+664 302 8 330 584 486 515 25 344 396 571 432 635 193 325 112 371 523 576
+989 621 7 837 842 231 249 407 556 37 773 983 984 457 975 695 913
+558 226 9 462 490 537 557 32 436 329 497 437 444 306 338 218 242 314 332 79 237
+940 306 3 427 685 134 142 575 594
+605 223 10 472 515 522 526 388 439 356 381 211 504 444 595 199 451 107 587 400 475 517 580
+18 11 10 13 15 1 6 7 12 5 10 14 15 9 10 13 17 12 18 18 18 18 18
+67 6 2 18 28 22 56
+219 69 6 154 218 216 218 95 138 88 117 75 135 155 217
+139 27 6 11 115 19 67 38 54 88 95 97 101 58 130
+84 35 6 38 74 69 72 59 67 14 19 38 38 79 84
+15 2 7 2 15 15 15 4 7 13 15 7 9 2 9 3 13
+248 41 2 112 208 207 241
+932 838 5 564 693 729 851 323 425 213 880 326 366
+28 1 5 24 28 11 25 13 23 13 15 3 13
+994 616 8 115 371 221 853 797 935 889 977 481 845 266 453 555 661 315 518
+253 93 2 210 227 23 215
+459 47 10 330 416 117 316 158 179 168 263 163 459 458 459 126 297 52 330 314 337 126 238
+21 8 7 3 11 18 18 3 3 21 21 10 15 16 19 5 8
+514 336 2 178 269 154 226
+842 328 5 110 836 527 835 301 430 212 357 559 575
+799 324 10 689 759 765 778 183 489 444 719 162 211 732 763 259 324 699 756 441 722 257 706
+872 551 8 12 417 857 867 176 440 498 510 813 854 427 719 20 83 709 799
+594 142 10 129 199 266 407 408 552 411 455 92 211 498 498 182 452 325 581 449 506 245 405
+507 352 8 490 497 365 470 173 459 313 499 470 487 498 501 25 496 37 427
+524 378 3 524 524 320 396 307 524
+566 381 3 476 552 88 526 127 437
+984 527 10 387 567 160 416 437 659 965 983 737 930 802 815 507 855 404 760 394 921 866 887
+558 42 9 93 506 262 313 274 316 143 540 84 311 247 442 444 494 169 335 449 465
+638 500 4 123 564 616 633 419 449 303 445
+255 97 9 2 247 49 184 113 118 8 168 250 254 63 129 53 97 73 110 139 164
+280 160 10 129 243 87 226 183 245 216 231 107 253 197 223 146 173 13 73 7 158 70 89
+513 383 10 319 430 366 501 332 332 127 353 461 483 313 451 409 452 505 506 387 435 209 494
+4 3 10 2 3 4 4 2 3 2 3 1 4 4 4 3 3 4 4 3 3 4 4
+649 407 5 183 575 76 86 358 493 422 645 558 596
+156 119 5 125 135 120 152 12 81 131 134 152 155
+72 46 2 57 57 22 54
+728 166 2 412 553 620 658
+214 136 4 61 146 69 86 20 198 213 214
+480 262 9 378 384 87 239 335 477 139 321 313 372 201 405 89 336 405 438 444 465
+734 228 5 625 715 251 683 677 678 638 689 325 546
+956 780 4 805 873 195 269 641 725 892 948
+596 152 10 269 504 540 550 142 540 142 508 452 544 318 523 247 306 212 579 313 347 109 225
+407 165 8 52 147 24 52 306 308 386 392 350 352 254 389 371 399 176 345
+858 282 2 628 805 177 274
+228 103 4 127 184 97 140 60 120 210 219
+474 281 10 200 308 232 415 133 302 255 406 57 166 41 64 8 416 3 442 246 327 456 468
+869 595 5 201 610 164 825 156 187 16 412 149 829
+556 59 10 389 454 134 174 474 512 15 51 550 550 538 542 44 324 121 342 94 191 29 540
+653 134 5 197 536 459 558 338 475 267 595 651 651
+252 16 10 240 252 152 174 90 199 155 244 144 225 134 141 232 243 141 193 138 163 183 251
+435 340 2 366 400 381 420
+739 75 5 182 280 155 215 209 647 46 100 653 664
+935 833 9 481 737 380 481 321 362 130 674 34 487 681 713 917 929 782 896 26 780
+538 277 2 257 423 88 242
+36 25 1 17 27
+753 134 5 390 449 695 714 97 532 252 509 571 623
+339 174 9 201 324 54 120 335 338 269 335 275 278 150 190 103 197 200 333 167 191
+420 177 3 295 303 23 176 418 420
+547 322 7 306 387 362 431 334 525 533 541 9 547 125 201 325 511
+334 168 10 36 267 144 266 233 279 195 215 297 300 69 93 269 331 295 311 126 305 294 315
+371 330 6 207 285 238 325 273 337 86 100 76 204 352 359
+577 137 2 190 400 52 153
+559 273 2 210 343 69 392
+585 540 2 75 481 223 552
+859 178 9 443 454 605 699 499 644 226 431 613 739 241 676 464 809 376 654 194 687
+744 75 5 418 521 9 553 390 653 499 518 414 729
+904 523 10 599 816 42 402 872 901 7 201 307 312 554 615 842 861 525 686 796 865 661 807
+565 290 9 422 560 531 557 316 431 310 377 519 547 144 425 167 296 10 444 38 415
+431 206 5 338 423 10 56 47 49 197 265 238 307
+816 801 6 652 775 788 798 398 631 120 615 364 438 426 501
+19 6 5 12 14 19 19 14 16 17 18 14 19
+281 222 6 249 262 252 264 218 229 33 66 106 144 118 124
+106 33 3 62 68 52 93 93 95
+855 4 2 438 751 53 615
+224 137 7 89 101 167 173 189 224 174 200 214 224 190 197 68 139
+184 123 1 55 77
+888 400 2 685 799 302 822
+510 464 7 60 370 438 499 55 131 198 301 86 352 132 345 381 454
+890 505 9 220 858 346 843 106 114 776 869 674 762 726 794 58 611 641 753 308 411
+235 131 5 70 133 106 143 34 99 50 154 144 224
+613 60 9 522 541 424 493 287 532 314 450 504 531 511 558 482 543 347 437 186 564
+902 595 8 548 624 60 576 334 875 707 741 661 855 832 859 323 828 492 660
+122 17 3 90 106 29 40 82 116
+849 720 1 577 665
+702 119 4 577 602 516 661 676 685 433 600
+5 1 5 5 5 1 2 3 5 3 4 5 5
+24 4 6 12 14 4 12 5 23 2 13 3 5 24 24
+308 163 4 138 273 26 211 16 56 72 308
+409 191 4 49 396 169 239 5 268 165 407
+115 46 3 78 95 52 63 87 105`
+
+func parseTestcases() ([]testcase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
+	cases := make([]testcase, 0, len(lines))
+	for idx, ln := range lines {
+		ln = strings.TrimSpace(ln)
+		if ln == "" {
+			continue
+		}
+		fields := strings.Fields(ln)
+		if len(fields) < 3 {
+			return nil, fmt.Errorf("line %d: expected at least 3 fields", idx+1)
+		}
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: parse n: %v", idx+1, err)
+		}
+		x, err := strconv.Atoi(fields[1])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: parse x: %v", idx+1, err)
+		}
+		m, err := strconv.Atoi(fields[2])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: parse m: %v", idx+1, err)
+		}
+		if len(fields) != 3+2*m {
+			return nil, fmt.Errorf("line %d: expected %d fields, got %d", idx+1, 3+2*m, len(fields))
+		}
+		segs := make([]interval, m)
+		for i := 0; i < m; i++ {
+			li, err := strconv.Atoi(fields[3+2*i])
+			if err != nil {
+				return nil, fmt.Errorf("line %d: parse l%d: %v", idx+1, i+1, err)
+			}
+			ri, err := strconv.Atoi(fields[4+2*i])
+			if err != nil {
+				return nil, fmt.Errorf("line %d: parse r%d: %v", idx+1, i+1, err)
+			}
+			segs[i] = interval{l: li, r: ri}
+		}
+		cases = append(cases, testcase{n: n, x: x, m: m, segs: segs})
+	}
+	return cases, nil
+}
+
+// solve implements the logic from 1366B.go for a single testcase.
+func solve(tc testcase) string {
+	l, r := tc.x, tc.x
+	for _, s := range tc.segs {
 		if s.l <= r && s.r >= l {
 			if s.l < l {
 				l = s.l
@@ -24,76 +175,87 @@ func solveCase(n, x, m int, segs []Interval) int {
 			}
 		}
 	}
-	return r - l + 1
+	return strconv.Itoa(r - l + 1)
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
 
-	file, err := os.Open("testcasesB.txt")
+	cases, err := parseTestcases()
 	if err != nil {
-		panic(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		fields := strings.Fields(line)
-		if len(fields) < 3 {
-			fmt.Printf("invalid test case %d\n", idx)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(fields[0])
-		x, _ := strconv.Atoi(fields[1])
-		m, _ := strconv.Atoi(fields[2])
-		if len(fields) != 3+2*m {
-			fmt.Printf("test %d wrong field count\n", idx)
-			os.Exit(1)
-		}
-		segs := make([]Interval, m)
-		for i := 0; i < m; i++ {
-			li, _ := strconv.Atoi(fields[3+2*i])
-			ri, _ := strconv.Atoi(fields[4+2*i])
-			segs[i] = Interval{li, ri}
-		}
-		expected := solveCase(n, x, m, segs)
+	bin, cleanup, err := buildIfGo(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
 
-		var input strings.Builder
-		input.WriteString("1\n")
-		input.WriteString(fmt.Sprintf("%d %d %d\n", n, x, m))
-		for i, s := range segs {
-			input.WriteString(fmt.Sprintf("%d %d", s.l, s.r))
-			if i < m-1 {
+	var input strings.Builder
+	fmt.Fprintf(&input, "%d\n", len(cases))
+	for _, tc := range cases {
+		fmt.Fprintf(&input, "%d %d %d\n", tc.n, tc.x, tc.m)
+		for i, s := range tc.segs {
+			fmt.Fprintf(&input, "%d %d", s.l, s.r)
+			if i < len(tc.segs)-1 {
 				input.WriteByte('\n')
 			}
 		}
 		input.WriteByte('\n')
-
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input.String())
-		var out bytes.Buffer
-		var errBuf bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &errBuf
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("Test %d: runtime error: %v\n%s", idx, err, errBuf.String())
-			os.Exit(1)
-		}
-		outStr := strings.TrimSpace(out.String())
-		if outStr != fmt.Sprintf("%d", expected) {
-			fmt.Printf("Test %d failed: expected %d got %s\n", idx, expected, outStr)
-			os.Exit(1)
-		}
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+
+	got, err := runCandidate(bin, input.String())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	var expected strings.Builder
+	for i, tc := range cases {
+		if i > 0 {
+			expected.WriteByte('\n')
+		}
+		expected.WriteString(solve(tc))
+	}
+
+	if strings.TrimSpace(got) != strings.TrimSpace(expected.String()) {
+		fmt.Printf("output mismatch\nexpected:\n%s\n\ngot:\n%s\n", expected.String(), got)
+		os.Exit(1)
+	}
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

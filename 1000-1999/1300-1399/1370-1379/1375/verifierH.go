@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,7 +9,17 @@ import (
 	"strings"
 )
 
-const testcasesH = `1 2 1 1 1 1 1
+type pair struct{ a, b int }
+
+type testcase struct {
+	n int
+	q int
+	v []int
+	p [][2]int
+}
+
+// Embedded copy of testcasesH.txt so the verifier is self-contained.
+const testcasesRaw = `1 2 1 1 1 1 1
 4 3 4 1 2 3 3 4 2 4 4 4
 2 3 1 2 1 2 2 2 2 2
 3 2 2 1 3 1 3 3 3
@@ -117,908 +126,145 @@ const testcasesH = `1 2 1 1 1 1 1
 1 3 1 1 1 1 1 1 1
 3 1 2 1 3 3 3 3 1
 2 1 2 1 1 2
-1 1 1 1 1
-2 2 1 1 1 2 1 2
-1 1 1 1 1
-3 2 3 3 1 3 2 3 3
-4 3 1 2 3 1 2 3 2 2 3 3
-1 1 1 1 1
-2 2 1 2 1 1 1 1
-1 1 1 1 1
-4 3 4 1 2 3 2 4 3 3 1 3
-4 2 3 1 4 2 4 2 4 3 2 3
-4 3 2 3 4 1 2 3 3 3 1 4
-3 1 3 1 3 3 3 3 3
-2 1 2 2 1 1
-2 3 2 1 1 1 2 2 1 1
-4 3 2 4 1 4 2 2 4 2 3 4
-2 2 1 2 1 2 1 1
-4 1 2 3 4 2 4 2
-3 3 2 1 1 2 3 2 3 2 3
-2 3 2 1 2 1 2 2 2 1
-4 1 4 3 3 2 1 2
-4 1 2 4 3 2 3 3
-1 3 1 1 1 1 1 1 1
-1 1 1 1 1
-4 1 4 3 2 1 3 3
-1 1 1 1 1
-4 3 3 2 1 3 3 4 2 4 3 2
-4 2 4 2 3 1 3 4 1 4 4 4
-1 3 1 1 1 1 1 1 1
-4 1 1 4 3 2 3 2
-3 1 3 1 3 3 2 3 3
-4 1 3 2 4 1 2 3
-1 1 1 1 1
-3 2 1 2 2 3 2 2 3 2 2
-3 1 3 3 1 2 2 3 3
-1 3 1 1 1 1 1 1 1
-4 3 4 3 2 1 3 4 4 4 3 3
-2 1 1 2 1 1
-2 1 1 2 1 2
-1 3 1 1 1 1 1 1 1
-2 3 1 2 1 1 1 2 1 2
-4 3 3 1 1 2 3 4 1 2 3 4
-1 3 1 1 1 1 1 1 1
-2 3 2 1 1 1 2 2 2 2
-3 2 2 1 2 2 3 3 3
-4 2 2 3 4 2 1 3 4 3 2 2
-4 3 2 1 4 2 2 2 2 1 2 2
-2 1 1 2 2 2
-4 1 4 2 3 1 2 2
-3 3 2 1 2 2 3 2 2 2 1
-2 2 2 2 1 1 2 2
-1 1 1 1 1
-3 1 2 1 3 2 2 3 3
-2 2 2 1 2 1 1 2
-4 1 4 3 3 1 4 4
-3 2 2 3 1 2 2 3 3 2 3
-1 3 1 1 1 1 1 1 1
-2 1 2 1 1 1
-3 2 2 1 3 3 3 2 2
-4 3 3 1 2 2 3 4 2 4 2 3
-1 3 1 1 1 1 1 1 1
-4 3 3 2 1 2 1 4 2 2 1 4
-4 1 4 2 3 1 3 3
-4 3 1 3 2 4 1 4 4 2 3 4
-2 2 1 1 2 2 2 1
-4 3 1 4 2 3 2 4 1 4 3 4
-4 1 3 2 4 4 3 2
-4 1 3 2 4 2 1 2
-3 3 2 3 3 3 1 2 3 2 2
-4 1 4 1 2 3 2 3
-3 1 2 1 2 3 3 3 2
-4 3 3 2 1 1 2 3 4 4 3 3
-4 3 3 2 1 4 3 3 3 3 4 2
-2 1 2 1 2 2
-4 1 1 2 4 4 1 3
-4 1 2 4 1 4 4 1
-3 2 1 3 2 2 2 3 3
-4 3 3 2 1 4 1 2 3 4 4 4
-4 3 1 2 4 2 1 4 2 3 1 2
-3 1 2 2 1 1 3 1 3
-1 3 1 1 1 1 1 1 1
-4 3 3 2 1 2 2 2 2 2 1 4
-1 3 1 1 1 1 1 1 1
-3 3 1 2 3 2 2 2 3 3 3
-4 2 3 1 4 2 2 2 2 3 1 4
-4 1 2 4 4 2 3 1
-2 3 2 1 2 1 2 2 1 1
-3 1 3 3 1 2 3 1 1
-4 3 1 3 2 1 3 4 2 3 1 2
-1 3 1 1 1 1 1 1 1
-4 3 4 1 2 3 2 4 1 4 2 4
-4 1 4 3 2 1 4 4
-4 2 1 2 4 4 3 3
-1 1 1 1 1
-4 3 1 1 3 4 2 1 3 4 4 2
-4 2 1 3 4 3 3 2 2 1 4 4
-1 1 1 1 1
-4 2 2 3 4 2 1 4 4 4 1 4
-4 2 3 4 1 1 2 1 4 4 2 3
-4 3 3 2 1 3 4 1 1 4 3 4
-3 1 3 1 1 1 1 1 1
-4 2 2 3 4 2 1 3 4 4 2 3
-4 3 1 4 3 4 1 4 1 1 2 2
-2 3 1 2 2 2 2 2 1 1
-4 1 2 3 4 1 4 3
-4 2 2 1 3 4 3 3 3 2 2 3
-4 3 3 2 1 2 2 1 1 2 4 3
-1 1 1 1 1
-3 1 3 3 1 3 3 3 3
-4 1 3 2 4 2 4 1
-4 3 2 4 3 1 2 3 4 2 4 4
-2 1 2 2 1 2
-4 1 3 2 4 4 2 3
-2 2 2 2 1 1 2 2
-4 1 2 3 4 1 2 4
-1 1 1 1 1
-4 2 1 2 3 4 3 4 1 1 2 2
-3 2 3 1 2 1 1 3 1 3
-4 1 3 2 4 2 1 2
-4 3 3 2 1 2 4 3 3 3 2 2
-2 2 1 1 1 2 1 2
-4 1 4 2 3 2 4 4
-1 1 1 1 1
-1 1 1 1 1
-2 3 2 1 1 2 2 2 2 2
-1 3 1 1 1 1 1 1 1
-3 1 2 1 2 2 3 3 3
-4 1 2 1 4 1 2 4
-1 1 1 1 1
-3 3 3 2 1 1 3 3 2 3 3
-4 3 2 1 4 1 1 1 1 1 1 4
-4 1 2 4 3 4 3 2
-2 1 2 1 1 2
-2 1 2 2 2 2
-1 1 1 1 1
-3 2 1 3 2 3 2 2 2 2 3
-3 3 1 2 1 1 1 1 1
-2 2 2 1 1 2 2 2
-4 1 1 4 2 3 1 4
-4 3 3 2 1 1 3 4 3 2 3 2
-4 2 2 3 4 2 1 3 2 2 2 2
-3 1 2 1 2 3 3 1 1
-4 3 3 2 1 1 2 3 4 1 2 3
-4 3 2 3 1 4 4 2 3 4 2 4
-1 1 1 1 1
-2 1 2 2 1 1
-4 2 3 1 4 2 1 2 4 3 2 3
-4 3 4 3 2 1 3 4 2 2 1 3
-3 1 2 3 2 3 3 1 2
-4 1 2 4 3 4 2 4
-4 3 4 1 2 4 2 3 2 3 3 4
-4 3 3 2 1 3 4 4 2 3 2 4
-4 1 4 3 2 2 3 4
-2 1 2 1 1 1
-4 1 1 3 2 3 4 2
-4 1 3 4 3 2 4 2
-3 1 2 3 2 3 3 2 3
-4 2 1 3 4 3 3 4 4 2 3 2
-1 1 1 1 1
-4 3 3 2 1 2 2 3 3 2 4 4
-4 1 1 4 2 4 4 4
-2 1 1 2 2 1
-4 2 2 3 4 3 3 4 2 1 4 2
-4 1 4 3 2 1 2 3
-4 3 1 3 2 4 1 4 1 1 3 4
-2 2 1 1 1 1 1 1
-4 3 2 1 4 1 2 2 3 2 3 4
-4 1 3 2 4 4 2 4
-4 3 2 1 4 3 2 3 4 4 3 4
-2 1 1 2 2 1
-4 2 2 3 4 3 3 1 2 1 4 3
-4 3 2 1 4 1 3 2 1 1 4 3
-4 3 2 1 4 2 1 4 4 2 1 4
-1 3 1 1 1 1 1 1 1
-4 3 3 2 1 3 3 4 4 2 1 2
-4 1 1 3 4 2 4 2
-4 1 4 2 1 3 2 2
-4 1 3 2 4 3 4 1
-4 1 3 4 3 2 4 4
-4 1 4 1 3 2 2 3
-4 3 1 3 4 2 1 2 3 1 4 3
-4 1 2 4 3 2 2 4
-4 1 3 2 4 2 1 4
-4 2 3 4 1 3 3 3 1 4 2 3
-2 3 1 2 1 2 2 2 2 2
-4 3 2 1 3 4 2 4 1 2 4 4
-4 1 3 2 4 3 2 4
-4 2 3 1 4 3 4 1 2 1 1 4
-4 3 2 1 4 1 4 1 1 2 2 2
-4 3 2 1 4 4 4 1 3 1 4 4
-1 1 1 1 1
-2 2 2 2 2 2 2 2
-1 1 1 1 1
-4 2 1 4 3 2 4 2
-2 3 2 2 2 1 2 1 2 1
-4 3 3 2 1 3 3 4 4 4 3 3
-4 2 2 4 3 3 3 2 2 4 3 4
-4 2 1 3 4 3 2 2 4 4 1 4
-2 1 2 1 2 1
-4 3 2 1 4 2 3 3 4 1 1 3
-4 3 3 2 1 1 1 1 1 1 4 4
-1 1 1 1 1
-1 1 1 1 1
-4 1 3 4 2 1 3 2
-1 3 1 1 1 1 1 1 1
-4 3 3 2 1 3 4 2 2 3 1 2
-4 1 4 3 2 1 2 2
-3 1 3 3 1 2 2 3 3
-4 3 3 2 1 4 2 3 2 3 4 2
-4 2 1 4 3 4 3 4
-4 2 3 1 4 3 3 4 1 1 4 1
-4 3 3 2 1 4 3 2 3 1 3 3
-2 1 1 2 2 2
-4 3 1 2 4 3 3 1 3 4 2 4
-4 3 3 2 1 1 1 1 1 1 3 4
-4 3 4 1 2 3 4 1 3 1 3 1
-4 2 1 2 4 3 4 3
-2 2 1 2 2 2 1 1
-4 1 3 2 4 2 3 4
-2 2 2 2 1 2 1 1
-4 2 1 4 3 1 3 1
-1 1 1 1 1
-4 3 4 1 2 3 2 2 1 2 1 2
-4 1 1 2 4 2 3 4
-4 3 2 1 4 3 1 4 3 4 3 3
-3 1 2 2 1 3 2 2 1
-4 3 2 1 4 3 3 4 2 1 2 4
-4 2 1 4 2 3 3 2
-4 3 4 3 2 1 3 4 4 3 2 2
-4 3 1 2 3 4 1 1 3 1 2 4
-4 3 2 1 3 1 4 1 2 4 3 3
-1 1 1 1 1
-4 1 1 4 2 3 1 2
-4 3 4 1 2 3 1 3 2 1 1 3
-1 1 1 1 1
-4 2 2 4 3 2 1 4 2 2 4 4
-2 3 2 2 2 1 2 1 2 2
-4 3 2 1 4 4 3 4 2 4 3 2
-4 3 3 2 1 4 2 3 3 3 3 4
-2 2 2 1 1 1 1 2
-1 1 1 1 1
-4 3 1 4 2 1 2 4 2 2 3 4
-4 2 3 4 1 2 3 4 4 4 4 2
-1 1 1 1 1
-4 1 1 2 4 3 2 1
-4 3 1 3 2 1 1 1 1 4 1 3
-2 2 1 2 1 1 2 2
-1 1 1 1 1
-4 2 4 1 3 3 2 4
-4 1 3 4 3 2 4 1
-4 1 2 3 4 1 4 3
-4 3 3 2 1 4 1 1 2 3 4 3
-3 1 3 1 3 3 2 3 3
-4 1 4 2 3 1 1 4
-4 2 1 2 3 4 3 2
-3 3 3 3 3 1 3 2 3 3 3
-2 2 2 2 2 2 1 2
-4 2 1 4 3 4 2 3
-4 3 1 3 2 4 3 4 2 1 3 3
-2 1 1 1 2 1 2 2
-3 1 2 2 3 3 2 2 2 3
-1 1 1 1 1
-2 2 1 2 1 2 2 2
-2 1 2 1 1 2
-2 3 2 1 1 2 2 2 1 1
-2 1 2 2 1 1
-2 2 2 2 2 2 1 1
-4 3 4 1 2 3 3 4 3 4 1 2
-4 1 3 2 4 4 2 4
-4 1 1 4 3 2 3 4
-4 3 2 1 4 4 4 4 2 1 2 4
-4 1 1 3 4 4 1 4
-4 1 1 4 3 4 3 2
-4 3 3 2 1 2 2 2 2 2 2 3
-4 1 3 2 4 4 2 3
-4 1 2 1 4 3 4 3
-4 1 1 3 4 1 2 3
-4 1 3 2 4 2 3 1
-4 1 1 4 2 3 2 4
-4 3 4 1 2 4 2 3 4 4 2 2
-3 1 2 1 3 3 3 3 1
-2 3 2 2 1 1 1 2 1 1
-4 1 1 3 4 2 2 3
-2 1 2 1 1 1
-4 3 4 1 2 3 2 2 1 1 3 2
-4 3 2 3 1 4 3 3 4 3 3 3
-4 3 4 1 2 3 2 1 1 4 2 2
-2 3 1 2 1 2 2 2 2 1
-4 2 3 1 4 1 2 2 3 4 3 4
-4 1 4 2 3 3 1 2
-4 3 3 2 1 4 3 4 3 3 2 2
-4 3 4 3 2 1 2 4 3 3 3 2
-4 1 3 2 4 2 4 1
-4 2 3 4 1 2 3 4 1 1 1 4
-4 1 2 4 3 3 4 1
-1 3 1 1 1 1 1 1 1
-4 1 1 3 4 2 4 2
-2 3 1 1 1 1 1 1 2 2
-2 3 2 1 1 1 1 2 2 1
-1 1 1 1 1
-4 2 1 4 3 1 3 3
-3 2 1 3 2 2 1 2 2 3 2
-2 3 2 1 1 1 1 2 2 1
-2 2 2 1 1 1 2 1
-4 1 3 4 3 2 4 2
-4 1 4 3 2 2 3 1
-1 3 1 1 1 1 1 1 1
-4 2 1 2 3 4 2 4 4 4 2 4
-1 1 1 1 1
-4 2 3 4 3 1 2 2 3 2 3 4
-3 1 2 1 1 1 1 1 1
-4 1 3 2 4 2 3 1
-4 3 1 1 2 4 1 1 3 3 4 2
-4 2 2 3 4 4 1 3 4 2 4 3
-4 3 3 2 1 4 1 2 2 3 4 2
-4 3 2 3 1 4 1 2 3 4 1 3
-2 2 1 2 2 2 1 1
-4 1 3 2 4 4 3 2
-4 1 1 4 2 1 3 3
-2 2 2 1 1 1 2 1
-4 1 3 2 4 4 3 4
-4 2 1 2 3 4 1 3 3 3 1 3
-4 1 3 2 4 3 4 4
-4 1 4 3 2 2 3 3
-4 2 1 4 3 4 1 2
-4 3 3 2 1 3 3 2 3 3 3 3
-4 2 1 3 4 2 2 2 3 4 4 2
-4 1 3 2 4 3 3 2
-4 1 3 2 4 1 4 1
-4 2 3 4 1 2 1 1 2 4 1 2
-4 3 1 3 2 2 3 3 3 1 1 1
-4 1 3 2 4 4 1 2
-4 1 3 2 4 1 1 1
-4 2 1 3 4 4 1 4
-3 2 1 3 2 3 3 3 3 3 2
-4 1 4 2 3 1 2 4
-4 1 2 4 3 1 3 4
-4 3 3 2 1 3 3 2 1 1 1 3
-4 2 1 4 3 3 3 2 2 1 4 4
-4 3 1 3 2 2 3 4 2 2 3 2
-4 1 2 1 4 1 4 1
-4 3 1 1 2 4 3 1 1 3 2 4
-4 2 3 1 4 3 3 1 2 4 2 2
-4 2 3 4 1 3 2 3
-4 1 3 4 3 2 4 2
-4 1 2 3 4 1 1 4
-4 2 1 3 4 3 4 3
-4 1 1 3 4 3 3 4
-4 1 4 1 2 3 1 1
-3 2 1 3 2 1 1 1 1 1 1
-4 1 3 2 4 2 1 3
-2 2 1 1 2 1 2 2
-4 2 4 3 1 2 2 2 4 1 4 1
-4 1 3 4 3 2 4 2
-4 2 1 4 3 1 2 1
-4 2 3 4 1 3 3 2
-4 2 1 4 3 3 1 2
-4 1 1 4 2 3 4 4
-4 1 3 2 4 4 1 2
-4 1 1 4 2 4 3 2
-4 1 3 2 4 2 2 2
-4 3 2 1 4 2 4 2 2 2 4 1
-4 1 4 1 3 2 4 4
-4 1 4 3 2 1 2 1
-4 3 1 2 4 4 4 1 1 3 4 3
-4 1 2 3 4 4 2 3
-4 2 1 3 4 2 2 2 2 4 2 3
-4 2 1 2 4 4 3 3
-4 1 3 2 4 2 3 3
-4 3 2 1 4 4 3 3 4 2 3 1
-4 3 4 3 2 1 3 4 1 2 1 3
-4 2 1 4 3 1 3 2
-3 1 3 3 3 2 2 3 3 3
-4 1 3 2 4 1 2 2
-4 3 2 1 4 1 2 2 3 2 2 3
-4 1 3 2 4 1 1 4
-4 1 2 1 3 4 1 1
-4 2 4 1 3 4 3 4
-4 1 1 2 4 3 2 3
-4 1 4 3 2 2 3 1
-4 1 4 2 3 1 1 2
-4 1 2 1 3 4 4 3
-4 3 1 3 2 4 3 3 2 1 2 4
-4 1 2 1 3 4 1 3
-4 3 1 3 2 1 3 2 3 2 1 4
-4 1 2 1 3 4 1 3
-4 3 3 2 1 4 2 1 1 3 4 3
-4 1 2 3 4 4 2 2
-4 3 2 1 4 4 1 4 4 4 2 4
-4 2 4 1 2 3 1 3
-4 3 1 4 2 2 1 2 3 3 2 1
-4 1 4 3 2 3 2 2
-4 2 1 3 4 2 2 3 2 2 2 2
-4 3 2 4 3 1 3 3 4 2 2 3
-4 1 3 2 4 1 4 2
-4 2 2 3 4 1 4 1 4 1 4 2
-4 1 1 3 4 1 2 3
-4 1 1 4 3 2 1 1
-4 2 2 3 4 3 3 3 3 2 2 3
-4 2 1 2 4 1 4 4
-4 3 3 2 1 4 4 4 3 3 1 2
-4 3 3 2 1 3 4 1 4 2 4 2
-4 3 2 3 4 1 4 2
-4 2 2 1 3 4 2 2 4 1 4 4
-4 3 4 3 2 1 3 4 1 1 1 1
-4 1 4 3 2 1 1 3
-4 1 1 2 4 3 1 2
-3 3 2 1 3 3 3 3 2 2 3
-4 3 2 1 4 2 2 2 4 2 4 4
-4 3 4 1 2 3 2 4 4 2 1 1
-4 2 1 4 3 4 4 4
-4 3 1 4 2 1 1 2 3 4 1 3
-4 1 4 3 2 3 3 2
-4 2 1 4 3 2 4 1
-4 3 3 2 1 4 3 3 4 2 4 4
-4 1 4 3 2 4 3 1
-4 3 4 1 2 3 4 1 2 4 1 1
-4 1 1 2 4 2 3 1
-4 3 4 1 2 3 2 3 2 2 4 3
-4 1 3 2 4 1 3 4
-4 3 2 1 4 1 4 3 1 4 1 2
-4 3 4 1 2 3 2 4 4 4 1 4
-4 2 1 4 3 2 3 3
-2 3 1 2 1 2 2 2 2 1
-4 3 2 1 4 3 4 1 1 3 3 3
-4 1 2 3 4 4 3 2
-4 1 3 2 4 1 4 1
-4 2 2 3 4 3 3 3 3 1 4 1
-4 2 1 3 4 3 1 1 1 2 3 4
-4 3 1 2 4 2 3 2 4 4 1 1
-4 3 4 1 2 3 3 3 1 3 2 3
-4 1 2 4 3 3 2 1
-4 2 1 4 3 2 4 1
-4 1 3 4 3 2 4 4
-4 2 1 4 3 1 2 4
-4 1 2 4 3 1 2 3
-4 1 2 3 4 3 2 1
-4 1 2 4 3 4 2 1
-4 1 2 4 3 1 3 2
-4 2 1 4 3 2 4 3
-4 1 2 4 3 1 4 4
-4 1 4 3 2 3 2 4
-4 1 4 2 3 2 2 2
-4 1 2 3 4 4 1 1
-4 3 4 1 2 3 2 3 4 4 4 4
-4 2 3 1 4 4 3 3
-4 1 4 3 2 2 3 2
-4 1 3 2 4 4 2 1
-4 3 1 4 2 3 2 3 2 2 3 3
-4 3 3 2 1 1 2 2 2 1 4 2
-4 2 4 1 3 4 2 3
-4 3 3 2 1 2 2 3 3 3 2 1
-4 3 2 1 4 1 4 1 3 2 2 3
-4 2 1 4 3 3 2 2
-4 2 1 3 4 1 3 3
-4 3 1 3 2 4 4 4 4 1 2 4
-4 1 1 3 2 4 1 2
-4 1 3 2 4 1 4 2
-4 1 2 1 3 4 4 3
-4 1 2 3 4 2 2 3
-4 1 3 2 4 4 2 3
-4 1 4 3 2 4 4 1
-4 1 1 4 2 3 4 4
-4 1 4 3 2 4 3 4
-4 3 3 2 1 3 4 2 1 4 1 4
-4 1 3 2 4 2 3 2
-4 3 2 1 4 1 4 2 1 2 4 3
-4 1 3 2 4 1 3 2
-4 3 2 1 4 2 1 2 3 1 3 4
-4 1 3 4 2 2 3 4
-4 1 3 2 4 1 1 2
-4 1 3 2 4 1 4 3
-4 2 1 4 3 2 3 4
-4 1 1 4 2 3 4 2
-4 3 2 1 4 4 1 2 4 2 4 3
-4 1 2 4 3 2 4 3
-4 1 3 2 4 1 3 4
-4 1 3 2 4 1 3 2
-4 1 2 3 4 1 4 2
-4 1 2 3 4 1 1 1
-4 1 4 2 3 2 3 2
-4 3 4 1 2 4 2 2 1 1 4 2
-4 3 2 1 4 1 4 4 2 3 4 1
-4 3 4 1 2 3 2 2 1 2 1 2
-4 2 4 3 1 3 3 3
-4 1 4 2 3 2 4 1
-4 1 3 2 4 3 4 4
-4 1 3 2 4 3 1 3
-4 1 4 3 2 4 4 1
-4 3 1 3 2 1 3 2 3 4 3 4
-4 3 2 1 4 3 4 2 2 2 3 2
-4 3 4 1 2 4 3 1 2 3 4 1
-4 2 3 4 1 1 3 2
-4 1 2 3 4 3 2 4
-4 2 1 4 3 2 2 4
-4 3 4 1 2 3 4 1 2 4 3 3
-4 1 2 4 3 2 3 1
-4 3 1 3 2 4 4 1 1 4 2 4
-4 1 4 3 2 1 4 3
-4 1 3 2 4 4 1 2
-4 3 2 1 4 2 3 1 2 4 2 2
-4 1 3 2 4 3 3 2
-4 1 3 2 4 2 3 4
-4 3 3 2 1 3 4 4 2 3 4 3
-4 2 4 3 1 3 3 3
-4 1 1 4 3 2 4 2
-4 1 3 2 4 2 4 2
-4 1 2 3 4 2 2 2
-4 1 2 3 4 2 2 3
-4 3 2 4 1 3 4 2
-4 3 4 1 2 4 2 4 2 1 3 1
-4 1 4 3 2 1 3 3
-4 3 3 2 1 1 1 4 2 2 1 2
-4 1 4 3 2 4 2 4
-4 2 3 1 4 2 2 3
-4 3 4 1 2 3 2 1 2 3 4 1
-4 3 4 1 2 3 1 1 4 3 1 4
-4 3 2 1 4 1 2 3 1 3 3 4
-4 1 3 4 2 3 3 2
-4 1 2 4 3 4 3 1
-4 3 4 1 2 4 2 2 4 1 3 1
-4 1 4 3 2 4 3 1
-4 1 1 3 4 3 1 3
-4 3 4 1 2 3 4 3 1 2 2 2
-4 2 1 3 4 4 4 4 3 1 4 3
-4 3 2 1 4 3 2 4 4 4 1 2
-4 1 4 3 2 3 2 2
-4 3 4 1 2 3 3 4 1 3 1 3
-4 2 1 2 4 3 1 1
-4 3 2 1 4 2 2 3 4 3 4 3
-4 1 4 3 2 4 2 3
-4 3 2 1 4 1 4 2 3 2 2 4
-4 3 4 1 2 3 2 1 1 4 3 1
-4 3 2 1 4 2 3 2 4 4 1 1
-4 1 4 2 3 3 4 4
-4 1 3 4 2 3 3 3
-4 1 2 3 4 1 3 2
-4 1 4 3 2 4 4 1
-4 2 3 1 4 4 3 1
-4 1 3 2 4 1 2 1
-4 3 4 1 2 3 3 3 2 1 3 2
-4 1 1 2 3 4 2 2
-4 1 2 4 3 2 3 2
-4 3 2 1 4 1 2 2 4 4 3 4
-4 1 2 1 3 4 2 4
-4 3 4 1 2 3 2 3 2 4 3 2
-4 2 3 4 1 2 3 1
-4 3 4 1 2 4 3 1 1 4 4 4
-2 2 2 1 1 1 2 1
-4 2 1 3 4 2 2 4 3 2 2 4
-4 1 2 3 4 2 1 2
-4 1 3 2 4 3 4 1
-4 1 2 4 3 3 4 2
-4 3 2 3 4 1 3 4 3 3 2 3
-4 3 4 1 2 3 2 2 4 4 1 4
-4 3 4 1 2 4 4 2 2 2 2 2
-4 3 1 3 2 2 2 2 3 1 2 2
-4 1 3 4 2 3 3 4
-4 1 2 3 4 1 3 4
-4 1 4 3 2 3 2 3
-2 2 2 1 1 1 2 2
-4 3 3 2 1 3 3 4 4 2 3 1
-4 3 2 1 3 1 3 2 4 4 2 2
-4 1 3 4 2 1 4 1
-4 1 3 2 4 3 1 1
-4 1 3 2 4 3 2 3
-4 2 4 1 3 4 3 1
-4 1 4 2 3 3 3 2
-4 3 4 1 2 3 1 1 3 4 3 4
-4 3 2 4 3 1 3 3
-4 2 3 4 1 1 3 3
-4 2 4 3 1 1 3 4
-4 3 4 1 2 3 2 3 2 3 1 1
-4 1 3 2 4 1 1 4
-4 3 2 1 4 1 2 4 3 3 3 3
-4 1 3 2 4 1 4 4
-4 1 2 3 4 1 1 4
-4 3 2 1 4 2 2 2 4 3 1 1
-4 1 2 3 4 1 1 2
-4 1 3 4 3 2 4 3
-4 1 4 2 3 2 2 4
-4 1 1 2 3 4 3 3
-4 3 4 1 2 4 1 1 1 4 1 4
-4 1 4 2 3 3 2 2
-4 1 3 2 4 4 1 1
-4 1 4 3 2 1 4 2
-4 1 4 3 2 1 4 1
-4 1 3 2 4 1 2 4
-4 1 2 3 4 2 3 2
-4 3 2 4 1 3 4 2
-4 1 3 2 4 4 2 4
-4 3 4 1 2 4 2 3 3 1 3 2
-4 3 4 1 2 3 2 4 2 3 3 4
-4 3 2 1 4 4 1 4 2 3 3 2
-4 1 2 1 3 4 3 4
-4 3 4 1 2 3 4 1 1 2 2 2
-4 3 4 1 2 3 2 4 4 2 4 4
-4 3 1 4 2 3 2 2 3 2 2 4
-4 3 4 1 2 3 2 3 3 4 2 1
-4 2 3 4 1 2 4 1
-4 1 3 2 4 1 3 3
-4 2 1 3 4 4 4 3
-4 3 2 4 3 1 2 3 3 1 2 1
-4 3 4 1 2 3 3 3 4 3 3 2
-4 1 4 3 2 1 2 4
-4 1 2 3 4 1 4 2
-4 2 1 3 4 1 4 3
-4 1 2 3 4 2 4 1
-4 3 2 1 4 3 4 1 3 3 3 2
-4 3 4 1 2 3 4 4 2 3 2 4
-4 1 1 3 4 2 4 4
-4 1 2 3 4 2 4 1
-4 1 2 1 3 4 3 3
-4 1 3 2 4 2 3 4
-4 1 4 3 2 4 1 4
-4 2 3 4 1 2 3 3
-4 1 3 2 4 1 1 1
-4 1 2 1 3 4 1 4
-4 3 3 2 1 2 3 3 2 1 4 2
-4 3 4 1 2 3 2 3 3 4 1 4
-4 3 1 4 2 4 2 2 3 3 2 2
-4 1 4 3 2 3 2 4
-4 3 4 1 2 3 2 1 2 1 4 2
-4 1 2 3 4 2 3 2
-4 1 4 2 3 3 4 4
-4 3 4 1 2 3 2 4 2 3 1 2
-4 1 1 2 4 4 2 1
-4 3 1 4 2 4 3 1 2 4 4 4
-4 3 2 4 1 3 2 1
-4 3 1 2 3 4 1 2 3 3 3 2
-4 1 3 4 2 4 2 2
-4 2 3 4 1 1 3 3
-4 3 4 1 2 3 4 2 4 2 1 2
-4 1 4 3 2 4 2 3
-4 1 3 4 2 2 3 1
-4 1 2 1 3 4 1 2
-4 1 2 1 3 4 3 3
-4 1 4 3 2 4 1 3
-4 1 3 4 2 2 3 4
-4 3 2 4 1 3 3 3
-4 3 1 2 4 2 3 1 1 4 4 2
-4 3 2 1 4 4 4 3 4 2 2 4
-4 1 3 4 2 4 2 2
-2 3 2 1 1 1 1 1 2 2
-4 1 2 1 3 4 2 4
-4 1 4 3 2 1 3 4
-4 1 2 3 4 3 1 2
-4 2 1 4 3 3 1 1
-4 2 3 4 1 3 3 2
-4 3 4 1 2 3 2 4 1 2 1 3
-4 3 2 1 4 3 4 3 4 2 3 1
-4 1 3 2 4 1 1 1
-4 2 3 4 1 4 3 2
-4 1 2 3 4 1 1 2
-4 1 2 3 4 4 2 4
-4 1 3 4 2 2 3 3
-4 1 2 3 4 4 4 3
-4 1 3 2 4 3 3 4
-4 1 2 4 3 2 1 4
-4 3 1 3 2 4 2 1 4 2 2 1
-4 3 2 1 4 1 2 2 4 4 4 2
-4 3 4 1 2 3 4 4 3 4 2 2
-4 2 3 4 1 3 2 4
-4 1 2 3 4 1 2 1
-4 1 3 2 4 2 3 4
-4 2 1 3 4 4 2 4
-4 3 1 3 2 1 2 1 2 1 2 2
-4 1 2 4 3 1 3 2
-4 2 1 2 3 4 4 2
-4 3 4 1 2 3 1 4 1 1 4 4
-4 1 3 2 4 4 3 1
-4 1 4 3 2 1 1 2
-4 1 2 1 3 4 1 3
-4 2 3 4 1 4 4 2
-4 2 1 4 3 2 4 3
-4 3 2 4 1 2 2 2 3 4 2 1
-2 1 2 1 1 1 1 1
-4 1 1 2 4 3 3 4
-4 3 2 4 3 1 2 4 1 1 4 4
-4 1 2 1 3 4 4 1
-4 1 2 3 4 1 2 4
-4 3 1 3 2 4 2 3 2 4 3 4
-4 1 3 4 2 3 3 4
-4 1 2 3 4 1 4 2
-4 3 4 1 2 3 4 2 4 4 3 4
-4 1 4 3 2 2 3 4
-2 1 1 2 2 1 1 1
-4 3 4 1 2 3 2 1 1 4 2 2
-4 3 4 1 2 3 1 3 4 1 4 4
-4 1 3 2 4 4 3 4
-4 3 4 1 2 3 4 4 4 1 2 1
-4 3 4 1 2 3 2 1 1 2 3 1
-4 2 4 1 3 4 1 4
-4 3 4 1 2 4 3 2 1 4 3 3
-4 1 3 2 4 4 2 1
-4 1 2 4 3 2 3 1
-4 3 4 1 2 3 1 4 3 3 3 2
-4 3 3 2 1 1 3 3 3 3 3 3
-4 3 4 1 2 3 2 3 2 3 2 1
-4 1 4 3 2 3 2 4
-4 3 2 1 4 3 4 2 2 2 3 4
-4 1 3 2 4 4 3 3
-4 2 1 2 4 2 1 4
-4 3 3 2 1 2 2 2 2 1 2 4
-4 1 1 3 4 2 4 1
-4 2 4 1 3 4 2 4
-4 1 4 3 2 1 1 1
-4 1 2 3 4 3 2 2
-4 1 4 3 2 3 2 2
-4 1 1 3 4 3 2 1
-4 1 2 3 4 2 4 3
-4 3 2 1 4 1 4 3 3 3 2 2
-4 1 4 3 2 2 3 4
-4 1 3 2 4 3 1 2
-4 3 4 1 2 4 1 2 2 2 2 4
-4 1 3 2 4 1 3 1
-4 3 4 1 2 3 1 4 2 4 2 1
-4 2 3 1 4 4 2 3
-4 1 3 2 4 2 3 2
-4 2 1 4 3 3 2 1
-4 2 1 4 3 4 3 3
-4 3 4 1 2 3 4 1 3 2 4 2
-4 3 4 1 2 3 1 4 3 4 4 3
-4 1 4 3 2 4 4 1
-2 1 1 2 1 1 2 1
-4 2 4 3 1 4 2 4
-4 2 1 3 4 3 3 2
-4 1 3 2 4 3 2 2
-4 1 2 3 4 1 2 4
-4 2 3 1 4 3 2 1
-4 2 1 2 3 4 3 4
-4 3 2 1 4 3 2 3 1 2 2 2
-2 1 2 1 1 2 2 2
-4 3 4 1 2 3 3 2 2 4 2 4
-4 3 2 1 4 4 1 2 3 2 4 1
-4 3 4 1 2 3 3 4 2 1 3 1
-4 3 2 1 4 2 3 4 1 3 4 4
-4 1 3 2 4 2 2 4
-4 3 2 1 4 2 3 1 2 4 3 2
-4 1 3 2 4 2 1 4
-4 3 4 3 2 1 3 4 3 4 1 4
-4 2 1 2 4 3 1 1
-4 2 3 1 4 4 1 3
-4 1 3 2 4 2 1 4
-4 1 1 4 3 2 4 3
-4 2 3 4 1 3 4 1
-4 3 2 4 3 1 4 1
-4 2 1 2 3 4 1 2
-4 3 4 1 2 3 1 3 2 1 1 1
-4 3 2 4 3 1 2 1
-4 2 4 3 1 4 4 3
-4 1 2 3 4 2 2 3
-4 1 4 3 2 3 2 3
-4 1 4 3 2 4 2 4
-4 3 2 1 4 1 3 2 4 4 4 3
-4 1 4 2 3 3 2 2
-4 3 2 1 4 1 4 2 1 2 3 2
-4 3 4 1 2 3 2 4 2 1 3 2
-4 1 3 2 4 4 4 1
-4 1 2 4 3 1 4 1
-4 2 1 2 3 4 1 2
-4 1 3 2 4 4 3 3
-4 3 2 1 4 1 3 1 4 3 1 3
-4 3 4 1 2 3 1 3 2 4 1 3
-4 1 4 3 2 4 4 1
-4 2 3 1 4 2 2 3
-4 3 2 1 4 2 3 3 3 1 1 4
-4 3 1 4 2 2 1 2 1 4 1 1
-4 3 3 2 1 1 4 2 4 2 1 3
-4 1 2 3 4 3 3 2
-4 3 2 1 4 2 1 4 3 2 3 1
-4 1 4 3 2 2 2 3
-4 1 3 2 4 3 4 2
-4 1 3 4 2 1 2 3
-4 3 4 1 2 3 2 3 4 1 4 2
-4 1 3 2 4 1 2 2
-4 1 2 4 3 2 4 4
-4 2 3 1 4 4 1 2
-4 1 2 3 4 1 1 3
-4 1 3 4 2 3 4 1
-4 1 4 2 3 4 4 3
-4 1 2 4 3 1 3 2
-4 1 4 3 2 3 2 4
-4 3 2 1 4 3 2 2 2 4 1 3
-4 1 4 2 3 4 3 4
-4 1 2 1 3 4 2 4
-4 1 4 3 2 2 3 3
-4 1 3 2 4 1 2 4
-4 1 2 4 3 4 4 1
-4 1 4 3 2 4 3 2
-4 1 3 4 2 2 4 1
-4 1 3 2 4 1 2 2
-4 1 2 3 4 2 4 2
-4 1 1 3 4 4 3 4
-4 1 2 3 4 1 3 4
-4 3 2 1 4 4 1 1 2 3 4 1
-4 3 4 1 2 3 3 1 3 4 1 4
-4 1 4 3 2 3 2 2
-4 1 2 3 4 1 2 3
-4 3 4 1 2 3 2 3 4 1 3 2
-4 3 2 1 4 4 2 3 2 1 2 2
-4 1 2 3 4 2 1 4
-4 1 3 2 4 4 4 2
-4 2 4 1 3 4 2 2
-4 1 4 3 2 4 3 2
-4 3 2 1 4 1 1 2 2 2 3 4
-4 1 2 1 3 4 1 2
-4 2 1 4 3 3 3 2
-4 1 3 2 4 1 4 2
-4 3 4 1 2 4 4 4 3 2 3 3
-4 1 3 2 4 3 3 1
-4 1 2 1 3 4 2 4
-4 1 2 3 4 3 4 2
-4 1 4 3 2 4 1 3
-4 3 4 1 2 3 2 4 4 1 4 4
-4 1 2 3 4 2 2 1
-4 1 3 4 2 1 2 1
-4 1 2 3 4 3 2 3
-4 1 2 1 3 4 2 4
-4 1 3 2 4 3 1 2
-4 1 3 2 4 1 4 4
-4 1 2 3 4 1 3 1
-4 1 2 4 3 4 4 3
-4 1 4 3 2 4 2 3
-4 1 3 2 4 2 4 2
-4 1 3 2 4 2 3 1
-4 1 3 2 4 2 4 3
-4 1 3 2 4 1 3 4`
+1 1 1 1 1`
 
-const block = 256
-
-// Pair stores an edge between two vertices in the constructed tree.
-type pair struct {
-	a int
-	b int
-}
-
-type comp struct {
-	to []int
-}
-
-func newComp(pos []int, low, up int, v []int) *comp {
-	c := &comp{to: make([]int, len(pos)+1)}
-	for i, p := range pos {
-		c.to[i+1] = c.to[i]
-		x := v[p]
-		if x >= low && x < up {
-			c.to[i+1]++
-		}
+// solve implements the logic from 1375H.go for a single testcase.
+func solve(tc testcase) string {
+	const B = 256
+	n, q := tc.n, tc.q
+	v := make([]int, n)
+	copy(v, tc.v)
+	for i := range v {
+		v[i]--
 	}
-	return c
-}
 
-func (c *comp) down(l, r int) (int, int) {
-	return c.to[l], c.to[r]
-}
-
-// gen builds the segment tree merge results for positions whose values lie in [low, up).
-func gen(low, up int, pos []int, v []int, query func(int, int) int) [][]int {
-	m := len(pos)
-	res := make([][]int, m+1)
-	for i := 0; i <= m; i++ {
-		row := make([]int, m+1)
-		for j := range row {
-			row[j] = -1
+	type comp struct{ to []int }
+	newComp := func(pos []int, low, up int) *comp {
+		c := &comp{to: make([]int, len(pos)+1)}
+		for i, p := range pos {
+			c.to[i+1] = c.to[i]
+			x := v[p]
+			if x >= low && x < up {
+				c.to[i+1]++
+			}
 		}
-		res[i] = row
+		return c
 	}
-	if m == 0 {
+	down := func(c *comp, l, r int) (int, int) {
+		if l >= len(c.to) {
+			l = len(c.to) - 1
+		}
+		if r >= len(c.to) {
+			r = len(c.to) - 1
+		}
+		return c.to[l], c.to[r]
+	}
+
+	ansPairs := []pair{}
+	cnt := 0
+	query := func(a, b int) int {
+		if a == -1 {
+			return b
+		}
+		if b == -1 {
+			return a
+		}
+		ansPairs = append(ansPairs, pair{a, b})
+		id := cnt
+		cnt++
+		return id
+	}
+
+	var gen func(low, up int, pos []int) [][]int
+	gen = func(low, up int, pos []int) [][]int {
+		m := len(pos)
+		res := make([][]int, m+1)
+		for i := 0; i <= m; i++ {
+			row := make([]int, m+1)
+			for j := range row {
+				row[j] = -1
+			}
+			res[i] = row
+		}
+		if m == 0 {
+			return res
+		}
+		if m == 1 || up-low <= 1 {
+			for i := 0; i < m; i++ {
+				res[i][i+1] = pos[i]
+			}
+			for length := 2; length <= m; length++ {
+				for i := 0; i+length <= m; i++ {
+					j := i + length
+					res[i][j] = query(res[i][j-1], pos[j-1])
+				}
+			}
+			return res
+		}
+		mid := (low + up) / 2
+		lcomp := newComp(pos, low, mid)
+		ucomp := newComp(pos, mid, up)
+		var lpos, upos []int
+		for _, p := range pos {
+			if v[p] < mid {
+				lpos = append(lpos, p)
+			} else {
+				upos = append(upos, p)
+			}
+		}
+		lres := gen(low, mid, lpos)
+		ures := gen(mid, up, upos)
+		for i := 0; i < m; i++ {
+			for j := i + 1; j <= m; j++ {
+				ll, lr := down(lcomp, i, j)
+				ul, ur := down(ucomp, i, j)
+				res[i][j] = query(lres[ll][lr], ures[ul][ur])
+			}
+		}
 		return res
 	}
-	if m == 1 {
-		res[0][1] = pos[0]
-		return res
-	}
-	mid := (low + up) / 2
-	lcomp := newComp(pos, low, mid, v)
-	ucomp := newComp(pos, mid, up, v)
-	var lpos, upos []int
-	for _, p := range pos {
-		if v[p] < mid {
-			lpos = append(lpos, p)
-		} else {
-			upos = append(upos, p)
-		}
-	}
-	lres := gen(low, mid, lpos, v, query)
-	ures := gen(mid, up, upos, v, query)
-	for i := 0; i < m; i++ {
-		for j := i + 1; j <= m; j++ {
-			ll, lr := lcomp.down(i, j)
-			ul, ur := ucomp.down(i, j)
-			res[i][j] = query(lres[ll][lr], ures[ul][ur])
-		}
-	}
-	return res
-}
 
-type testCase struct {
-	n   int
-	q   int
-	arr []int
-	qs  [][2]int
+	BN := (n + B - 1) / B
+	poss := make([][]int, BN)
+	for i := 0; i < n; i++ {
+		bi := v[i] / B
+		poss[bi] = append(poss[bi], i)
+	}
+	idx := make([]int, n)
+	for i := 0; i < n; i++ {
+		idx[i] = i
+	}
+	comps := make([]*comp, BN)
+	bks := make([][][]int, BN)
+	for i := 0; i < BN; i++ {
+		bks[i] = gen(i*B, i*B+B, poss[i])
+		comps[i] = newComp(idx, i*B, i*B+B)
+	}
+
+	qans := make([]int, q)
+	for i := range qans {
+		qans[i] = -1
+	}
+	for ti := 0; ti < q; ti++ {
+		l, r := tc.p[ti][0]-1, tc.p[ti][1]
+		for i := 0; i < BN; i++ {
+			ll, rr := down(comps[i], l, r)
+			qans[ti] = query(qans[ti], bks[i][ll][rr])
+		}
+	}
+
+	var out strings.Builder
+	fmt.Fprintln(&out, cnt)
+	for _, p := range ansPairs {
+		fmt.Fprintf(&out, "%d %d\n", p.a+1, p.b+1)
+	}
+	for i, x := range qans {
+		if i > 0 {
+			out.WriteByte(' ')
+		}
+		out.WriteString(strconv.Itoa(x + 1))
+	}
+	return strings.TrimSpace(out.String())
 }
 
 func buildIfGo(path string) (string, func(), error) {
@@ -1038,136 +284,14 @@ func buildIfGo(path string) (string, func(), error) {
 	return path, func() {}, nil
 }
 
-func parseTestcases() ([]testCase, error) {
-	scan := bufio.NewScanner(strings.NewReader(testcasesH))
-	scan.Split(bufio.ScanWords)
-	cases := make([]testCase, 0)
-	for {
-		if !scan.Scan() {
-			break
-		}
-		n, err := strconv.Atoi(scan.Text())
-		if err != nil {
-			return nil, fmt.Errorf("parse n: %w", err)
-		}
-		if !scan.Scan() {
-			return nil, fmt.Errorf("missing q")
-		}
-		q, err := strconv.Atoi(scan.Text())
-		if err != nil {
-			return nil, fmt.Errorf("parse q: %w", err)
-		}
-		arr := make([]int, n)
-		for i := 0; i < n; i++ {
-			if !scan.Scan() {
-				return nil, fmt.Errorf("missing arr value %d", i+1)
-			}
-			v, err := strconv.Atoi(scan.Text())
-			if err != nil {
-				return nil, fmt.Errorf("parse arr value %d: %w", i+1, err)
-			}
-			arr[i] = v
-		}
-		qs := make([][2]int, q)
-		for i := 0; i < q; i++ {
-			if !scan.Scan() {
-				return nil, fmt.Errorf("missing l for query %d", i+1)
-			}
-			l, err := strconv.Atoi(scan.Text())
-			if err != nil {
-				return nil, fmt.Errorf("parse l query %d: %w", i+1, err)
-			}
-			if !scan.Scan() {
-				return nil, fmt.Errorf("missing r for query %d", i+1)
-			}
-			r, err := strconv.Atoi(scan.Text())
-			if err != nil {
-				return nil, fmt.Errorf("parse r query %d: %w", i+1, err)
-			}
-			qs[i] = [2]int{l, r}
-		}
-		cases = append(cases, testCase{n: n, q: q, arr: arr, qs: qs})
-	}
-	if err := scan.Err(); err != nil {
-		return nil, fmt.Errorf("scanner error: %w", err)
-	}
-	return cases, nil
-}
-
-func referenceSolve(tc testCase) string {
-	v := make([]int, tc.n)
-	for i, x := range tc.arr {
-		v[i] = x - 1
-	}
-	BN := (tc.n + block - 1) / block
-	poss := make([][]int, BN)
-	for i, x := range v {
-		bi := x / block
-		poss[bi] = append(poss[bi], i)
-	}
-	idx := make([]int, tc.n)
-	for i := range idx {
-		idx[i] = i
-	}
-	ans := make([]pair, 0)
-	cnt := 0
-	query := func(a, b int) int {
-		if a == -1 {
-			return b
-		}
-		if b == -1 {
-			return a
-		}
-		ans = append(ans, pair{a: a, b: b})
-		id := cnt
-		cnt++
-		return id
-	}
-
-	comps := make([]*comp, BN)
-	bks := make([][][]int, BN)
-	for i := 0; i < BN; i++ {
-		bks[i] = gen(i*block, i*block+block, poss[i], v, query)
-		comps[i] = newComp(idx, i*block, i*block+block, v)
-	}
-
-	qans := make([]int, tc.q)
-	for i := range qans {
-		qans[i] = -1
-	}
-	for qi, qr := range tc.qs {
-		l := qr[0] - 1
-		r := qr[1]
-		for i := 0; i < BN; i++ {
-			ll, rr := comps[i].down(l, r)
-			qans[qi] = query(qans[qi], bks[i][ll][rr])
-		}
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d\n", cnt))
-	for _, p := range ans {
-		sb.WriteString(fmt.Sprintf("%d %d\n", p.a+1, p.b+1))
-	}
-	for i, x := range qans {
-		if i > 0 {
-			sb.WriteByte(' ')
-		}
-		sb.WriteString(strconv.Itoa(x + 1))
-	}
-	sb.WriteByte('\n')
-	return sb.String()
-}
-
-func run(bin, input string) (string, error) {
+func runCandidate(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	var errb bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &errb
+	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
 	return strings.TrimSpace(out.String()), nil
 }
@@ -1178,6 +302,54 @@ func main() {
 		os.Exit(1)
 	}
 
+	words := strings.Fields(testcasesRaw)
+	pos := 0
+	nextInt := func() (int, error) {
+		if pos >= len(words) {
+			return 0, fmt.Errorf("unexpected EOF at token %d", pos)
+		}
+		v, err := strconv.Atoi(words[pos])
+		pos++
+		return v, err
+	}
+	var cases []testcase
+	for pos < len(words) {
+		n, err := nextInt()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		q, err := nextInt()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		v := make([]int, n)
+		for i := 0; i < n; i++ {
+			val, err := nextInt()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			v[i] = val
+		}
+		p := make([][2]int, q)
+		for i := 0; i < q; i++ {
+			l, err := nextInt()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			r, err := nextInt()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			p[i] = [2]int{l, r}
+		}
+		cases = append(cases, testcase{n: n, q: q, v: v, p: p})
+	}
+
 	bin, cleanup, err := buildIfGo(os.Args[1])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -1185,35 +357,28 @@ func main() {
 	}
 	defer cleanup()
 
-	cases, err := parseTestcases()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	for idx, tc := range cases {
+	for i, tc := range cases {
 		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.q))
-		for i, v := range tc.arr {
-			if i > 0 {
+		fmt.Fprintf(&sb, "%d %d\n", tc.n, tc.q)
+		for j, val := range tc.v {
+			if j > 0 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(strconv.Itoa(v))
+			sb.WriteString(strconv.Itoa(val))
 		}
 		sb.WriteByte('\n')
-		for _, qr := range tc.qs {
-			sb.WriteString(fmt.Sprintf("%d %d\n", qr[0], qr[1]))
+		for _, pr := range tc.p {
+			fmt.Fprintf(&sb, "%d %d\n", pr[0], pr[1])
 		}
 		input := sb.String()
-
-		want := strings.TrimSpace(referenceSolve(tc))
-		got, err := run(bin, input)
+		expect := solve(tc)
+		got, err := runCandidate(bin, input)
 		if err != nil {
-			fmt.Printf("case %d failed: %v\n", idx+1, err)
+			fmt.Printf("case %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != want {
-			fmt.Printf("case %d failed\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", idx+1, input, want, got)
+		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
+			fmt.Printf("case %d failed\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", i+1, input, expect, got)
 			os.Exit(1)
 		}
 	}

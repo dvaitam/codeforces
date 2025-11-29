@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,6 +8,138 @@ import (
 	"strconv"
 	"strings"
 )
+
+// solve matches the original 1180A solution logic.
+func solve(n int) int {
+	return 2*n*(n-1) + 1
+}
+
+const testcaseData = `
+100
+50
+98
+54
+6
+34
+66
+63
+52
+39
+62
+46
+75
+28
+65
+18
+37
+18
+97
+13
+80
+33
+69
+91
+78
+19
+40
+13
+94
+10
+88
+43
+61
+72
+13
+46
+56
+41
+79
+82
+27
+71
+62
+57
+67
+34
+8
+71
+2
+12
+93
+52
+91
+86
+81
+1
+79
+64
+43
+32
+94
+42
+91
+9
+25
+73
+29
+31
+19
+70
+58
+12
+11
+41
+66
+63
+14
+39
+71
+38
+91
+16
+71
+43
+70
+27
+78
+71
+76
+37
+57
+12
+77
+50
+41
+74
+31
+38
+24
+25
+24
+`
+
+func loadTestcases() ([]int, error) {
+	fields := strings.Fields(testcaseData)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no embedded testcases")
+	}
+	T, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return nil, fmt.Errorf("bad testcase count: %v", err)
+	}
+	if len(fields)-1 != T {
+		return nil, fmt.Errorf("testcase count mismatch: declared %d, have %d", T, len(fields)-1)
+	}
+	tests := make([]int, 0, T)
+	for i := 1; i < len(fields); i++ {
+		v, err := strconv.Atoi(fields[i])
+		if err != nil {
+			return nil, fmt.Errorf("bad testcase %d: %v", i, err)
+		}
+		tests = append(tests, v)
+	}
+	return tests, nil
+}
 
 func run(bin string, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -29,8 +160,7 @@ func run(bin string, input string) (string, error) {
 }
 
 func expected(n int) string {
-	res := 2*n*(n-1) + 1
-	return fmt.Sprintf("%d", res)
+	return fmt.Sprintf("%d", solve(n))
 }
 
 func main() {
@@ -43,25 +173,12 @@ func main() {
 		os.Exit(1)
 	}
 	bin := args[0]
-	f, err := os.Open("testcasesA.txt")
+	testcases, err := loadTestcases()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to open testcases:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer f.Close()
-	scan := bufio.NewScanner(f)
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Fprintln(os.Stderr, "empty test file")
-		os.Exit(1)
-	}
-	T, _ := strconv.Atoi(scan.Text())
-	for tc := 0; tc < T; tc++ {
-		if !scan.Scan() {
-			fmt.Fprintf(os.Stderr, "bad test %d\n", tc+1)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(scan.Text())
+	for tc, n := range testcases {
 		input := fmt.Sprintf("%d\n", n)
 		want := expected(n)
 		got, err := run(bin, input)
@@ -74,5 +191,5 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", T)
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

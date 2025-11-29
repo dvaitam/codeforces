@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,6 +8,108 @@ import (
 	"strconv"
 	"strings"
 )
+
+// Embedded copy of testcasesE.txt so the verifier is self-contained.
+const testcasesRaw = `1 3 1 1 E 1 1 S 1 1 E
+1 2 1 1 S 1 1 S
+1 3 1 1 S 1 1 E 1 1 E
+5 6 2 2 E 3 1 E 1 3 E 5 2 E 4 5 E 4 4 S
+1 3 1 1 S 1 1 E 1 1 S
+5 6 1 4 S 4 3 S 3 4 E 5 2 E 1 1 S 3 5 S
+1 3 1 1 E 1 1 E 1 1 E
+1 3 1 1 S 1 1 E 1 1 E
+1 3 1 1 E 1 1 S 1 1 E
+3 5 3 1 E 1 2 S 1 1 S 1 3 S 3 3 S
+5 5 5 4 S 3 1 S 5 3 E 2 4 S 2 4 E
+3 3 1 2 E 1 3 E 1 2 S
+1 1 1 1 S
+5 6 2 4 E 2 3 S 3 5 S 5 4 S 4 4 S 4 2 S
+3 5 3 2 E 2 3 S 3 3 E 2 2 E 1 2 S
+1 4 1 1 S 1 1 E 1 1 S 1 1 S
+1 5 1 1 E 1 1 S 1 1 E 1 1 S 1 1 S
+3 7 2 3 S 1 2 S 3 1 E 2 1 S 3 2 E 1 2 E 1 2 E
+1 1 1 1 E
+3 6 1 3 S 3 2 E 2 1 S 2 1 S 3 1 E 2 2 E
+5 5 2 1 E 1 5 S 4 5 E 5 1 S 4 3 E
+1 2 1 1 E 1 1 E
+5 9 4 4 S 3 5 E 3 2 E 1 5 S 5 2 E 3 2 E 5 1 S 4 2 E 3 3 S
+3 3 3 1 S 2 1 S 1 3 E
+5 9 1 1 S 4 2 E 4 5 S 4 2 E 3 2 E 5 5 E 4 5 E 3 3 E 4 5 S
+3 4 3 2 E 2 2 S 1 3 S 2 3 E
+5 7 1 3 E 2 4 S 2 2 S 3 2 S 2 4 E 1 5 S 2 1 S
+1 3 1 1 E 1 1 S 1 1 S
+5 5 5 3 S 5 2 E 2 2 E 4 5 S 4 2 S
+3 7 2 3 E 2 2 S 2 1 E 1 2 S 2 1 S 1 1 S 1 1 S
+3 7 1 2 E 2 1 S 1 2 E 2 3 E 3 3 S 3 1 E 3 3 E
+3 5 1 1 E 1 3 S 3 2 E 2 1 S 3 1 E
+5 9 5 2 S 2 1 E 5 2 E 1 5 S 1 2 E 5 1 S 1 4 S 2 3 S 3 3 E
+5 9 4 1 S 4 4 S 5 5 E 5 3 S 4 3 S 2 1 E 4 3 E 4 4 E 5 2 E
+3 7 1 1 E 2 3 E 3 3 S 3 2 S 1 3 S 3 1 E 3 1 E
+1 3 1 1 S 1 1 S 1 1 E
+3 7 3 3 S 3 1 S 3 3 S 1 3 S 2 1 E 3 2 E 1 1 S
+1 1 1 1 E
+5 8 1 2 S 4 4 E 5 3 E 4 4 S 1 2 S 3 2 E 2 3 S 5 3 E
+3 7 3 1 S 1 2 S 3 1 S 1 1 S 2 3 E 3 2 S 2 3 E
+1 2 1 1 E 1 1 E
+5 6 4 1 E 2 1 E 3 5 S 1 4 S 5 1 S 5 2 E
+5 5 1 4 E 2 5 S 5 1 S 2 5 E 2 4 E
+5 7 2 3 E 3 5 E 5 1 S 3 5 S 4 4 S 1 5 S 2 2 S
+5 5 5 3 S 1 5 S 5 2 E 5 1 E 4 3 S
+5 8 3 5 S 2 3 E 1 1 E 5 5 E 1 2 E 1 4 S 3 2 S 2 2 S
+1 1 1 1 E
+1 1 1 1 S
+5 9 1 1 S 2 4 S 1 5 E 5 3 E 2 5 S 5 5 S 5 1 S 1 3 E 3 5 E
+1 5 1 1 S 1 1 E 1 1 E 1 1 S 1 1 E
+3 5 3 1 E 3 2 E 2 3 S 2 1 S 2 3 S
+1 4 1 1 S 1 1 S 1 1 S 1 1 E
+1 4 1 1 S 1 1 S 1 1 E 1 1 S
+3 3 3 1 E 2 3 E 3 1 S
+3 5 1 2 S 2 2 E 3 3 S 2 1 S 2 2 S
+1 1 1 1 S
+1 4 1 1 E 1 1 E 1 1 E 1 1 E
+3 5 1 3 S 2 2 S 2 3 S 3 3 S 3 1 E
+1 5 1 1 E 1 1 E 1 1 E 1 1 S 1 1 E
+1 3 1 1 E 1 1 E 1 1 E
+5 9 2 5 S 1 4 E 2 1 S 2 3 S 3 3 E 5 2 E 1 1 S 4 1 S 2 4 S
+5 9 2 2 S 1 2 S 2 1 E 3 3 E 5 4 S 3 1 E 3 1 S 3 1 E 1 2 S
+1 4 1 1 S 1 1 E 1 1 S 1 1 S
+1 4 1 1 E 1 1 E 1 1 E 1 1 E
+5 5 2 5 S 2 4 S 2 5 S 5 1 S 3 1 S
+5 8 1 5 S 3 3 S 2 1 E 5 4 E 5 3 S 1 4 E 5 2 E 5 3 S
+3 4 1 1 E 3 1 S 1 3 E 3 2 S
+5 6 3 5 E 4 3 E 1 4 E 3 3 S 1 3 E 5 5 E
+5 8 1 3 E 5 1 E 5 1 S 4 5 S 4 4 S 1 3 S 2 4 S 2 4 E
+3 6 2 2 E 1 3 S 3 3 S 3 1 S 3 2 E 2 1 S
+3 3 3 3 E 2 2 S 2 2 E
+3 7 1 2 S 1 2 E 2 1 E 3 2 E 3 1 S 1 2 S 1 2 S
+5 7 5 2 S 4 4 E 4 2 S 1 2 E 3 5 E 1 3 E 5 4 S
+1 3 1 1 E 1 1 S 1 1 E
+5 5 2 5 S 1 4 E 4 1 E 4 4 E 5 2 E
+5 6 3 3 E 1 4 S 3 5 E 3 5 E 5 3 S 3 5 E
+3 7 2 1 S 1 3 E 3 1 E 2 2 E 3 2 S 3 3 E 1 2 E
+3 4 2 2 S 1 2 S 3 2 S 1 2 S
+1 3 1 1 E 1 1 S 1 1 S
+5 7 3 1 E 5 5 S 5 4 E 5 5 E 2 2 E 4 2 E 4 5 S
+1 2 1 1 E 1 1 E
+1 5 1 1 S 1 1 E 1 1 E 1 1 E 1 1 S
+5 6 5 1 E 1 1 S 2 5 S 2 5 E 2 1 E 3 3 E
+3 4 3 1 E 2 3 E 3 3 E 1 3 S
+5 8 3 1 E 1 3 S 5 5 E 1 4 E 4 5 E 5 4 E 5 1 S 5 2 E
+5 7 5 3 E 1 3 S 4 2 E 3 1 S 4 3 S 5 5 E 1 2 S
+5 5 4 2 E 5 1 S 2 5 S 2 2 S 3 2 E
+1 3 1 1 E 1 1 E 1 1 S
+3 6 2 3 E 3 2 E 3 2 S 2 1 E 1 3 S 2 2 E
+1 3 1 1 E 1 1 S 1 1 S
+5 7 4 4 S 5 3 S 2 1 S 4 2 S 2 1 E 3 2 S 2 5 S
+3 7 2 2 S 2 2 S 2 2 S 2 1 E 1 1 S 1 2 E 2 3 E
+1 2 1 1 E 1 1 E
+5 8 3 5 S 4 3 E 4 3 S 4 4 S 2 1 E 5 3 E 2 5 E 2 3 E
+3 7 1 1 E 1 1 E 1 3 S 3 2 S 1 2 E 3 2 S 1 3 S
+1 1 1 1 S
+5 6 2 3 E 1 2 E 2 5 E 1 5 E 5 3 E 2 4 S
+5 8 4 5 S 2 3 E 5 4 S 1 1 S 3 2 S 4 5 S 4 4 E 5 3 S
+3 4 2 3 E 1 3 S 1 1 E 1 2 E
+3 3 1 2 E 3 1 S 2 2 E`
 
 type DSU struct{ p []int }
 
@@ -19,12 +120,14 @@ func NewDSU(n int) *DSU {
 	}
 	return &DSU{p}
 }
+
 func (d *DSU) Find(x int) int {
 	if d.p[x] != x {
 		d.p[x] = d.Find(d.p[x])
 	}
 	return d.p[x]
 }
+
 func (d *DSU) Union(x, y int) {
 	fx := d.Find(x)
 	fy := d.Find(y)
@@ -38,16 +141,22 @@ type Edge struct {
 	s    bool
 }
 
-func expected(n, m int, edges []Edge) string {
-	if n%2 == 0 {
+type testCase struct {
+	n     int
+	m     int
+	edges []Edge
+}
+
+func solveCase(tc testCase) string {
+	if tc.n%2 == 0 {
 		return "-1"
 	}
-	initialUsd := make([]bool, m)
-	usd := make([]bool, m)
-	dsu := NewDSU(n)
+	initialUsd := make([]bool, tc.m)
+	usd := make([]bool, tc.m)
+	dsu := NewDSU(tc.n)
 	num := 0
-	for i := 0; i < m; i++ {
-		e := edges[i]
+	for i := 0; i < tc.m; i++ {
+		e := tc.edges[i]
 		if dsu.Find(e.u) != dsu.Find(e.v) {
 			dsu.Union(e.u, e.v)
 			initialUsd[i] = true
@@ -57,52 +166,52 @@ func expected(n, m int, edges []Edge) string {
 		}
 	}
 	copy(usd, initialUsd)
-	if num*2+1 != n {
-		dsu = NewDSU(n)
-		if num*2+1 < n {
-			newUsd := make([]bool, m)
+	if num*2+1 != tc.n {
+		dsu = NewDSU(tc.n)
+		if num*2+1 < tc.n {
+			newUsd := make([]bool, tc.m)
 			newNum := 0
-			for i := 0; i < m; i++ {
-				if edges[i].s && initialUsd[i] {
-					dsu.Union(edges[i].u, edges[i].v)
+			for i := 0; i < tc.m; i++ {
+				if tc.edges[i].s && initialUsd[i] {
+					dsu.Union(tc.edges[i].u, tc.edges[i].v)
 					newUsd[i] = true
 					newNum++
 				}
 			}
-			for i := 0; i < m && newNum*2+1 != n; i++ {
-				if edges[i].s && dsu.Find(edges[i].u) != dsu.Find(edges[i].v) {
-					dsu.Union(edges[i].u, edges[i].v)
+			for i := 0; i < tc.m && newNum*2+1 != tc.n; i++ {
+				if tc.edges[i].s && dsu.Find(tc.edges[i].u) != dsu.Find(tc.edges[i].v) {
+					dsu.Union(tc.edges[i].u, tc.edges[i].v)
 					newUsd[i] = true
 					newNum++
 				}
 			}
-			for i := 0; i < m; i++ {
-				if !edges[i].s && dsu.Find(edges[i].u) != dsu.Find(edges[i].v) {
-					dsu.Union(edges[i].u, edges[i].v)
+			for i := 0; i < tc.m; i++ {
+				if !tc.edges[i].s && dsu.Find(tc.edges[i].u) != dsu.Find(tc.edges[i].v) {
+					dsu.Union(tc.edges[i].u, tc.edges[i].v)
 					newUsd[i] = true
 				}
 			}
 			usd = newUsd
 			num = newNum
 		} else {
-			newUsd := make([]bool, m)
+			newUsd := make([]bool, tc.m)
 			newNum := num
-			for i := 0; i < m; i++ {
-				if !edges[i].s && initialUsd[i] {
-					dsu.Union(edges[i].u, edges[i].v)
+			for i := 0; i < tc.m; i++ {
+				if !tc.edges[i].s && initialUsd[i] {
+					dsu.Union(tc.edges[i].u, tc.edges[i].v)
 					newUsd[i] = true
 				}
 			}
-			for i := 0; i < m && newNum*2+1 != n; i++ {
-				if !edges[i].s && dsu.Find(edges[i].u) != dsu.Find(edges[i].v) {
-					dsu.Union(edges[i].u, edges[i].v)
+			for i := 0; i < tc.m && newNum*2+1 != tc.n; i++ {
+				if !tc.edges[i].s && dsu.Find(tc.edges[i].u) != dsu.Find(tc.edges[i].v) {
+					dsu.Union(tc.edges[i].u, tc.edges[i].v)
 					newUsd[i] = true
 					newNum--
 				}
 			}
-			for i := 0; i < m; i++ {
-				if edges[i].s && dsu.Find(edges[i].u) != dsu.Find(edges[i].v) {
-					dsu.Union(edges[i].u, edges[i].v)
+			for i := 0; i < tc.m; i++ {
+				if tc.edges[i].s && dsu.Find(tc.edges[i].u) != dsu.Find(tc.edges[i].v) {
+					dsu.Union(tc.edges[i].u, tc.edges[i].v)
 					newUsd[i] = true
 				}
 			}
@@ -110,11 +219,11 @@ func expected(n, m int, edges []Edge) string {
 			num = newNum
 		}
 	}
-	if num*2+1 == n {
+	if num*2+1 == tc.n {
 		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d\n", n-1))
+		sb.WriteString(fmt.Sprintf("%d\n", tc.n-1))
 		cnt := 0
-		for i := 0; i < m && cnt < n-1; i++ {
+		for i := 0; i < tc.m && cnt < tc.n-1; i++ {
 			if usd[i] {
 				sb.WriteString(fmt.Sprintf("%d ", i+1))
 				cnt++
@@ -125,72 +234,113 @@ func expected(n, m int, edges []Edge) string {
 	return "-1"
 }
 
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(testcasesRaw, "\n")
+	var cases []testCase
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		n, err1 := strconv.Atoi(parts[0])
+		m, err2 := strconv.Atoi(parts[1])
+		if err1 != nil || err2 != nil {
+			return nil, fmt.Errorf("line %d: parse n/m: %v %v", idx+1, err1, err2)
+		}
+		if len(parts) != 2+3*m {
+			return nil, fmt.Errorf("line %d: expected %d fields got %d", idx+1, 2+3*m, len(parts))
+		}
+		edges := make([]Edge, m)
+		pos := 2
+		for i := 0; i < m; i++ {
+			u, errU := strconv.Atoi(parts[pos])
+			v, errV := strconv.Atoi(parts[pos+1])
+			typ := parts[pos+2]
+			if errU != nil || errV != nil {
+				return nil, fmt.Errorf("line %d: parse edge %d: %v %v", idx+1, i+1, errU, errV)
+			}
+			edges[i] = Edge{u: u, v: v, s: typ == "S"}
+			pos += 3
+		}
+		cases = append(cases, testCase{n: n, m: m, edges: edges})
+	}
+	if len(cases) == 0 {
+		return nil, fmt.Errorf("no embedded testcases")
+	}
+	return cases, nil
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierE.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	f, err := os.Open("testcasesE.txt")
+
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Println("failed to open testcasesE.txt:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer f.Close()
-	sc := bufio.NewScanner(f)
-	tests := 0
-	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if line == "" {
-			continue
-		}
-		parts := strings.Fields(line)
-		n, _ := strconv.Atoi(parts[0])
-		m, _ := strconv.Atoi(parts[1])
-		if len(parts) != 2+3*m {
-			fmt.Printf("test %d: invalid line\n", tests+1)
-			os.Exit(1)
-		}
-		edges := make([]Edge, m)
-		idx := 2
-		for i := 0; i < m; i++ {
-			u, _ := strconv.Atoi(parts[idx])
-			idx++
-			v, _ := strconv.Atoi(parts[idx])
-			idx++
-			typ := parts[idx]
-			idx++
-			edges[i] = Edge{u, v, typ == "S"}
-		}
-		expect := expected(n, m, edges)
+
+	bin, cleanup, err := buildIfGo(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	for i, tc := range cases {
 		var input strings.Builder
-		input.WriteString(fmt.Sprintf("%d %d\n", n, m))
-		for i := 0; i < m; i++ {
+		fmt.Fprintf(&input, "%d %d\n", tc.n, tc.m)
+		for _, e := range tc.edges {
 			t := 'E'
-			if edges[i].s {
+			if e.s {
 				t = 'S'
 			}
-			input.WriteString(fmt.Sprintf("%d %d %c\n", edges[i].u, edges[i].v, t))
+			fmt.Fprintf(&input, "%d %d %c\n", e.u, e.v, t)
 		}
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input.String())
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		err := cmd.Run()
+
+		got, err := runCandidate(bin, input.String())
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\n", tests+1, err)
+			fmt.Printf("test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
-		if got != expect {
-			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", tests+1, expect, got)
+		expect := solveCase(tc)
+		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
+			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", i+1, expect, got)
 			os.Exit(1)
 		}
-		tests++
 	}
-	if err := sc.Err(); err != nil {
-		fmt.Println("scanner error:", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", tests)
+
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

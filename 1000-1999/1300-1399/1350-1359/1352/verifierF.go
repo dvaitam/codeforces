@@ -9,6 +9,12 @@ import (
 	"strings"
 )
 
+type testCase struct {
+	n0 int
+	n1 int
+	n2 int
+}
+
 // Embedded testcases from testcasesF.txt.
 const testcasesRaw = `100
 1 2 0
@@ -112,30 +118,33 @@ const testcasesRaw = `100
 2 0 4
 0 2 2`
 
-type testCase struct {
-	n0 int
-	n1 int
-	n2 int
-}
-
-func runBinary(path, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	} else {
-		cmd = exec.Command(path)
+func parseTestcases() ([]testCase, error) {
+	fields := strings.Fields(testcasesRaw)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no embedded testcases")
 	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+	t, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return nil, fmt.Errorf("invalid test count: %v", err)
+	}
+	if len(fields) != 1+t*3 {
+		return nil, fmt.Errorf("malformed testcases: expected %d numbers, got %d", 1+t*3, len(fields))
+	}
+	cases := make([]testCase, 0, t)
+	idx := 1
+	for i := 0; i < t; i++ {
+		n0, _ := strconv.Atoi(fields[idx])
+		n1, _ := strconv.Atoi(fields[idx+1])
+		n2, _ := strconv.Atoi(fields[idx+2])
+		idx += 3
+		cases = append(cases, testCase{n0: n0, n1: n1, n2: n2})
+	}
+	return cases, nil
 }
 
-// referenceSolution embeds the construction logic from 1352F.go to produce one valid string.
+// referenceSolution mirrors the construction from 1352F.go in this repo.
 func referenceSolution(n0, n1p, n2p int) string {
-	// map variables as in original source
+	// remap variables to match original code naming
 	n1 := n2p
 	n2 := n1p
 	n3 := n0
@@ -200,38 +209,34 @@ func referenceSolution(n0, n1p, n2p int) string {
 	return string(sBuilder)
 }
 
-func checkString(s string, n0, n1, n2 int) bool {
-	if len(s) != n0+n1+n2+1 {
-		return false
+func runBinary(path, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(path, ".go") {
+		cmd = exec.Command("go", "run", path)
+	} else {
+		cmd = exec.Command(path)
 	}
-	for i := range s {
-		if s[i] != '0' && s[i] != '1' {
-			return false
-		}
-	}
-	c0 := 0
-	c1 := 0
-	c2 := 0
-	for i := 0; i+1 < len(s); i++ {
-		if s[i] == '0' && s[i+1] == '0' {
-			c0++
-		} else if s[i] == '1' && s[i+1] == '1' {
-			c2++
-		} else {
-			c1++
-		}
-	}
-	return c0 == n0 && c1 == n1 && c2 == n2
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	err := cmd.Run()
+	return strings.TrimSpace(out.String()), err
 }
 
-func runCase(bin string, n0, n1, n2 int) error {
-	input := fmt.Sprintf("1\n%d %d %d\n", n0, n1, n2)
+func runCase(bin string, tc testCase) error {
+	input := fmt.Sprintf("1\n%d %d %d\n", tc.n0, tc.n1, tc.n2)
 	out, err := runBinary(bin, input)
 	if err != nil {
 		return fmt.Errorf("runtime error: %v\n%s", err, out)
 	}
-	s := strings.TrimSpace(out)
-	exp := referenceSolution(n0, n1, n2)
+	// Use first token as candidate string.
+	fields := strings.Fields(out)
+	if len(fields) == 0 {
+		return fmt.Errorf("no output produced")
+	}
+	s := fields[0]
+	exp := referenceSolution(tc.n0, tc.n1, tc.n2)
 	if s != exp {
 		return fmt.Errorf("output mismatch: expected %q got %q", exp, s)
 	}
@@ -245,23 +250,14 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	fields := strings.Fields(testcasesRaw)
-	if len(fields) == 0 {
-		fmt.Println("no testcases provided")
+	cases, err := parseTestcases()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	t, _ := strconv.Atoi(fields[0])
-	if len(fields) != 1+t*3 {
-		fmt.Println("embedded testcases malformed")
-		os.Exit(1)
-	}
-	idx := 1
-	for i := 0; i < t; i++ {
-		n0, _ := strconv.Atoi(fields[idx])
-		n1, _ := strconv.Atoi(fields[idx+1])
-		n2, _ := strconv.Atoi(fields[idx+2])
-		idx += 3
-		if err := runCase(bin, n0, n1, n2); err != nil {
+
+	for i, tc := range cases {
+		if err := runCase(bin, tc); err != nil {
 			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
