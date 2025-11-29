@@ -98,16 +98,18 @@ func main() {
    }
    // operations are elements where their edge is unmatched
    k := n - match
-   fmt.Fprintln(out, k)
-   first := true
-   for i := 0; i < n; i++ {
-       if x[aLab[i]] != bLab[i] {
-           if !first {
-               out.WriteByte(' ')
-           }
-           first = false
-           fmt.Fprint(out, i+1)
-       }
+   	fmt.Fprintln(out, k)
+   	first := true
+   	for i := 0; i < n; i++ {
+   		if x[aLab[i]] == bLab[i] {
+   			x[aLab[i]] = -1
+   		} else {
+   			if !first {
+   				out.WriteByte(' ')
+   			}
+   			first = false
+   			fmt.Fprint(out, i+1)
+   		}
+   	}
+   	fmt.Fprintln(out)
    }
-   fmt.Fprintln(out)
-}

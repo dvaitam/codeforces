@@ -58,37 +58,33 @@ func solveC(n int, legs []struct{ l, d int }) int {
 		suffixCost[i] = suffixCost[i+1] + sum
 	}
 	freq := make([]int, 201)
-	prefixCost := 0
 	countShorter := 0
 	ans := int(^uint(0) >> 1)
+	
 	for idx, g := range groups {
-		sort.Ints(g.costs)
 		c := len(g.costs)
-		prefixGroup := make([]int, c+1)
-		for i := 0; i < c; i++ {
-			prefixGroup[i+1] = prefixGroup[i] + g.costs[i]
+		// We keep all c legs of the current max length
+		// Remove all legs longer than current (suffixCost[idx+1])
+		// We can keep at most c-1 legs shorter than current
+		// So we must remove max(0, countShorter - (c-1)) cheapest shorter legs
+		
+		removalsNeeded := countShorter - (c - 1)
+		costRemoveShorter := 0
+		if removalsNeeded > 0 {
+			costRemoveShorter = sumSmallest(freq, removalsNeeded)
 		}
-		groupTotal := prefixGroup[c]
-		costLonger := suffixCost[idx+1]
-		for x := 1; x <= c; x++ {
-			keepOthers := x - 1
-			if keepOthers > countShorter {
-				keepOthers = countShorter
-			}
-			costKeepOthers := sumSmallest(freq, keepOthers)
-			costRemoveShorter := prefixCost - costKeepOthers
-			costRemoveGroup := groupTotal - prefixGroup[x]
-			total := costLonger + costRemoveShorter + costRemoveGroup
-			if total < ans {
-				ans = total
-			}
+		
+		total := suffixCost[idx+1] + costRemoveShorter
+		if total < ans {
+			ans = total
 		}
+		
 		for _, v := range g.costs {
 			freq[v]++
 		}
-		prefixCost += groupTotal
 		countShorter += c
 	}
+	
 	if ans < 0 {
 		ans = 0
 	}

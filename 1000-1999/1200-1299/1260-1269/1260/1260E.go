@@ -2,10 +2,29 @@ package main
 
 import (
 	"bufio"
+	"container/heap"
 	"fmt"
 	"os"
-	"sort"
 )
+
+// IntHeap is a min-heap of ints.
+type IntHeap []int64
+
+func (h IntHeap) Len() int           { return len(h) }
+func (h IntHeap) Less(i, j int) bool { return h[i] < h[j] }
+func (h IntHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+
+func (h *IntHeap) Push(x interface{}) {
+	*h = append(*h, x.(int64))
+}
+
+func (h *IntHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
 
 func main() {
 	reader := bufio.NewReader(os.Stdin)
@@ -17,78 +36,28 @@ func main() {
 		return
 	}
 	a := make([]int64, n+1)
-	friend := -1
 	for i := 1; i <= n; i++ {
 		fmt.Fscan(reader, &a[i])
+	}
+
+	h := &IntHeap{}
+	heap.Init(h)
+
+	var s int64
+	currN := n
+
+	for i := n; i >= 1; i-- {
 		if a[i] == -1 {
-			friend = i
+			break
 		}
-	}
-	if friend == n {
-		fmt.Fprintln(writer, 0)
-		return
-	}
-
-	// r = number of rounds
-	r := 0
-	for (1 << r) < n {
-		r++
-	}
-
-	weak := friend - 1
-	strong := n - friend
-
-	costs := make([]int64, strong)
-	idx := 0
-	for i := friend + 1; i <= n; i++ {
-		costs[idx] = a[i]
-		idx++
-	}
-	sort.Slice(costs, func(i, j int) bool { return costs[i] < costs[j] })
-	prefix := make([]int64, strong+1)
-	for i := 0; i < strong; i++ {
-		prefix[i+1] = prefix[i] + costs[i]
-	}
-
-	best := int64(-1)
-	for mask := 0; mask < (1 << r); mask++ {
-		// count bribes and simulate
-		s := strong
-		w := weak
-		br := 0
-		valid := true
-		for i := 0; i < r; i++ {
-			if s == 0 {
-				if w == 0 {
-					valid = false
-					break
-				}
-				w--
-				continue
-			}
-			if mask&(1<<i) != 0 {
-				br++
-				s = (s - 1 + 1) / 2
-			} else {
-				if w == 0 {
-					valid = false
-					break
-				}
-				w--
-				s = (s + 1) / 2
+		heap.Push(h, a[i])
+		if i == currN {
+			currN >>= 1
+			if h.Len() > 0 {
+				val := heap.Pop(h).(int64)
+				s += val
 			}
 		}
-		if !valid || s != 0 || br > strong {
-			continue
-		}
-		if w < 0 {
-			continue
-		}
-		cost := prefix[br]
-		if best == -1 || cost < best {
-			best = cost
-		}
 	}
-
-	fmt.Fprintln(writer, best)
+	fmt.Fprintln(writer, s)
 }

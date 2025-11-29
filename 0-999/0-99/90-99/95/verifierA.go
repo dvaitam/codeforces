@@ -1,15 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
+	"unicode"
 )
 
 func runBinary(path, input string) (string, error) {
@@ -49,6 +49,95 @@ func genCase(rng *rand.Rand) string {
 	return b.String()
 }
 
+// solveReference implements the logic correctly:
+// 1. Case-insensitive match for forbidden strings.
+// 2. If a character is covered, it MUST be replaced.
+// 3. Priority: Maximize lucky letters, then minimize lexicographically.
+//    If original != lucky, replace with lucky.
+//    If original == lucky, replace with 'a' (or 'b' if 'a' == lucky), respecting case.
+func solveReference(input string) string {
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	scanner.Split(bufio.ScanWords)
+
+	scan := func() string {
+		if scanner.Scan() {
+			return scanner.Text()
+		}
+		return ""
+	}
+
+	nStr := scan()
+	if nStr == "" {
+		return ""
+	}
+	var n int
+	fmt.Sscan(nStr, &n)
+
+	forbidden := make([]string, n)
+	for i := 0; i < n; i++ {
+		forbidden[i] = scan()
+	}
+
+	w := scan()
+	luckyStr := scan()
+	if len(luckyStr) == 0 {
+		return ""
+	}
+	luckyRune := unicode.ToLower([]rune(luckyStr)[0])
+
+	wLen := len(w)
+	covered := make([]bool, wLen)
+
+	for _, s := range forbidden {
+		sLen := len(s)
+		if sLen > wLen {
+			continue
+		}
+		for i := 0; i <= wLen-sLen; i++ {
+			if strings.EqualFold(w[i:i+sLen], s) {
+				for j := 0; j < sLen; j++ {
+					covered[i+j] = true
+				}
+			}
+		}
+	}
+
+	var result strings.Builder
+	result.Grow(wLen)
+
+	for i := 0; i < wLen; i++ {
+		originalChar := rune(w[i])
+		if !covered[i] {
+			result.WriteRune(originalChar)
+			continue
+		}
+
+		isUpper := unicode.IsUpper(originalChar)
+		var targetLucky rune
+		if isUpper {
+			targetLucky = unicode.ToUpper(luckyRune)
+		} else {
+			targetLucky = luckyRune
+		}
+
+		if originalChar != targetLucky {
+			result.WriteRune(targetLucky)
+		} else {
+			var replacement rune
+			if isUpper {
+				replacement = 'A'
+			} else {
+				replacement = 'a'
+			}
+			if replacement == originalChar {
+				replacement++
+			}
+			result.WriteRune(replacement)
+		}
+	}
+	return result.String()
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "usage: go run verifierA.go /path/to/binary\n")
@@ -56,27 +145,15 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	_, filename, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(filename)
-	ref := filepath.Join(dir, "refA")
-	build := exec.Command("go", "build", "-o", ref, filepath.Join(dir, "95A.go"))
-	if out, err := build.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build reference solution: %v\n%s", err, out)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for t := 0; t < 100; t++ {
 		input := genCase(rng)
 		candOut, cErr := runBinary(candidate, input)
-		refOut, rErr := runBinary(ref, input)
+		
+		refOut := solveReference(input)
+		
 		if cErr != nil {
 			fmt.Fprintf(os.Stderr, "case %d: candidate error: %v\ninput:\n%s", t+1, cErr, input)
-			os.Exit(1)
-		}
-		if rErr != nil {
-			fmt.Fprintf(os.Stderr, "case %d: reference error: %v\ninput:\n%s", t+1, rErr, input)
 			os.Exit(1)
 		}
 		if candOut != refOut {

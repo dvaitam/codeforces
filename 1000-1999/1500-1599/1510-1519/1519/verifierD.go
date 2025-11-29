@@ -76,7 +76,7 @@ func main() {
 		}
 		expect := solveD(a, b)
 		var input strings.Builder
-		input.WriteString("1\n")
+		input.WriteString("")
 		fmt.Fprintf(&input, "%d\n", n)
 		for i := 0; i < n; i++ {
 			if i > 0 {

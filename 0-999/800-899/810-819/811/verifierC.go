@@ -46,35 +46,42 @@ func solveCase(a []int) int {
 		last[v] = i
 	}
 	dp := make([]int, n+1)
-	visited := make([]bool, MaxA+1)
-	for l := 1; l <= n; l++ {
-		for i := 0; i <= MaxA; i++ {
-			visited[i] = false
+	seen := make([]bool, MaxA+1)
+	
+	for i := 1; i <= n; i++ {
+		dp[i] = dp[i-1]
+		currentXor := 0
+		// reset seen for inner loop
+		for k := 0; k <= MaxA; k++ {
+			seen[k] = false
 		}
-		xorVal := 0
-		r := l - 1
-		for j := l; j <= n; j++ {
-			v := a[j]
-			if first[v] < l {
-				break
+		
+		minL := i
+		for j := i; j >= 1; j-- {
+			val := a[j]
+			if last[val] > i {
+				// This value appears later, so any segment ending at i 
+				// and containing j is invalid.
+				break 
 			}
-			if !visited[v] {
-				visited[v] = true
-				xorVal ^= v
-			}
-			if last[v] > r {
-				r = last[v]
-			}
-			if j == r {
-				if cand := dp[l-1] + xorVal; cand > dp[r] {
-					dp[r] = cand
+			if !seen[val] {
+				seen[val] = true
+				currentXor ^= val
+				if first[val] < minL {
+					minL = first[val]
 				}
 			}
-		}
-	}
-	for i := 1; i <= n; i++ {
-		if dp[i] < dp[i-1] {
-			dp[i] = dp[i-1]
+			// A segment [j...i] is valid if all elements x in it have
+			// first[x] >= j and last[x] <= i.
+			// We explicitly checked last[val] > i break condition.
+			// We track minL = min(first[x] for x in [j...i]).
+			// If minL < j, then some element starts before j, so [j...i] is invalid.
+			if minL >= j {
+				cand := dp[j-1] + currentXor
+				if cand > dp[i] {
+					dp[i] = cand
+				}
+			}
 		}
 	}
 	return dp[n]

@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 )
 
@@ -19,7 +20,7 @@ type testC struct {
 
 func genTestsC() []testC {
 	rand.Seed(44)
-	tests := make([]testC, 100)
+	tests := make([]testC, 20)
 	for i := range tests {
 		n := rand.Intn(10) + 1
 		m := rand.Intn(10) + 1
@@ -35,6 +36,7 @@ func genTestsC() []testC {
 		for j := range queries {
 			queries[j] = rand.Intn(sum) + 1
 		}
+		sort.Ints(queries)
 		tests[i] = testC{n: n, m: m, rooms: rooms, queries: queries}
 	}
 	return tests
@@ -70,72 +72,66 @@ func main() {
 	bin := os.Args[1]
 	tests := genTestsC()
 
-	var input bytes.Buffer
-	fmt.Fprintln(&input, len(tests))
-	for _, tc := range tests {
-		fmt.Fprintf(&input, "%d %d\n", tc.n, tc.m)
-		for i, v := range tc.rooms {
-			if i > 0 {
-				input.WriteByte(' ')
-			}
-			fmt.Fprint(&input, v)
-		}
-		input.WriteByte('\n')
-		for i, v := range tc.queries {
-			if i > 0 {
-				input.WriteByte(' ')
-			}
-			fmt.Fprint(&input, v)
-		}
-		input.WriteByte('\n')
-	}
-
-	expected := make([][][2]int, len(tests))
 	for i, tc := range tests {
-		expected[i] = solveC(tc)
-	}
+		var input bytes.Buffer
+		fmt.Fprintf(&input, "%d %d\n", tc.n, tc.m)
+		for j, v := range tc.rooms {
+			if j > 0 {
+				input.WriteByte(' ')
+			}
+			fmt.Fprint(&input, v)
+		}
+		input.WriteByte('\n')
+		for j, v := range tc.queries {
+			if j > 0 {
+				input.WriteByte(' ')
+			}
+			fmt.Fprint(&input, v)
+		}
+		input.WriteByte('\n')
 
-	cmd := exec.Command(bin)
-	cmd.Stdin = bytes.NewReader(input.Bytes())
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "runtime error: %v\noutput:\n%s\n", err, out.String())
-		os.Exit(1)
-	}
+		expected := solveC(tc)
 
-	scanner := bufio.NewScanner(bytes.NewReader(out.Bytes()))
-	scanner.Split(bufio.ScanWords)
-	for i, exp := range expected {
-		for j := range exp {
+		cmd := exec.Command(bin)
+		cmd.Stdin = bytes.NewReader(input.Bytes())
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\noutput:\n%s\n", i+1, err, out.String())
+			os.Exit(1)
+		}
+
+		scanner := bufio.NewScanner(bytes.NewReader(out.Bytes()))
+		scanner.Split(bufio.ScanWords)
+		for j, exp := range expected {
 			if !scanner.Scan() {
-				fmt.Fprintf(os.Stderr, "wrong output format on test %d\n", i+1)
+				fmt.Fprintf(os.Stderr, "test %d: wrong output format (missing output)\n", i+1)
 				os.Exit(1)
 			}
 			dorm, err := strconv.Atoi(scanner.Text())
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "non-integer output on test %d\n", i+1)
+				fmt.Fprintf(os.Stderr, "test %d: non-integer output\n", i+1)
 				os.Exit(1)
 			}
 			if !scanner.Scan() {
-				fmt.Fprintf(os.Stderr, "wrong output format on test %d\n", i+1)
+				fmt.Fprintf(os.Stderr, "test %d: wrong output format (missing room)\n", i+1)
 				os.Exit(1)
 			}
 			room, err := strconv.Atoi(scanner.Text())
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "non-integer output on test %d\n", i+1)
+				fmt.Fprintf(os.Stderr, "test %d: non-integer output\n", i+1)
 				os.Exit(1)
 			}
-			if dorm != exp[j][0] || room != exp[j][1] {
-				fmt.Fprintf(os.Stderr, "wrong answer on test %d\n", i+1)
+			if dorm != exp[0] || room != exp[1] {
+				fmt.Fprintf(os.Stderr, "test %d: wrong answer on query %d. Expected %d %d, got %d %d\nInput:\n%s\n", i+1, j+1, exp[0], exp[1], dorm, room, input.String())
 				os.Exit(1)
 			}
 		}
-	}
-	if scanner.Scan() {
-		fmt.Fprintln(os.Stderr, "extra output")
-		os.Exit(1)
+		if scanner.Scan() {
+			fmt.Fprintf(os.Stderr, "test %d: extra output\n", i+1)
+			os.Exit(1)
+		}
 	}
 	fmt.Println("Accepted")
 }

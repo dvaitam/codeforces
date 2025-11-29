@@ -38,21 +38,21 @@ func expected(n, k int, sizes []int) int {
 	if n <= k {
 		return sizes[n-1]
 	}
-	single := 2*k - n
-	maxVal := 0
-	for i := 0; i < single; i++ {
-		if sizes[i] > maxVal {
-			maxVal = sizes[i]
-		}
-	}
-	left, right := single, n-1
-	for left < right {
-		sum := sizes[left] + sizes[right]
+	// Number of boxes with single items
+	singleBoxes := 2*k - n
+	// Items that need to be paired
+	pairedItems := n - singleBoxes
+
+	// The single boxes take the largest items
+	// The maximal size needed for single items is just the largest item
+	maxVal := sizes[n-1]
+
+	// The remaining items are paired: smallest with largest of the remaining subset
+	for i := 0; i < pairedItems/2; i++ {
+		sum := sizes[i] + sizes[pairedItems-1-i]
 		if sum > maxVal {
 			maxVal = sum
 		}
-		left++
-		right--
 	}
 	return maxVal
 }

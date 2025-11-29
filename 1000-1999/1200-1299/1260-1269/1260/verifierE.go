@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -69,7 +68,7 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input := generateCase(rng)
-		expect, err := runProg(filepath.Join("./", oracle), input)
+		expect, err := runProg("./"+oracle, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle runtime error: %v\n", err)
 			os.Exit(1)

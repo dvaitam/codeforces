@@ -18,28 +18,6 @@ type testCaseB struct {
 	s int64
 }
 
-func expectedB(tc testCaseB) ([]int64, bool) {
-	base := tc.b * tc.k
-	minSum := base
-	maxSum := base + int64(tc.n)*(tc.k-1)
-	if tc.s < minSum || tc.s > maxSum {
-		return nil, false
-	}
-	rem := tc.s - base
-	a := make([]int64, tc.n)
-	a[0] = base
-	for i := 1; i < tc.n && rem > 0; i++ {
-		add := tc.k - 1
-		if rem < add {
-			add = rem
-		}
-		a[i] = add
-		rem -= add
-	}
-	a[0] += rem
-	return a, true
-}
-
 func genCaseB(rng *rand.Rand) []testCaseB {
 	t := rng.Intn(5) + 1
 	cases := make([]testCaseB, t)
@@ -79,25 +57,44 @@ func runCaseB(bin string, tcs []testCaseB) error {
 		return fmt.Errorf("expected %d lines got %d", len(tcs), len(lines))
 	}
 	for i, line := range lines {
-		a, ok := expectedB(tcs[i])
-		if !ok {
+		tc := tcs[i]
+		base := tc.b * tc.k
+		maxSum := base + int64(tc.n)*(tc.k-1)
+		possible := tc.s >= base && tc.s <= maxSum
+
+		fields := strings.Fields(line)
+		if !possible {
 			if strings.TrimSpace(line) != "-1" {
 				return fmt.Errorf("case %d expected -1 got %s", i+1, strings.TrimSpace(line))
 			}
 			continue
 		}
-		fields := strings.Fields(line)
-		if len(fields) != tcs[i].n {
-			return fmt.Errorf("case %d expected %d numbers got %d", i+1, tcs[i].n, len(fields))
+		if strings.TrimSpace(line) == "-1" {
+			return fmt.Errorf("case %d expected solution, got -1", i+1)
 		}
-		for j, f := range fields {
+
+		if len(fields) != tc.n {
+			return fmt.Errorf("case %d expected %d numbers got %d", i+1, tc.n, len(fields))
+		}
+
+		var sum int64
+		var beauty int64
+		for _, f := range fields {
 			val, err := strconv.ParseInt(f, 10, 64)
 			if err != nil {
 				return fmt.Errorf("case %d invalid int %q", i+1, f)
 			}
-			if val != a[j] {
-				return fmt.Errorf("case %d mismatch expected %v got %v", i+1, a, fields)
+			if val < 0 {
+				return fmt.Errorf("case %d negative value %d", i+1, val)
 			}
+			sum += val
+			beauty += val / tc.k
+		}
+		if sum != tc.s {
+			return fmt.Errorf("case %d sum mismatch expected %d got %d", i+1, tc.s, sum)
+		}
+		if beauty != tc.b {
+			return fmt.Errorf("case %d beauty mismatch expected %d got %d", i+1, tc.b, beauty)
 		}
 	}
 	return nil

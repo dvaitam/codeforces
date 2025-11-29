@@ -12,7 +12,7 @@ import (
 type Case struct{ input string }
 
 func buildRef() (string, error) {
-	ref := "refD2.bin"
+	ref := "./refD2.bin"
 	cmd := exec.Command("go", "build", "-o", ref, "1658D2.go")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
