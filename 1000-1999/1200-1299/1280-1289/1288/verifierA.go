@@ -1,99 +1,219 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 )
 
-func buildBinary(src, tag string) (string, error) {
-	if strings.HasSuffix(src, ".go") {
-		out := filepath.Join(os.TempDir(), tag)
-		cmd := exec.Command("go", "build", "-o", out, src)
-		if outb, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("build %s: %v\n%s", src, err, string(outb))
-		}
-		return out, nil
-	}
-	return src, nil
+const solution1288ASource = `package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+)
+
+func main() {
+    in := bufio.NewReader(os.Stdin)
+    out := bufio.NewWriter(os.Stdout)
+    defer out.Flush()
+
+    var t int
+    fmt.Fscan(in, &t)
+    for ; t > 0; t-- {
+        var n, d int64
+        fmt.Fscan(in, &n, &d)
+        possible := false
+        for x := int64(0); x*x <= d; x++ {
+            val := x + (d+x)/(x+1)
+            if val <= n {
+                possible = true
+                break
+            }
+        }
+        if possible {
+            fmt.Fprintln(out, "YES")
+        } else {
+            fmt.Fprintln(out, "NO")
+        }
+    }
+}
+`
+
+// Keep the embedded reference solution reachable.
+var _ = solution1288ASource
+
+type testCase struct {
+	n int64
+	d int64
 }
 
-func runBin(bin string, input string) (string, error) {
+const testcasesRaw = `100
+144272510 611178003
+909925048 861425549
+820096754 67760437
+273878288 126614243
+531969375 817077202
+482637353 507069465
+699642631 407608742
+846885254 225437260
+100780964 523832097
+30437867 959191866
+897395949 418554020
+464680098 652231582
+818492002 823729239
+2261354 747144855
+478230860 285970257
+774747712 860954510
+245631565 634746161
+109765576 967900367
+340837477 32845752
+23968185 27322287
+697444856 581337224
+9883728 946217655
+409314932 737106431
+232571832 453244222
+779378297 31182306
+566537776 238039616
+820017700 470178217
+532374342 593628451
+250272527 371192993
+247891064 726760592
+234914347 817061415
+493495462 311150635
+994828919 23074398
+446869807 899342504
+983837245 597488274
+990192430 689658325
+107374480 199615330
+675762535 777001468
+923360560 318246765
+129804605 797947651
+357228734 961616758
+774687979 763636350
+537729582 453233943
+545157246 891244036
+977303768 719735123
+203849598 325739464
+305113797 630909865
+947554610 536185926
+908597560 542544370
+422360240 632436359
+916210963 37071830
+515639792 260640057
+798574708 856206295
+434101040 444866270
+713762924 185765287
+394196213 589268180
+947826294 754884266
+833049335 724223643
+792652821 402334308
+92843871 471331462
+712704514 545918790
+115890310 835846393
+175769706 559353362
+901891104 422254447
+397845687 525804416
+786801297 31755874
+503928667 46694124
+331280950 755250768
+910856873 660147978
+636926180 620811652
+422624441 694878647
+182911060 181026749
+539274550 243672114
+13208724 827342928
+214229069 579409819
+987935284 923729114
+588773951 249297218
+434280105 551658123
+369180233 909954311
+620402452 379325247
+492988939 976842009
+289136635 707826513
+588406555 653849523
+783187488 6130129
+411983602 841443399
+920142114 880990039
+951528078 795109486
+550292615 868807355
+138780516 556926567
+834723867 602753420
+220638117 457511383
+60261935 516579139
+934166292 391632348
+612032127 595283750
+214575939 541939477
+443884920 520684371
+873329536 383100305
+444984940 371598339
+1701611 578187201
+579938224 669466699
+`
+
+func parseTestcases() []testCase {
+	fields := strings.Fields(testcasesRaw)
+	if len(fields) == 0 {
+		return nil
+	}
+	t, _ := strconv.Atoi(fields[0])
+	res := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		idx := 1 + i*2
+		if idx+1 >= len(fields) {
+			break
+		}
+		nVal, _ := strconv.ParseInt(fields[idx], 10, 64)
+		dVal, _ := strconv.ParseInt(fields[idx+1], 10, 64)
+		res = append(res, testCase{n: nVal, d: dVal})
+	}
+	return res
+}
+
+func possible(n, d int64) bool {
+	for x := int64(0); x*x <= d; x++ {
+		val := x + (d+x)/(x+1)
+		if val <= n {
+			return true
+		}
+	}
+	return false
+}
+
+func runCase(bin string, idx int, tc testCase) error {
+	input := fmt.Sprintf("1\n%d %d\n", tc.n, tc.d)
+	expect := "NO"
+	if possible(tc.n, tc.d) {
+		expect = "YES"
+	}
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("case %d failed: %v\nstderr: %s", idx, err, string(out))
+	}
+	got := strings.TrimSpace(string(out))
+	if got != expect {
+		return fmt.Errorf("case %d failed: expected %s got %s\ninput:\n%s", idx, expect, got, input)
+	}
+	return nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierA.go /path/to/binary")
-		return
-	}
-	candSrc := os.Args[1]
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	refSrc := filepath.Join(dir, "1288A.go")
-
-	cand, err := buildBinary(candSrc, "candA.bin")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	ref, err := buildBinary(refSrc, "refA.bin")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	f, err := os.Open(filepath.Join(dir, "testcasesA.txt"))
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "cannot open testcasesA.txt:", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-	scan := bufio.NewScanner(f)
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Fprintln(os.Stderr, "empty test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Fprintln(os.Stderr, "bad file")
-			os.Exit(1)
-		}
-		n, _ := strconv.ParseInt(scan.Text(), 10, 64)
-		if !scan.Scan() {
-			fmt.Fprintln(os.Stderr, "bad file")
-			os.Exit(1)
-		}
-		d, _ := strconv.ParseInt(scan.Text(), 10, 64)
-		input := fmt.Sprintf("1\n%d %d\n", n, d)
-		exp, err1 := runBin(ref, input)
-		got, err2 := runBin(cand, input)
-		if err2 != nil {
-			fmt.Printf("Test %d: runtime error: %v\n", i+1, err2)
-			os.Exit(1)
-		}
-		if err1 != nil {
-			fmt.Printf("reference runtime error on test %d: %v\n", i+1, err1)
-			os.Exit(1)
-		}
-		if exp != got {
-			fmt.Printf("Test %d failed: input %d %d\nexpected %s got %s\n", i+1, n, d, exp, got)
+	bin := os.Args[1]
+	testcases := parseTestcases()
+	for i, tc := range testcases {
+		if err := runCase(bin, i+1, tc); err != nil {
+			fmt.Println(err)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

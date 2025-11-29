@@ -1,12 +1,164 @@
 package main
 
 import (
-	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
+
+const testcasesData = `
+198 863 1061
+-987 951 -36
+-424 460 36
+902 -211 691
+-680 409 -271
+-41 692 651
+-15 -925 -940
+985 -560 425
+-823 216 -607
+-196 787 591
+-708 87 -621
+664 -77 587
+463 -683 -220
+491 900 1391
+622 929 1551
+-282 -590 -872
+-807 737 -70
+-384 923 539
+-881 529 -352
+-112 -904 -1016
+637 -807 -170
+-337 160 -177
+288 -135 153
+-383 557 174
+-366 -553 -919
+-378 75 -303
+-462 -66 -528
+-103 -680 -783
+513 487 1000
+727 490 1217
+-414 -1 -415
+-565 246 -319
+160 -308 -148
+-288 -39 -327
+-636 480 -156
+135 977 1112
+698 -737 -39
+816 870 1686
+966 -307 659
+-546 284 -262
+217 790 1007
+693 -108 585
+-950 790 -160
+-886 -315 -1201
+-485 450 -35
+-149 145 -4
+-818 117 -701
+-465 -550 -1015
+818 289 1107
+980 261 1241
+987 993 1980
+-300 125 -175
+288 -370 -82
+-112 832 720
+-304 -52 -356
+643 310 953
+-24 -501 -525
+198 -738 -540
+-68 733 665
+922 287 1209
+739 -43 696
+979 833 1812
+-311 555 244
+539 921 1460
+507 320 827
+-151 95 -56
+-439 -537 -976
+279 -442 -163
+336 -21 315
+-59 383 324
+55 -128 -73
+-901 -553 -1454
+-929 523 -406
+89 -523 -434
+-981 -469 -1450
+-431 -960 -1391
+-211 136 -75
+-944 292 -652
+-15 -864 -879
+-373 286 -87
+-354 -355 -709
+-845 697 -148
+-898 -780 -1678
+-677 853 176
+169 -178 -9
+-642 988 346
+490 -852 -362
+-757 510 -247
+769 309 1078
+-869 -317 -1186
+503 50 553
+-120 317 197
+-207 382 175
+788 -588 200
+933 813 1746
+131 -135 -4
+-546 -572 -1118
+-54 134 80
+-80 17 -63
+-79 171 92
+`
+
+type testCase struct {
+	a   int64
+	b   int64
+	sum int64
+}
+
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(testcasesData, "\n")
+	var cases []testCase
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) != 3 {
+			return nil, fmt.Errorf("invalid testcase line: %q", line)
+		}
+		a, err := strconv.ParseInt(parts[0], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		b, err := strconv.ParseInt(parts[1], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		s, err := strconv.ParseInt(parts[2], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		cases = append(cases, testCase{a: a, b: b, sum: s})
+	}
+	return cases, nil
+}
+
+func run(bin string, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
 
 func main() {
 	if len(os.Args) != 2 {
@@ -14,38 +166,25 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesA.txt")
+
+	testcases, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to open problemA.txt:", err)
+		fmt.Fprintln(os.Stderr, "failed to parse testcases:", err)
 		os.Exit(1)
 	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	caseNum := 0
-	passed := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		parts := strings.Fields(line)
-		input := strings.Join(parts[:len(parts)-1], " ")
-		expected := parts[len(parts)-1]
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input + "\n")
-		out, err := cmd.CombinedOutput()
-		result := strings.TrimSpace(string(out))
-		caseNum++
+
+	for idx, tc := range testcases {
+		input := fmt.Sprintf("%d %d\n", tc.a, tc.b)
+		expected := strconv.FormatInt(tc.sum, 10)
+		got, err := run(bin, input)
 		if err != nil {
-			fmt.Printf("Case %d: runtime error: %v\n", caseNum, err)
-			fmt.Printf("Output: %s\n", result)
-			continue
+			fmt.Printf("Case %d failed: %v\n", idx+1, err)
+			os.Exit(1)
 		}
-		if result == expected {
-			passed++
-		} else {
-			fmt.Printf("Case %d failed: expected %s got %s\n", caseNum, expected, result)
+		if got != expected {
+			fmt.Printf("Case %d failed: expected %s got %s\n", idx+1, expected, got)
+			os.Exit(1)
 		}
 	}
-	fmt.Printf("%d/%d cases passed\n", passed, caseNum)
+	fmt.Printf("All %d cases passed\n", len(testcases))
 }

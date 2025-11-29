@@ -10,112 +10,720 @@ import (
 	"strings"
 )
 
-func run(path string, input string) (string, error) {
-	cmd := exec.Command(path)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+const testcasesRaw = `100
+3 3
+2 1 3 2
+2 3 3 1 3 1 2 3 1 3 2 3
+6 3
+2 1 3 2 4 3 5 2 6 2
+2 5 4 6 1 6 1 2 5 1 3 1
+4 2
+2 1 3 2 4 3
+4 2 3 1 1 2 4 2
+4 3
+2 1 3 2 4 2
+4 3 4 2 3 1 3 2 3 1 2 3
+4 3
+2 1 3 1 4 2
+4 1 3 1 4 2 1 3 4 1 1 4
+6 2
+2 1 3 2 4 3 5 2 6 1
+1 5 5 1 2 4 3 5
+4 2
+2 1 3 1 4 2
+3 2 4 1 3 4 2 3
+5 1
+2 1 3 2 4 3 5 3
+4 5 3 1
+5 2
+2 1 3 1 4 3 5 3
+3 5 3 4 1 5 1 3
+4 3
+2 1 3 2 4 3
+3 2 3 2 3 4 1 2 3 2 3 2
+4 3
+2 1 3 2 4 3
+1 3 3 2 4 2 1 3 2 4 3 2
+2 3
+2 1
+1 2 1 2 2 1 2 1 2 1 2 1
+3 3
+2 1 3 2
+3 2 3 1 1 3 2 3 3 2 3 2
+3 1
+2 1 3 2
+1 3 3 1
+5 1
+2 1 3 1 4 2 5 1
+5 3 2 1
+6 1
+2 1 3 1 4 3 5 1 6 3
+3 5 4 1
+4 3
+2 1 3 1 4 1
+1 2 2 3 2 1 4 1 3 2 3 4
+2 2
+2 1
+1 2 1 2 2 1 2 1
+4 2
+2 1 3 2 4 3
+3 2 3 4 1 2 1 4
+2 1
+2 1
+2 1 2 1
+4 3
+2 1 3 2 4 2
+4 1 2 3 1 4 2 4 2 1 3 1
+5 3
+2 1 3 2 4 3 5 1
+3 5 5 1 5 1 4 2 2 4 1 5
+2 3
+2 1
+2 1 1 2 1 2 2 1 1 2 1 2
+6 3
+2 1 3 2 4 2 5 4 6 3
+4 1 4 5 2 4 6 2 4 6 5 6
+6 1
+2 1 3 1 4 3 5 4 6 2
+1 4 6 4
+6 1
+2 1 3 1 4 1 5 3 6 2
+5 3 2 6
+6 2
+2 1 3 2 4 3 5 3 6 2
+1 3 4 2 2 5 3 2
+4 3
+2 1 3 1 4 2
+4 2 4 1 4 1 4 1 4 2 2 1
+3 1
+2 1 3 1
+2 1 1 3
+2 1
+2 1
+1 2 1 2
+2 1
+2 1
+1 2 2 1
+4 1
+2 1 3 2 4 1
+3 4 4 1
+3 1
+2 1 3 2
+3 2 1 2
+2 1
+2 1
+2 1 2 1
+4 2
+2 1 3 2 4 3
+1 3 2 3 4 1 1 2
+4 1
+2 1 3 2 4 3
+4 3 2 1
+2 3
+2 1
+2 1 2 1 1 2 2 1 2 1 2 1
+3 3
+2 1 3 1
+1 3 3 1 1 3 1 3 2 3 3 2
+3 1
+2 1 3 2
+3 1 3 1
+3 2
+2 1 3 2
+1 2 2 3 3 2 3 2
+6 1
+2 1 3 2 4 1 5 2 6 1
+6 2 4 2
+6 3
+2 1 3 1 4 1 5 2 6 1
+6 4 1 5 3 6 2 4 1 5 1 3
+6 2
+2 1 3 1 4 2 5 1 6 3
+3 6 6 2 1 5 1 6
+2 1
+2 1
+1 2 1 2
+4 1
+2 1 3 1 4 2
+2 4 4 1
+6 1
+2 1 3 1 4 3 5 4 6 3
+4 6 4 2
+5 2
+2 1 3 2 4 2 5 3
+5 3 5 4 2 1 2 3
+4 1
+2 1 3 2 4 3
+2 1 2 4
+6 1
+2 1 3 1 4 1 5 1 6 5
+4 2 1 4
+5 1
+2 1 3 2 4 1 5 1
+4 1 4 1
+3 2
+2 1 3 1
+2 1 1 2 3 1 2 1
+6 2
+2 1 3 2 4 2 5 4 6 3
+2 5 3 1 3 6 3 1
+2 1
+2 1
+1 2 1 2
+3 2
+2 1 3 2
+2 3 1 2 2 3 3 2
+2 1
+2 1
+2 1 2 1
+5 2
+2 1 3 1 4 2 5 4
+2 4 4 3 3 2 5 4
+5 2
+2 1 3 1 4 1 5 1
+1 3 2 5 1 5 1 4
+5 1
+2 1 3 2 4 1 5 1
+4 1 3 5
+4 3
+2 1 3 2 4 1
+2 1 2 1 1 2 3 2 2 4 3 2
+5 3
+2 1 3 1 4 1 5 1
+1 2 3 1 1 4 4 2 5 1 4 3
+5 2
+2 1 3 1 4 2 5 4
+2 1 5 1 4 3 1 3
+4 3
+2 1 3 2 4 1
+3 4 1 2 2 3 1 3 2 4 4 1
+4 3
+2 1 3 2 4 1
+2 4 4 3 2 4 4 1 3 1 2 1
+2 2
+2 1
+1 2 1 2 2 1 2 1
+4 2
+2 1 3 1 4 2
+4 1 2 4 3 4 3 2
+5 2
+2 1 3 2 4 2 5 2
+3 1 4 3 3 2 5 1
+2 3
+2 1
+1 2 2 1 2 1 1 2 2 1 1 2
+4 2
+2 1 3 1 4 3
+4 3 3 1 1 4 1 2
+6 2
+2 1 3 1 4 3 5 4 6 5
+5 2 3 1 2 1 1 4
+2 2
+2 1
+2 1 2 1 1 2 2 1
+6 2
+2 1 3 1 4 3 5 1 6 4
+2 4 5 3 1 3 5 1
+5 1
+2 1 3 2 4 3 5 3
+4 1 3 1
+6 1
+2 1 3 2 4 1 5 3 6 3
+6 4 4 3
+2 1
+2 1
+1 2 2 1
+3 2
+2 1 3 2
+1 2 1 3 1 3 3 1
+2 2
+2 1
+1 2 2 1 1 2 1 2
+5 1
+2 1 3 1 4 2 5 1
+2 3 2 1
+6 2
+2 1 3 1 4 2 5 1 6 4
+2 1 3 1 2 1 2 3
+3 3
+2 1 3 2
+1 2 1 2 1 2 3 2 1 3 2 1
+4 3
+2 1 3 2 4 2
+3 4 2 4 4 2 3 2 3 2 3 2
+3 2
+2 1 3 1
+3 1 1 3 1 2 3 2
+6 1
+2 1 3 1 4 2 5 4 6 3
+5 2 3 4
+6 3
+2 1 3 2 4 3 5 3 6 5
+3 6 3 2 1 5 5 2 6 3 6 2
+4 1
+2 1 3 2 4 2
+4 3 2 4
+6 3
+2 1 3 1 4 2 5 4 6 5
+3 1 2 4 4 2 1 3 5 2 1 5
+5 3
+2 1 3 2 4 3 5 4
+5 3 1 3 3 5 3 4 4 3 1 5
+5 2
+2 1 3 2 4 1 5 1
+1 5 1 2 1 2 3 4
+4 3
+2 1 3 1 4 1
+3 4 3 2 4 3 1 4 2 4 2 3
+4 3
+2 1 3 1 4 1
+1 4 1 3 4 1 4 2 4 3 2 4
+3 2
+2 1 3 2
+2 1 3 1 1 2 3 2
+2 2
+2 1
+2 1 2 1 2 1 2 1
+2 3
+2 1
+1 2 2 1 1 2 2 1 2 1 2 1
+5 1
+2 1 3 1 4 2 5 2
+1 4 1 5
+5 2
+2 1 3 2 4 1 5 1
+4 2 4 1 2 4 3 4
+3 2
+2 1 3 2
+2 1 3 2 3 1 1 2
+5 3
+2 1 3 1 4 1 5 4
+2 3 5 2 2 5 4 5 5 4 5 2
+4 1
+2 1 3 2 4 1
+4 1 2 3
+6 2
+2 1 3 2 4 1 5 4 6 5
+3 4 5 4 2 1 6 4
+4 2
+2 1 3 2 4 1
+2 3 4 2 4 3 4 1
+6 3
+2 1 3 1 4 3 5 1 6 5
+3 5 6 3 5 3 4 6 6 3 1 4
+`
+
+// Pair represents an interval on the preorder numbering.
+type Pair struct {
+	first  int
+	second int
 }
 
-func buildRef() (string, error) {
-	ref := "./refD.bin"
-	cmd := exec.Command("g++", "-std=c++17", "solD.cpp", "-O2", "-pipe", "-static", "-s", "-o", ref)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build reference failed: %v\n%s", err, out)
+type Sat struct {
+	n    int
+	ile  int
+	imp  [][]int
+	vis  []bool
+	val  []int
+	sort []int
+}
+
+func (s *Sat) Add() int {
+	s.n += 2
+	s.ile += 2
+	s.imp = append(s.imp, nil, nil)
+	s.vis = append(s.vis, false, false)
+	s.val = append(s.val, -1, -1)
+	s.sort = append(s.sort, 0, 0)
+	return s.n - 2
+}
+
+func (s *Sat) Or(a, b int) {
+	s.imp[a^1] = append(s.imp[a^1], b)
+	s.imp[b^1] = append(s.imp[b^1], a)
+}
+
+func (s *Sat) Impl(a, b int) {
+	s.Or(a^1, b)
+}
+
+func (s *Sat) Nie(a int) {
+	s.Or(a^1, a^1)
+}
+
+func (s *Sat) Tak(a int) {
+	s.Or(a, a)
+}
+
+func (s *Sat) Nand(a, b int) {
+	s.Or(a^1, b^1)
+}
+
+func (s *Sat) dfs(x int) {
+	s.vis[x] = true
+	for _, i := range s.imp[x^1] {
+		if !s.vis[i^1] {
+			s.dfs(i ^ 1)
+		}
 	}
-	return ref, nil
+	s.ile--
+	s.sort[s.ile] = x
+}
+
+func (s *Sat) dfsMark(x int) {
+	s.vis[x] = false
+	if s.val[x] == -1 {
+		if s.val[x^1] == -1 {
+			s.val[x] = 1
+		} else {
+			s.val[x] = 0
+		}
+	}
+	for _, i := range s.imp[x] {
+		if s.vis[i] {
+			s.dfsMark(i)
+		}
+	}
+}
+
+func (s *Sat) Run() bool {
+	for i := 0; i < s.n; i++ {
+		if !s.vis[i] {
+			s.dfs(i)
+		}
+	}
+	for _, i := range s.sort {
+		if s.vis[i] {
+			s.dfsMark(i)
+		}
+	}
+	for i := 0; i < s.n; i++ {
+		if s.val[i] != 0 {
+			for _, x := range s.imp[i] {
+				if s.val[x] == 0 {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+// Solver mirrors the embedded solution logic from 1007D.go/solD.cpp.
+type Solver struct {
+	drz    [][]int
+	roz    []int
+	jump   []int
+	pre    []int
+	post   []int
+	fad    []int
+	prel   int
+	n2     int
+	przedz [][]int
+	nizej  [][]int
+	sat    *Sat
+	zmm    []int
+}
+
+func (s *Solver) removeParent(w, o int) {
+	for i := 0; i < len(s.drz[w]); i++ {
+		if s.drz[w][i] == o {
+			s.drz[w][i], s.drz[w][len(s.drz[w])-1] = s.drz[w][len(s.drz[w])-1], s.drz[w][i]
+			s.drz[w] = s.drz[w][:len(s.drz[w])-1]
+			i--
+			continue
+		}
+		s.removeParent(s.drz[w][i], w)
+	}
+}
+
+func (s *Solver) dfsRoz(v int) {
+	s.roz[v] = 1
+	for i := 0; i < len(s.drz[v]); i++ {
+		child := s.drz[v][i]
+		s.fad[child] = v
+		s.dfsRoz(child)
+		s.roz[v] += s.roz[child]
+		if s.roz[child] > s.roz[s.drz[v][0]] {
+			s.drz[v][0], s.drz[v][i] = s.drz[v][i], s.drz[v][0]
+		}
+	}
+}
+
+func (s *Solver) dfsPre(v int) {
+	if s.jump[v] == 0 {
+		s.jump[v] = v
+	}
+	s.prel++
+	s.pre[v] = s.prel
+	if len(s.drz[v]) > 0 {
+		s.jump[s.drz[v][0]] = s.jump[v]
+	}
+	for _, child := range s.drz[v] {
+		s.dfsPre(child)
+	}
+	s.post[v] = s.prel
+}
+
+func (s *Solver) lca(v, u int) int {
+	for s.jump[v] != s.jump[u] {
+		if s.pre[v] < s.pre[u] {
+			v, u = u, v
+		}
+		v = s.fad[s.jump[v]]
+	}
+	if s.pre[v] < s.pre[u] {
+		return v
+	}
+	return u
+}
+
+func (s *Solver) pathUp(v, u int) []Pair {
+	var ret []Pair
+	for s.jump[v] != s.jump[u] {
+		ret = append(ret, Pair{first: s.pre[s.jump[v]], second: s.pre[v]})
+		v = s.fad[s.jump[v]]
+	}
+	ret = append(ret, Pair{first: s.pre[u], second: s.pre[v]})
+	return ret
+}
+
+func (s *Solver) getPath(v, u int) []Pair {
+	w := s.lca(v, u)
+	ret := s.pathUp(v, w)
+	pom := s.pathUp(u, w)
+	for i := range ret {
+		ret[i].first, ret[i].second = ret[i].second, ret[i].first
+	}
+	for len(pom) > 0 {
+		ret = append(ret, pom[len(pom)-1])
+		pom = pom[:len(pom)-1]
+	}
+	return ret
+}
+
+func (s *Solver) wrzuc(w, p, k, a, b, zm int) {
+	if k < a || b < p {
+		return
+	}
+	if a <= p && k <= b {
+		if len(s.przedz[w]) == 0 || s.przedz[w][len(s.przedz[w])-1] != zm {
+			s.przedz[w] = append(s.przedz[w], zm)
+		}
+		return
+	}
+	if len(s.nizej[w]) == 0 || s.nizej[w][len(s.nizej[w])-1] != zm {
+		s.nizej[w] = append(s.nizej[w], zm)
+	}
+	mid := (p + k) / 2
+	s.wrzuc(w*2, p, mid, a, b, zm)
+	s.wrzuc(w*2+1, mid+1, k, a, b, zm)
+}
+
+func (s *Solver) dodaj(zm, a, b int) {
+	l := s.pre[s.lca(a, b)]
+	for _, p := range s.getPath(a, b) {
+		if p.first > p.second {
+			p.first, p.second = p.second, p.first
+		}
+		if p.first == l {
+			p.first++
+		}
+		if p.second == l {
+			p.second--
+		}
+		if p.first <= p.second {
+			s.wrzuc(1, 0, s.n2-1, p.first, p.second, zm)
+		}
+	}
+}
+
+func (s *Solver) ogarnij(zm, nizejx []int) {
+	if len(zm) == 0 {
+		return
+	}
+	nor := s.sat.Add()
+	for _, x := range nizejx {
+		s.sat.Impl(x, nor)
+	}
+	last := nor
+	for _, z := range zm {
+		s.sat.Nand(z, last)
+		nl := s.sat.Add()
+		s.sat.Impl(last, nl)
+		s.sat.Impl(z, nl)
+		last = nl
+	}
+}
+
+func solveCase(n int, edges [][2]int, queries [][4]int) (string, error) {
+	s := &Solver{
+		drz:  make([][]int, n+1),
+		roz:  make([]int, n+1),
+		jump: make([]int, n+1),
+		pre:  make([]int, n+1),
+		post: make([]int, n+1),
+		fad:  make([]int, n+1),
+		sat:  &Sat{},
+	}
+	for _, e := range edges {
+		a, b := e[0], e[1]
+		s.drz[a] = append(s.drz[a], b)
+		s.drz[b] = append(s.drz[b], a)
+	}
+
+	s.removeParent(1, -1)
+	s.dfsRoz(1)
+	s.dfsPre(1)
+
+	s.n2 = 1
+	for s.n2 <= n {
+		s.n2 *= 2
+	}
+	s.przedz = make([][]int, s.n2*2)
+	s.nizej = make([][]int, s.n2*2)
+
+	for _, q := range queries {
+		a, b, c, d := q[0], q[1], q[2], q[3]
+		zm := s.sat.Add()
+		s.zmm = append(s.zmm, zm)
+		s.dodaj(zm, a, b)
+		s.dodaj(zm^1, c, d)
+	}
+
+	for i := 1; i < s.n2*2; i++ {
+		s.ogarnij(s.przedz[i], s.nizej[i])
+	}
+
+	if !s.sat.Run() {
+		return "NO\n", nil
+	}
+	var buf bytes.Buffer
+	buf.WriteString("YES\n")
+	for _, zm := range s.zmm {
+		if s.sat.val[zm] != 0 {
+			buf.WriteString("1\n")
+		} else {
+			buf.WriteString("2\n")
+		}
+	}
+	return buf.String(), nil
+}
+
+type testCase struct {
+	n       int
+	edges   [][2]int
+	queries [][4]int
+}
+
+func parseTestcases() ([]testCase, error) {
+	scan := bufio.NewScanner(strings.NewReader(testcasesRaw))
+	scan.Split(bufio.ScanWords)
+	if !scan.Scan() {
+		return nil, fmt.Errorf("invalid test file")
+	}
+	t, _ := strconv.Atoi(scan.Text())
+	tests := make([]testCase, 0, t)
+	for caseIdx := 0; caseIdx < t; caseIdx++ {
+		if !scan.Scan() {
+			return nil, fmt.Errorf("invalid test file")
+		}
+		n, _ := strconv.Atoi(scan.Text())
+		if !scan.Scan() {
+			return nil, fmt.Errorf("invalid test file")
+		}
+		m, _ := strconv.Atoi(scan.Text())
+		edges := make([][2]int, n-1)
+		for i := 0; i < n-1; i++ {
+			if !scan.Scan() {
+				return nil, fmt.Errorf("invalid test file")
+			}
+			a, _ := strconv.Atoi(scan.Text())
+			if !scan.Scan() {
+				return nil, fmt.Errorf("invalid test file")
+			}
+			b, _ := strconv.Atoi(scan.Text())
+			edges[i] = [2]int{a, b}
+		}
+		queries := make([][4]int, m)
+		for i := 0; i < m; i++ {
+			vals := [4]int{}
+			for j := 0; j < 4; j++ {
+				if !scan.Scan() {
+					return nil, fmt.Errorf("invalid test file")
+				}
+				v, _ := strconv.Atoi(scan.Text())
+				vals[j] = v
+			}
+			queries[i] = vals
+		}
+		tests = append(tests, testCase{n: n, edges: edges, queries: queries})
+	}
+	return tests, nil
+}
+
+func buildInput(tc testCase) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, len(tc.queries)))
+	for _, e := range tc.edges {
+		sb.WriteString(fmt.Sprintf("%d %d\n", e[0], e[1]))
+	}
+	for _, q := range tc.queries {
+		sb.WriteString(fmt.Sprintf("%d %d %d %d\n", q[0], q[1], q[2], q[3]))
+	}
+	return sb.String()
+}
+
+func runBinary(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func runCase(bin string, tc testCase) error {
+	input := buildInput(tc)
+	got, err := runBinary(bin, input)
+	if err != nil {
+		return err
+	}
+	expected, err := solveCase(tc.n, tc.edges, tc.queries)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(expected) != got {
+		return fmt.Errorf("expected:%s\ngot:%s", expected, got)
+	}
+	return nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierD.go /path/to/binary")
-		return
+		os.Exit(1)
 	}
 	bin := os.Args[1]
-
-	ref, err := buildRef()
+	tests, err := parseTestcases()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	defer os.Remove(ref)
-
-	f, err := os.Open("testcasesD.txt")
-	if err != nil {
-		fmt.Println("could not open testcasesD.txt:", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	scanner.Split(bufio.ScanWords)
-
-	if !scanner.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scanner.Text())
-	for caseNum := 1; caseNum <= t; caseNum++ {
-		if !scanner.Scan() {
-			fmt.Println("bad file")
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(scanner.Text())
-		if !scanner.Scan() {
-			fmt.Println("bad file")
-			os.Exit(1)
-		}
-		m, _ := strconv.Atoi(scanner.Text())
-		edges := make([][2]int, n-1)
-		for i := 0; i < n-1; i++ {
-			if !scanner.Scan() {
-				fmt.Println("bad file")
-				os.Exit(1)
-			}
-			u, _ := strconv.Atoi(scanner.Text())
-			if !scanner.Scan() {
-				fmt.Println("bad file")
-				os.Exit(1)
-			}
-			v, _ := strconv.Atoi(scanner.Text())
-			edges[i] = [2]int{u, v}
-		}
-		pairs := make([]int, 4*m)
-		for i := 0; i < 4*m; i++ {
-			if !scanner.Scan() {
-				fmt.Println("bad file")
-				os.Exit(1)
-			}
-			val, _ := strconv.Atoi(scanner.Text())
-			pairs[i] = val
-		}
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d\n", n))
-		for _, e := range edges {
-			sb.WriteString(fmt.Sprintf("%d %d\n", e[0], e[1]))
-		}
-		sb.WriteString(fmt.Sprintf("%d\n", m))
-		for i := 0; i < m; i++ {
-			sb.WriteString(fmt.Sprintf("%d %d %d %d\n", pairs[4*i], pairs[4*i+1], pairs[4*i+2], pairs[4*i+3]))
-		}
-		input := sb.String()
-		want, err := run(ref, input)
-		if err != nil {
-			fmt.Printf("reference runtime error on case %d: %v\n", caseNum, err)
-			os.Exit(1)
-		}
-		got, err := run(bin, input)
-		if err != nil {
-			fmt.Printf("candidate runtime error on case %d: %v\n", caseNum, err)
-			os.Exit(1)
-		}
-		if want != got {
-			fmt.Printf("case %d failed\nexpected:%s\ngot:%s\n", caseNum, want, got)
+	for i, tc := range tests {
+		if err := runCase(bin, tc); err != nil {
+			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,6 +8,115 @@ import (
 	"strconv"
 	"strings"
 )
+
+// Embedded testcases from testcasesF.txt.
+const testcasesRaw = `100
+1 2 0
+5 3 3
+1 0 0
+0 3 4
+2 0 1
+4 4 2
+2 1 0
+2 1 0
+5 2 2
+1 1 2
+2 5 5
+2 0 4
+2 5 3
+4 1 1
+1 3 2
+0 4 2
+0 2 4
+5 2 4
+1 3 3
+4 2 3
+3 1 1
+2 2 0
+0 0 3
+5 2 4
+4 5 3
+5 2 1
+5 1 0
+3 1 5
+5 3 2
+1 2 3
+5 4 2
+5 4 1
+2 0 0
+5 1 2
+4 4 1
+0 2 1
+2 3 0
+0 2 5
+0 2 5
+5 2 0
+2 2 2
+1 5 3
+4 5 0
+2 4 1
+3 2 1
+2 3 4
+1 2 4
+0 2 0
+3 1 2
+2 2 4
+0 3 1
+3 1 0
+0 0 0
+5 1 4
+5 1 4
+0 4 3
+4 1 2
+0 0 4
+2 3 5
+1 3 1
+1 3 3
+3 0 1
+3 3 1
+5 3 1
+3 1 0
+0 2 2
+1 4 1
+1 3 2
+1 2 0
+2 4 0
+4 3 5
+5 5 5
+0 3 3
+0 3 1
+4 1 2
+2 5 3
+5 2 3
+4 1 5
+5 2 2
+3 3 0
+2 5 5
+1 0 3
+4 1 2
+5 0 1
+5 5 3
+4 3 5
+3 3 1
+0 1 1
+0 4 2
+0 3 3
+1 4 0
+1 1 5
+4 2 4
+3 4 3
+0 0 0
+5 4 0
+3 4 2
+4 1 0
+2 0 4
+0 2 2`
+
+type testCase struct {
+	n0 int
+	n1 int
+	n2 int
+}
 
 func runBinary(path, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -22,7 +130,74 @@ func runBinary(path, input string) (string, error) {
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	err := cmd.Run()
-	return out.String(), err
+	return strings.TrimSpace(out.String()), err
+}
+
+// referenceSolution embeds the construction logic from 1352F.go to produce one valid string.
+func referenceSolution(n0, n1p, n2p int) string {
+	// map variables as in original source
+	n1 := n2p
+	n2 := n1p
+	n3 := n0
+
+	var sBuilder []byte
+	var tBuilder []byte
+	tBuilder = append(tBuilder, '1')
+	cFlag := false
+
+	if n2 == 0 {
+		if n1 > 0 {
+			sBuilder = append(sBuilder, '1')
+			for i := 0; i < n1; i++ {
+				sBuilder = append(sBuilder, '1')
+			}
+		} else {
+			sBuilder = append(sBuilder, '0')
+			for i := 0; i < n3; i++ {
+				sBuilder = append(sBuilder, '0')
+			}
+		}
+	} else if n2%2 == 1 {
+		cnt := n2
+		for cnt > 0 {
+			if cFlag {
+				tBuilder = append(tBuilder, '1')
+				cFlag = false
+			} else {
+				tBuilder = append(tBuilder, '0')
+				cFlag = true
+			}
+			cnt--
+		}
+		for i := 0; i < n1; i++ {
+			sBuilder = append(sBuilder, '1')
+		}
+		sBuilder = append(sBuilder, tBuilder...)
+		for i := 0; i < n3; i++ {
+			sBuilder = append(sBuilder, '0')
+		}
+	} else {
+		cnt := n2 - 1
+		for cnt > 0 {
+			if cFlag {
+				tBuilder = append(tBuilder, '1')
+				cFlag = false
+			} else {
+				tBuilder = append(tBuilder, '0')
+				cFlag = true
+			}
+			cnt--
+		}
+		for i := 0; i < n3; i++ {
+			tBuilder = append(tBuilder, '0')
+		}
+		tBuilder = append(tBuilder, '1')
+		for i := 0; i < n1; i++ {
+			sBuilder = append(sBuilder, '1')
+		}
+		sBuilder = append(sBuilder, tBuilder...)
+	}
+	return string(sBuilder)
 }
 
 func checkString(s string, n0, n1, n2 int) bool {
@@ -56,8 +231,9 @@ func runCase(bin string, n0, n1, n2 int) error {
 		return fmt.Errorf("runtime error: %v\n%s", err, out)
 	}
 	s := strings.TrimSpace(out)
-	if !checkString(s, n0, n1, n2) {
-		return fmt.Errorf("output string invalid: %q", s)
+	exp := referenceSolution(n0, n1, n2)
+	if s != exp {
+		return fmt.Errorf("output mismatch: expected %q got %q", exp, s)
 	}
 	return nil
 }
@@ -68,25 +244,23 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	data, err := os.ReadFile("testcasesF.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesF.txt:", err)
+
+	fields := strings.Fields(testcasesRaw)
+	if len(fields) == 0 {
+		fmt.Println("no testcases provided")
 		os.Exit(1)
 	}
-	sc := bufio.NewScanner(bytes.NewReader(data))
-	sc.Split(bufio.ScanWords)
-	if !sc.Scan() {
-		fmt.Println("invalid test file")
+	t, _ := strconv.Atoi(fields[0])
+	if len(fields) != 1+t*3 {
+		fmt.Println("embedded testcases malformed")
 		os.Exit(1)
 	}
-	t, _ := strconv.Atoi(sc.Text())
+	idx := 1
 	for i := 0; i < t; i++ {
-		sc.Scan()
-		n0, _ := strconv.Atoi(sc.Text())
-		sc.Scan()
-		n1, _ := strconv.Atoi(sc.Text())
-		sc.Scan()
-		n2, _ := strconv.Atoi(sc.Text())
+		n0, _ := strconv.Atoi(fields[idx])
+		n1, _ := strconv.Atoi(fields[idx+1])
+		n2, _ := strconv.Atoi(fields[idx+2])
+		idx += 3
 		if err := runCase(bin, n0, n1, n2); err != nil {
 			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)

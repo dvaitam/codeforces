@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -11,39 +10,167 @@ import (
 	"strings"
 )
 
-func expected(a, b, c, d int) string {
-	p := []int{a, b, c}
+const testcasesData = `
+100
+28 13 25 15
+14 2 9 9
+16 13 30 13
+27 10 16 6
+19 29 30 4
+17 5 10 3
+25 4 20 13
+9 30 18 12
+26 20 29 3
+10 4 24 2
+29 28 22 6
+16 18 4 6
+14 11 20 11
+30 7 18 8
+15 28 17 5
+2 26 30 9
+30 1 3 12
+27 13 23 14
+26 22 21 1
+20 16 27 14
+11 8 24 6
+23 28 3 4
+30 19 8 4
+26 5 26 9
+15 3 3 6
+29 17 30 8
+4 10 18 5
+23 4 18 6
+27 30 18 4
+26 20 18 10
+10 15 3 10
+26 13 11 10
+8 10 6 4
+27 6 2 10
+22 9 16 2
+3 22 25 3
+29 5 30 1
+27 3 29 12
+30 27 18 11
+13 27 23 9
+9 17 26 4
+28 7 29 11
+19 27 14 10
+9 15 16 11
+21 23 30 13
+12 3 11 10
+4 16 19 11
+11 28 7 4
+1 24 9 2
+23 8 12 13
+6 11 14 14
+2 4 26 3
+28 23 8 1
+27 19 21 15
+30 18 20 11
+3 1 4 11
+7 20 27 10
+4 13 3 6
+27 4 2 10
+1 7 6 12
+4 16 7 12
+26 2 30 11
+1 18 14 10
+4 27 9 2
+8 3 21 5
+12 14 6 1
+17 15 2 10
+4 23 13 4
+9 12 29 12
+16 27 29 15
+19 6 23 11
+7 25 2 13
+22 6 28 3
+11 17 9 2
+20 30 15 11
+6 1 16 11
+14 29 19 14
+17 30 10 11
+12 13 27 11
+9 5 18 12
+1 15 24 2
+11 24 2 9
+9 5 8 13
+16 12 20 5
+22 12 19 15
+21 28 20 3
+23 10 13 12
+14 27 21 2
+1 20 7 12
+11 6 8 4
+21 15 13 12
+29 22 19 14
+14 2 13 14
+23 19 14 13
+22 23 2 3
+15 3 9 12
+6 15 17 15
+16 30 18 10
+25 1 29 1
+16 11 10 14
+`
+
+type testCase struct {
+	a int
+	b int
+	c int
+	d int
+}
+
+func parseTestcases() ([]testCase, error) {
+	fields := strings.Fields(testcasesData)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no testcases")
+	}
+	pos := 0
+	t, err := strconv.Atoi(fields[pos])
+	if err != nil {
+		return nil, err
+	}
+	pos++
+	cases := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		if pos+3 >= len(fields) {
+			return nil, fmt.Errorf("unexpected EOF at case %d", i+1)
+		}
+		a, _ := strconv.Atoi(fields[pos])
+		b, _ := strconv.Atoi(fields[pos+1])
+		c, _ := strconv.Atoi(fields[pos+2])
+		d, _ := strconv.Atoi(fields[pos+3])
+		pos += 4
+		cases = append(cases, testCase{a: a, b: b, c: c, d: d})
+	}
+	return cases, nil
+}
+
+func expected(tc testCase) string {
+	p := []int{tc.a, tc.b, tc.c}
 	sort.Ints(p)
 	ans := 0
-	if p[1]-p[0] < d {
-		ans += d - (p[1] - p[0])
+	if p[1]-p[0] < tc.d {
+		ans += tc.d - (p[1] - p[0])
 	}
-	if p[2]-p[1] < d {
-		ans += d - (p[2] - p[1])
+	if p[2]-p[1] < tc.d {
+		ans += tc.d - (p[2] - p[1])
 	}
 	return fmt.Sprintf("%d", ans)
 }
 
-func runCase(bin string, a, b, c, d int) error {
-	input := fmt.Sprintf("%d %d %d %d\n", a, b, c, d)
+func run(bin string, input string) (string, error) {
 	cmd := exec.Command(bin)
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
-	got := strings.TrimSpace(out.String())
-	exp := expected(a, b, c, d)
-	if got != exp {
-		return fmt.Errorf("expected %s got %s", exp, got)
-	}
-	return nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
@@ -52,39 +179,25 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesA.txt")
+
+	testcases, err := parseTestcases()
 	if err != nil {
-		fmt.Println("could not open testcasesA.txt:", err)
+		fmt.Println("failed to parse testcases:", err)
 		os.Exit(1)
 	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	scanner.Split(bufio.ScanWords)
-	if !scanner.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, err := strconv.Atoi(scanner.Text())
-	if err != nil {
-		fmt.Println("invalid test count")
-		os.Exit(1)
-	}
-	for i := 0; i < t; i++ {
-		if !scanner.Scan() {
-			fmt.Println("invalid test file")
+
+	for idx, tc := range testcases {
+		input := fmt.Sprintf("%d %d %d %d\n", tc.a, tc.b, tc.c, tc.d)
+		want := expected(tc)
+		got, err := run(bin, input)
+		if err != nil {
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		a, _ := strconv.Atoi(scanner.Text())
-		scanner.Scan()
-		b, _ := strconv.Atoi(scanner.Text())
-		scanner.Scan()
-		c, _ := strconv.Atoi(scanner.Text())
-		scanner.Scan()
-		d, _ := strconv.Atoi(scanner.Text())
-		if err := runCase(bin, a, b, c, d); err != nil {
-			fmt.Printf("case %d failed: %v\n", i+1, err)
+		if strings.TrimSpace(got) != want {
+			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, want, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

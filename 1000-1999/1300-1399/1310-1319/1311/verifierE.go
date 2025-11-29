@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,106 +9,204 @@ import (
 	"strings"
 )
 
-func expected(n, d int) string {
-	maxSum := n * (n - 1) / 2
-	rem := n - 1
-	last := 1
-	depth := 1
-	minSum := 0
+var testcases = []struct{ n, d int }{
+	{n: 5, d: 6},
+	{n: 3, d: 3},
+	{n: 9, d: 12},
+	{n: 3, d: 2},
+	{n: 2, d: 1},
+	{n: 10, d: 27},
+	{n: 2, d: 1},
+	{n: 10, d: 43},
+	{n: 7, d: 14},
+	{n: 4, d: 3},
+	{n: 6, d: 8},
+	{n: 2, d: 1},
+	{n: 6, d: 8},
+	{n: 4, d: 5},
+	{n: 6, d: 15},
+	{n: 7, d: 8},
+	{n: 7, d: 18},
+	{n: 10, d: 24},
+	{n: 4, d: 4},
+	{n: 9, d: 16},
+	{n: 3, d: 3},
+	{n: 2, d: 1},
+	{n: 6, d: 13},
+	{n: 5, d: 7},
+	{n: 8, d: 26},
+	{n: 6, d: 11},
+	{n: 9, d: 13},
+	{n: 5, d: 6},
+	{n: 6, d: 5},
+	{n: 3, d: 2},
+	{n: 9, d: 28},
+	{n: 6, d: 13},
+	{n: 10, d: 39},
+	{n: 7, d: 10},
+	{n: 5, d: 4},
+	{n: 8, d: 13},
+	{n: 9, d: 16},
+	{n: 4, d: 5},
+	{n: 8, d: 25},
+	{n: 7, d: 12},
+	{n: 7, d: 9},
+	{n: 2, d: 1},
+	{n: 6, d: 14},
+	{n: 5, d: 4},
+	{n: 7, d: 11},
+	{n: 6, d: 12},
+	{n: 2, d: 1},
+	{n: 7, d: 8},
+	{n: 6, d: 15},
+	{n: 7, d: 6},
+	{n: 7, d: 15},
+	{n: 7, d: 10},
+	{n: 8, d: 26},
+	{n: 3, d: 3},
+	{n: 5, d: 7},
+	{n: 6, d: 7},
+	{n: 6, d: 11},
+	{n: 4, d: 5},
+	{n: 2, d: 1},
+	{n: 2, d: 1},
+	{n: 4, d: 5},
+	{n: 7, d: 15},
+	{n: 3, d: 3},
+	{n: 5, d: 7},
+	{n: 5, d: 4},
+	{n: 2, d: 1},
+	{n: 2, d: 1},
+	{n: 4, d: 3},
+	{n: 10, d: 40},
+	{n: 5, d: 6},
+	{n: 2, d: 1},
+	{n: 10, d: 27},
+	{n: 8, d: 27},
+	{n: 5, d: 7},
+	{n: 5, d: 5},
+	{n: 9, d: 21},
+	{n: 9, d: 9},
+	{n: 5, d: 7},
+	{n: 9, d: 15},
+	{n: 8, d: 13},
+	{n: 9, d: 14},
+	{n: 2, d: 1},
+	{n: 6, d: 9},
+	{n: 5, d: 8},
+	{n: 5, d: 10},
+	{n: 5, d: 7},
+	{n: 6, d: 7},
+	{n: 7, d: 7},
+	{n: 7, d: 9},
+	{n: 8, d: 27},
+	{n: 2, d: 1},
+	{n: 8, d: 9},
+	{n: 8, d: 13},
+	{n: 4, d: 5},
+	{n: 6, d: 15},
+	{n: 9, d: 33},
+	{n: 7, d: 19},
+	{n: 10, d: 22},
+	{n: 6, d: 10},
+	{n: 8, d: 22},
+}
+
+const testcasesCount = 100
+
+func minAdditional(nodes int, cap int, depth int) int64 {
+	var sum int64
+	rem := nodes
+	c := cap
+	d := depth
 	for rem > 0 {
-		cnt := last * 2
-		if cnt > rem {
-			cnt = rem
+		use := c
+		if use > rem {
+			use = rem
 		}
-		minSum += cnt * depth
-		rem -= cnt
-		last = cnt
-		depth++
+		sum += int64(use * d)
+		rem -= use
+		c = use * 2
+		d++
 	}
-	if d < minSum || d > maxSum {
-		return "NO"
+	return sum
+}
+
+func maxAdditional(nodes int, depth int) int64 {
+	n := int64(nodes)
+	return n*int64(depth) + n*(n-1)/2
+}
+
+func constructTree(n, d int) ([]int, bool) {
+	maxSum := int64(n*(n-1)) / 2
+	minSum := minAdditional(n-1, 2, 1)
+	if int64(d) < minSum || int64(d) > maxSum {
+		return nil, false
 	}
-	parent := make([]int, n+1)
-	depthArr := make([]int, n+1)
-	childCnt := make([]int, n+1)
-	for i := 2; i <= n; i++ {
-		parent[i] = i - 1
-		childCnt[i-1]++
-		depthArr[i] = i - 1
-	}
-	depthArr[1] = 0
-	avail := make([][]int, n)
-	for i := 1; i <= n; i++ {
-		cap := 2 - childCnt[i]
-		if cap > 0 {
-			d0 := depthArr[i]
-			avail[d0] = append(avail[d0], i)
+
+	levels := []int{1}
+	curSum := int64(0)
+	rem := n - 1
+	avail := 1
+	depth := 1
+	for rem > 0 {
+		maxNodes := avail * 2
+		if maxNodes > rem {
+			maxNodes = rem
 		}
-	}
-	leaves := make([][]int, n)
-	for i := 1; i <= n; i++ {
-		if childCnt[i] == 0 {
-			d0 := depthArr[i]
-			leaves[d0] = append(leaves[d0], i)
-		}
-	}
-	diff := maxSum - d
-	leafMax := n - 1
-	for diff > 0 {
-		for leafMax > 0 && len(leaves[leafMax]) == 0 {
-			leafMax--
-		}
-		u := leaves[leafMax][len(leaves[leafMax])-1]
-		leaves[leafMax] = leaves[leafMax][:len(leaves[leafMax])-1]
-		du := depthArr[u]
-		dvMin := du - diff - 1
-		if dvMin < 0 {
-			dvMin = 0
-		}
-		var dv, v int
-		for dv = dvMin; dv < du; dv++ {
-			if dv < len(avail) && len(avail[dv]) > 0 {
-				v = avail[dv][0]
+		chosen := 0
+		for x := 1; x <= maxNodes; x++ {
+			remaining := rem - x
+			minAdd := minAdditional(remaining, x*2, depth+1)
+			maxAdd := maxAdditional(remaining, depth+1)
+			totalMin := curSum + int64(x*depth) + minAdd
+			totalMax := curSum + int64(x*depth) + maxAdd
+			if int64(d) >= totalMin && int64(d) <= totalMax {
+				chosen = x
 				break
 			}
 		}
-		nd := dv + 1
-		delta := du - nd
-		diff -= delta
-		old := parent[u]
-		oldCap := 2 - childCnt[old]
-		childCnt[old]--
-		newCapOld := 2 - childCnt[old]
-		if old != 0 {
-			if oldCap == 0 && newCapOld > 0 {
-				avail[depthArr[old]] = append(avail[depthArr[old]], old)
-			} else if oldCap > 0 && newCapOld == 0 {
-				d0 := depthArr[old]
-				for i, x := range avail[d0] {
-					if x == old {
-						avail[d0] = append(avail[d0][:i], avail[d0][i+1:]...)
-						break
-					}
-				}
+		if chosen == 0 {
+			return nil, false
+		}
+		levels = append(levels, chosen)
+		curSum += int64(chosen * depth)
+		rem -= chosen
+		avail = chosen
+		depth++
+	}
+
+	parent := make([]int, n+1)
+	parent[1] = 0
+	prev := []int{1}
+	idx := 2
+	for lvl := 1; lvl < len(levels); lvl++ {
+		cnt := levels[lvl]
+		next := make([]int, 0, cnt)
+		pIdx := 0
+		used := 0
+		for i := 0; i < cnt; i++ {
+			if used == 2 {
+				pIdx++
+				used = 0
 			}
-		}
-		pCapOld := 2 - childCnt[v]
-		childCnt[v]++
-		pCapNew := 2 - childCnt[v]
-		if pCapOld > 0 && pCapNew == 0 {
-			for i, x := range avail[dv] {
-				if x == v {
-					avail[dv] = append(avail[dv][:i], avail[dv][i+1:]...)
-					break
-				}
+			if pIdx >= len(prev) || idx > n {
+				return nil, false
 			}
+			parent[idx] = prev[pIdx]
+			next = append(next, idx)
+			idx++
+			used++
 		}
-		parent[u] = v
-		depthArr[u] = nd
-		leaves[nd] = append(leaves[nd], u)
-		if nd > leafMax {
-			leafMax = nd
-		}
+		prev = next
+	}
+	return parent, true
+}
+
+func expected(n, d int) string {
+	parent, ok := constructTree(n, d)
+	if !ok {
+		return "NO"
 	}
 	var sb strings.Builder
 	sb.WriteString("YES\n")
@@ -128,33 +225,18 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesE.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+
+	if len(testcases) != testcasesCount {
+		fmt.Fprintf(os.Stderr, "unexpected testcase count: got %d want %d\n", len(testcases), testcasesCount)
 		os.Exit(1)
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		fields := strings.Fields(line)
-		if len(fields) != 2 {
-			fmt.Printf("test %d malformed\n", idx)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(fields[0])
-		d, _ := strconv.Atoi(fields[1])
-		exp := expected(n, d)
+	for i, tc := range testcases {
+		exp := expected(tc.n, tc.d)
 
 		var input strings.Builder
 		input.WriteString("1\n")
-		input.WriteString(fmt.Sprintf("%d %d\n", n, d))
+		input.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.d))
 
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(input.String())
@@ -164,18 +246,14 @@ func main() {
 		cmd.Stderr = &errBuf
 		err := cmd.Run()
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, errBuf.String())
+			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", i+1, err, errBuf.String())
 			os.Exit(1)
 		}
 		got := strings.TrimSpace(out.String())
 		if got != exp {
-			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx, exp, got)
+			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", i+1, exp, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

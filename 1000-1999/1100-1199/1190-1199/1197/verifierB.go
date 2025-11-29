@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,29 +9,587 @@ import (
 	"strings"
 )
 
-func expected(a []int) string {
-	maxVal := a[0]
+// Embedded testcases previously stored in testcasesB.txt.
+const testcasesBData = `100
+7
+4 7 2 6 3 1 5
+18
+3 16 12 11 9 2 6 5 15 14 10 18 17 1 8 4 7 13
+3
+2 3 1
+15
+6 13 15 3 2 5 10 8 14 9 1 12 7 4 11
+17
+8 16 15 4 13 17 6 12 5 3 2 11 9 14 7 1 10
+12
+6 11 3 2 4 1 12 7 9 8 10 5
+16
+1 3 13 4 5 14 7 10 8 2 15 11 12 9 16 6
+3
+3 1 2
+12
+6 8 4 1 9 5 2 3 7 11 10 12
+15
+7 11 3 2 13 12 4 1 15 5 8 14 10 6 9
+16
+5 16 1 13 15 3 12 7 11 4 9 10 6 14 8 2
+17
+15 12 4 16 7 6 17 5 13 2 14 10 9 3 11 8 1
+3
+3 1 2
+11
+7 8 4 5 11 1 9 6 3 10 2
+11
+9 3 2 10 1 7 4 6 8 5 11
+13
+3 6 13 10 1 8 9 12 11 2 5 4 7
+7
+7 5 3 4 2 6 1
+20
+12 4 19 3 9 13 2 5 16 18 14 6 10 11 7 1 20 15 17 8
+12
+6 4 8 2 10 9 1 11 12 7 3 5
+8
+1 8 4 7 2 6 5 3
+11
+7 2 1 9 8 3 4 6 5 10 11
+4
+1 3 2 4
+14
+8 14 6 9 3 1 4 10 7 13 12 2 11 5
+10
+7 2 5 1 3 9 4 8 6 10
+7
+5 2 6 3 1 7 4
+4
+3 1 4 2
+8
+5 4 6 2 1 7 8 3
+3
+1 3 2
+2
+2 1
+14
+4 2 1 5 3 14 13 11 12 6 8 7 9 10
+12
+12 11 6 2 7 8 4 5 3 9 1 10
+5
+1 2 5 4 3
+17
+4 3 13 16 10 11 6 15 17 7 14 8 5 12 9 1 2
+5
+5 4 1 2 3
+12
+1 7 3 4 6 2 11 9 12 5 8 10
+11
+1 6 9 8 3 5 2 7 10 11 4
+18
+14 11 18 6 10 3 9 15 16 13 1 7 17 4 12 5 8 2
+12
+5 3 8 10 9 6 1 2 4 7 12 11
+18
+6 2 11 16 4 14 9 3 17 7 10 8 1 18 15 12 5 13
+19
+15 6 19 10 17 12 7 3 14 9 16 18 5 4 13 8 2 11 1
+16
+11 6 14 1 4 8 15 7 13 2 12 10 9 5 16 3
+15
+9 3 5 15 8 7 14 1 6 10 11 13 12 4 2
+15
+8 9 14 5 7 12 11 2 15 6 4 3 13 1 10
+6
+5 6 1 2 4 3
+8
+5 6 7 4 1 2 3 8
+4
+4 3 2 1
+12
+11 3 8 6 4 1 2 7 9 10 5 12
+4
+2 1 4 3
+17
+3 2 15 10 7 9 12 6 17 13 14 4 11 5 16 8 1
+13
+8 6 7 5 1 2 10 13 9 4 12 3 11
+18
+13 18 10 7 17 9 6 1 16 3 15 8 2 4 12 14 11 5
+10
+5 2 7 4 3 9 8 10 1 6
+17
+12 13 16 10 6 3 7 17 5 1 2 11 4 14 9 15 8
+10
+3 6 7 8 10 1 5 9 4 2
+5
+2 4 3 5 1
+7
+2 1 7 4 3 6 5
+12
+8 6 4 11 3 10 12 7 9 5 1 2
+4
+2 4 3 1
+11
+7 10 5 2 9 11 1 8 6 4 3
+9
+5 4 9 1 7 8 2 6 3
+4
+1 4 3 2
+9
+1 2 4 7 6 9 8 3 5
+12
+6 11 7 4 3 9 1 10 5 12 8 2
+6
+2 5 6 1 4 3
+8
+6 1 4 5 8 2 7 3
+7
+4 2 5 3 7 1 6
+2
+2 1
+9
+7 3 5 2 4 1 6 9 8
+10
+2 1 9 7 10 8 3 4 6 5
+18
+16 13 15 5 10 6 4 3 17 8 9 12 14 18 2 7 11 1
+20
+12 8 7 5 13 15 20 6 4 19 2 10 3 16 14 11 17 18 1 9
+13
+3 10 11 8 1 5 6 9 7 13 12 4 2
+9
+2 1 9 3 6 5 4 7 8
+10
+4 9 10 8 5 7 3 2 6 1
+14
+12 6 13 2 3 5 11 10 7 4 14 9 1 8
+20
+11 13 4 8 10 14 6 17 1 12 5 19 3 15 20 16 2 7 18 9
+6
+6 2 5 4 3 1
+14
+8 1 3 9 12 4 5 6 7 14 11 2 10 13
+19
+9 16 17 12 14 6 11 3 7 15 18 10 1 8 5 19 4 2 13
+5
+2 5 4 3 1
+10
+3 10 8 7 2 5 1 4 6 9
+20
+3 20 17 2 14 5 12 4 7 16 10 13 15 18 19 1 8 6 11 9
+7
+4 3 1 6 2 5 7
+15
+13 1 5 7 12 10 9 15 8 14 4 11 3 6 2
+10
+9 10 6 2 4 1 8 3 5 7
+7
+2 5 1 3 6 4 7
+7
+4 6 3 1 5 7 2
+3
+2 1 3
+10
+9 4 10 5 2 6 8 7 3 1
+7
+2 5 1 6 7 3 4
+20
+7 14 17 16 8 10 9 19 20 18 4 3 5 11 15 1 6 2 12 13
+19
+6 10 14 3 7 12 8 19 16 5 17 15 11 4 2 18 13 9 1
+15
+2 1 5 14 8 12 6 7 11 4 13 15 9 10 3
+19
+3 1 2 8 10 11 16 17 18 15 19 12 14 13 7 5 9 6 4
+14
+9 4 3 1 2 13 14 7 11 6 12 10 8 5
+5
+2 5 4 1 3
+19
+13 4 5 16 6 19 10 17 12 2 1 8 3 9 14 7 15 18 11
+16
+5 9 14 7 3 10 12 13 6 15 4 2 8 11 1 16
+11
+8 10 1 7 11 4 3 9 2 5 6
+16
+6 1 16 4 8 11 10 7 2 12 15 5 9 3 14 13
+15
+7 14 15 10 1 4 2 8 13 12 6 3 9 5 11
+14
+5 10 9 1 7 2 3 4 6 11 14 12 13 8
+17
+10 4 9 1 15 16 12 5 8 6 17 14 2 13 7 11 3
+4
+1 4 2 3
+7
+3 4 5 1 2 7 6
+4
+3 2 4 1
+9
+5 6 2 9 3 1 8 4 7
+11
+8 10 11 3 4 5 1 7 2 6 9
+6
+3 4 6 2 1 5
+7
+4 5 2 3 6 1 7
+10
+9 8 3 5 2 7 6 1 4 10
+6
+3 6 4 1 2 5
+4
+2 3 4 1
+8
+3 2 6 7 1 4 8 5
+12
+4 3 12 2 1 9 11 5 7 8 6 10
+3
+2 1 3
+19
+7 5 1 6 12 3 2 8 4 10 14 9 11 13 15 17 19 18 16
+12
+1 4 6 7 8 11 9 3 2 10 5 12
+14
+7 5 3 6 10 2 1 4 9 12 8 11 14 13
+19
+15 17 9 2 6 10 7 8 14 4 1 3 12 13 19 18 11 16 5
+19
+10 17 9 11 18 1 6 13 14 15 16 5 3 2 19 12 8 4 7
+9
+1 7 6 3 5 2 9 8 4
+9
+7 8 4 5 2 3 6 1 9
+20
+3 1 6 8 7 12 15 4 2 18 17 13 9 5 10 20 11 19 16 14
+4
+1 2 3 4
+8
+6 7 8 3 2 1 5 4
+16
+8 7 5 6 1 4 3 2 16 15 14 13 12 11 9 10
+3
+1 3 2
+15
+12 13 1 8 2 5 4 15 7 3 9 10 6 14 11
+19
+7 15 2 6 12 10 11 4 3 9 8 5 14 16 17 18 19 13 1
+16
+12 3 4 5 9 8 7 6 1 2 16 15 13 11 14 10
+18
+13 9 6 10 17 16 3 4 12 8 7 2 14 18 15 5 11 1
+17
+15 11 5 1 3 8 10 7 4 12 17 6 2 13 9 14 16
+13
+11 10 1 4 2 6 9 8 3 5 12 13 7
+5
+1 4 5 2 3
+12
+9 7 8 2 11 5 4 10 6 1 3 12
+19
+13 7 8 6 9 14 1 10 2 3 5 4 12 11 19 15 17 16 18
+12
+6 8 12 11 1 9 10 5 7 3 2 4
+5
+5 1 2 3 4
+16
+6 5 7 8 4 3 2 1 10 9 11 12 13 14 15 16
+11
+9 1 3 2 8 7 4 5 6 11 10
+18
+14 10 16 8 3 18 17 2 4 11 13 12 9 6 15 5 7 1
+3
+3 2 1
+13
+4 2 5 10 6 7 8 9 12 13 11 3 1
+16
+3 6 5 12 10 8 9 4 2 1 7 11 14 13 15 16
+6
+2 4 5 6 3 1
+18
+1 17 5 8 11 4 7 10 15 13 9 16 12 2 3 6 14 18
+11
+7 6 2 3 5 4 8 9 10 1 11
+13
+9 11 4 3 5 2 10 1 7 13 12 6 8
+18
+8 3 6 16 12 10 2 18 17 15 11 7 9 4 1 13 14 5
+20
+1 5 3 16 7 4 2 12 6 11 8 9 10 15 14 13 18 19 17 20
+5
+4 5 1 2 3
+12
+7 1 2 3 4 5 6 8 11 12 9 10
+10
+8 3 10 1 7 4 6 9 2 5
+14
+11 5 6 9 2 7 1 3 4 8 10 13 12 14
+4
+3 1 2 4
+16
+12 11 2 8 10 4 5 6 9 7 3 1 13 16 15 14
+8
+6 1 8 4 2 7 3 5
+6
+6 5 4 2 3 1
+13
+3 6 9 2 7 8 1 4 12 13 10 5 11
+16
+6 12 10 3 4 5 7 2 9 11 8 1 13 15 16 14
+15
+11 1 13 6 5 9 10 14 8 2 4 12 7 15 3
+4
+3 4 1 2
+7
+6 5 4 3 7 2 1
+3
+3 2 1
+20
+16 4 5 3 2 8 1 10 6 7 9 11 12 14 13 15 17 18 19 20
+12
+5 2 4 10 6 7 9 3 1 11 12 8
+8
+2 4 7 5 3 1 6 8
+7
+5 2 7 6 4 1 3
+12
+11 6 2 8 10 4 1 3 7 5 12 9
+16
+14 6 13 2 4 1 3 10 5 8 7 15 16 12 11 9
+18
+17 6 3 16 4 10 18 5 2 8 7 1 15 14 13 11 9 12
+4
+4 1 2 3
+18
+15 7 13 5 8 12 10 2 16 9 4 1 6 18 3 11 17 14
+8
+1 2 4 6 8 3 5 7
+10
+7 9 4 6 10 1 3 2 5 8
+6
+1 4 3 5 6 2
+20
+7 16 6 9 14 2 3 1 5 4 8 10 15 11 12 17 19 18 13 20
+7
+5 7 1 4 2 6 3
+10
+7 3 8 6 4 10 1 2 5 9
+11
+2 6 11 5 3 4 10 9 8 7 1
+11
+4 7 11 1 6 2 10 5 8 9 3
+6
+3 2 6 1 4 5
+14
+9 5 3 8 10 4 14 6 13 12 1 2 7 11
+5
+5 4 3 2 1
+11
+7 9 6 4 5 3 2 10 11 1 8
+12
+9 6 1 2 12 4 5 8 10 7 3 11
+20
+14 11 9 7 8 2 5 3 10 4 12 6 15 16 17 1 13 18 19 20
+12
+10 2 1 7 6 8 4 11 5 9 3 12
+4
+3 2 1 4
+9
+5 9 7 2 8 1 4 6 3
+14
+3 12 13 9 10 5 11 2 4 6 8 14 7 1
+7
+1 6 4 3 2 7 5
+16
+2 4 13 8 6 16 7 3 9 5 11 15 1 14 10 12
+18
+8 6 5 15 14 16 9 7 2 1 3 18 13 4 10 12 17 11
+4
+4 2 1 3
+12
+9 12 7 2 4 10 5 3 1 8 11 6
+8
+6 3 2 5 4 7 1 8
+16
+10 12 16 13 8 5 9 7 4 14 11 15 2 6 3 1
+12
+1 2 9 6 8 3 11 10 12 7 4 5
+16
+1 11 16 3 2 13 9 4 6 12 14 10 5 7 8 15
+11
+5 1 9 3 2 10 4 6 7 11 8
+6
+2 1 5 3 6 4
+19
+8 11 12 4 3 1 17 18 9 2 7 5 16 6 14 15 10 19 13
+15
+4 11 8 9 1 3 6 10 12 15 7 5 14 13 2
+7
+3 2 4 5 1 6 7
+18
+10 1 18 9 15 16 5 11 13 17 14 7 12 2 4 6 3 8
+14
+6 11 9 2 8 4 10 12 3 5 1 14 7 13
+8
+2 5 1 4 6 7 3 8
+12
+2 10 4 1 7 3 9 11 5 12 6 8
+16
+7 5 11 1 6 4 12 14 2 15 13 10 3 9 8 16
+13
+5 10 9 7 1 13 4 12 8 6 11 3 2
+10
+2 8 9 7 10 6 3 5 4 1
+7
+7 1 2 3 4 5 6
+12
+11 12 8 10 9 6 3 7 2 1 5 4
+17
+4 14 13 3 8 1 15 5 7 6 2 10 11 12 9 16 17
+16
+10 8 7 6 16 5 4 3 2 1 9 11 12 13 14 15
+5
+4 3 2 5 1
+14
+9 12 4 5 7 11 6 3 14 10 13 2 8 1
+6
+5 3 2 6 4 1
+12
+8 9 6 2 1 4 7 5 12 10 3 11
+4
+1 4 3 2
+14
+4 7 5 8 3 2 9 1 10 14 11 6 12 13
+8
+3 7 5 6 4 8 1 2
+12
+2 1 4 5 6 3 8 7 9 10 12 11
+6
+5 6 4 2 1 3
+6
+2 5 4 3 6 1
+9
+8 9 7 3 2 4 6 5 1
+16
+8 7 15 1 2 4 6 9 10 12 11 13 14 5 3 16
+11
+1 2 3 4 9 6 5 8 7 11 10
+16
+10 1 2 3 4 5 6 7 8 9 11 12 13 14 15 16
+12
+2 1 9 7 5 6 4 3 8 10 11 12
+14
+1 2 3 4 5 8 7 6 10 11 12 9 13 14
+9
+8 7 6 5 4 3 2 1 9
+5
+5 4 3 2 1
+12
+9 10 11 12 6 5 4 3 2 1 7 8
+7
+5 4 3 2 1 7 6
+10
+8 9 10 5 4 3 2 1 6 7
+3
+1 2 3
+10
+6 7 10 9 8 5 4 3 2 1
+6
+2 4 6 1 3 5
+6
+1 2 3 4 5 6
+16
+16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1
+10
+1 2 3 4 5 6 7 8 9 10
+8
+1 2 3 4 5 6 7 8
+6
+1 2 3 4 5 6
+3
+1 2 3
+2
+1 2`
+
+type testCase struct {
+	arr []int
+}
+
+// solve mirrors the logic from 1197B.go for a single test case.
+func solve(arr []int) string {
+	maxVal := arr[0]
 	idx := 0
-	for i := 1; i < len(a); i++ {
-		if a[i] > maxVal {
-			maxVal = a[i]
+	for i := 1; i < len(arr); i++ {
+		if arr[i] > maxVal {
+			maxVal = arr[i]
 			idx = i
 		}
 	}
-	if idx == 0 || idx == len(a)-1 {
+	if idx == 0 || idx == len(arr)-1 {
 		return "NO"
 	}
 	return "YES"
 }
 
-func runExe(path string, input []byte) (string, error) {
-	cmd := exec.Command(path)
-	cmd.Stdin = bytes.NewReader(input)
+func parseTestCases(data string) ([]testCase, error) {
+	tokens := strings.Fields(data)
+	if len(tokens) == 0 {
+		return nil, fmt.Errorf("no embedded testcases found")
+	}
+	idx := 0
+	cases := make([]testCase, 0)
+	for caseNum := 1; idx < len(tokens); caseNum++ {
+		n, err := strconv.Atoi(tokens[idx])
+		if err != nil {
+			return nil, fmt.Errorf("test %d has invalid n: %w", caseNum, err)
+		}
+		idx++
+		if idx+n > len(tokens) {
+			return nil, fmt.Errorf("test %d missing %d numbers", caseNum, idx+n-len(tokens))
+		}
+		arr := make([]int, n)
+		for j := 0; j < n; j++ {
+			val, err := strconv.Atoi(tokens[idx+j])
+			if err != nil {
+				return nil, fmt.Errorf("test %d has invalid int: %w", caseNum, err)
+			}
+			arr[j] = val
+		}
+		idx += n
+		cases = append(cases, testCase{arr: arr})
+	}
+	return cases, nil
+}
+
+func runCase(bin string, tc testCase) error {
+	var input strings.Builder
+	input.WriteString(strconv.Itoa(len(tc.arr)))
+	input.WriteByte('\n')
+	for i, v := range tc.arr {
+		if i > 0 {
+			input.WriteByte(' ')
+		}
+		input.WriteString(strconv.Itoa(v))
+	}
+	input.WriteByte('\n')
+
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input.String())
 	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	got := strings.ToUpper(strings.TrimSpace(out.String()))
+	expected := solve(tc.arr)
+	if got != expected {
+		return fmt.Errorf("expected %s got %s", expected, got)
+	}
+	return nil
 }
 
 func main() {
@@ -41,49 +598,18 @@ func main() {
 		return
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesB.txt")
+
+	cases, err := parseTestCases(testcasesBData)
 	if err != nil {
-		fmt.Println("failed to open testcasesB.txt:", err)
-		return
+		fmt.Println("failed to parse embedded testcases:", err)
+		os.Exit(1)
 	}
-	defer file.Close()
-	scan := bufio.NewScanner(file)
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("bad test file")
-		return
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	for caseNum := 1; caseNum <= t; caseNum++ {
-		if !scan.Scan() {
-			fmt.Println("bad test file")
-			return
-		}
-		n, _ := strconv.Atoi(scan.Text())
-		arr := make([]int, n)
-		for i := 0; i < n; i++ {
-			scan.Scan()
-			arr[i], _ = strconv.Atoi(scan.Text())
-		}
-		exp := expected(arr)
-		var input bytes.Buffer
-		fmt.Fprintf(&input, "%d\n", n)
-		for i, v := range arr {
-			if i > 0 {
-				input.WriteByte(' ')
-			}
-			fmt.Fprintf(&input, "%d", v)
-		}
-		input.WriteByte('\n')
-		out, err := runExe(bin, input.Bytes())
-		if err != nil {
-			fmt.Printf("case %d: runtime error: %v\n", caseNum, err)
-			os.Exit(1)
-		}
-		if strings.ToUpper(strings.TrimSpace(out)) != exp {
-			fmt.Printf("case %d failed: expected %s got %s\n", caseNum, exp, out)
+
+	for i, tc := range cases {
+		if err := runCase(bin, tc); err != nil {
+			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

@@ -1,100 +1,388 @@
 package main
 
 import (
-    "bufio"
-    "bytes"
-    "fmt"
-    "os"
-    "os/exec"
-    "strings"
+	"bufio"
+	"bytes"
+	"fmt"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
 )
 
+const testcasesRaw = `100
+4
+szyc
+szdc
+9
+yopumzgdp
+mopumzgdp
+8
+tyyawoix
+tyyswoix
+3
+kaa
+uaa
+10
+amvgnxaqhy
+amvgnxaphy
+10
+hlhvhyojan
+hlhvhyojun
+3
+fux
+fdx
+7
+xwqnqvg
+xwjnqvg
+9
+qmsbphxzm
+qmsbphvzm
+4
+lrwy
+lrcy
+9
+vqdyfqmlp
+pqdyfqmlp
+2
+jw
+ju
+4
+fqha
+frha
+10
+hmqlsloivr
+hmqlsloivx
+2
+mz
+qz
+10
+gnbplsrgqn
+gnbplsrlqn
+8
+larrtztk
+larrtztt
+2
+zh
+rh
+4
+czrz
+czbz
+3
+cao
+yao
+6
+hidztf
+hijztf
+3
+ffi
+fff
+6
+uwjowk
+uwjpwk
+3
+ajm
+anm
+5
+idixq
+itixq
+8
+ahamebxf
+ahamebxw
+10
+vnrhuzwqoh
+vnrhuzwquh
+2
+mv
+mu
+8
+bxjegbjc
+bjjegbjc
+6
+xfnsie
+rfnsie
+2
+sg
+sf
+10
+bmgldgsvns
+bmgpdgsvns
+3
+vmj
+vmp
+2
+kt
+kj
+2
+fg
+fz
+4
+kngi
+mngi
+10
+lvrpyrhcxb
+lerpyrhcxb
+4
+frgi
+frti
+10
+ilkkdjhtyw
+ilkkdjheyw
+10
+ydkbncmzee
+ydkbndmzee
+8
+csrhscil
+csrhrcil
+3
+oid
+jid
+2
+tv
+cv
+8
+dzbghzsn
+dzdghzsn
+9
+fvhfxdnmz
+fvhfxdnmj
+10
+iwpkdgukba
+zwpkdgukba
+6
+xtkomk
+xtkcmk
+3
+kto
+ito
+5
+ztyrw
+ztyvw
+7
+ifrgjgh
+ifcgjgh
+6
+cyocus
+cyocuk
+5
+mjbkf
+mjzkf
+6
+hkdrts
+hkdrcs
+5
+hazhm
+iazhm
+10
+cxcauajyzl
+cxcauajpzl
+4
+dqyz
+dqcz
+10
+vffyeekjdw
+vffyeekjtw
+6
+egerxb
+egtrxb
+10
+xwgfjnrfbw
+xwgijnrfbw
+3
+voz
+vrz
+6
+roroam
+rofoam
+6
+pazuns
+bazuns
+7
+seseeii
+sesseii
+8
+ftchpafq
+ftchpqfq
+9
+vuxhhkpvp
+vuxwhkpvp
+8
+krtxuiuh
+crtxuiuh
+10
+ulfqyzgjjw
+ulfqrzgjjw
+7
+fwwxotc
+fwwxotd
+10
+smfeingsxy
+pmfeingsxy
+8
+wulmqfrx
+qulmqfrx
+3
+ziu
+iiu
+3
+eyt
+eyv
+3
+ohm
+omm
+4
+koet
+koeg
+3
+ntr
+ndr
+6
+ihmxra
+iqmxra
+9
+saauthigf
+saauehigf
+10
+gijsyivozz
+girsyivozz
+7
+pndygsm
+pjdygsm
+3
+zad
+zax
+2
+rj
+cj
+10
+lszjnqvlyq
+lszjnavlyq
+3
+owo
+ojo
+10
+mkzxvspdum
+mkzxvsgdum
+10
+aiutxxxqgo
+aiutxxxqgq
+8
+xwjwfotv
+xwjlfotv
+10
+avmsnmktsx
+apmsnmktsx
+5
+uujua
+uujxa
+4
+uymz
+uyfz
+3
+yta
+yia
+8
+vrjeoipf
+vrjeoipq
+2
+iq
+xq
+8
+clcvoafq
+clwvoafq
+3
+muw
+mtw
+6
+gqghki
+cqghki
+10
+vloqrxbfju
+vloqrxbfiu
+7
+txhmrmf
+txhzrmf
+6
+tkwhit
+tkwhih
+2
+tm
+tn
+5
+zigcu
+zsgcu`
+
 func solveCase(n int, s, t string) string {
-    mism := make([]int, 0, 2)
-    for i := 0; i < n; i++ {
-        if s[i] != t[i] {
-            mism = append(mism, i)
-        }
-    }
-    if len(mism) == 2 && s[mism[0]] == s[mism[1]] && t[mism[0]] == t[mism[1]] {
-        return "Yes"
-    }
-    return "No"
+	mism := make([]int, 0, 2)
+	for i := 0; i < n; i++ {
+		if s[i] != t[i] {
+			mism = append(mism, i)
+		}
+	}
+	if len(mism) == 2 && s[mism[0]] == s[mism[1]] && t[mism[0]] == t[mism[1]] {
+		return "Yes"
+	}
+	return "No"
 }
 
 func runProg(bin, input string) (string, error) {
-    var cmd *exec.Cmd
-    if strings.HasSuffix(bin, ".go") {
-        cmd = exec.Command("go", "run", bin)
-    } else {
-        cmd = exec.Command(bin)
-    }
-    cmd.Stdin = strings.NewReader(input)
-    var out bytes.Buffer
-    var stderr bytes.Buffer
-    cmd.Stdout = &out
-    cmd.Stderr = &stderr
-    if err := cmd.Run(); err != nil {
-        return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
-    }
-    return strings.TrimSpace(out.String()), nil
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
-    if len(os.Args) == 3 && os.Args[1] == "--" {
-        os.Args = append([]string{os.Args[0]}, os.Args[2])
-    }
-    if len(os.Args) != 2 {
-        fmt.Println("Usage: go run verifierB1.go /path/to/binary")
-        os.Exit(1)
-    }
-    bin := os.Args[1]
+	if len(os.Args) != 2 {
+		fmt.Println("Usage: go run verifierB1.go /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
 
-    f, err := os.Open("testcasesB1.txt")
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "could not open testcasesB1.txt: %v\n", err)
-        os.Exit(1)
-    }
-    defer f.Close()
-    reader := bufio.NewReader(f)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
+	scanner.Split(bufio.ScanWords)
+	if !scanner.Scan() {
+		fmt.Println("invalid testcases")
+		os.Exit(1)
+	}
+	t, _ := strconv.Atoi(scanner.Text())
+	for caseNum := 1; caseNum <= t; caseNum++ {
+		if !scanner.Scan() {
+			fmt.Printf("case %d: missing n\n", caseNum)
+			os.Exit(1)
+		}
+		n, _ := strconv.Atoi(scanner.Text())
+		if !scanner.Scan() {
+			fmt.Printf("case %d: missing s\n", caseNum)
+			os.Exit(1)
+		}
+		s := scanner.Text()
+		if !scanner.Scan() {
+			fmt.Printf("case %d: missing t\n", caseNum)
+			os.Exit(1)
+		}
+		tt := scanner.Text()
 
-    var t int
-    if _, err := fmt.Fscan(reader, &t); err != nil {
-        fmt.Fprintf(os.Stderr, "failed to read test count: %v\n", err)
-        os.Exit(1)
-    }
+		var input strings.Builder
+		fmt.Fprintf(&input, "1\n%d\n%s\n%s\n", n, s, tt)
 
-    for caseNum := 1; caseNum <= t; caseNum++ {
-        var n int
-        var s, tt string
-        if _, err := fmt.Fscan(reader, &n); err != nil {
-            fmt.Fprintf(os.Stderr, "case %d: read n: %v\n", caseNum, err)
-            os.Exit(1)
-        }
-        if _, err := fmt.Fscan(reader, &s); err != nil {
-            fmt.Fprintf(os.Stderr, "case %d: read s: %v\n", caseNum, err)
-            os.Exit(1)
-        }
-        if _, err := fmt.Fscan(reader, &tt); err != nil {
-            fmt.Fprintf(os.Stderr, "case %d: read t: %v\n", caseNum, err)
-            os.Exit(1)
-        }
+		want := solveCase(n, s, tt)
+		got, err := runProg(bin, input.String())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", caseNum, err, input.String())
+			os.Exit(1)
+		}
+		if strings.TrimSpace(got) != strings.TrimSpace(want) {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", caseNum, want, got, input.String())
+			os.Exit(1)
+		}
+	}
 
-        var input strings.Builder
-        fmt.Fprintf(&input, "1\n%d\n%s\n%s\n", n, s, tt)
-
-        want := solveCase(n, s, tt)
-        got, err := runProg(bin, input.String())
-        if err != nil {
-            fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", caseNum, err, input.String())
-            os.Exit(1)
-        }
-        if strings.TrimSpace(got) != strings.TrimSpace(want) {
-            fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", caseNum, want, got, input.String())
-            os.Exit(1)
-        }
-    }
-
-    fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", t)
 }
-

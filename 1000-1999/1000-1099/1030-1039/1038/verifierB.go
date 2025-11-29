@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,111 +9,188 @@ import (
 	"strings"
 )
 
-func gcd(a, b int) int {
-	for b != 0 {
-		a, b = b, a%b
-	}
-	if a < 0 {
-		return -a
-	}
-	return a
-}
+const testcasesRaw = `100
+18
+73
+98
+9
+33
+16
+64
+98
+58
+61
+84
+49
+27
+13
+63
+4
+50
+56
+78
+98
+99
+1
+90
+58
+35
+93
+30
+76
+14
+41
+4
+3
+4
+84
+70
+2
+49
+88
+28
+55
+93
+4
+68
+29
+98
+57
+64
+71
+30
+45
+30
+87
+29
+98
+59
+38
+3
+54
+72
+83
+13
+24
+81
+93
+38
+16
+96
+43
+93
+92
+65
+55
+65
+86
+25
+39
+37
+76
+64
+65
+51
+76
+5
+62
+32
+96
+52
+54
+86
+23
+47
+71
+90
+100
+87
+95
+48
+12
+57
+85`
 
-func verify(n int, out string) error {
-	out = strings.TrimSpace(out)
-	if out == "" {
-		return fmt.Errorf("empty output")
-	}
-	lines := strings.Split(out, "\n")
-	first := strings.TrimSpace(lines[0])
-	if strings.EqualFold(first, "No") {
-		if n > 2 {
-			return fmt.Errorf("expected Yes for n=%d", n)
-		}
-		if len(lines) > 1 {
-			return fmt.Errorf("unexpected extra output after No")
-		}
-		return nil
-	}
-	if !strings.EqualFold(first, "Yes") {
-		return fmt.Errorf("first line must be Yes or No, got %q", first)
-	}
+// Embedded reference logic from 1038B.go.
+func buildSolution(n int) string {
+	var sb strings.Builder
 	if n <= 2 {
-		return fmt.Errorf("expected No for n=%d but got Yes", n)
+		sb.WriteString("No")
+		return sb.String()
 	}
-	if len(lines) < 3 {
-		return fmt.Errorf("expected three lines for Yes output")
-	}
-	aFields := strings.Fields(lines[1])
-	bFields := strings.Fields(lines[2])
-	if len(aFields) == 0 || len(bFields) == 0 {
-		return fmt.Errorf("missing subset lines")
-	}
-	k, err := strconv.Atoi(aFields[0])
-	if err != nil {
-		return fmt.Errorf("invalid subset size: %v", err)
-	}
-	m, err := strconv.Atoi(bFields[0])
-	if err != nil {
-		return fmt.Errorf("invalid subset size: %v", err)
-	}
-	if len(aFields)-1 != k || len(bFields)-1 != m {
-		return fmt.Errorf("subset size mismatch")
-	}
-	if k+m != n {
-		return fmt.Errorf("subsets do not partition 1..n")
-	}
-	used := make([]bool, n+1)
-	sumA, sumB := 0, 0
-	for _, tok := range aFields[1:] {
-		v, err := strconv.Atoi(tok)
-		if err != nil {
-			return fmt.Errorf("invalid number in first subset: %v", err)
+	sb.WriteString("Yes\n")
+	if n%2 == 0 {
+		fmt.Fprintf(&sb, "2 1 %d\n", n)
+		fmt.Fprintf(&sb, "%d", n-2)
+		for i := 2; i < n; i++ {
+			fmt.Fprintf(&sb, " %d", i)
 		}
-		if v < 1 || v > n {
-			return fmt.Errorf("number %d out of range", v)
-		}
-		if used[v] {
-			return fmt.Errorf("number %d repeated", v)
-		}
-		used[v] = true
-		sumA += v
-	}
-	for _, tok := range bFields[1:] {
-		v, err := strconv.Atoi(tok)
-		if err != nil {
-			return fmt.Errorf("invalid number in second subset: %v", err)
-		}
-		if v < 1 || v > n {
-			return fmt.Errorf("number %d out of range", v)
-		}
-		if used[v] {
-			return fmt.Errorf("number %d repeated", v)
-		}
-		used[v] = true
-		sumB += v
-	}
-	for i := 1; i <= n; i++ {
-		if !used[i] {
-			return fmt.Errorf("number %d missing from partition", i)
+	} else {
+		k := (n + 1) / 2
+		fmt.Fprintf(&sb, "1 %d\n", k)
+		fmt.Fprintf(&sb, "%d", n-1)
+		for i := 1; i <= n; i++ {
+			if i == k {
+				continue
+			}
+			fmt.Fprintf(&sb, " %d", i)
 		}
 	}
-	if gcd(sumA, sumB) <= 1 {
-		return fmt.Errorf("sums %d and %d are coprime", sumA, sumB)
-	}
-	return nil
+	sb.WriteByte('\n')
+	return sb.String()
 }
 
-func runCase(exe, input string, n int) error {
-	cmd := exec.Command(exe)
+func runCase(exe string, n int) error {
+	input := fmt.Sprintf("%d\n", n)
+	expected := strings.TrimSpace(buildSolution(n))
+
+	var cmd *exec.Cmd
+	if strings.HasSuffix(exe, ".go") {
+		cmd = exec.Command("go", "run", exe)
+	} else {
+		cmd = exec.Command(exe)
+	}
 	cmd.Stdin = strings.NewReader(input)
+
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	return verify(n, out.String())
+
+	got := strings.TrimSpace(out.String())
+	if got != expected {
+		return fmt.Errorf("unexpected output.\nexpected:\n%s\ngot:\n%s", expected, got)
+	}
+	return nil
+}
+
+type testCase struct {
+	n int
+}
+
+func parseTestcases(raw string) ([]testCase, error) {
+	fields := strings.Fields(raw)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no testcase data provided")
+	}
+	t, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return nil, fmt.Errorf("invalid test count: %w", err)
+	}
+	if len(fields) != 1+t {
+		return nil, fmt.Errorf("expected %d numbers, found %d", 1+t, len(fields))
+	}
+	tests := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		v, err := strconv.Atoi(fields[1+i])
+		if err != nil {
+			return nil, fmt.Errorf("invalid n on case %d: %w", i+1, err)
+		}
+		tests = append(tests, testCase{n: v})
+	}
+	return tests, nil
 }
 
 func main() {
@@ -123,23 +199,15 @@ func main() {
 		os.Exit(1)
 	}
 	exe := os.Args[1]
-	data, err := os.ReadFile("testcasesB.txt")
+
+	tests, err := parseTestcases(testcasesRaw)
 	if err != nil {
-		fmt.Println("could not read testcasesB.txt:", err)
+		fmt.Println("invalid test data:", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	for i := 0; i < t; i++ {
-		scan.Scan()
-		n, _ := strconv.Atoi(scan.Text())
-		input := fmt.Sprintf("%d\n", n)
-		if err := runCase(exe, input, n); err != nil {
+
+	for i, tc := range tests {
+		if err := runCase(exe, tc.n); err != nil {
 			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}

@@ -1,53 +1,274 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleC")
-	cmd := exec.Command("go", "build", "-o", oracle, "1168C.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
+const testcasesData = `
+100
+8 1 2 2 11 5 9 8 6 1 5 8
+3 4 12 11 14 2 3 1 3 2 3 2 3
+6 2 5 7 7 0 5 10 2 4 5 6
+6 5 5 14 13 11 11 11 4 5 4 6 5 6 4 6 4 6
+7 4 14 11 14 15 7 10 5 5 7 4 6 3 7 3 5
+5 5 11 2 10 0 6 1 2 1 4 2 5 1 3 3 4
+8 2 1 13 1 1 11 11 5 7 6 7 1 2
+2 1 1 0 1 2
+3 2 5 0 12 1 2 1 2
+2 3 3 9 1 2 1 2 1 2
+4 4 4 15 7 2 3 4 1 2 2 3 3 4
+5 5 10 4 10 8 8 4 5 2 5 1 4 1 3 2 3
+2 4 7 1 1 2 1 2 1 2 1 2
+4 4 8 0 4 1 2 4 1 2 3 4 1 2
+2 1 5 7 1 2
+2 5 14 14 1 2 1 2 1 2 1 2 1 2
+2 4 11 0 1 2 1 2 1 2 1 2
+2 3 6 0 1 2 1 2 1 2
+6 5 2 0 9 0 11 9 1 3 4 5 1 6 3 5 4 5
+8 3 12 3 8 3 3 2 10 12 2 8 1 2 5 8
+5 1 15 9 11 14 4 3 5
+5 5 15 13 15 9 12 2 3 4 5 4 5 1 2 3 4
+6 2 13 2 2 1 4 9 4 5 3 5
+3 5 9 3 4 2 3 2 3 2 3 1 3 1 3
+8 3 4 14 14 0 12 5 12 1 4 7 4 7 6 8
+7 4 11 10 2 7 6 12 12 6 7 3 7 5 7 6 7
+8 1 0 12 6 12 6 3 12 6 3 8
+6 2 15 4 0 13 15 8 5 6 4 5
+8 1 11 0 15 2 15 10 14 8 5 7
+2 1 11 5 1 2
+7 2 1 5 15 12 14 9 4 1 4 5 7
+2 3 1 12 1 2 1 2 1 2
+7 5 9 2 8 10 9 10 9 6 7 5 6 5 6 4 7 5 6
+8 5 2 9 1 7 14 7 8 1 1 2 6 8 7 8 2 5 3 4
+4 4 11 5 15 14 2 4 1 4 2 3 2 4
+3 1 7 15 6 2 3
+4 2 4 7 8 12 2 4 2 4
+7 4 9 2 11 9 12 15 5 3 6 4 6 1 3 3 7
+3 1 3 11 5 2 3
+7 4 0 10 7 12 9 15 4 3 6 2 6 1 3 2 5
+4 2 13 11 8 2 2 3 1 4
+3 5 1 10 11 1 2 1 2 2 3 2 3 2 3
+4 5 12 7 1 12 2 4 3 4 3 4 3 4 2 4
+3 4 12 14 1 1 3 1 2 1 2 2 3
+5 1 8 3 11 7 5 1 3
+5 1 10 14 1 15 7 1 5
+3 5 0 4 1 1 2 1 3 1 2 2 3 1 2
+6 1 7 3 14 6 1 6 4 6
+6 4 5 3 4 6 5 12 2 5 3 5 2 6 2 6
+4 3 3 3 15 8 2 4 2 3 2 3
+7 5 3 0 6 6 6 12 1 6 7 6 7 6 7 6 7 5 6
+7 2 4 10 1 6 3 4 5 1 7 4 7
+4 2 5 10 8 2 2 4 3 4
+5 3 3 8 0 6 13 3 5 4 5 4 5
+7 2 14 14 11 12 15 8 6 5 7 4 5
+8 4 10 9 2 5 11 15 7 4 6 8 7 8 5 7 1 2
+8 1 6 10 1 10 8 10 14 2 4 8
+8 1 9 4 6 4 5 12 2 14 3 4
+5 4 7 4 9 7 6 3 5 4 5 2 5 1 4
+7 2 4 12 13 3 14 12 12 4 6 3 5
+3 2 1 2 0 1 3 2 3
+3 5 8 3 11 2 3 1 3 1 3 1 2 2 3
+3 2 6 10 7 1 2 2 3
+7 5 2 4 13 4 1 9 8 4 5 5 7 3 4 5 7 1 6
+8 3 11 8 15 9 4 0 1 10 4 5 3 8 6 7
+8 1 13 13 13 7 5 5 1 0 5 8
+8 3 5 9 0 1 7 7 12 2 3 4 5 6 2 4
+6 2 3 0 12 2 8 7 1 6 5 6
+5 2 4 13 4 14 11 1 3 4 5
+6 4 5 15 4 11 4 0 3 6 2 4 4 6 4 6
+5 2 13 13 8 7 11 1 5 1 5
+4 1 15 8 8 7 2 4
+4 5 14 7 5 14 2 4 2 3 3 4 3 4 1 3
+6 4 14 2 12 14 11 11 2 4 2 4 4 6 4 5
+5 3 10 12 9 8 10 1 5 1 3 4 5
+2 1 11 10 1 2
+3 3 2 15 12 1 3 1 2 2 3
+4 4 4 1 0 10 2 4 3 4 2 3 1 4
+6 3 5 10 9 12 15 14 3 4 5 6 5 6
+3 3 11 5 7 1 2 2 3 2 3
+6 2 5 0 12 15 11 5 2 4 4 5
+8 2 6 6 0 2 14 6 5 8 4 5 1 4
+2 3 1 11 1 2 1 2 1 2
+3 4 2 8 4 2 3 2 3 1 2 1 3
+3 2 9 14 6 1 3 2 3
+3 2 11 9 3 1 2 1 2
+4 1 8 3 11 2 3 4
+4 2 13 6 9 0 1 3 3 4
+7 1 1 4 15 13 11 15 9 3 4
+7 2 3 0 2 4 11 4 9 5 6 1 3
+6 2 10 2 5 13 6 13 1 4 4 6
+7 5 11 5 3 1 4 12 4 4 7 2 5 5 6 1 6 5 6
+3 5 2 10 4 1 2 2 3 2 3 2 3 1 3
+2 4 0 3 1 2 1 2 1 2 1 2
+3 2 5 12 4 1 3 2 3
+2 1 13 0 1 2
+3 4 0 6 12 2 3 1 3 2 3 1 3
+4 5 13 15 15 12 2 4 1 4 2 4 3 4 3 4
+6 3 2 0 8 13 14 2 5 6 5 6 2 4
+4 1 7 6 13 4 3 4
+`
+
+type testCase struct {
+	n       int
+	q       int
+	a       []int
+	queries [][2]int
 }
 
-func runCase(bin, oracle, input string) error {
-	cmdO := exec.Command(oracle)
-	cmdO.Stdin = strings.NewReader(input)
-	var outO bytes.Buffer
-	cmdO.Stdout = &outO
-	if err := cmdO.Run(); err != nil {
-		return fmt.Errorf("oracle run error: %v", err)
+func parseTestcases() ([]testCase, error) {
+	fields := strings.Fields(testcasesData)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no testcases")
 	}
-	expected := strings.TrimSpace(outO.String())
+	pos := 0
+	t, err := strconv.Atoi(fields[pos])
+	if err != nil {
+		return nil, err
+	}
+	pos++
+	cases := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		if pos+1 >= len(fields) {
+			return nil, fmt.Errorf("unexpected EOF at case %d", i+1)
+		}
+		n, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return nil, err
+		}
+		q, err := strconv.Atoi(fields[pos+1])
+		if err != nil {
+			return nil, err
+		}
+		pos += 2
+		if pos+n > len(fields) {
+			return nil, fmt.Errorf("not enough numbers for array in case %d", i+1)
+		}
+		a := make([]int, n)
+		for j := 0; j < n; j++ {
+			val, err := strconv.Atoi(fields[pos+j])
+			if err != nil {
+				return nil, err
+			}
+			a[j] = val
+		}
+		pos += n
+		queries := make([][2]int, q)
+		for j := 0; j < q; j++ {
+			if pos+1 >= len(fields) {
+				return nil, fmt.Errorf("not enough query numbers in case %d", i+1)
+			}
+			x, err := strconv.Atoi(fields[pos])
+			if err != nil {
+				return nil, err
+			}
+			y, err := strconv.Atoi(fields[pos+1])
+			if err != nil {
+				return nil, err
+			}
+			queries[j] = [2]int{x, y}
+			pos += 2
+		}
+		cases = append(cases, testCase{n: n, q: q, a: a, queries: queries})
+	}
+	return cases, nil
+}
 
+// solve mirrors 1168C.go to compute answers for all queries of a test case.
+func solve(tc testCase) []string {
+	n := tc.n
+	const B = 19
+	size := (n + 2) * B
+	f := make([]int32, size)
+	nex := make([]int32, B)
+	inf := int32(n + 1)
+	for b := 0; b < B; b++ {
+		nex[b] = inf
+	}
+	for i := n; i >= 1; i-- {
+		off := i * B
+		for b := 0; b < B; b++ {
+			f[off+b] = inf
+		}
+		ai := tc.a[i-1]
+		bits := make([]int, 0, B)
+		for b := 0; b < B; b++ {
+			if ai&(1<<b) != 0 {
+				bits = append(bits, b)
+				f[off+b] = int32(i)
+			}
+		}
+		for _, u := range bits {
+			ni := nex[u]
+			if ni > int32(n) {
+				continue
+			}
+			noff := int(ni) * B
+			for b := 0; b < B; b++ {
+				if f[off+b] > f[noff+b] {
+					f[off+b] = f[noff+b]
+				}
+			}
+		}
+		for _, u := range bits {
+			nex[u] = int32(i)
+		}
+	}
+
+	ans := make([]string, tc.q)
+	for idx, qu := range tc.queries {
+		x, y := qu[0], qu[1]
+		offx := x * B
+		ay := tc.a[y-1]
+		ok := false
+		for b := 0; b < B; b++ {
+			if ay&(1<<b) != 0 {
+				if f[offx+b] <= int32(y) {
+					ok = true
+					break
+				}
+			}
+		}
+		if ok {
+			ans[idx] = "Shi"
+		} else {
+			ans[idx] = "Fou"
+		}
+	}
+	return ans
+}
+
+func buildInput(tc testCase) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.q))
+	for i, v := range tc.a {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(v))
+	}
+	sb.WriteByte('\n')
+	for _, qu := range tc.queries {
+		sb.WriteString(fmt.Sprintf("%d %d\n", qu[0], qu[1]))
+	}
+	return sb.String()
+}
+
+func run(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	var stderr bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &stderr
+	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\nstderr: %s", err, stderr.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
-	got := strings.TrimSpace(out.String())
-	if got != expected {
-		return fmt.Errorf("expected %s got %s", expected, got)
-	}
-	return nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
@@ -56,63 +277,25 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
-	file, err := os.Open("testcasesC.txt")
+	testcases, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
 		os.Exit(1)
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	if !scanner.Scan() {
-		fmt.Fprintln(os.Stderr, "empty test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(strings.TrimSpace(scanner.Text()))
-	for i := 0; i < t; i++ {
-		if !scanner.Scan() {
-			fmt.Fprintf(os.Stderr, "missing test case %d\n", i+1)
+
+	for idx, tc := range testcases {
+		input := buildInput(tc)
+		want := strings.Join(solve(tc), "\n")
+		got, err := run(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		line := strings.TrimSpace(scanner.Text())
-		parts := strings.Fields(line)
-		if len(parts) < 3 {
-			fmt.Fprintf(os.Stderr, "test %d malformed\n", i+1)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(parts[0])
-		q, _ := strconv.Atoi(parts[1])
-		need := 2 + n + 2*q
-		if len(parts) != need {
-			fmt.Fprintf(os.Stderr, "test %d expected %d numbers got %d\n", i+1, need, len(parts))
-			os.Exit(1)
-		}
-		arr := strings.Join(parts[2:2+n], " ")
-		queries := parts[2+n:]
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d %d\n", n, q))
-		sb.WriteString(arr)
-		sb.WriteByte('\n')
-		for j := 0; j < len(queries); j += 2 {
-			sb.WriteString(queries[j])
-			sb.WriteByte(' ')
-			sb.WriteString(queries[j+1])
-			sb.WriteByte('\n')
-		}
-		if err := runCase(bin, oracle, sb.String()); err != nil {
-			fmt.Fprintf(os.Stderr, "test %d failed: %v\n", i+1, err)
+		if strings.TrimSpace(got) != want {
+			fmt.Fprintf(os.Stderr, "case %d failed:\nexpected:\n%s\n\ngot:\n%s\n", idx+1, want, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

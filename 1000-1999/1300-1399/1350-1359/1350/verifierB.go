@@ -10,117 +10,248 @@ import (
 	"strings"
 )
 
-type Test struct {
+const testcases = `100
+3 37 49 5
+5 8 32 49 29 31
+7 14 7 32 2 25 28 39
+1 45
+8 18 47 15 38 7 21 2 2
+1 42
+9 1 25 44 14 28 47 2 34 15
+8 32 36 15 23 15 44 15 49
+8 19 2 27 36 42 7 12 41
+5 8 48 22 47 46
+9 28 33 43 13 20 19 38 32 33
+7 38 3 31 16 48 26 27
+3 24 36 45
+6 6 29 43 33 7 50
+3 34 26 24
+8 47 2 31 3 20 46 40 38
+10 26 42 11 11 33 15 1 50 13 35
+9 15 26 33 23 37 23 30 18 43
+9 39 47 1 25 48 33 9 34 50
+9 14 28 4 31 24 37 36 13 33
+7 32 23 27 23 1 35 35
+10 40 22 30 39 2 15 41 12 36 38
+3 6 36 17
+1 44
+2 6 2
+8 1 49 49 18 16 18 8 40
+3 23 19 5
+3 11 17 34
+3 43 18 42
+5 30 45 21 32 31
+2 2 20
+7 22 27 13 17 7 17 47
+9 14 39 28 2 15 2 26 10 3
+3 29 46 33
+7 35 15 41 45 34 29 15
+9 42 2 26 44 37 21 43 41 28
+1 48
+5 9 14 4 20 5
+2 20 20
+3 27 37 17
+3 1 36 3
+10 14 37 30 11 50 46 40 33 3 25
+4 23 7 14 37
+7 38 13 32 7 43 25 19
+9 32 2 21 40 26 19 2 11 13
+6 37 9 22 28 14 18
+2 25 36
+6 44 35 32 50 35 16
+2 47 3
+2 9 11
+3 35 14 18
+6 39 33 17 24 22 22
+2 19 16
+10 50 46 32 9 38 36 50 7 21 3
+7 5 25 10 9 22 8 40
+10 25 5 37 36 15 37 6 18 24 19
+10 35 8 30 18 7 3 19 1 40 43
+1 6
+7 8 3 13 16 38 27 11
+2 29 11
+4 11 48 7 28
+7 35 19 36 17 46 31 21
+2 14 42
+6 3 2 1 19 47 39
+6 29 26 21 26 5 5
+6 39 30 8 17 14 40
+9 45 31 43 23 17 12 35 14 20
+4 16 24 6 18
+2 49 29
+2 42 37
+6 15 25 20 3 21 12
+6 38 20 16 22 7 35
+10 38 39 6 16 15 2 16 26 5 18
+9 5 47 5 2 41 1 19 49 23
+8 31 10 7 33 50 21 5 33
+3 12 50 10
+3 21 20 7
+9 39 19 9 14 10 35 47 3 50
+6 40 44 36 48 45 14
+3 20 28 35
+3 4 46 43
+4 17 50 5 44
+8 28 36 17 35 29 35 30 1
+7 22 11 17 32 2 42 27
+10 2 4 45 23 38 9 38 9 9 17
+5 26 37 26 12 40
+2 15 32
+1 12
+9 21 33 42 29 44 41 47 15 16
+6 32 44 31 15 46 27
+6 36 40 47 42 18 42
+4 4 5 49 33
+6 11 33 50 14 20 20
+5 36 24 11 45 45
+8 39 6 8 39 33 37 25 12
+3 17 28 14
+10 47 49 4 32 44 26 46 41 23 25
+9 11 35 47 3 34 6 17 41 7
+5 48 6 9 50 40
+2 29 16`
+
+type testCase struct {
 	n   int
 	arr []int
 }
 
-func runProg(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
 	}
+	return path, func() {}, nil
+}
+
+func referenceSolve(n int, a []int) int {
+	dp := make([]int, n+1)
+	ans := 1
+	for i := 1; i <= n; i++ {
+		if dp[i] == 0 {
+			dp[i] = 1
+		}
+		for j := i * 2; j <= n; j += i {
+			if a[j] > a[i] && dp[i]+1 > dp[j] {
+				dp[j] = dp[i] + 1
+			}
+		}
+		if dp[i] > ans {
+			ans = dp[i]
+		}
+	}
+	return ans
+}
+
+func parseTestcases() ([]testCase, error) {
+	scan := bufio.NewScanner(strings.NewReader(testcases))
+	scan.Split(bufio.ScanWords)
+	if !scan.Scan() {
+		return nil, fmt.Errorf("empty testcases")
+	}
+	t, err := strconv.Atoi(scan.Text())
+	if err != nil {
+		return nil, fmt.Errorf("parse t: %w", err)
+	}
+	cases := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		if !scan.Scan() {
+			return nil, fmt.Errorf("missing n for case %d", i+1)
+		}
+		n, err := strconv.Atoi(scan.Text())
+		if err != nil {
+			return nil, fmt.Errorf("parse n case %d: %w", i+1, err)
+		}
+		arr := make([]int, n+1)
+		for j := 1; j <= n; j++ {
+			if !scan.Scan() {
+				return nil, fmt.Errorf("missing value %d case %d", j, i+1)
+			}
+			v, err := strconv.Atoi(scan.Text())
+			if err != nil {
+				return nil, fmt.Errorf("parse value %d case %d: %w", j, i+1, err)
+			}
+			arr[j] = v
+		}
+		cases = append(cases, testCase{n: n, arr: arr})
+	}
+	if err := scan.Err(); err != nil {
+		return nil, fmt.Errorf("scanner error: %w", err)
+	}
+	return cases, nil
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	var errBuf bytes.Buffer
+	var errb bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
+	cmd.Stderr = &errb
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
 	}
 	return strings.TrimSpace(out.String()), nil
 }
 
-func buildRef() (string, error) {
-	ref := "./refB.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1350B.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v: %s", err, string(out))
-	}
-	return ref, nil
-}
-
-func loadTests() ([]Test, error) {
-	f, err := os.Open("testcasesB.txt")
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	sc := bufio.NewScanner(f)
-	sc.Split(bufio.ScanWords)
-	if !sc.Scan() {
-		return nil, fmt.Errorf("invalid test file")
-	}
-	t, err := strconv.Atoi(sc.Text())
-	if err != nil {
-		return nil, fmt.Errorf("invalid test count")
-	}
-	tests := make([]Test, 0, t)
-	for i := 0; i < t; i++ {
-		if !sc.Scan() {
-			return nil, fmt.Errorf("unexpected EOF")
-		}
-		n, _ := strconv.Atoi(sc.Text())
-		arr := make([]int, n)
-		for j := 0; j < n; j++ {
-			if !sc.Scan() {
-				return nil, fmt.Errorf("unexpected EOF")
-			}
-			arr[j], _ = strconv.Atoi(sc.Text())
-		}
-		tests = append(tests, Test{n: n, arr: arr})
-	}
-	return tests, nil
-}
-
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("Usage: go run verifierB.go /path/to/binary")
+		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
 
-	ref, err := buildRef()
+	bin, cleanup, err := buildIfGo(os.Args[1])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.Remove(ref)
+	defer cleanup()
 
-	tests, err := loadTests()
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "load tests:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	for i, tc := range tests {
+	for idx, tc := range cases {
 		var sb strings.Builder
-		fmt.Fprintf(&sb, "1\n%d\n", tc.n)
-		for j, v := range tc.arr {
-			if j > 0 {
+		sb.WriteString("1\n")
+		sb.WriteString(strconv.Itoa(tc.n))
+		sb.WriteByte('\n')
+		for i := 1; i <= tc.n; i++ {
+			if i > 1 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(strconv.Itoa(v))
+			sb.WriteString(strconv.Itoa(tc.arr[i]))
 		}
 		sb.WriteByte('\n')
 		input := sb.String()
 
-		want, err := runProg(ref, input)
+		want := referenceSolve(tc.n, tc.arr)
+		got, err := run(bin, input)
 		if err != nil {
-			fmt.Printf("reference runtime error on case %d: %v\n", i+1, err)
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got, err := runProg(bin, input)
+		g, err := strconv.Atoi(strings.TrimSpace(got))
 		if err != nil {
-			fmt.Printf("candidate runtime error on case %d: %v\n", i+1, err)
+			fmt.Printf("case %d failed: non-integer output %q\n", idx+1, got)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(want) != strings.TrimSpace(got) {
-			fmt.Printf("case %d failed\ninput: %sexpected: %s\ngot: %s\n", i+1, input, want, got)
+		if g != want {
+			fmt.Printf("case %d failed\ninput:\n%sexpected:\n%d\ngot:\n%d\n", idx+1, input, want, g)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(tests))
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

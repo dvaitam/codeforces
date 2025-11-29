@@ -10,50 +10,181 @@ import (
 	"strings"
 )
 
-const inf int64 = 1 << 60
+const testcasesData = `
+100
+4 5 5 0110
+10 1 4 1001110001
+1 1 2 0
+5 1 3 11111
+3 3 1 001
+4 3 4 1111
+9 5 4 010101001
+5 1 1 11010
+7 2 1 1110001
+10 3 5 1001000001
+5 5 3 00111
+3 4 4 110
+10 5 3 1011111011
+1 4 5 0
+1 3 4 1
+6 5 3 100011
+8 3 5 10101111
+7 1 1 0101010
+7 1 1 1101001
+4 5 4 1000
+9 2 3 011010111
+8 3 4 11101000
+8 5 5 10011100
+10 3 1 0000100100
+9 3 2 010010110
+6 2 2 000010
+1 4 5 1
+1 3 2 1
+10 5 5 1011000000
+2 4 1 01
+6 2 3 011111
+5 2 3 10001
+2 5 2 01
+8 5 5 10101111
+7 4 1 0010101
+3 1 3 110
+8 1 5 10100100
+7 1 5 0010010
+1 1 4 1
+10 3 1 0000010000
+4 4 5 1111
+6 5 4 010101
+10 5 5 1010001110
+3 3 2 010
+9 3 4 101011100
+10 3 2 1101101010
+7 1 4 0000100
+5 2 2 01001
+3 4 1 000
+5 3 1 11100
+6 3 4 110011
+3 5 3 010
+7 1 4 1011111
+2 3 5 01
+9 3 1 100011000
+6 5 4 101110
+2 1 2 11
+2 3 3 10
+3 1 4 101
+6 4 4 011001
+10 1 1 0001100100
+10 2 2 1110111111
+9 3 4 000001010
+4 5 2 0101
+3 2 4 000
+6 5 2 010111
+6 2 1 001000
+7 2 4 1001000
+7 4 4 0101101
+8 4 4 01011111
+10 4 2 0011010000
+3 5 4 000
+2 5 2 11
+3 1 1 111
+7 1 1 0101100
+4 1 4 1001
+10 1 3 0011111010
+6 3 3 001000
+1 1 1 0
+9 1 4 001011110
+7 3 5 1010101
+9 3 5 101101110
+8 4 3 10110000
+8 1 1 10001111
+1 1 2 1
+2 3 5 10
+8 1 2 00000001
+4 2 5 1101
+3 5 1 000
+2 2 3 00
+8 4 2 01111011
+7 2 1 0110110
+8 1 5 11000101
+4 4 4 0101
+3 2 2 111
+4 5 4 1110
+5 1 2 00010
+8 1 2 01110110
+5 2 1 11110
+4 2 4 1110
+`
 
-func min64(a, b int64) int64 {
+type testCase struct {
+	n int
+	a int64
+	b int64
+	s string
+}
+
+func parseTestcases() ([]testCase, string, error) {
+	data := strings.TrimSpace(testcasesData) + "\n"
+	scanner := bufio.NewScanner(strings.NewReader(data))
+	scanner.Split(bufio.ScanWords)
+	if !scanner.Scan() {
+		return nil, "", fmt.Errorf("empty testcases")
+	}
+	t, err := strconv.Atoi(scanner.Text())
+	if err != nil {
+		return nil, "", err
+	}
+	cases := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		if !scanner.Scan() {
+			return nil, "", fmt.Errorf("missing n at case %d", i+1)
+		}
+		n, _ := strconv.Atoi(scanner.Text())
+		scanner.Scan()
+		a, _ := strconv.ParseInt(scanner.Text(), 10, 64)
+		scanner.Scan()
+		b, _ := strconv.ParseInt(scanner.Text(), 10, 64)
+		scanner.Scan()
+		s := scanner.Text()
+		cases = append(cases, testCase{n: n, a: a, b: b, s: s})
+	}
+	return cases, data, nil
+}
+
+func min(a, b int64) int64 {
 	if a < b {
 		return a
 	}
 	return b
 }
 
-func expected(n int, a, b int64, s string) int64 {
-	dp0 := make([]int64, n+1)
-	dp1 := make([]int64, n+1)
-	for i := 0; i <= n; i++ {
-		dp0[i] = inf
-		dp1[i] = inf
-	}
-	dp0[0] = b
-	for i := 1; i <= n; i++ {
-		if s[i-1] == '1' {
-			dp0[i] = inf
-			dp1[i] = dp1[i-1] + a + 2*b
+// solveCase mirrors 1207C.go to compute minimal cost.
+func solveCase(tc testCase) int64 {
+	const inf int64 = 1 << 60
+	dp0 := tc.b
+	dp1 := inf
+	for i := 0; i < tc.n; i++ {
+		if tc.s[i] == '1' {
+			dp0 = inf
+			dp1 = dp1 + tc.a + 2*tc.b
 		} else {
-			dp0[i] = min64(dp0[i-1]+a+b, dp1[i-1]+2*a+b)
-			dp1[i] = min64(dp1[i-1]+a+2*b, dp0[i-1]+2*a+2*b)
+			ndp0 := min(dp0+tc.a+tc.b, dp1+2*tc.a+tc.b)
+			ndp1 := min(dp1+tc.a+2*tc.b, dp0+2*tc.a+2*tc.b)
+			dp0, dp1 = ndp0, ndp1
 		}
 	}
-	return dp0[n]
+	return dp0
 }
 
-func buildIfGo(path string) (string, func(), error) {
-	if strings.HasSuffix(path, ".go") {
-		tmp, err := os.CreateTemp("", "solbin*")
-		if err != nil {
-			return "", nil, err
-		}
-		tmp.Close()
-		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
-		if err != nil {
-			os.Remove(tmp.Name())
-			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
-		}
-		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
-	return path, func() {}, nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
@@ -61,72 +192,30 @@ func main() {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		return
 	}
-	cand, cleanup, err := buildIfGo(os.Args[1])
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer cleanup()
+	bin := os.Args[1]
 
-	data, err := os.ReadFile("testcasesC.txt")
+	testcases, input, err := parseTestcases()
 	if err != nil {
-		fmt.Println("could not read testcasesC.txt:", err)
-		os.Exit(1)
+		fmt.Println("failed to parse testcases:", err)
+		return
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("bad test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	types := make([]struct {
-		n    int
-		a, b int64
-		s    string
-	}, t)
-	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Println("bad file")
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(scan.Text())
-		scan.Scan()
-		a64, _ := strconv.ParseInt(scan.Text(), 10, 64)
-		scan.Scan()
-		b64, _ := strconv.ParseInt(scan.Text(), 10, 64)
-		scan.Scan()
-		s := scan.Text()
-		types[i] = struct {
-			n    int
-			a, b int64
-			s    string
-		}{n, a64, b64, s}
-	}
-	cmd := exec.Command(cand)
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.Output()
+
+	got, err := run(bin, input)
 	if err != nil {
-		fmt.Println("execution failed:", err)
+		fmt.Printf("candidate runtime error: %v\n", err)
 		os.Exit(1)
 	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
-	for i, c := range types {
-		if !outScan.Scan() {
-			fmt.Printf("missing output for test %d\n", i+1)
-			os.Exit(1)
-		}
-		got, _ := strconv.ParseInt(outScan.Text(), 10, 64)
-		exp := expected(c.n, c.a, c.b, c.s)
-		if got != exp {
-			fmt.Printf("test %d failed: expected %d got %d\n", i+1, exp, got)
-			os.Exit(1)
-		}
-	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
+	outTokens := strings.Fields(got)
+	if len(outTokens) != len(testcases) {
+		fmt.Printf("expected %d outputs, got %d\n", len(testcases), len(outTokens))
 		os.Exit(1)
 	}
-	fmt.Printf("All %d tests passed\n", t)
+	for i, tc := range testcases {
+		want := strconv.FormatInt(solveCase(tc), 10)
+		if outTokens[i] != want {
+			fmt.Printf("test %d failed: expected %s got %s\n", i+1, want, outTokens[i])
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

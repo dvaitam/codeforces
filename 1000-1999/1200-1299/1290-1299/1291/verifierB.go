@@ -1,122 +1,314 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
-	"fmt"
-	"os"
-	"os/exec"
-	"strconv"
-	"strings"
+    "bufio"
+    "bytes"
+    "fmt"
+    "os"
+    "os/exec"
+    "strconv"
+    "strings"
 )
 
-func runCandidate(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
-	}
-	return strings.TrimSpace(out.String()), nil
+type testcase struct {
+    n   int
+    arr []int64
 }
 
-func expectedB(n int, arr []int64) string {
-	prefix := make([]bool, n)
-	ok := true
-	for i := 0; i < n; i++ {
-		if ok && arr[i] >= int64(i) {
-			prefix[i] = true
-		} else {
-			ok = false
-		}
-	}
-	suffix := make([]bool, n)
-	ok = true
-	for i := n - 1; i >= 0; i-- {
-		if ok && arr[i] >= int64(n-1-i) {
-			suffix[i] = true
-		} else {
-			ok = false
-		}
-	}
-	for i := 0; i < n; i++ {
-		if prefix[i] && suffix[i] {
-			return "Yes"
-		}
-	}
-	return "No"
+const testcasesRaw = `5 36 48 4 16 7
+16 48 28 30 41 24 50 13 6 31 1 24 27 38 48 49 0
+15 17 46 14 37 6 20 1 1 1 41 34 0 24 43 13
+14 46 1 33 14 48 28 31 35 14 22 14 43 14 48
+15 18 1 26 35 41 6 11 40 46 18 7 47 21 46 45
+17 27 32 42 12 19 18 37 31 32 25 37 2 30 15 47 25 26
+6 23 35 44 49 43 47
+12 5 28 42 32 6 49 10 33 25 23 31 46
+1 30
+2 19 45
+20 37 37 25 41 10 10 32 14 0 49 12 34 35 14 25 32 22 36 22 29
+9 42 35 38 46 0 24 50 47 32
+5 33 49 35 13 27
+2 30 23
+19 35 12 32 26 31 22 26 22 0 34 34 39 50 39 21 29 38 1 14
+6 35 37 11 5 35 16
+2 43 4
+3 1 28 0
+9 15 17 7 39 11 22 18 4 10
+6 16 33 10 42 17 41
+20 27 37 35 50 33 12 21 39 17 18 16 40 9 12 23 28 36 17 30 26
+5 0 5 27 41 24
+4 44 10 2 1
+7 43 8 37 14 11 8 15
+3 50 26 27
+14 44 20 8 27 5 16 24 40 46 9 19 23 23 48
+11 17 23 36 49 32 22 21 3 45 32 24
+13 11 10 16 7 12 43 17 44 30 27 48 28 33
+5 50 23 10 2 12
+16 1 34 20 10 15 0 37 49 24 22 12 12 48 2 34 29
+4 39 36 33 12
+17 49 11 34 45 6 22 46 38 17 28 49 50 4 21 46 41 0
+11 31 25 26 4 42 44 49 0 0 46 16
+11 46 15 14 29 13 2 43 34 37 38 6
+5 28 31 22 3 45
+6 5 8 43 14 19 32
+1 19
+8 30 14 8 4 49 38 48 32
+9 44 41 43 45 38 29 14 37 16
+19 5 44 22 18 30 24 23 5 39 50 42 24 34 44 28 31 22 48 8
+9 33 38 15 32 37 16 7 33 17
+11 12 16 13 3 12 46 17 32 11 18 7
+19 48 30 28 4 44 2 21 5 22 40 8 30 12 39 6 26 44 43 5
+16 34 29 28 49 6 7 27 9 38 29 48 27 21 46 25 39
+9 23 32 40 45 32 48 32 12 3
+5 18 20 5 42 44
+8 10 12 4 11 24 1 11 27
+20 35 36 48 8 33 12 9 2 4 18 15 27 10 14 13 27 45 39 12 39
+17 50 20 41 39 21 9 19 42 50 38 34 7 1 46 22 38 27
+8 25 38 43 19 35 10 23 31
+19 46 7 43 0 31 35 31 39 31 29 39 46 40 10 32 12 43 29 37
+5 29 6 3 34 44
+6 27 33 36 33 16 32
+6 12 10 45 12 10 8
+3 40 36 21
+16 44 42 19 33 45 22 6 21 43 24 9 25 14 36 14 18
+20 31 44 11 12 16 40 45 30 36 36 43 41 16 3 21 31 47 28 21 10
+1 12
+3 6 38 46
+9 0 46 38 8 49 34 28 25 41
+7 2 29 21 31 15 32 21
+12 42 48 0 21 5 48 8 50 47 45 8 14
+19 5 32 21 43 30 47 41 28 46 27 42 19 24 16 24 14 5 32 37
+16 18 1 8 19 14 27 36 48 35 49 2 37 47 15 25 3
+9 1 18 43 1 44 42 9 40 16
+20 3 33 30 11 17 15 20 11 12 6 26 45 3 40 19 30 4 32 35 7
+18 43 8 31 9 25 13 15 14 10 28 38 1 37 31 9 49 20 13
+4 16 23 0 10
+4 35 6 44 40
+8 41 19 42 4 7 33 22 45
+5 27 28 48 1 5
+8 12 38 36 3 44 21 5 18
+14 21 45 19 21 48 25 29 31 50 48 9 14 41 10
+10 19 9 35 27 21 13 6 28 12 30
+5 9 21 36 16 4
+1 42
+6 13 36 10 19 34 26
+20 42 31 0 26 7 21 25 5 27 39 5 44 0 45 31 48 1 4 3 47
+11 30 50 16 9 26 31 4 16 39 23 21
+5 15 43 23 49 15
+10 21 28 44 2 32 38 20 29 32 35
+11 49 10 32 13 3 43 44 33 33 43 25
+15 34 12 39 6 5 12 27 19 25 6 31 36 7 32
+10 26 17 34 23 49 44 13 46 37 20
+18 37 14 22 1 11 26 22 3 46 39 6 9 23 47 6 11 26 19
+6 6 18 43 20 45 48
+19 3 35 8 1 21 37 3 22 32 12 41 30 10 43 38 25 35 3 21
+14 18 50 13 0 24 16 3 36 48 32 38 26 10 45
+9 38 16 48 48 22 38 43 18 46
+9 17 43 36 2 44 15 6 50 9
+5 10 40 13 9 0
+14 30 45 13 44 50 27 30 3 5 19 13 25 8 50
+12 35 16 47 45 27 14 39 2 30 8 8 41
+13 21 16 33 44 12 20 0 42 36 26 12 8 16
+10 38 38 12 3 6 41 18 20 22 45
+16 24 43 20 8 23 3 20 24 34 35 28 8 35 35 22 47
+10 16 14 5 13 30 42 22 36 44 15
+20 34 14 22 38 3 6 38 14 1 24 24 6 11 5 11 38 18 0 22 26
+7 44 19 27 40 35 40 22
+7 9 15 12 16 37 37 17
+1 17
+2 31 10
+7 25 23 19 6 38 43 28
+18 40 41 9 37 23 16 21 12 3 14 19 19 34 33 32 18 2 32
+5 27 33 50 44 40
+5 45 43 48 50 34
+17 26 18 26 30 28 28 32 14 11 9 46 13 30 42 39 21 32
+14 50 9 34 22 23 23 34 35 5 50 46 17 16 46
+6 39 9 0 32 6 13
+4 21 49 44 11
+11 41 1 27 14 8 19 8 2 26 44 6
+18 10 15 27 32 1 35 7 19 35 22 34 19 38 23 11 50 23 31
+3 42 3 46
+3 26 17 31
+5 14 50 4 13 50
+9 9 18 0 32 9 20 24 18 30
+4 14 2 26 3
+15 7 38 31 0 33 31 28 39 17 45 30 28 39 40 20
+5 9 22 10 50 39
+5 19 31 27 32 13
+8 36 36 5 44 39 34 35 4
+7 50 15 31 36 1 29 7
+11 6 46 5 10 12 21 25 38 48 33 31
+13 15 6 35 35 50 37 41 2 44 20 20 38 29
+8 41 40 11 19 38 19 14 8
+19 12 30 40 4 27 30 35 1 5 33 9 13 17 35 0 44 45 7 21
+20 9 16 23 11 18 42 48 7 18 46 17 5 30 5 14 5 50 12 26 35
+11 12 10 20 16 16 22 25 14 47 21 8
+4 29 48 47 9
+15 17 43 27 47 48 19 3 7 15 32 7 36 39 40 48
+9 35 29 46 45 28 12 31 13 44
+4 36 22 31 26
+1 0
+3 16 24 45
+15 37 35 46 32 32 40 34 46 6 26 25 14 1 50 3
+6 14 47 41 2 18 1
+5 17 29 22 29 46
+15 6 9 31 37 10 34 11 9 14 38 23 17 24 14
+6 39 12 6 27 6 49
+14 35 20 2 30 42 17 19 9 32 39 38 26 22 17
+15 1 28 5 34 39 42 7 27 48 41 42 1 48 14 8
+1 8
+8 41 24 0 29 2 7 37 48
+7 24 50 13 39 47 40 34
+8 17 40 28 43 40 6 35 19
+7 13 15 49 34 25 18 18
+17 33 13 35 20 39 21 40 24 17 27 16 36 20 42 2 14 50
+10 45 7 26 39 26 24 17 4 27 10
+19 33 0 40 9 32 25 50 9 45 43 25 32 33 42 43 28 12 9 16
+3 16 50 13
+1 38
+4 42 33 33 24
+12 46 31 42 12 10 9 31 22 20 11 40
+12 5 49 46 37 22 40 0 47 4 38 39
+1 11
+13 0 24 10 43 9 38 22 21 38 20 13 48 20
+6 24 9 15 11 25 50
+7 11 35 44 29 43 2 37
+17 15 19 4 27 27 46 26 39 28 36 40 25 43 45 45 7 8
+7 7 50 41 36 31 13 9
+5 23 33 31 8 31
+2 3 13
+4 37 37 1 3
+9 30 11 6 18 14 42 9 9 38
+11 48 17 28 32 35 38 15 46 38 50 1
+9 16 30 16 36 8 40 46 5 34
+1 18
+11 32 1 19 0 9 30 27 45 37 16 10
+5 24 32 5 18 8
+10 39 47 31 43 33 42 9 48 20 27
+8 36 33 38 3 9 18 39 38
+20 34 26 25 48 22 45 25 43 23 4 40 7 0 14 24 19 46 2 14 14
+18 0 20 29 35 38 40 1 23 17 40 7 49 17 48 39 15 50 44
+16 19 8 34 14 25 29 1 0 36 11 19 21 38 16 36 4
+16 11 13 4 30 35 12 11 47 13 45 30 10 39 41 44 0
+16 38 34 35 8 38 36 42 28 9 36 2 0 50 45 36 3
+18 3 45 25 26 0 19 3 37 6 7 32 31 37 24 46 25 23 42
+2 39 49
+11 32 26 20 15 3 49 10 13 26 2 42
+2 42 11
+16 7 28 44 6 27 14 42 39 36 45 16 32 16 40 13 46
+7 42 35 46 18 46 3 20
+8 25 35 17 33 20 2 0 26
+2 0 26
+5 2 18 30 12 13
+16 45 32 17 4 11 40 12 36 7 5 35 42 30 41 7 30
+13 46 29 29 41 0 11 7 23 1 50 32 48 2
+6 42 3 10 6 34 46
+5 26 4 5 25 6
+19 34 48 2 37 11 22 44 39 34 10 40 3 37 34 17 36 41 17 8
+6 40 2 48 25 7 45
+6 18 10 15 1 2 21
+16 22 11 24 2 42 11 30 37 47 36 9 14 41 3 41 18
+16 14 12 22 29 31 3 35 37 18 44 28 2 19 6 45 35
+11 30 1 5 25 18 27 22 47 6 7 3
+6 1 10 9 49 15 44
+12 46 3 43 1 38 11 32 22 21 48 19
+16 20 29 33 45 4 45 22 18 49 37 47 45 39 45 14 1
+18 24 23 21 6 46 9 21 40 14 13 44 9 8 23 5 32 22 20
+10 13 10 39 32 42 18 46 35 39 41
+4 23 22 32 13
+3 39 47 43
+1 23`
+
+var testcases = mustParseTestcases(testcasesRaw)
+
+func min(a, b int) int {
+    if a < b {
+        return a
+    }
+    return b
+}
+
+// Embedded solver logic from 1291B.go.
+func solve(tc testcase) string {
+    n := tc.n
+    a := tc.arr
+    prefix := make([]bool, n)
+    ok := true
+    for i := 0; i < n; i++ {
+        if ok && a[i] >= int64(i) {
+            prefix[i] = true
+        } else {
+            ok = false
+        }
+    }
+    suffix := make([]bool, n)
+    ok = true
+    for i := n - 1; i >= 0; i-- {
+        if ok && a[i] >= int64(n-1-i) {
+            suffix[i] = true
+        } else {
+            ok = false
+        }
+    }
+    for i := 0; i < n; i++ {
+        if prefix[i] && suffix[i] {
+            return "Yes"
+        }
+    }
+    return "No"
+}
+
+func runCandidate(bin, input string) (string, error) {
+    cmd := exec.Command(bin)
+    cmd.Stdin = strings.NewReader(input)
+    var out bytes.Buffer
+    cmd.Stdout = &out
+    cmd.Stderr = &out
+    if err := cmd.Run(); err != nil {
+        return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+    }
+    return out.String(), nil
+}
+
+func checkCase(bin string, idx int, tc testcase) error {
+    var sb strings.Builder
+    sb.WriteString("1\n")
+    sb.WriteString(fmt.Sprintf("%d\n", tc.n))
+    for i, v := range tc.arr {
+        if i > 0 {
+            sb.WriteByte(' ')
+        }
+        sb.WriteString(strconv.FormatInt(v, 10))
+    }
+    sb.WriteByte('\n')
+    input := sb.String()
+
+    expected := strings.ToLower(solve(tc))
+    out, err := runCandidate(bin, input)
+    if err != nil {
+        return err
+    }
+    got := strings.ToLower(strings.TrimSpace(out))
+    if got != expected {
+        return fmt.Errorf("case %d: expected %s got %s", idx+1, expected, got)
+    }
+    return nil
 }
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierB.go /path/to/binary")
-		os.Exit(1)
-	}
-	bin := os.Args[1]
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		parts := strings.Fields(line)
-		if len(parts) < 1 {
-			fmt.Printf("test %d invalid line\n", idx)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(parts[0])
-		if len(parts) != n+1 {
-			fmt.Printf("test %d expected %d numbers got %d\n", idx, n, len(parts)-1)
-			os.Exit(1)
-		}
-		arr := make([]int64, n)
-		for i := 0; i < n; i++ {
-			v, _ := strconv.ParseInt(parts[1+i], 10, 64)
-			arr[i] = v
-		}
-		expect := expectedB(n, arr)
-		// build input string
-		var input strings.Builder
-		input.WriteString("1\n")
-		input.WriteString(fmt.Sprintf("%d\n", n))
-		for i := 0; i < n; i++ {
-			input.WriteString(fmt.Sprint(arr[i]))
-			if i+1 < n {
-				input.WriteByte(' ')
-			}
-		}
-		input.WriteByte('\n')
-		got, err := runCandidate(bin, input.String())
-		if err != nil {
-			fmt.Printf("test %d failed: %v\n", idx, err)
-			os.Exit(1)
-		}
-		got = strings.TrimSpace(strings.ToLower(got))
-		expectLower := strings.ToLower(expect)
-		if got != expectLower {
-			fmt.Printf("test %d failed: expected %s got %s\n", idx, expect, got)
-			os.Exit(1)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+    if len(os.Args) != 2 {
+        fmt.Println("usage: go run verifierB.go /path/to/binary")
+        os.Exit(1)
+    }
+    bin := os.Args[1]
+    for i, tc := range testcases {
+        if err := checkCase(bin, i, tc); err != nil {
+            fmt.Println(err)
+            os.Exit(1)
+        }
+    }
+    fmt.Printf("All %d tests passed\n", len(testcases))
 }
+''')
+root.joinpath('verifierE.go').write_text(tpl.safe_substitute(TESTS=tests))
+PY

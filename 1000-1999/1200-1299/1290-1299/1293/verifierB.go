@@ -1,14 +1,22 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 )
+
+var testcases = []int{
+	138, 583, 868, 822, 783, 65, 262, 121, 508, 780, 461, 484, 668, 389, 808, 215, 97, 500, 30, 915,
+	856, 400, 444, 623, 781, 786, 3, 713, 457, 273, 739, 822, 235, 606, 968, 105, 924, 326, 32, 23,
+	27, 666, 555, 10, 962, 903, 391, 703, 222, 993, 433, 744, 30, 541, 228, 783, 449, 962, 508, 567,
+	239, 354, 237, 694, 225, 780, 471, 976, 297, 949, 23, 427, 858, 939, 570, 945, 658, 103, 191, 645,
+	742, 881, 304, 124, 761, 341, 918, 739, 997, 729, 513, 959, 991, 433, 520, 850, 933, 687, 195, 311,
+}
+
+const testcasesCount = 100
 
 func solveCase(n int) string {
 	var ans float64
@@ -23,26 +31,13 @@ func main() {
 		fmt.Println("Usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesB.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesB.txt:", err)
+
+	if len(testcases) != testcasesCount {
+		fmt.Printf("unexpected testcase count: got %d want %d\n", len(testcases), testcasesCount)
 		os.Exit(1)
-	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	numbers := make([]int, t)
-	for i := 0; i < t; i++ {
-		scan.Scan()
-		n, _ := strconv.Atoi(scan.Text())
-		numbers[i] = n
 	}
 	binary := os.Args[1]
-	for i, n := range numbers {
+	for i, n := range testcases {
 		input := fmt.Sprintf("%d\n", n)
 		cmd := exec.Command(binary)
 		cmd.Stdin = strings.NewReader(input)
@@ -62,5 +57,5 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

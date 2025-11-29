@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,71 +9,282 @@ import (
 	"strings"
 )
 
-func run(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
+const testcasesRaw = `100
+14 194 107 10 66 130 124 103 200 77 122 91 149 55 129
+6 72 35 193 24 158 64
+19 180 154 37 79 25 186 18 175 84 120 143 25 90 111 80 156 163 52 141
+17 113 133 66 15 140 3 23 184 102 181 200 171 160 -1 156 126 85
+9 186 83 180 16 48 145 56 61 36
+19 114 23 20 81 130 125 27 77 141 74 180 31 140 85 138 52 154 140 150
+11 113 23 152 98 81 147 61 74 47 48 47
+3 156 168 66
+17 17 22 173 193 33 38 9 20 179 138 174 100 180 134 70 133 60
+8 173 150 107 148 70 115 126 169
+13 21 83 156 29 124 150 161 85 48 62 4 187 69
+5 180 56 95 43 85
+15 15 25 200 37 178 56 11 146 162 136 154 174 18 6 31
+8 155 147 30 100 23 94 29 9
+2 49 47
+5 122 53 186 15 173
+2 139 108
+5 66 17 56 18 165
+11 89 111 46 15 128 119 10 152 25 179 100
+8 66 91 187 120 145 43 178 172
+8 196 14 173 40 41 87 135 64
+5 152 113 170 44 3
+17 174 104 145 130 79 166 91 99 168 64 39 143 176 3 117 189 20
+12 189 11 139 71 34 61 195 123 90 156 73 172
+13 151 162 158 33 183 79 99 191 106 166 20 -1 152
+8 178 85 40 61 57 163 114 96
+20 106 8 102 179 145 107 197 169 181 11 42 114 16 66 179 40 114 135 124 143
+2 9 126
+12 79 119 12 106 48 140 162 21 185 33 3 102
+15 80 -1 54 3 183 193 -1 172 135 156 25 48 30 155 166
+8 77 71 176 46 25 121 101 160
+4 5 70 115 29
+10 34 167 133 166 165 88 29 39 71 4
+3 10 52 174
+10 142 80 93 145 10 191 179 155 167 126
+16 163 111 95 137 45 53 96 150 74 2 35 38 69 85 86 94
+4 86 199 158 9
+3 69 41 38
+20 74 92 101 140 33 75 29 122 187 61 12 78 45 133 186 18 77 103 84 76
+15 27 25 143 123 121 86 87 31 122 29 179 127 109 9 77
+12 188 175 39 42 160 144 96 163 22 16 21 50
+9 15 98 2 25 100 142 132 74 114
+17 149 182 173 55 108 21 94 56 66 149 198 42 110 49 91 29 16
+2 134 115
+8 30 127 101 65 53 164 10 55
+6 26 50 117 96 92 139
+6 26 152 124 37 144 103
+15 133 126 173 82 127 127 162 171 51 138 156 56 2 87 180
+12 82 9 134 37 65 154 200 39 97 149 75 183
+17 16 21 132 10 16 57 33 10 76 3 194 114 84 41 38 167 117
+13 129 97 135 128 8 146 23 173 132 194 153 19 191
+15 193 52 74 137 153 106 123 99 155 150 59 5 168 -1 189
+7 77 129 145 65 85 16 126
+10 77 197 104 98 98 15 41 164 32 61
+11 186 85 14 9 123 106 36 125 154 183 20
+6 90 105 9 156 119 98
+16 12 25 120 199 38 5 8 153 158 33 161 82 26 179 140 166
+13 49 98 200 198 199 125 28 15 156 179 119 157 161
+12 166 31 174 182 159 75 32 99 75 190 174 31
+18 48 9 200 100 113 95 193 48 116 91 161 19 11 10 124 65 6 133
+20 146 55 58 23 198 160 199 128 178 134 107 129 78 29 37 109 144 108 21 26
+15 16 25 106 198 39 187 7 114 110 175 106 7 127 83 184
+10 20 90 18 31 91 177 7 88 89 45
+2 59 93
+4 152 36 53 -1
+8 168 172 187 31 191 1 75 94
+2 154 59
+6 47 116 28 122 88 181
+10 33 7 53 92 85 121 74 75 141 162
+12 47 151 20 26 136 148 78 40 96 37 32 57
+12 130 62 60 193 47 74 95 107 169 11 33 153
+2 100 19
+4 33 107 76 140
+15 189 36 151 108 76 163 90 21 63 113 161 94 163 135 14
+14 104 2 106 186 82 112 52 95 75 120 23 47 27 70
+5 142 155 176 39 179
+16 102 47 196 107 110 44 63 116 87 133 36 90 118 161 163 22
+17 193 52 75 -1 178 114 158 118 1 55 76 29 196 161 77 139 155
+6 108 180 192 120 23 173
+17 194 59 139 195 103 71 161 5 30 69 171 10 -1 65 101 134 148
+14 113 26 191 64 90 72 193 172 50 152 21 9 18 67
+11 136 87 30 135 63 195 41 17 106 74 72
+18 34 146 133 160 53 136 26 105 162 139 103 189 199 71 74 113 95 145
+6 40 31 178 30 97 102
+20 119 35 143 171 76 90 161 121 190 106 55 122 125 177 128 81 126 166 15 113
+11 36 190 126 13 159 55 6 90 120 100 2
+18 17 175 20 175 189 171 101 1 92 10 29 158 -1 69 163 179 74 186
+9 36 192 146 73 48 26 111 117 183
+12 98 43 84 107 165 175 111 37 114 181 37 134
+12 33 53 47 113 89 99 109 125 99 186 56 50
+16 52 150 181 12 99 8 59 162 21 47 93 14 190 163 173 44
+9 156 76 156 22 180 131 192 72 197
+13 105 117 13 161 178 132 170 166 140 188 110 148 116
+17 65 180 121 55 86 68 10 11 13 41 89 -1 74 167 1 35 16
+15 174 56 155 101 142 56 116 49 86 155 26 155 21 81 82
+19 116 83 65 7 133 11 48 94 20 53 134 88 48 51 64 172 186 188 77
+11 132 98 65 123 88 182 61 11 78 141 18
+2 117 126
+16 12 105 126 117 112 30 21 20 61 25 195 39 105 54 112 156
+4 109 143 193 100`
+
+const mod = 998244353
+
+type testCase struct {
+	arr []int
+}
+
+func add(a, b int) int {
+	a += b
+	if a >= mod {
+		a -= mod
+	}
+	return a
+}
+
+// solve implements the reference logic from 1067A.go.
+func solve(arr []int) int {
+	n := len(arr)
+	var dp [2][2][201]int
+	prev := 1
+	if arr[0] != -1 {
+		dp[prev][1][arr[0]] = 1
+	} else {
+		for v := 1; v <= 200; v++ {
+			dp[prev][1][v] = 1
+		}
+	}
+
+	cur := 0
+	for i := 1; i < n; i++ {
+		cur, prev = prev, cur
+		for s := 0; s < 2; s++ {
+			for v := 1; v <= 200; v++ {
+				dp[cur][s][v] = 0
+			}
+		}
+		if arr[i] != -1 {
+			ai := arr[i]
+			for j := 1; j <= 200; j++ {
+				if ai < j {
+					dp[cur][0][ai] = add(dp[cur][0][ai], dp[prev][0][j])
+				}
+				if ai == j {
+					dp[cur][0][ai] = add(dp[cur][0][ai], dp[prev][0][j])
+					dp[cur][0][ai] = add(dp[cur][0][ai], dp[prev][1][j])
+				}
+				if ai > j {
+					dp[cur][1][ai] = add(dp[cur][1][ai], dp[prev][0][j])
+					dp[cur][1][ai] = add(dp[cur][1][ai], dp[prev][1][j])
+				}
+				dp[prev][0][j] = 0
+				dp[prev][1][j] = 0
+			}
+		} else {
+			sum0 := 0
+			for j := 1; j <= 200; j++ {
+				sum0 = add(sum0, dp[prev][0][j])
+			}
+			sum1 := 0
+			for j := 1; j <= 200; j++ {
+				dp[cur][0][j] = add(dp[cur][0][j], sum0)
+				dp[cur][0][j] = add(dp[cur][0][j], dp[prev][1][j])
+				sum0 -= dp[prev][0][j]
+				if sum0 < 0 {
+					sum0 += mod
+				}
+				dp[cur][1][j] = add(dp[cur][1][j], sum1)
+				sum1 = add(sum1, dp[prev][1][j])
+				sum1 = add(sum1, dp[prev][0][j])
+				dp[prev][0][j] = 0
+				dp[prev][1][j] = 0
+			}
+		}
+	}
+	res := 0
+	for v := 1; v <= 200; v++ {
+		res = add(res, dp[cur][0][v])
+	}
+	return res
+}
+
+func runCase(bin string, tc testCase) error {
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(len(tc.arr)))
+	sb.WriteByte('\n')
+	for i, v := range tc.arr {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(v))
+	}
+	sb.WriteByte('\n')
+	input := sb.String()
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
-	err := cmd.Run()
-	if err != nil {
-		return "", fmt.Errorf("%v\n%s", err, errBuf.String())
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
-	return strings.TrimSpace(out.String()), nil
+	got := strings.TrimSpace(out.String())
+	want := strconv.Itoa(solve(tc.arr))
+	if got != want {
+		return fmt.Errorf("expected %s got %s", want, got)
+	}
+	return nil
+}
+
+func parseTestcases(raw string) ([]testCase, error) {
+	scan := strings.Fields(raw)
+	if len(scan) == 0 {
+		return nil, fmt.Errorf("invalid test file")
+	}
+	idx := 0
+	toInt := func() (int, error) {
+		if idx >= len(scan) {
+			return 0, fmt.Errorf("unexpected end of test data")
+		}
+		v, err := strconv.Atoi(scan[idx])
+		idx++
+		return v, err
+	}
+	t, err := toInt()
+	if err != nil {
+		return nil, err
+	}
+	tests := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		n, err := toInt()
+		if err != nil {
+			return nil, err
+		}
+		if idx+n > len(scan) {
+			return nil, fmt.Errorf("not enough numbers for case %d", i+1)
+		}
+		arr := make([]int, n)
+		for j := 0; j < n; j++ {
+			val, err := strconv.Atoi(scan[idx+j])
+			if err != nil {
+				return nil, err
+			}
+			arr[j] = val
+		}
+		idx += n
+		tests = append(tests, testCase{arr: arr})
+	}
+	if idx != len(scan) {
+		return nil, fmt.Errorf("extra data in testcases")
+	}
+	return tests, nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierA.go /path/to/binary")
-		return
+		os.Exit(1)
 	}
 	bin := os.Args[1]
-	ref := "./refA.bin"
-	if err := exec.Command("go", "build", "-o", ref, "1067A.go").Run(); err != nil {
-		fmt.Println("failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
-	file, err := os.Open("testcasesA.txt")
+	tests, err := parseTestcases(testcasesRaw)
 	if err != nil {
-		fmt.Println("could not open testcasesA.txt:", err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	if !scanner.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(strings.TrimSpace(scanner.Text()))
-	for i := 0; i < t; i++ {
-		if !scanner.Scan() {
-			fmt.Printf("test %d: missing line\n", i+1)
-			os.Exit(1)
-		}
-		line := strings.TrimSpace(scanner.Text())
-		input := line + "\n"
-		want, err := run(ref, input)
-		if err != nil {
-			fmt.Printf("reference runtime error on test %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		got, err := run(bin, input)
-		if err != nil {
-			fmt.Printf("candidate runtime error on test %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		if want != got {
-			fmt.Printf("test %d failed\ninput: %s\nexpected: %s\ngot: %s\n", i+1, line, want, got)
+	for i, tc := range tests {
+		if err := runCase(bin, tc); err != nil {
+			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Println("scanner error:", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

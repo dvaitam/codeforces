@@ -10,6 +10,117 @@ import (
 	"strings"
 )
 
+// Embedded source for the reference solution (currently a stub) (was 1202F.go).
+const solutionSource = `package main
+
+// TODO: implement solution for Problem F.
+func main() {}
+`
+
+const testcasesRaw = `2 3
+8 3
+8 6
+8 3
+8 5
+8 6
+4 1
+6 5
+7 2
+5 3
+3 3
+2 6
+4 1
+1 8
+8 2
+1 3
+8 3
+5 2
+5 6
+3 8
+6 1
+6 2
+2 2
+5 5
+6 3
+1 8
+7 7
+4 2
+7 5
+8 7
+8 7
+3 7
+4 7
+4 5
+2 3
+8 6
+6 5
+8 6
+4 3
+8 3
+6 4
+8 3
+2 8
+6 3
+2 6
+3 5
+6 2
+2 7
+6 6
+5 6
+1 4
+5 3
+3 3
+8 4
+2 5
+2 1
+7 2
+7 8
+8 3
+3 1
+2 3
+2 7
+2 5
+2 2
+4 5
+7 3
+8 5
+6 3
+7 5
+3 3
+2 4
+6 8
+2 6
+7 5
+8 1
+3 6
+3 8
+4 4
+2 3
+8 7
+2 6
+4 2
+6 3
+4 4
+6 8
+6 8
+5 5
+1 3
+5 4
+2 5
+8 3
+2 1
+8 7
+7 6
+6 4
+6 8
+3 1
+8 3
+1 2
+1 3`
+
+var _ = solutionSource
+
+// Expected logic derived from current verifier (counts valid k partitions).
 func expected(a, b int) int {
 	n := a + b
 	count := 0
@@ -38,7 +149,12 @@ func expected(a, b int) int {
 }
 
 func run(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errb bytes.Buffer
@@ -56,14 +172,7 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesF.txt")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to open testcasesF.txt:", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())

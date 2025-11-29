@@ -16,6 +16,8 @@ func main() {
 		return
 	}
 	a := make([]int, n+2)
+	// Sentinel large value to terminate stack walk.
+	a[0] = 1 << 30
 	maxv := 0
 	for i := 1; i <= n; i++ {
 		fmt.Fscan(reader, &a[i])

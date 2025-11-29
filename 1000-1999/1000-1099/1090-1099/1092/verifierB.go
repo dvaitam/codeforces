@@ -6,39 +6,135 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleB")
-	cmd := exec.Command("go", "build", "-o", oracle, "1092B.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
+type testcase struct {
+	nums []int
 }
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+const testcasesRaw = `18 73 98 9 33 16 64 98 58 61 84 49 27 13 63 4 50 56 78
+98 99 1 90 58 35 93 30 76 14 41 4 3 4 84 70 2 49 88 28 55 93 4 68 29 98 57 64 71 30 45 30 87 29 98 59 38 3 54 72 83 13 24 81 93 38 16 96 43 93 92 65 55 65 86 25 39 37 76 64 65 51 76 5 62 32 96 52 54 86 23 47 71 90 100 87 95 48 12 57 85 66 14 100 21 67 51 48 63 94 4 61 6 40 91 79 76 75 51
+84 22 22 65 30 2 99 26 70 71 30 52 66 45 74 46 59 35 85 71 78 94 1 50 95 66 17 67 100 72 27 55 8 62 47 73 71 26 65 53 63 46 54 45 1 69 70 80 79 43 59 77 4 30 82 23 71 75 24 12 71 33 5 87 10 11 3 58 2 97 97 36 32 35 15 80 24 45 38 9 22 21 33 68 22
+86 35 83 92 38 59 90 42 64 61 15 4 40 50 44 54 25 34 14 33 94 66 27 78 56 3 29 3 51 19 5 93 21 58 91 65 87 55 70 29 81 89 67 58 29 68 84 4 51 87 74 42 85 81 55 8 95 39 17 28 7 40 10 10 40 39 96 21 54 73 33 17 2 72 5 76 28 73 59 22 100 91 80 66 5 49 26
+46 13 27 74 87 56 76 25 64 14 86 50 38 65 64 3 42 79 52 37 3 21 26 42 73 18 44 55 28 35 87 13 49 71 45 88 69 63 99 69 31 9 93 6 11 18 22
+22 69 28 35 98 43 77 65 33 48 44 44 15 38 31 78 100 92 63 18 75 71 99
+14 42 6 53 10 49 19 17 44 15 79 76 49 10 74
+72 29 73 11 35 47 38 73 69 15 59 36 14 6 38 2 79 86 2 12 53 15 6 25 31 76 54 21 15 58 22 88 31 21 96 14 56 49 70 38 71 33 92 62 41 13 27 84 41 6 4 2 38 93 77 41 58 51 41 52 9 9 41 77 59 15 33 28 80 100 70 89 61
+86 46 34 24 70 27 40 26 32 47 11 36 12 97 58 12 84 74 83 44 30 50 40 6 42 24 41 75 39 32 43 13 70 79 75 77 12 32 29 3 32 52 10 35 71 10 94 10 3 82 2 38 97 46 64 61 20 13 65 100 42 10 66 86 23 23 100 20 19 41 40 14 91 66 78 38 17 27 19 70 93 5 100 41 80 87 71
+96 89 27 23 39 56 69 21 7 92 86 32 33 100 9 88 58 56 71 33 70 57 69 59 2 51 44 22 34 63 4 83 54 74 3 8 89 46 75 18 76 17 18 34 36 51 73 52 23 79 12 30 63 1 23 68 41 65 84 57 88 82 94 29 31 41 64 88 62 29 92 53 44 72 79 94 84 36 83 29 7 10 98 66 83 48 21 66 99 27 40 39 89 39 71 48 22
+90 90 95 60 77 11 16 78 66 74 49 23 20 33 55 28 73 93 97 7 64 88 51 92 82 45 50 66 22 70 94 6 68 12 33 81 13 35 95 11 18 100 79 85 88 90 11 57 31 49 56 51 22 42 57 17 80 63 28 16 56 77 69 53 16 85 38 36 32 49 96 72 1 25 68 57 75 3 4 81 78 32 34 27 23 37 19 70 26 35 40
+76 97 33 88 58 22 70 46 63 54 16 99 27 74 50 27 37 14 4 16 73 96 2 70 38 87 98 93 84 18 10 65 48 74 40 56 65 87 46 98 68 42 1 16 57 92 58 45 40 70 52 44 94 88 74 64 15 83 49 49 27 72 1 36 82 77 93 95 94 66 26 60 77 67 53 96 92
+40 90 22 58 80 86 68 26 47 68 1 87 50 75 55 52 44 80 75 94 90 96 9 64 96 32 82 84 38 81 3 53 93 81 20 82 100 51 35 23 99
+10 100 78 2 45 34 91 53 88 70 39
+20 60 34 63 22 60 66 6 35 66 13 96 76 55 9 46 9 85 57 3 22
+66 91 21 89 12 52 82 89 36 78 39 27 68 27 31 43 35 9 10 90 67 85 48 60 66 72 95 7 22 39 84 95 92 72 35 46 79 95 30 51 72 52 23 62 34 79 43 92 29 34 79 91 32 85 4 80 52 41 56 98 32 35 25 10 81 94 22
+76 57 75 94 19 78 34 59 68 21 18 100 18 92 57 47 40 97 52 31 15 92 27 92 88 40 9 14 30 51 42 64 13 24 6 8 77 3 97 28 88 5 64 91 68 93 79 57 44 85 36 16 79 89 23 13 29 52 30 64 58 49 97 22 30 31 37 60 71 75 50 28 58 92 34 43 64
+76 15 28 11 6 2 1 62 41 50 75 37 26 52 21 98 83 20 4 2 50 19 86 70 8 73 49 33 17 11 60 84 39 2 5 69 8 68 17 6 36 100 16 56 12 25 4 64 82 17 96 36 88 25 85 58 50 43 81 35 34 83 82 32 32 8 76 76 23 45 55 78 90 72 82 67 8
+46 71 53 69 26 92 69 55 85 9 92 35 96 79 93 97 10 33 23 13 20 8 27 55 6 7 82 12 66 61 65 48 13 41 6 17 69 5 57 86 17 51 98 91 58 4 95
+68 35 12 33 42 11 39 5 50 8 94 34 41 95 17 34 49 15 87 39 13 55 32 65 72 27 43 44 66 51 75 62 14 17 84 58 68 72 93 75 90 67 69 4 38 96 21 26 48 50 67 42 13 53 45 17 74 9 6 39 84 69 41 54 39 41 46 35 42`
+
+var testcases = mustParseTestcases(testcasesRaw)
+
+func mustParseTestcases(raw string) []testcase {
+	lines := strings.Split(strings.TrimSpace(raw), "\n")
+	res := make([]testcase, 0, len(lines))
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			panic(fmt.Sprintf("line %d too short", idx+1))
+		}
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			panic(fmt.Sprintf("line %d bad n: %v", idx+1, err))
+		}
+		if len(fields)-1 != n {
+			panic(fmt.Sprintf("line %d length mismatch: got %d numbers expected %d", idx+1, len(fields)-1, n))
+		}
+		nums := make([]int, n)
+		for i := 0; i < n; i++ {
+			val, err := strconv.Atoi(fields[i+1])
+			if err != nil {
+				panic(fmt.Sprintf("line %d invalid int: %v", idx+1, err))
+			}
+			nums[i] = val
+		}
+		res = append(res, testcase{nums: nums})
 	}
+	if len(res) == 0 {
+		panic("no testcases parsed")
+	}
+	return res
+}
+
+// solve reproduces the logic from 1092B.go: sort the numbers and sum pairwise differences.
+func solve(tc testcase) int {
+	a := make([]int, len(tc.nums))
+	copy(a, tc.nums)
+	sort.Ints(a)
+	ans := 0
+	for i := 0; i+1 < len(a); i += 2 {
+		ans += a[i+1] - a[i]
+	}
+	return ans
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
+	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	return strings.TrimSpace(out.String()), nil
+	return out.String(), nil
+}
+
+func parseCandidateOutput(out string) (int, error) {
+	scanner := bufio.NewScanner(strings.NewReader(out))
+	scanner.Split(bufio.ScanWords)
+	if !scanner.Scan() {
+		return 0, fmt.Errorf("no output")
+	}
+	v, err := strconv.Atoi(scanner.Text())
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse output: %v", err)
+	}
+	if err := scanner.Err(); err != nil {
+		return 0, fmt.Errorf("scanner error: %v", err)
+	}
+	return v, nil
+}
+
+func checkCase(bin string, idx int, tc testcase) error {
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(len(tc.nums)))
+	for _, v := range tc.nums {
+		sb.WriteString(" ")
+		sb.WriteString(strconv.Itoa(v))
+	}
+	sb.WriteString("\n")
+
+	expected := solve(tc)
+	out, err := runCandidate(bin, sb.String())
+	if err != nil {
+		return err
+	}
+	got, err := parseCandidateOutput(out)
+	if err != nil {
+		return err
+	}
+	if got != expected {
+		return fmt.Errorf("case %d: expected %d got %d", idx+1, expected, got)
+	}
+	return nil
 }
 
 func main() {
@@ -47,47 +143,11 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
-	f, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		input := line + "\n"
-		want, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle failed on test %d: %v\n", idx, err)
-			os.Exit(1)
-		}
-		got, err := run(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d: %v\n", idx, err)
-			os.Exit(1)
-		}
-		if want != got {
-			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", idx, input, want, got)
+	for i, tc := range testcases {
+		if err := checkCase(bin, i, tc); err != nil {
+			fmt.Println(err)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

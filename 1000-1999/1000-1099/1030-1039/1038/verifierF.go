@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,7 +9,216 @@ import (
 	"strings"
 )
 
-func expected(n int, s string) string {
+// Embedded testcases previously stored in testcasesF.txt.
+const testcasesFData = `100
+10
+10100
+3
+1
+8
+1000
+4
+1010
+2
+1
+3
+0
+1
+0
+3
+1
+6
+00
+4
+1011
+3
+1
+2
+10
+10
+011111
+3
+10
+1
+0
+6
+0111
+10
+1
+1
+0
+2
+1
+6
+11101
+5
+1
+2
+1
+9
+011011
+5
+00
+5
+0001
+1
+1
+5
+1000
+8
+000100
+7
+001
+5
+10
+9
+11111110
+2
+01
+6
+01
+5
+10101
+6
+11111
+3
+011
+6
+111111
+6
+110111
+9
+001
+8
+01011
+10
+100010000
+8
+0000
+6
+10
+9
+1
+8
+100010
+6
+1101
+1
+0
+5
+11101
+7
+1100110
+3
+010
+7
+1
+10
+0111101111
+7
+0111110
+6
+110
+8
+0
+10
+01001011
+4
+0011
+3
+111
+10
+00011110
+8
+100011
+2
+0
+7
+1111101
+8
+10
+7
+11100
+8
+10100010
+2
+1
+7
+1
+8
+0
+2
+0
+3
+10
+3
+010
+2
+0
+9
+10
+5
+0
+7
+00101
+10
+11100101
+9
+010011001
+8
+0001000
+2
+01
+8
+10010010
+2
+1
+4
+11
+4
+111
+7
+11
+7
+1000100
+1
+0
+4
+01
+8
+011111
+8
+00000111
+3
+101
+3
+00
+8
+1
+6
+001
+8
+011
+8
+0000
+10
+0111
+3
+11
+2
+00
+3
+001
+5
+1`
+
+type testCase struct {
+	n int
+	s string
+}
+
+// solve mirrors the 1038F solution logic to produce the expected answer.
+func solve(n int, s string) string {
 	m := len(s)
 	a := make([]int, m+2)
 	for i := 1; i <= m; i++ {
@@ -120,8 +328,44 @@ func expected(n int, s string) string {
 	return fmt.Sprintf("%d", ans)
 }
 
-func runCase(exe, input, exp string) error {
-	cmd := exec.Command(exe)
+func parseTestCases(data string) ([]testCase, error) {
+	tokens := strings.Fields(data)
+	if len(tokens) == 0 {
+		return nil, fmt.Errorf("no embedded testcases found")
+	}
+	idx := 0
+	t, err := strconv.Atoi(tokens[idx])
+	if err != nil {
+		return nil, fmt.Errorf("invalid test count: %w", err)
+	}
+	idx++
+	cases := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		if idx+1 >= len(tokens) {
+			return nil, fmt.Errorf("test %d missing data", i+1)
+		}
+		n, err := strconv.Atoi(tokens[idx])
+		if err != nil {
+			return nil, fmt.Errorf("test %d has invalid n: %w", i+1, err)
+		}
+		s := tokens[idx+1]
+		idx += 2
+		cases = append(cases, testCase{n: n, s: s})
+	}
+	if idx != len(tokens) {
+		return nil, fmt.Errorf("embedded data has %d extra tokens", len(tokens)-idx)
+	}
+	return cases, nil
+}
+
+func runCase(exe string, tc testCase) error {
+	input := fmt.Sprintf("%d\n%s\n", tc.n, tc.s)
+	var cmd *exec.Cmd
+	if strings.HasSuffix(exe, ".go") {
+		cmd = exec.Command("go", "run", exe)
+	} else {
+		cmd = exec.Command(exe)
+	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -130,7 +374,8 @@ func runCase(exe, input, exp string) error {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
 	got := strings.TrimSpace(out.String())
-	if got != strings.TrimSpace(exp) {
+	exp := solve(tc.n, tc.s)
+	if got != exp {
 		return fmt.Errorf("expected %q got %q", exp, got)
 	}
 	return nil
@@ -142,26 +387,15 @@ func main() {
 		os.Exit(1)
 	}
 	exe := os.Args[1]
-	data, err := os.ReadFile("testcasesF.txt")
+
+	cases, err := parseTestCases(testcasesFData)
 	if err != nil {
-		fmt.Println("could not read testcasesF.txt:", err)
+		fmt.Println("failed to parse embedded testcases:", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	for caseIdx := 0; caseIdx < t; caseIdx++ {
-		scan.Scan()
-		n, _ := strconv.Atoi(scan.Text())
-		scan.Scan()
-		s := scan.Text()
-		input := fmt.Sprintf("%d\n%s\n", n, s)
-		exp := expected(n, s)
-		if err := runCase(exe, input, exp); err != nil {
+
+	for caseIdx, tc := range cases {
+		if err := runCase(exe, tc); err != nil {
 			fmt.Printf("case %d failed: %v\n", caseIdx+1, err)
 			os.Exit(1)
 		}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,13 +9,220 @@ import (
 	"strings"
 )
 
+const testcasesRaw = `100
+6 9
+6 2 2 1 6 5 6 1 5 4 4 6 4 2 6 3 2 5
+6 7
+1 3 4 3 1 5 6 1 2 6 4 1 5 2
+2 0
+
+7 0
+
+6 0
+
+2 0
+
+5 10
+1 2 4 3 3 1 5 1 4 2 1 4 4 5 5 3 3 2 2 5
+8 7
+2 7 5 8 4 6 5 1 3 6 1 3 4 7
+9 3
+6 2 8 4 6 9
+8 5
+6 2 4 6 5 1 5 7 1 4
+5 7
+2 4 2 1 5 1 1 4 4 5 3 2 1 3
+7 0
+
+3 1
+2 1
+3 2
+3 2 2 1
+10 8
+1 2 10 8 3 7 5 1 9 5 4 5 8 9 10 2
+9 8
+7 1 2 7 6 4 9 5 2 9 5 6 8 5 5 2
+10 2
+3 1 10 1
+3 3
+3 1 2 3 2 1
+10 0
+
+9 9
+9 3 3 7 6 8 9 6 4 6 1 4 5 7 2 5 8 5
+1 0
+
+1 0
+
+4 2
+2 3 4 2
+1 0
+
+10 8
+2 1 3 4 8 1 6 1 4 6 1 4 6 7 1 3
+8 6
+7 1 8 1 6 7 3 6 5 3 7 5
+10 1
+3 1
+9 2
+2 6 9 3
+4 6
+1 2 3 4 4 1 4 2 2 3 1 3
+3 3
+3 2 1 2 1 3
+10 8
+2 7 8 7 6 8 5 4 2 10 5 1 6 7 5 10
+6 3
+6 3 5 6 1 5
+1 0
+
+6 5
+2 1 5 4 1 4 3 6 2 5
+3 2
+2 3 1 3
+5 9
+2 1 4 3 5 4 5 1 1 4 4 2 5 3 3 2 5 2
+1 0
+
+10 6
+3 4 6 9 7 10 6 8 4 1 1 9
+6 10
+6 2 1 2 2 4 5 4 6 4 5 6 1 6 3 2 4 1 5 2
+2 1
+1 2
+1 0
+
+1 0
+
+4 6
+2 1 3 4 3 1 4 2 1 4 3 2
+3 2
+2 3 1 3
+3 3
+2 3 2 1 3 1
+6 9
+2 4 1 2 6 5 5 4 6 4 1 6 3 2 1 3 5 2
+10 3
+3 8 8 9 3 6
+9 0
+
+9 1
+9 6
+1 0
+
+2 1
+2 1
+3 2
+3 1 1 2
+10 3
+1 7 10 3 1 5
+6 1
+4 1
+8 5
+8 7 3 1 8 5 2 6 4 7
+2 0
+
+1 0
+
+1 0
+
+7 9
+1 5 4 1 7 3 1 7 7 6 5 6 1 6 1 3 4 7
+3 2
+3 2 1 3
+1 0
+
+7 0
+
+4 1
+3 2
+3 3
+3 1 1 2 2 3
+9 0
+
+1 0
+
+2 0
+
+3 3
+2 3 1 2 3 1
+3 2
+3 1 3 2
+2 0
+
+7 9
+3 1 5 1 4 2 1 4 7 3 5 7 2 6 6 3 3 5
+10 5
+3 7 1 7 7 2 9 1 2 8
+10 7
+10 5 6 8 9 2 1 4 7 3 8 9 3 6
+5 2
+5 3 3 4
+1 0
+
+9 6
+3 1 4 6 5 7 1 7 2 6 8 2
+2 1
+1 2
+5 2
+2 4 3 5
+9 4
+6 7 8 9 4 7 5 7
+7 1
+6 2
+3 0
+
+10 9
+4 10 9 2 2 6 7 2 10 3 10 9 8 6 2 5 2 8
+6 9
+6 2 2 4 2 1 1 5 4 3 5 4 6 4 5 6 6 3
+1 0
+
+7 2
+4 5 1 4
+2 1
+2 1
+9 7
+3 4 9 6 1 8 9 8 2 5 9 7 8 5
+3 2
+3 1 2 1
+2 1
+1 2
+8 3
+2 3 2 5 3 6
+1 0
+
+10 8
+9 10 2 1 5 4 1 7 8 9 8 2 4 1 8 5
+1 0
+
+6 8
+3 4 3 1 5 4 6 4 2 6 3 2 6 3 5 2
+2 1
+1 2
+6 6
+4 3 3 1 4 6 1 4 2 3 2 6
+3 2
+1 3 2 1
+7 6
+3 4 2 3 4 5 2 6 5 6 7 5
+1 0
+
+8 5
+7 4 7 1 4 6 3 2 2 5`
+
 type Rook struct {
 	x, y  int
 	color int
 }
 
+type testCase struct {
+	n     int
+	edges [][2]int
+}
+
 func parseOutput(n int, out string) ([]Rook, [][]int, error) {
-	r := bufio.NewReader(strings.NewReader(out))
+	r := strings.NewReader(out)
 	var rooks []Rook
 	colorIdx := make([][]int, n+1)
 	coords := make(map[[2]int]bool)
@@ -128,8 +334,41 @@ func verifyCase(n int, edges [][2]int, output string) error {
 	return nil
 }
 
+// referenceSolve embeds the logic from 1068C.go to produce one valid placement.
+func referenceSolve(tc testCase) string {
+	n := tc.n
+	sol := make([][]int, n+1)
+	cnt := 0
+	for _, e := range tc.edges {
+		cnt++
+		x, y := e[0], e[1]
+		sol[x] = append(sol[x], cnt)
+		sol[y] = append(sol[y], cnt)
+	}
+	for i := 1; i <= n; i++ {
+		if len(sol[i]) == 0 {
+			cnt++
+			sol[i] = append(sol[i], cnt)
+		}
+	}
+	var sb strings.Builder
+	for i := 1; i <= n; i++ {
+		sb.WriteString(strconv.Itoa(len(sol[i])))
+		sb.WriteByte('\n')
+		for _, id := range sol[i] {
+			sb.WriteString(fmt.Sprintf("%d %d\n", i, id))
+		}
+	}
+	return sb.String()
+}
+
 func runSolution(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -141,74 +380,85 @@ func runSolution(bin, input string) (string, error) {
 	return out.String(), nil
 }
 
+func parseTestcases(raw string) ([]testCase, error) {
+	tokens := strings.Fields(raw)
+	if len(tokens) == 0 {
+		return nil, fmt.Errorf("invalid test file")
+	}
+	idx := 0
+	nextInt := func() (int, error) {
+		if idx >= len(tokens) {
+			return 0, fmt.Errorf("unexpected end of test data")
+		}
+		v, err := strconv.Atoi(tokens[idx])
+		idx++
+		return v, err
+	}
+	t, err := nextInt()
+	if err != nil {
+		return nil, err
+	}
+	tests := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		n, err := nextInt()
+		if err != nil {
+			return nil, err
+		}
+		m, err := nextInt()
+		if err != nil {
+			return nil, err
+		}
+		edges := make([][2]int, m)
+		for j := 0; j < m; j++ {
+			a, err := nextInt()
+			if err != nil {
+				return nil, err
+			}
+			b, err := nextInt()
+			if err != nil {
+				return nil, err
+			}
+			edges[j] = [2]int{a, b}
+		}
+		tests = append(tests, testCase{n: n, edges: edges})
+	}
+	if idx != len(tokens) {
+		return nil, fmt.Errorf("extra data in testcases")
+	}
+	return tests, nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesC.txt")
+	tests, err := parseTestcases(testcasesRaw)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for {
-		if !scanner.Scan() {
-			break
-		}
-		line1 := strings.TrimSpace(scanner.Text())
-		if line1 == "" {
-			continue
-		}
-		idx++
-		parts := strings.Fields(line1)
-		if len(parts) != 2 {
-			fmt.Printf("invalid header on test %d\n", idx)
+	for i, tc := range tests {
+		// Ensure reference solution is valid for this case (sanity check).
+		if err := verifyCase(tc.n, tc.edges, referenceSolve(tc)); err != nil {
+			fmt.Printf("internal reference failed on case %d: %v\n", i+1, err)
 			os.Exit(1)
-		}
-		nVal, _ := strconv.Atoi(parts[0])
-		mVal, _ := strconv.Atoi(parts[1])
-		if !scanner.Scan() {
-			fmt.Printf("missing edge line for test %d\n", idx)
-			os.Exit(1)
-		}
-		line2 := strings.TrimSpace(scanner.Text())
-		nums := []string{}
-		if line2 != "" {
-			nums = strings.Fields(line2)
-		}
-		if len(nums) != 2*mVal {
-			fmt.Printf("wrong number of edge values in test %d\n", idx)
-			os.Exit(1)
-		}
-		edges := make([][2]int, mVal)
-		for j := 0; j < mVal; j++ {
-			x, _ := strconv.Atoi(nums[2*j])
-			y, _ := strconv.Atoi(nums[2*j+1])
-			edges[j] = [2]int{x, y}
 		}
 		var input strings.Builder
-		input.WriteString(fmt.Sprintf("%d %d\n", nVal, mVal))
-		for _, e := range edges {
+		input.WriteString(fmt.Sprintf("%d %d\n", tc.n, len(tc.edges)))
+		for _, e := range tc.edges {
 			input.WriteString(fmt.Sprintf("%d %d\n", e[0], e[1]))
 		}
 		out, err := runSolution(bin, input.String())
 		if err != nil {
-			fmt.Printf("test %d: %v\n", idx, err)
+			fmt.Printf("test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if err := verifyCase(nVal, edges, out); err != nil {
-			fmt.Printf("test %d failed: %v\n", idx, err)
+		if err := verifyCase(tc.n, tc.edges, out); err != nil {
+			fmt.Printf("test %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

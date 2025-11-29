@@ -1,26 +1,191 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+const testcases = `5 36 17734
+13 27 0431046687847
+10 1 4778637847
+14 42 74854796208879
+12 29 804847367495
+15 38 481444742472474
+1 19 7
+7 16 4607473
+17 28 47674447624394777
+4 42 7707
+19 50 7487844474749747457
+3 36 977
+19 34 7144407744784740757
+13 4 7748744477760
+11 11 74914640454
+4 32 5445
+10 6 9449837034
+15 27 877770797474477
+8 15 76734547
+18 23 718274754011429146
+14 25 77174708443447
+15 50 274934042747575
+10 34 7749878778
+7 23 6644462
+13 50 4976877446404
+3 25 433
+11 17 74747754309
+13 20 3349444477444
+13 20 4043797477437
+18 37 754145944048747080
+9 49 474367344
+12 35 484914404877
+2 8 76
+15 1 474054144376947
+17 35 98737747778875977
+13 5 0749557527947
+20 3 81481326774437314467
+3 25 897
+15 0 704588787494497
+13 18 0167576444444
+14 16 44776143171414
+18 13 546144114717737789
+11 31 74747447909
+17 9 47474298723744341
+8 36 74434777
+12 8 404144474771
+12 50 247844014448
+9 30 418472437
+12 18 764402476777
+2 41 01
+19 8 5953971574675487871
+19 1 4447575479727427421
+9 1 468624446
+8 50 49871047
+2 33 47
+15 17 285766374797477
+19 29 4343844474284274477
+7 45 7997474
+4 7 9464
+13 42 2943973486674
+6 35 478514
+14 28 43634444497967
+16 3 7759474147709474
+6 20 426759
+12 2 346914447477
+7 34 7727074
+18 2 844874774770424774
+7 38 7977496
+19 21 7798797287440733527
+2 41 44
+10 24 7444794285
+10 18 7169436445
+1 45 4
+15 31 477844477444441
+7 0 6047484
+9 18 847377482
+7 14 4727454
+15 12 244443457974721
+8 4 68757784
+10 10 4244477771
+5 43 44355
+17 40 54773774704747777
+7 27 4447413
+3 28 320
+7 20 8472794
+20 20 97474377477479477937
+5 30 34475
+17 50 77877777754494749
+2 28 87
+15 7 457777345789774
+2 5 12
+15 25 794977244187477
+15 21 279754332477477
+10 47 9774457855
+18 37 573437047675727937
+13 13 4412427834224
+14 8 95047017247673
+7 44 0444157
+9 9 767344770
+6 33 744550`
+
+type testCase struct {
+	n int
+	k int64
+	s string
+}
+
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcases), "\\n")
+	cases := make([]testCase, 0, len(lines))
+	for idx, ln := range lines {
+		ln = strings.TrimSpace(ln)
+		if ln == "" {
+			continue
+		}
+		parts := strings.Fields(ln)
+		if len(parts) != 3 {
+			return nil, fmt.Errorf("invalid line %d", idx+1)
+		}
+		n, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return nil, fmt.Errorf("parse n on line %d: %w", idx+1, err)
+		}
+		k, err := strconv.ParseInt(parts[1], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("parse k on line %d: %w", idx+1, err)
+		}
+		cases = append(cases, testCase{n: n, k: k, s: parts[2]})
 	}
-	oracle := filepath.Join(dir, "oracleB")
-	cmd := exec.Command("go", "build", "-o", oracle, "121B.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	return cases, nil
+}
+
+func referenceSolve(n int, k int64, s string) string {
+	sBytes := []byte(s)
+	if n != len(sBytes) {
+		n = len(sBytes)
 	}
-	return oracle, nil
+	i := 0
+	for i < n-1 && k > 0 {
+		if !(sBytes[i] == '4' && sBytes[i+1] == '7') {
+			i++
+			continue
+		}
+		if i%2 == 0 {
+			sBytes[i+1] = '4'
+		} else {
+			sBytes[i] = '7'
+		}
+		k--
+		if i > 0 && sBytes[i-1] == '4' && sBytes[i] == '7' {
+			if k%2 == 1 {
+				if (i-1)%2 == 0 {
+					sBytes[i] = '4'
+				} else {
+					sBytes[i-1] = '7'
+				}
+			}
+			break
+		}
+		if i > 0 {
+			i--
+		}
+	}
+	return string(sBytes)
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errb bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
@@ -29,65 +194,25 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
+
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.Remove(oracle)
 
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		fields := strings.Fields(line)
-		if len(fields) != 3 {
-			fmt.Printf("test %d: invalid line\n", idx)
-			os.Exit(1)
-		}
-		input := fmt.Sprintf("%s %s\n%s\n", fields[0], fields[1], fields[2])
-
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(input)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error: %v\n", err)
-			os.Exit(1)
-		}
-		expected := strings.TrimSpace(outO.String())
-
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		err := cmd.Run()
+	for idx, tc := range cases {
+		input := fmt.Sprintf("1\n%d %d\n%s\n", tc.n, tc.k, tc.s)
+		want := referenceSolve(tc.n, tc.k, tc.s)
+		got, err := run(bin, input)
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
+			fmt.Printf("case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
-		if got != expected {
-			fmt.Printf("test %d failed. Expected %s got %s\n", idx, expected, got)
+		if strings.TrimSpace(got) != strings.TrimSpace(want) {
+			fmt.Printf("case %d failed\ninput:\n%sexpected: %s\ngot: %s\n", idx+1, input, want, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

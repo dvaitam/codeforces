@@ -4,14 +4,210 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"math"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 )
 
-func run(bin, input string) (string, error) {
+const testcasesRaw = `100
+7 47.55125 -45.33936 15.63691 1.39755 11.46930 24.28631 -55.00196
+3 -14.18316 46.12429 -31.94113
+5 18.92428 27.19262 -11.12945 43.09665 -78.08410
+6 10.73375 -38.46372 5.41444 28.83941 -24.72420 18.20032
+8 6.68334 -17.08163 20.01840 -39.94333 1.93094 50.87576 30.00149 -52.48497
+8 -8.31969 43.42625 40.08255 -26.74384 -22.31275 -32.71170 7.11955 -0.54037
+2 -10.66576 10.66576
+8 -37.39511 20.38153 40.16359 20.43614 19.26634 27.71726 25.37703 -115.94678
+8 -39.78156 -1.41555 23.31733 -13.24100 -26.24475 -46.80317 34.34086 69.82784
+8 -42.11773 36.99300 -34.19601 -46.10518 39.70857 37.51287 40.68756 -32.48308
+6 -15.91290 -3.62805 -6.29527 -1.48399 34.78231 -7.46210
+8 6.27650 -3.93518 35.37453 9.32677 -63.40900 -22.40523 23.64042 14.13120
+2 -21.36842 21.36842
+8 -25.83818 25.06478 2.94531 4.14962 -9.91113 -15.82377 -5.78608 25.19945
+2 -34.23361 34.23361
+2 2.78500 -2.78500
+7 12.81219 -1.97022 31.06976 46.78706 16.58979 3.58458 -108.87316
+5 7.72510 -2.87628 -4.14033 -0.63269 -0.07580
+5 12.46671 5.56804 3.02642 -7.71226 -13.34891
+4 18.78298 -1.15775 -14.31940 -3.30583
+7 12.03834 2.85349 -5.71059 7.78160 8.10267 17.00391 -42.06942
+3 -18.04552 19.33410 -1.28858
+6 -22.99210 21.32347 0.55083 -32.36521 52.45437 -18.97136
+8 0.01865 14.96179 -11.86340 -1.77006 -22.61008 -23.86257 57.15706 -12.03139
+6 -37.51626 22.23661 -22.95693 32.28582 -33.63583 39.58659
+8 -31.27766 14.03069 -9.71581 45.28247 25.66308 -14.72486 -66.87839 37.62048
+7 -6.45876 0.34571 19.89757 26.74939 0.34163 1.77745 -42.65300
+5 0.00086 11.95128 -3.12084 0.45217 -9.28347
+4 -12.46709 14.74756 -3.04519 0.76472
+6 3.28393 36.80388 1.67470 -10.40448 26.40453 -57.76356
+3 -21.78479 13.09512 8.68967
+3 10.43840 -15.60538 5.16698
+3 -4.94395 -4.10013 9.04408
+5 -12.12891 8.95974 -30.99862 51.26525 -17.09746
+3 6.31974 8.61367 -14.93341
+5 0.04145 27.96340 19.23424 24.25932 -71.49841
+4 -0.39778 6.30820 -1.10899 -4.80143
+4 -2.38350 6.54290 -12.05741 7.89798
+4 5.20346 6.56947 -11.98721 0.21428
+7 -10.93960 -23.29749 11.47855 -9.52412 33.46513 -5.04682 4.86436
+6 -0.41612 13.97188 2.98898 14.40623 -8.15580 -22.79517
+6 -8.55618 0.96664 -6.70204 19.54162 13.95323 -19.20326
+7 4.87290 9.74174 -14.18650 15.89453 -26.62802 4.47592 5.82843
+7 -7.84120 1.66936 40.49815 5.89360 -24.37671 -3.50904 -12.33416
+8 -5.59667 12.13116 14.34108 1.63067 13.62015 -34.24449 -5.10397 3.22105
+2 4.80674 -4.80674
+8 -9.64203 16.12224 -4.90787 -19.19275 21.96219 6.57636 -11.07018 0.15202
+5 -0.24872 0.65491 -3.13536 2.95037 -0.22120
+3 -19.70596 24.82865 -5.12269
+5 1.24978 -9.88804 10.58238 -6.31118 4.36617
+8 7.83692 8.26959 10.24041 2.61506 11.02488 -2.77751 -19.29139 -17.91796
+8 -11.94450 7.41471 -16.54310 14.82175 5.65878 2.91939 18.14223 -20.46926
+5 12.20157 10.77766 11.00745 10.37849 -44.36517
+6 0.20951 -0.57614 0.83524 0.61277 0.61338 -1.69476
+8 16.30323 16.87443 -13.75892 6.96161 1.05294 11.38337 6.77971 -45.59637
+6 0.04189 1.86779 -6.93323 -15.78757 18.37920 2.43192
+3 -0.42333 0.93705 -0.51372
+7 0.37341 10.07737 13.45206 4.59727 -0.59481 -25.78884 -2.11646
+7 3.26668 5.03708 2.67463 6.94620 -13.45000 -10.32054 5.84695
+3 0.00000 -5.00000 5.00000
+6 9.45435 5.23466 0.61172 11.06359 -0.52802 -25.83630
+2 -4.11368 4.11368
+4 -12.26957 2.25992 16.41423 -6.40458
+7 11.87869 13.70210 16.05445 28.28500 1.54883 7.60147 -79.07054
+6 -0.90519 1.40525 -5.45578 1.18444 -2.84163 6.61291
+4 16.07356 -15.75588 16.19164 -16.50932
+7 -5.65056 6.52217 -5.61779 12.29900 -3.52508 10.69442 -14.72216
+3 0.01949 -0.55964 0.54015
+3 6.25792 -0.29069 -5.96723
+7 8.90246 -2.24307 -3.54218 17.95236 -1.81069 -4.50577 -14.75211
+7 11.30556 -17.35257 16.46776 -34.95614 10.81987 4.90230 8.81322
+7 17.11250 18.35881 13.93372 1.32026 6.55591 11.99130 -69.27250
+8 -0.23551 1.18931 4.14473 6.83815 20.75477 -7.71878 -0.02319 -24.94948
+7 -18.93763 15.74385 16.49692 -5.38549 13.52406 -0.53403 -20.90768
+7 7.55146 -20.88751 8.19014 -14.76005 8.16821 0.10628 11.63147
+4 0.27473 -9.26749 2.53423 6.45853
+3 -7.28880 2.26871 5.02009
+3 4.00000 -2.00000 -2.00000
+7 24.82397 11.36406 -6.99607 -10.60471 -4.61300 9.04006 -22.01431
+8 -10.64884 3.26714 9.09648 18.96928 -16.69565 1.26252 -15.47958 10.22865
+4 21.97337 -2.49136 7.45477 -26.93678
+3 -22.29287 -4.11265 26.40552
+8 1.62340 0.52236 4.18349 5.53008 11.57226 4.66730 2.45149 -30.55038
+8 5.69146 17.70403 13.08153 6.26144 -6.43310 1.51106 -4.53458 -33.28184
+8 6.52737 -0.05933 -5.92310 24.31356 -7.74231 -34.45675 6.16830 11.17226
+7 22.15419 28.80276 27.11807 18.04501 27.24693 0.92844 -124.29540
+5 7.69996 -6.97832 1.56758 8.29187 -10.58109
+8 -6.11732 -7.41815 -10.79107 6.83752 -13.20225 9.30456 7.26718 14.11953
+6 2.45660 13.80110 16.86212 -5.92160 -10.31576 -16.88246
+8 -17.96622 40.05391 3.00803 -25.77606 -12.19818 -2.94038 4.83606 10.98284
+5 -12.97425 10.48037 -4.66159 -3.31668 10.47188
+5 -11.65336 10.13515 -12.67907 21.76901 -7.57173
+8 -12.09020 -5.91022 26.59252 4.50183 9.03335 6.74173 -29.34881 0.48040
+3 14.18575 22.63433 -36.82008
+4 -18.62740 7.07666 6.85484 4.69590
+4 14.77662 5.25170 0.07558 -20.10390
+6 16.06473 14.65845 6.77730 -7.87445 -24.61419 -5.01284
+6 -0.87624 32.16374 4.81708 8.25329 2.59583 -46.95370
+3 20.48228 16.96475 -37.44703
+2 -0.00000 0.00000`
+
+type testCase struct {
+	values []float64
+}
+
+func parseTestcases() ([]testCase, error) {
+	scan := bufio.NewScanner(strings.NewReader(testcasesRaw))
+	scan.Split(bufio.ScanWords)
+	if !scan.Scan() {
+		return nil, fmt.Errorf("invalid test file")
+	}
+	t, err := strconv.Atoi(scan.Text())
+	if err != nil {
+		return nil, err
+	}
+	tests := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		if !scan.Scan() {
+			return nil, fmt.Errorf("invalid test file")
+		}
+		n, err := strconv.Atoi(scan.Text())
+		if err != nil {
+			return nil, err
+		}
+		values := make([]float64, n)
+		for j := 0; j < n; j++ {
+			if !scan.Scan() {
+				return nil, fmt.Errorf("invalid test file")
+			}
+			v, err := strconv.ParseFloat(scan.Text(), 64)
+			if err != nil {
+				return nil, err
+			}
+			values[j] = v
+		}
+		tests = append(tests, testCase{values: values})
+	}
+	if err := scan.Err(); err != nil {
+		return nil, err
+	}
+	return tests, nil
+}
+
+func buildInput(tc testCase) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d\n", len(tc.values))
+	for _, v := range tc.values {
+		fmt.Fprintf(&sb, "%.5f\n", v)
+	}
+	return sb.String()
+}
+
+// referenceSolve embeds the logic from 1186D.go directly.
+func referenceSolve(input string) (string, error) {
+	reader := bufio.NewReader(strings.NewReader(input))
+	var n int
+	if _, err := fmt.Fscan(reader, &n); err != nil {
+		return "", err
+	}
+	a := make([]int, n)
+	b := make([]int64, n)
+	var sum int64
+	for i := 0; i < n; i++ {
+		var ai int
+		var bi int64
+		fmt.Fscan(reader, &ai, &bi) // ignore errors to mirror original program
+		a[i] = ai
+		b[i] = bi
+		if a[i] < 0 {
+			b[i] = -b[i]
+		}
+		sum += b[i]
+	}
+	const M int64 = 100000
+	res := sum / M
+	var buf strings.Builder
+	for i := 0; i < n; i++ {
+		val := a[i]
+		if res != 0 && b[i] != 0 {
+			if res > 0 {
+				if b[i] > 0 {
+					val = a[i] + 1
+					res--
+				}
+			} else {
+				if b[i] < 0 {
+					val = a[i] - 1
+					res++
+				}
+			}
+		}
+		fmt.Fprintf(&buf, "%d\n", val)
+	}
+	return strings.TrimSpace(buf.String()), nil
+}
+
+func runBinary(bin, input string) (string, error) {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
 		cmd = exec.Command("go", "run", bin)
@@ -29,38 +225,25 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func parseFloat(s string) (float64, error) {
-	return strconv.ParseFloat(s, 64)
-}
-
-func validate(a []float64, out string) error {
-	scanner := bufio.NewScanner(strings.NewReader(out))
-	var b []int
-	for scanner.Scan() {
-		t := strings.TrimSpace(scanner.Text())
-		if t == "" {
-			continue
-		}
-		v, err := strconv.Atoi(t)
-		if err != nil {
-			return fmt.Errorf("invalid integer %q", t)
-		}
-		b = append(b, v)
+func runCase(bin string, tc testCase) error {
+	input := buildInput(tc)
+	got, err := runBinary(bin, input)
+	if err != nil {
+		return err
 	}
-	if len(b) != len(a) {
-		return fmt.Errorf("expected %d numbers got %d", len(a), len(b))
+	want, err := referenceSolve(input)
+	if err != nil {
+		return fmt.Errorf("reference solve failed: %v", err)
 	}
-	sum := 0
-	for i, v := range b {
-		fl := math.Floor(a[i])
-		ce := math.Ceil(a[i])
-		if float64(v) != fl && float64(v) != ce {
-			return fmt.Errorf("value %d not floor/ceil of %.5f", v, a[i])
+	gotFields := strings.Fields(got)
+	wantFields := strings.Fields(want)
+	if len(gotFields) != len(wantFields) {
+		return fmt.Errorf("expected %d outputs got %d", len(wantFields), len(gotFields))
+	}
+	for i := range wantFields {
+		if gotFields[i] != wantFields[i] {
+			return fmt.Errorf("position %d expected %s got %s", i+1, wantFields[i], gotFields[i])
 		}
-		sum += v
-	}
-	if sum != 0 {
-		return fmt.Errorf("sum is %d, expected 0", sum)
 	}
 	return nil
 }
@@ -71,55 +254,16 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesD.txt")
+	tests, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to open testcasesD.txt:", err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		fields := strings.Fields(line)
-		n, _ := strconv.Atoi(fields[0])
-		if len(fields) != n+1 {
-			fmt.Printf("bad testcase %d\n", idx)
-			os.Exit(1)
-		}
-		a := make([]float64, n)
-		for i := 0; i < n; i++ {
-			v, err := parseFloat(fields[i+1])
-			if err != nil {
-				fmt.Printf("bad number on test %d: %v\n", idx, err)
-				os.Exit(1)
-			}
-			a[i] = v
-		}
-		// build input string
-		var sb strings.Builder
-		fmt.Fprintf(&sb, "%d\n", n)
-		for i := 0; i < n; i++ {
-			fmt.Fprintf(&sb, "%.5f\n", a[i])
-		}
-		input := sb.String()
-		out, err := run(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d: %v\n", idx, err)
-			os.Exit(1)
-		}
-		if err := validate(a, out); err != nil {
-			fmt.Printf("test %d failed: %v\n", idx, err)
+	for i, tc := range tests {
+		if err := runCase(bin, tc); err != nil {
+			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

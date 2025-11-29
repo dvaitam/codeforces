@@ -10,6 +10,148 @@ import (
 	"strings"
 )
 
+// testcasesRaw embeds contents of testcasesA.txt.
+const testcasesRaw = `100
+6312
+6891
+664
+4243
+8377
+7962
+6635
+4970
+7809
+5867
+9559
+3579
+8269
+2282
+4618
+2290
+1554
+4105
+8726
+9862
+2408
+5082
+1619
+1209
+5410
+7736
+9172
+1650
+5797
+7114
+5181
+3351
+9053
+7816
+7254
+8542
+4268
+1021
+8990
+231
+1529
+6535
+19
+8087
+5459
+3997
+5329
+1032
+3131
+9299
+3633
+3910
+2335
+8897
+7340
+1495
+1319
+5244
+8323
+8017
+1787
+4939
+9032
+4770
+2045
+8970
+5452
+8853
+3330
+9883
+8966
+9628
+4713
+7291
+1502
+9770
+6307
+5195
+9432
+3967
+4757
+3013
+3103
+3060
+541
+4261
+7808
+1132
+1472
+2134
+2451
+634
+1315
+8858
+6411
+8595
+4516
+8550
+3859
+3526`
+
+type testCase struct {
+	n int
+}
+
+// referenceSolution embeds 125A.go logic so no external oracle is needed.
+func referenceSolution(n int) (int, int) {
+	inches := n / 3
+	if n%3 == 2 {
+		inches++
+	}
+	feet := inches / 12
+	inches %= 12
+	return feet, inches
+}
+
+func parseTestcases() []testCase {
+	scan := bufio.NewScanner(strings.NewReader(testcasesRaw))
+	scan.Split(bufio.ScanWords)
+	if !scan.Scan() {
+		panic("no testcase count")
+	}
+	t, err := strconv.Atoi(scan.Text())
+	if err != nil {
+		panic("invalid testcase count")
+	}
+	tests := make([]testCase, 0, t)
+	for scan.Scan() {
+		val, err := strconv.Atoi(scan.Text())
+		if err != nil {
+			panic("invalid testcase value")
+		}
+		tests = append(tests, testCase{n: val})
+	}
+	if len(tests) != t {
+		panic("testcase count mismatch")
+	}
+	return tests
+}
+
 func solve(n int) (int, int) {
 	inches := n / 3
 	if n%3 == 2 {
@@ -43,27 +185,12 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	data, err := os.ReadFile("testcasesA.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesA.txt:", err)
-		os.Exit(1)
-	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Println("bad test file")
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(scan.Text())
-		expectFeet, expectInches := solve(n)
+
+	tests := parseTestcases()
+	for i, tc := range tests {
+		expectFeet, expectInches := referenceSolution(tc.n)
 		expected := fmt.Sprintf("%d %d", expectFeet, expectInches)
-		input := fmt.Sprintf("%d\n", n)
+		input := fmt.Sprintf("%d\n", tc.n)
 		out, err := run(bin, input)
 		if err != nil {
 			fmt.Printf("case %d failed: %v\n", i+1, err)

@@ -10,87 +10,1172 @@ import (
 	"strings"
 )
 
-func run(bin, input string) (string, error) {
+type edge struct {
+	u int
+	v int
+}
+
+type testcase struct {
+	n     int
+	k     int
+	edges []edge
+}
+
+const testcasesRaw = `100
+5 5
+1 2
+2 3
+1 4
+4 5
+15 4
+1 2
+1 3
+1 4
+4 5
+1 6
+4 7
+4 8
+1 9
+8 10
+5 11
+4 12
+10 13
+2 14
+6 15
+1 1
+1 5
+1 4
+7 4
+1 2
+1 3
+2 4
+4 5
+5 6
+2 7
+12 2
+1 2
+2 3
+2 4
+1 5
+4 6
+5 7
+6 8
+2 9
+3 10
+5 11
+2 12
+11 5
+1 2
+1 3
+2 4
+3 5
+5 6
+4 7
+7 8
+7 9
+1 10
+8 11
+8 4
+1 2
+1 3
+2 4
+3 5
+1 6
+4 7
+6 8
+17 1
+1 2
+2 3
+2 4
+4 5
+1 6
+4 7
+1 8
+5 9
+7 10
+3 11
+3 12
+9 13
+4 14
+1 15
+13 16
+7 17
+18 5
+1 2
+2 3
+3 4
+3 5
+5 6
+3 7
+4 8
+5 9
+9 10
+10 11
+1 12
+7 13
+13 14
+14 15
+14 16
+5 17
+17 18
+18 2
+1 2
+1 3
+2 4
+3 5
+5 6
+5 7
+2 8
+7 9
+8 10
+6 11
+7 12
+6 13
+1 14
+9 15
+9 16
+11 17
+15 18
+20 1
+1 2
+1 3
+3 4
+2 5
+1 6
+5 7
+7 8
+5 9
+1 10
+2 11
+2 12
+1 13
+8 14
+1 15
+13 16
+9 17
+8 18
+9 19
+4 20
+20 2
+1 2
+2 3
+1 4
+2 5
+2 6
+3 7
+5 8
+3 9
+5 10
+5 11
+8 12
+12 13
+6 14
+8 15
+8 16
+4 17
+1 18
+10 19
+13 20
+11 4
+1 2
+2 3
+1 4
+3 5
+5 6
+2 7
+5 8
+7 9
+1 10
+4 11
+1 4
+5 1
+1 2
+2 3
+3 4
+4 5
+18 2
+1 2
+1 3
+3 4
+1 5
+4 6
+6 7
+5 8
+6 9
+7 10
+1 11
+5 12
+3 13
+4 14
+1 15
+5 16
+3 17
+3 18
+10 3
+1 2
+2 3
+3 4
+3 5
+2 6
+1 7
+5 8
+1 9
+4 10
+19 4
+1 2
+1 3
+2 4
+2 5
+3 6
+1 7
+2 8
+7 9
+4 10
+8 11
+2 12
+11 13
+7 14
+5 15
+9 16
+16 17
+1 18
+11 19
+20 4
+1 2
+1 3
+1 4
+2 5
+3 6
+5 7
+7 8
+3 9
+6 10
+7 11
+4 12
+5 13
+11 14
+2 15
+14 16
+13 17
+12 18
+18 19
+16 20
+18 2
+1 2
+1 3
+1 4
+2 5
+2 6
+2 7
+5 8
+4 9
+5 10
+6 11
+10 12
+9 13
+5 14
+6 15
+6 16
+11 17
+4 18
+10 2
+1 2
+1 3
+3 4
+1 5
+3 6
+1 7
+4 8
+2 9
+7 10
+5 2
+1 2
+1 3
+3 4
+4 5
+3 5
+1 2
+1 3
+9 3
+1 2
+1 3
+2 4
+3 5
+1 6
+1 7
+7 8
+5 9
+1 5
+1 1
+14 1
+1 2
+1 3
+1 4
+4 5
+2 6
+1 7
+4 8
+3 9
+4 10
+3 11
+2 12
+7 13
+7 14
+18 3
+1 2
+2 3
+2 4
+1 5
+2 6
+6 7
+3 8
+1 9
+1 10
+1 11
+5 12
+12 13
+10 14
+6 15
+8 16
+13 17
+11 18
+13 1
+1 2
+2 3
+3 4
+4 5
+1 6
+3 7
+2 8
+8 9
+6 10
+5 11
+3 12
+9 13
+7 3
+1 2
+1 3
+2 4
+1 5
+3 6
+1 7
+15 1
+1 2
+1 3
+2 4
+3 5
+1 6
+3 7
+2 8
+6 9
+5 10
+4 11
+6 12
+2 13
+9 14
+10 15
+19 5
+1 2
+1 3
+1 4
+1 5
+2 6
+4 7
+1 8
+5 9
+9 10
+2 11
+2 12
+1 13
+11 14
+1 15
+5 16
+12 17
+16 18
+16 19
+5 1
+1 2
+1 3
+3 4
+2 5
+6 2
+1 2
+2 3
+2 4
+1 5
+5 6
+20 3
+1 2
+1 3
+1 4
+1 5
+3 6
+5 7
+7 8
+4 9
+3 10
+5 11
+7 12
+9 13
+3 14
+1 15
+12 16
+8 17
+9 18
+3 19
+15 20
+14 5
+1 2
+2 3
+3 4
+4 5
+1 6
+4 7
+7 8
+6 9
+3 10
+5 11
+8 12
+1 13
+13 14
+14 5
+1 2
+1 3
+3 4
+3 5
+5 6
+2 7
+5 8
+3 9
+3 10
+5 11
+5 12
+7 13
+10 14
+13 2
+1 2
+1 3
+2 4
+1 5
+2 6
+5 7
+3 8
+8 9
+4 10
+4 11
+6 12
+8 13
+16 2
+1 2
+2 3
+3 4
+3 5
+2 6
+1 7
+1 8
+6 9
+3 10
+9 11
+4 12
+5 13
+5 14
+12 15
+5 16
+18 3
+1 2
+2 3
+3 4
+1 5
+1 6
+5 7
+5 8
+7 9
+3 10
+3 11
+5 12
+7 13
+4 14
+10 15
+12 16
+2 17
+16 18
+13 3
+1 2
+1 3
+3 4
+1 5
+5 6
+1 7
+7 8
+5 9
+2 10
+5 11
+2 12
+3 13
+20 1
+1 2
+1 3
+2 4
+4 5
+4 6
+2 7
+3 8
+8 9
+3 10
+10 11
+8 12
+4 13
+2 14
+7 15
+10 16
+14 17
+4 18
+10 19
+9 20
+8 4
+1 2
+1 3
+3 4
+4 5
+5 6
+1 7
+1 8
+20 2
+1 2
+1 3
+1 4
+3 5
+2 6
+5 7
+2 8
+5 9
+5 10
+10 11
+5 12
+11 13
+8 14
+13 15
+14 16
+6 17
+12 18
+16 19
+14 20
+4 2
+1 2
+1 3
+2 4
+4 1
+1 2
+1 3
+3 4
+10 2
+1 2
+2 3
+3 4
+3 5
+4 6
+5 7
+6 8
+6 9
+9 10
+11 1
+1 2
+2 3
+3 4
+4 5
+3 6
+3 7
+5 8
+7 9
+6 10
+10 11
+16 1
+1 2
+2 3
+1 4
+1 5
+3 6
+6 7
+5 8
+4 9
+8 10
+10 11
+9 12
+7 13
+12 14
+12 15
+5 16
+6 4
+1 2
+2 3
+3 4
+1 5
+4 6
+19 4
+1 2
+2 3
+3 4
+1 5
+4 6
+6 7
+2 8
+5 9
+1 10
+7 11
+11 12
+3 13
+11 14
+13 15
+15 16
+13 17
+9 18
+6 19
+3 5
+1 2
+2 3
+9 4
+1 2
+1 3
+2 4
+3 5
+4 6
+2 7
+4 8
+1 9
+9 5
+1 2
+2 3
+1 4
+3 5
+1 6
+6 7
+4 8
+1 9
+6 5
+1 2
+1 3
+2 4
+3 5
+5 6
+10 2
+1 2
+1 3
+2 4
+3 5
+1 6
+1 7
+6 8
+6 9
+8 10
+17 5
+1 2
+1 3
+2 4
+3 5
+3 6
+5 7
+6 8
+4 9
+7 10
+9 11
+7 12
+3 13
+8 14
+13 15
+5 16
+11 17
+8 3
+1 2
+1 3
+3 4
+4 5
+3 6
+4 7
+7 8
+8 3
+1 2
+1 3
+3 4
+2 5
+5 6
+4 7
+5 8
+5 5
+1 2
+2 3
+3 4
+2 5
+5 2
+1 2
+2 3
+2 4
+4 5
+8 1
+1 2
+2 3
+1 4
+1 5
+2 6
+4 7
+3 8
+16 1
+1 2
+1 3
+1 4
+1 5
+2 6
+6 7
+1 8
+8 9
+9 10
+10 11
+8 12
+6 13
+11 14
+14 15
+5 16
+4 5
+1 2
+1 3
+1 4
+13 2
+1 2
+2 3
+2 4
+2 5
+2 6
+2 7
+7 8
+5 9
+8 10
+9 11
+10 12
+7 13
+7 4
+1 2
+2 3
+2 4
+1 5
+2 6
+1 7
+2 1
+1 2
+16 3
+1 2
+2 3
+1 4
+4 5
+2 6
+6 7
+2 8
+1 9
+1 10
+7 11
+3 12
+11 13
+9 14
+1 15
+10 16
+13 3
+1 2
+1 3
+2 4
+3 5
+1 6
+1 7
+5 8
+1 9
+9 10
+3 11
+1 12
+5 13
+4 4
+1 2
+1 3
+1 4
+16 2
+1 2
+1 3
+3 4
+4 5
+4 6
+3 7
+6 8
+5 9
+5 10
+4 11
+4 12
+1 13
+10 14
+13 15
+10 16
+6 3
+1 2
+1 3
+2 4
+4 5
+5 6
+7 5
+1 2
+1 3
+3 4
+3 5
+5 6
+6 7
+3 3
+1 2
+1 3
+5 1
+1 2
+2 3
+1 4
+1 5
+3 5
+1 2
+2 3
+4 3
+1 2
+1 3
+3 4
+2 4
+1 2
+13 4
+1 2
+2 3
+1 4
+3 5
+3 6
+1 7
+3 8
+1 9
+7 10
+1 11
+5 12
+6 13
+5 3
+1 2
+1 3
+3 4
+3 5
+4 4
+1 2
+1 3
+2 4
+11 5
+1 2
+2 3
+1 4
+2 5
+4 6
+5 7
+5 8
+1 9
+5 10
+3 11
+7 3
+1 2
+2 3
+1 4
+4 5
+3 6
+2 7
+19 1
+1 2
+2 3
+3 4
+3 5
+4 6
+3 7
+3 8
+6 9
+5 10
+6 11
+9 12
+9 13
+1 14
+9 15
+2 16
+5 17
+11 18
+11 19
+11 5
+1 2
+2 3
+2 4
+4 5
+4 6
+3 7
+6 8
+7 9
+2 10
+10 11
+2 2
+1 2
+17 4
+1 2
+1 3
+3 4
+3 5
+3 6
+6 7
+3 8
+7 9
+5 10
+8 11
+10 12
+6 13
+9 14
+9 15
+3 16
+1 17
+5 3
+1 2
+1 3
+1 4
+2 5
+14 5
+1 2
+1 3
+3 4
+3 5
+1 6
+2 7
+3 8
+2 9
+9 10
+2 11
+2 12
+4 13
+11 14
+6 5
+1 2
+1 3
+3 4
+3 5
+4 6
+10 2
+1 2
+2 3
+1 4
+4 5
+4 6
+6 7
+3 8
+4 9
+8 10
+3 3
+1 2
+1 3
+1 5
+13 5
+1 2
+1 3
+2 4
+4 5
+1 6
+3 7
+7 8
+8 9
+1 10
+4 11
+5 12
+12 13
+1 5
+4 3
+1 2
+2 3
+3 4
+14 5
+1 2
+2 3
+2 4
+3 5
+2 6
+5 7
+4 8
+3 9
+9 10
+3 11
+5 12
+11 13
+1 14
+14 5
+1 2
+2 3
+2 4
+4 5
+3 6
+6 7
+7 8
+1 9
+2 10
+2 11
+1 12
+7 13
+5 14
+`
+
+var testcases = mustParseTestcases(testcasesRaw)
+
+func mustParseTestcases(raw string) []testcase {
+	scanner := bufio.NewScanner(strings.NewReader(strings.TrimSpace(raw)))
+	scanner.Split(bufio.ScanWords)
+
+	nextInt := func() int {
+		if !scanner.Scan() {
+			panic("unexpected EOF while reading testcases")
+		}
+		v, err := strconv.Atoi(scanner.Text())
+		if err != nil {
+			panic(fmt.Sprintf("invalid integer %q: %v", scanner.Text(), err))
+		}
+		return v
+	}
+
+	t := nextInt()
+	cases := make([]testcase, 0, t)
+	for i := 0; i < t; i++ {
+		n := nextInt()
+		k := nextInt()
+		edges := make([]edge, n-1)
+		for j := 0; j < n-1; j++ {
+			u := nextInt()
+			v := nextInt()
+			edges[j] = edge{u: u, v: v}
+		}
+		cases = append(cases, testcase{n: n, k: k, edges: edges})
+	}
+
+	if err := scanner.Err(); err != nil {
+		panic(fmt.Sprintf("scanner error: %v", err))
+	}
+	if len(cases) == 0 {
+		panic("no testcases parsed")
+	}
+	return cases
+}
+
+// solve replicates the logic from 1067B.go for a single testcase.
+func solve(tc testcase) string {
+	n, k := tc.n, tc.k
+	graph := make([][]int, n+1)
+	deg := make([]int, n+1)
+	for _, e := range tc.edges {
+		u, v := e.u, e.v
+		graph[u] = append(graph[u], v)
+		graph[v] = append(graph[v], u)
+		deg[u]++
+		deg[v]++
+	}
+
+	vis := make([]bool, n+1)
+	d := make([]int, n+1)
+	queue := make([]int, 0, n)
+	for i := 1; i <= n; i++ {
+		if deg[i] == 1 {
+			queue = append(queue, i)
+			vis[i] = true
+		}
+	}
+
+	head := 0
+	ok := true
+	for head < len(queue) && ok {
+		x := queue[head]
+		head++
+		for _, v := range graph[x] {
+			if vis[v] {
+				if d[v] == d[x]-1 || d[v] == d[x]+1 {
+					continue
+				}
+				ok = false
+				break
+			}
+			d[v] = d[x] + 1
+			queue = append(queue, v)
+			vis[v] = true
+		}
+	}
+
+	if !ok || len(queue) == 0 {
+		return "NO"
+	}
+
+	center := queue[len(queue)-1]
+	if d[center] != k || deg[center] < 3 {
+		return "NO"
+	}
+
+	for i := 1; i <= n; i++ {
+		if i == center {
+			continue
+		}
+		if deg[i] != 1 && deg[i] < 4 {
+			return "NO"
+		}
+	}
+
+	return "YES"
+}
+
+func runCandidate(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-	err := cmd.Run()
-	if err != nil {
-		return "", fmt.Errorf("%v\n%s", err, errBuf.String())
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	return strings.TrimSpace(out.String()), nil
+	return out.String(), nil
+}
+
+func parseCandidateOutput(out string) (string, error) {
+	scanner := bufio.NewScanner(strings.NewReader(out))
+	scanner.Split(bufio.ScanWords)
+	if !scanner.Scan() {
+		return "", fmt.Errorf("no output")
+	}
+	token := scanner.Text()
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("scanner error: %v", err)
+	}
+	return strings.ToUpper(token), nil
+}
+
+func checkCase(bin string, idx int, tc testcase) error {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.k))
+	for _, e := range tc.edges {
+		sb.WriteString(fmt.Sprintf("%d %d\n", e.u, e.v))
+	}
+
+	expected := solve(tc)
+	out, err := runCandidate(bin, sb.String())
+	if err != nil {
+		return err
+	}
+	got, err := parseCandidateOutput(out)
+	if err != nil {
+		return err
+	}
+	if got != expected {
+		return fmt.Errorf("case %d: expected %s got %s", idx+1, expected, got)
+	}
+	return nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
-		return
+		os.Exit(1)
 	}
 	bin := os.Args[1]
-	ref := "./refB.bin"
-	if err := exec.Command("go", "build", "-o", ref, "1067B.go").Run(); err != nil {
-		fmt.Println("failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
-	f, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Println("could not open testcasesB.txt:", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	if !scanner.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(strings.TrimSpace(scanner.Text()))
-	for caseNum := 0; caseNum < t; caseNum++ {
-		if !scanner.Scan() {
-			fmt.Printf("test %d: missing header\n", caseNum+1)
-			os.Exit(1)
-		}
-		header := strings.TrimSpace(scanner.Text())
-		parts := strings.Fields(header)
-		if len(parts) != 2 {
-			fmt.Printf("test %d: invalid header\n", caseNum+1)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(parts[0])
-		k, _ := strconv.Atoi(parts[1])
-		var input strings.Builder
-		input.WriteString(fmt.Sprintf("%d %d\n", n, k))
-		for i := 0; i < n-1; i++ {
-			if !scanner.Scan() {
-				fmt.Printf("test %d: missing edge\n", caseNum+1)
-				os.Exit(1)
-			}
-			line := strings.TrimSpace(scanner.Text())
-			input.WriteString(line + "\n")
-		}
-		want, err := run(ref, input.String())
-		if err != nil {
-			fmt.Printf("reference runtime error on test %d: %v\n", caseNum+1, err)
-			os.Exit(1)
-		}
-		got, err := run(bin, input.String())
-		if err != nil {
-			fmt.Printf("candidate runtime error on test %d: %v\n", caseNum+1, err)
-			os.Exit(1)
-		}
-		if !strings.EqualFold(want, got) {
-			fmt.Printf("test %d failed\nexpected: %s\ngot: %s\n", caseNum+1, want, got)
+	for i, tc := range testcases {
+		if err := checkCase(bin, i, tc); err != nil {
+			fmt.Println(err)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Println("scanner error:", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

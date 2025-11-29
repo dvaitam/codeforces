@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,6 +9,132 @@ import (
 	"strings"
 )
 
+const testcasesRaw = `20 2 2 1 2 2 2 1 2 2 2 2 1 1 2 1 1 1 1 1 2
+44 2 1 2 1 2 1 2 1 1 1 2 1 2 2 1 1 2 2 2 2 1 2 2 1 2 1 1 2 1 2 1 2 2 2 1 2 1 2 1 1 1 1 1 1
+2 1 2
+48 1 2 2 2 2 2 1 1 2 2 2 1 2 1 1 1 1 2 2 1 1 1 1 2 1 2 2 2 2 2 2 1 2 2 1 2 2 2 1 2 2 2 2 2 2 1 1 1
+36 1 2 2 2 2 2 1 2 2 2 2 1 2 2 2 2 2 2 1 2 2 1 2 2 2 2 1 2 2 1 2 2 2 2 1 1
+40 1 1 2 1 1 1 2 2 1 1 2 1 2 2 2 2 1 2 2 2 1 2 1 1 2 2 2 2 1 2 1 1 1 2 1 1 1 2 1 2
+21 1 2 2 2 1 2 1 1 2 2 2 1 2 2 1 2 1 1 2 2 2
+29 2 2 1 1 1 2 2 2 1 1 1 1 2 1 2 2 2 2 1 1 2 2 1 2 1 2 1 1 1
+49 1 2 2 1 2 2 1 1 1 1 1 1 2 2 1 1 2 2 1 2 1 1 2 2 1 1 1 1 2 1 1 2 2 2 1 2 2 2 1 1 1 2 2 1 1 1 2 2 2
+20 1 1 1 1 2 2 2 2 1 2 1 1 1 1 1 2 2 1 2 2
+11 2 2 1 2 1 1 2 1 1 1 1
+32 2 2 1 2 2 2 2 2 1 1 2 2 1 1 2 2 2 2 2 1 2 2 1 1 1 1 2 2 2 1 1 2
+32 2 1 1 1 1 2 1 1 1 2 1 1 1 2 2 2 1 1 2 1 2 2 2 2 1 1 1 2 1 1 2 2
+6 2 2 1 1 1 2
+46 2 2 1 1 2 1 2 2 2 1 2 2 1 1 1 1 1 1 2 1 2 2 2 1 2 2 1 2 2 1 2 1 1 2 1 2 1 1 1 1 2 1 2 2 1 2
+29 1 2 1 1 1 1 1 2 2 1 1 1 1 2 1 2 2 1 2 1 1 1 1 1 1 1 1 1 2
+32 2 1 2 2 1 1 1 1 2 2 1 1 1 2 1 1 2 1 1 1 1 1 1 2 1 2 2 1 1 1 1 1
+46 1 1 2 1 1 2 2 1 1 2 2 2 2 1 2 1 1 1 2 2 2 2 1 2 1 1 1 1 2 2 2 1 1 2 1 2 2 1 2 1 2 1 2 2 1 2
+50 2 1 2 1 2 1 2 1 1 2 1 2 2 2 2 1 2 2 1 1 1 1 2 2 2 2 2 2 1 2 1 2 1 2 1 2 2 1 1 2 2 2 2 1 2 1 1 2 2 2
+6 2 1 2 1 1 2
+29 1 2 2 1 2 2 1 2 2 1 1 1 1 2 1 1 1 2 1 2 1 2 2 1 2 1 1 2 1
+13 1 2 1 1 1 1 2 1 1 1 2 2 2
+47 2 2 2 1 1 2 1 1 2 1 1 2 1 1 2 2 2 2 2 1 1 1 1 1 2 1 1 1 2 2 2 1 1 1 2 2 2 1 2 2 1 1 1 2 1 1 1
+43 2 2 1 2 1 2 1 2 2 1 2 1 2 1 1 1 2 1 2 2 2 1 1 2 2 1 1 2 2 1 2 2 2 2 1 1 2 1 2 1 1 1 1
+36 2 2 1 1 1 1 1 2 2 1 1 1 1 2 2 2 1 2 1 1 2 1 2 1 2 2 2 2 1 2 2 2 2 1 2 2
+14 2 1 2 2 1 1 2 2 2 1 1 2 2 2
+40 2 1 1 2 1 1 2 1 2 2 1 1 2 1 2 2 1 2 2 1 1 1 1 1 2 1 1 2 2 1 1 1 1 2 1 1 1 2 1 1
+10 1 1 1 2 2 2 2 1 1 2
+33 2 2 2 1 2 1 2 1 1 1 1 2 2 2 2 1 2 2 1 2 2 1 2 1 1 1 2 2 2 1 1 1 2
+14 1 2 1 2 2 1 1 1 1 2 1 1 1 2
+46 1 1 1 1 2 1 2 2 1 1 2 2 2 1 1 1 1 1 2 2 2 2 2 1 2 1 1 2 1 1 1 1 2 2 2 2 1 2 2 2 1 2 2 2 1 2
+36 1 2 2 2 2 1 2 2 1 2 2 2 1 1 2 1 1 1 1 1 2 1 2 2 2 1 2 2 1 2 2 1 2 1 1 2
+19 2 1 2 2 1 1 2 1 2 1 2 2 1 1 1 1 1 2 1
+21 1 2 1 1 2 2 2 1 2 2 2 1 2 1 1 2 1 2 1 1 2
+22 1 1 1 2 1 2 1 1 2 1 1 1 2 1 1 2 1 2 2 1 1 1
+37 2 1 2 2 2 1 1 1 2 2 1 1 2 1 2 2 1 2 1 1 1 2 1 2 2 1 2 2 1 1 1 1 2 1 2 1 2
+14 1 2 1 1 2 2 1 2 2 2 2 1 2 2
+10 2 2 1 2 2 1 1 1 1 2
+41 2 2 2 2 1 2 2 2 2 2 2 2 1 1 1 2 2 1 1 2 1 2 1 1 1 2 1 2 1 1 1 2 2 2 2 1 2 1 2 1 2
+17 1 2 1 1 2 2 1 2 1 2 1 2 2 1 1 2 1
+12 1 2 1 2 2 2 1 2 2 1 2 1
+11 2 1 1 1 2 2 1 2 1 1 2
+32 1 2 1 1 2 2 2 2 2 2 1 2 1 2 1 1 1 1 2 2 2 2 1 2 1 2 2 2 1 2 1 2
+45 1 1 2 2 2 2 2 2 1 1 1 1 1 1 1 2 1 2 1 1 2 1 2 1 2 2 1 1 2 2 2 2 2 2 1 1 2 2 2 1 1 1 2 2 1
+23 1 2 2 1 2 1 1 1 2 1 2 1 2 2 1 2 1 1 1 1 2 2 2
+33 1 1 1 1 2 2 1 1 2 2 1 1 2 2 2 1 1 2 2 2 2 2 1 2 1 2 1 2 1 1 1 2 1
+2 1 2
+36 2 1 1 2 1 2 1 2 2 2 2 2 1 1 1 1 1 1 1 2 1 2 2 1 2 2 1 1 2 2 2 2 2 2 1 1
+22 2 1 1 1 2 2 1 1 1 1 2 1 1 1 1 2 1 1 1 1 2 1
+3 2 2 1
+44 1 2 1 1 1 1 1 2 2 1 2 2 1 1 2 1 2 2 2 1 1 1 1 2 2 1 2 1 2 1 2 1 1 1 1 2 1 1 1 2 2 2 1 1
+3 1 2 2
+49 2 2 2 2 1 1 2 2 2 1 1 2 2 1 2 1 1 2 2 1 1 2 1 1 1 1 2 1 1 2 2 1 1 1 1 2 1 2 1 2 1 2 2 1 2 2 2 1 2
+12 2 2 1 1 2 2 2 2 2 1 1 2
+22 1 1 2 2 1 2 1 1 1 2 1 1 2 1 1 2 1 2 1 2 1 2
+27 1 2 1 1 1 2 1 2 2 2 2 1 2 2 2 1 2 2 2 1 2 1 1 1 2 1 2
+42 2 1 2 1 2 1 1 2 2 1 2 2 1 2 2 2 1 2 1 1 2 1 2 1 1 2 1 1 1 1 1 1 2 2 2 2 1 2 2 2 2 2
+29 2 1 2 2 2 1 2 2 2 2 2 1 2 2 2 1 2 1 1 1 1 2 1 2 2 2 1 1 2
+26 1 1 1 1 2 2 1 1 1 1 2 2 1 2 2 2 2 1 2 2 2 2 1 1 2 2
+42 1 1 2 1 1 1 1 1 1 1 2 2 2 1 1 1 2 1 2 1 2 1 2 1 2 1 1 1 2 2 2 2 1 2 2 2 1 1 1 2 1 1
+39 2 2 1 1 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 1 2 2 1 1 1 2 1 2 1 1 1 2 1 1 1 1
+23 2 2 2 2 2 1 1 2 1 1 1 2 1 2 2 2 1 2 2 1 1 1 2
+6 2 1 1 2 1 2
+49 1 1 2 1 1 2 2 2 1 1 2 2 2 2 2 1 1 1 1 2 2 1 2 2 1 1 2 1 1 1 1 1 2 1 2 1 1 2 1 2 1 2 1 2 1 2 2 1 1
+40 2 1 1 2 1 2 2 2 2 2 2 1 2 1 1 2 2 2 1 1 1 1 1 2 2 1 1 2 2 2 1 2 1 1 2 1 2 2 1 2
+47 2 1 2 2 1 2 2 2 1 2 2 1 1 1 2 2 2 2 2 2 2 2 2 1 1 1 2 2 2 2 1 2 1 1 1 1 2 2 1 2 2 2 1 2 2 1 2
+5 2 1 1 1 2
+15 2 2 2 2 2 1 1 2 2 1 2 1 2 1 1
+20 1 1 2 1 2 1 1 2 2 2 2 2 2 1 2 2 2 1 1 2
+32 2 1 2 1 2 2 1 1 2 2 2 1 2 2 2 1 2 2 1 1 2 1 2 2 2 1 1 2 2 1 1 2
+40 2 2 2 2 1 2 1 2 1 1 1 1 1 2 1 2 2 1 1 2 2 2 2 1 1 1 2 1 2 1 2 2 1 2 2 2 2 2 1 2
+23 2 2 2 1 2 1 1 2 2 1 2 2 2 2 1 1 1 1 1 1 1 1 2
+16 2 2 2 2 1 1 2 2 1 1 2 1 2 1 2 2
+40 2 1 2 2 2 2 2 1 1 2 1 2 2 1 2 2 2 1 2 2 1 1 1 2 2 1 2 2 1 2 2 2 2 1 1 2 2 2 1 1
+25 2 2 2 2 2 1 1 1 1 2 1 1 2 1 1 2 2 1 2 2 1 1 2 2 2
+24 1 2 2 2 1 1 2 2 2 2 2 1 2 1 1 1 1 2 2 2 2 2 1 1
+13 1 1 2 2 2 1 2 1 1 2 1 2 2
+26 2 2 1 1 2 1 2 2 1 1 1 1 2 1 2 1 1 1 1 1 2 1 2 1 1 1
+10 1 2 1 2 2 1 2 2 2 2
+50 2 1 1 2 2 1 1 2 1 2 2 1 2 2 2 1 2 1 2 2 2 1 1 2 1 1 1 1 2 1 1 1 1 1 2 2 2 1 2 1 2 2 2 1 2 2 2 2 2 1
+19 1 2 1 2 1 2 1 2 1 1 1 2 1 1 2 1 1 2 2
+27 2 1 1 2 1 2 2 1 1 1 2 2 1 1 2 2 2 2 2 2 2 2 2 1 2 2 1
+40 2 1 1 1 1 1 2 1 1 1 2 1 2 2 1 1 1 1 2 1 2 1 1 1 1 2 1 1 2 1 1 2 2 1 2 2 2 2 2 2
+13 1 2 1 2 1 2 1 1 2 2 1 2 2
+47 2 1 1 1 2 1 1 2 1 2 2 2 2 1 2 2 1 2 2 2 1 1 2 2 2 2 1 1 2 2 1 2 1 2 1 2 2 2 2 2 1 2 1 2 2 2 2
+33 2 1 2 1 1 2 1 2 1 1 1 1 1 1 2 2 2 1 1 1 1 1 1 2 2 2 1 1 2 2 2 1 2
+9 2 2 2 2 2 1 2 1 2
+23 1 1 2 1 2 1 1 2 1 1 1 1 1 1 2 1 2 1 1 1 2 1 2
+37 1 2 1 1 1 1 2 2 1 1 2 1 2 2 2 1 1 1 1 1 1 1 2 2 2 2 1 2 2 1 1 1 2 2 1 1 1
+9 2 1 1 2 1 2 2 1 1
+42 1 1 1 2 2 1 1 1 2 1 2 1 1 2 1 2 2 1 2 1 2 2 1 2 2 2 2 1 2 2 2 1 1 1 1 2 1 1 1 2 1 1
+28 2 1 1 2 1 1 1 1 1 1 2 1 2 2 2 1 1 2 1 1 1 1 1 2 1 1 1 2
+20 2 2 2 2 1 2 2 2 1 1 2 1 2 2 1 1 2 1 2 2
+23 2 2 1 1 1 1 1 1 1 1 1 1 1 1 1 2 2 2 2 1 2 1 2
+17 2 1 1 2 2 2 1 1 1 1 2 2 1 1 2 2 1
+31 1 1 2 2 2 2 2 2 1 1 2 2 2 1 1 2 1 2 2 2 2 1 1 1 2 2 2 2 2 2 1
+18 2 1 2 2 2 1 1 1 1 1 1 1 2 1 1 2 2 2
+6 1 2 2 1 1 2
+10 1 1 2 2 1 2 1 2 2 2
+36 1 2 1 2 2 2 2 1 1 1 1 1 1 1 2 2 2 2 2 2 1 1 2 1 1 2 1 2 1 2 1 2 2 2 1 2
+19 1 2 1 2 1 2 1 2 1 1 1 2 1 1 2 1 1 2 2
+27 2 1 1 2 1 2 2 1 1 1 2 2 1 1 2 2 2 2 2 2 2 2 2 1 2 2 1
+40 2 1 1 1 1 1 2 1 1 1 2 1 2 2 1 1 1 1 2 1 2 1 1 1 1 2 1 1 2 1 1 2 2 1 2 2 2 2 2 2
+13 1 2 1 2 1 2 1 1 2 2 1 2 2
+47 2 1 1 1 2 1 1 2 1 2 2 2 2 1 2 2 1 2 2 2 1 1 2 2 2 2 1 1 2 2 1 2 1 2 1 2 2 2 2 2 1 2 1 2 2 2 2
+33 2 1 2 1 1 2 1 2 1 1 1 1 1 1 2 2 2 1 1 1 1 1 1 2 2 2 1 1 2 2 2 1 2
+9 2 2 2 2 2 1 2 1 2
+23 1 1 2 1 2 1 1 2 1 1 1 1 1 1 2 1 2 1 1 1 2 1 2
+37 1 2 1 1 1 1 2 2 1 1 2 1 2 2 2 1 1 1 1 1 1 1 2 2 2 2 1 2 2 1 1 1 2 2 1 1 1
+9 2 1 1 2 1 2 2 1 1
+42 1 1 1 2 2 1 1 1 2 1 2 1 1 2 1 2 2 1 2 1 2 2 1 2 2 2 2 1 2 2 2 1 1 1 1 2 1 1 1 2 1 1
+28 2 1 1 2 1 1 1 1 1 1 2 1 2 2 2 1 1 2 1 1 1 1 1 2 1 1 1 2
+20 2 2 2 2 1 2 2 2 1 1 2 1 2 2 1 1 2 1 2 2
+23 2 2 1 1 1 1 1 1 1 1 1 1 1 1 1 2 2 2 2 1 2 1 2
+17 2 1 1 2 2 2 1 1 1 1 2 2 1 1 2 2 1
+31 1 1 2 2 2 2 2 2 1 1 2 2 2 1 1 2 1 2 2 2 2 1 1 1 2 2 2 2 2 2 1
+18 2 1 2 2 2 1 1 1 1 1 1 1 2 1 1 2 2 2
+6 1 2 2 1 1 2
+10 1 1 2 2 1 2 1 2 2 2
+36 1 2 1 2 2 2 2 1 1 1 1 1 1 1 2 2 2 2 2 2 1 1 2 1 1 2 1 2 1 2 1 2 2 2 1 2`
+
+type testCase struct {
+	n   int
+	arr []int
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a
@@ -17,23 +142,89 @@ func min(a, b int) int {
 	return b
 }
 
-func expected(a []int) int {
-	pre, cur, ans := 0, 1, 0
+// solve embeds the logic from 1138A.go.
+func solve(a []int) int {
+	pre, now, ans := 0, 1, 0
+	tmp := a[0]
 	for i := 1; i < len(a); i++ {
-		if a[i] == a[i-1] {
-			cur++
+		if a[i] == tmp {
+			now++
 		} else {
-			if v := 2 * min(pre, cur); v > ans {
+			if v := min(pre, now) * 2; v > ans {
 				ans = v
 			}
-			pre = cur
-			cur = 1
+			pre = now
+			now = 1
+			tmp = a[i]
 		}
 	}
-	if v := 2 * min(pre, cur); v > ans {
+	if v := min(pre, now) * 2; v > ans {
 		ans = v
 	}
 	return ans
+}
+
+func runCase(bin string, tc testCase) error {
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(tc.n))
+	sb.WriteByte('\n')
+	for i, v := range tc.arr {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(v))
+	}
+	sb.WriteByte('\n')
+	input := sb.String()
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	got := strings.TrimSpace(out.String())
+	want := strconv.Itoa(solve(tc.arr))
+	if got != want {
+		return fmt.Errorf("expected %s got %s", want, got)
+	}
+	return nil
+}
+
+func parseTestcases(raw string) ([]testCase, error) {
+	lines := strings.Split(raw, "\n")
+	tests := make([]testCase, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, err
+		}
+		if len(fields) != n+1 {
+			return nil, fmt.Errorf("expected %d numbers got %d", n+1, len(fields))
+		}
+		arr := make([]int, n)
+		for i := 0; i < n; i++ {
+			v, err := strconv.Atoi(fields[i+1])
+			if err != nil {
+				return nil, err
+			}
+			arr[i] = v
+		}
+		tests = append(tests, testCase{n: n, arr: arr})
+	}
+	return tests, nil
 }
 
 func main() {
@@ -42,54 +233,16 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesA.txt")
+	tests, err := parseTestcases(testcasesRaw)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		fields := strings.Fields(line)
-		n, _ := strconv.Atoi(fields[0])
-		if len(fields) != n+1 {
-			fmt.Printf("test %d: expected %d numbers got %d\n", idx, n+1, len(fields))
-			os.Exit(1)
-		}
-		arr := make([]int, n)
-		for i := 0; i < n; i++ {
-			v, _ := strconv.Atoi(fields[i+1])
-			arr[i] = v
-		}
-		expect := strconv.Itoa(expected(arr))
-		input := fmt.Sprintf("%d\n%s\n", n, strings.Join(fields[1:], " "))
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		err := cmd.Run()
-		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
-			os.Exit(1)
-		}
-		got := strings.TrimSpace(out.String())
-		if got != expect {
-			fmt.Printf("test %d failed: expected %s got %s\n", idx, expect, got)
+	for i, tc := range tests {
+		if err := runCase(bin, tc); err != nil {
+			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

@@ -1,34 +1,159 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 )
 
-func runCandidate(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
-	}
-	return strings.TrimSpace(out.String()), nil
+const solution1191ASource = `package main
+
+import "fmt"
+
+func main() {
+    var x int
+    if _, err := fmt.Scan(&x); err != nil {
+        return
+    }
+    bestRank := -1
+    bestA := 0
+    var bestCat byte
+    for a := 0; a <= 2; a++ {
+        r := (x + a) % 4
+        rank := 0
+        var cat byte
+        switch r {
+        case 1:
+            rank = 4
+            cat = 'A'
+        case 3:
+            rank = 3
+            cat = 'B'
+        case 2:
+            rank = 2
+            cat = 'C'
+        case 0:
+            rank = 1
+            cat = 'D'
+        }
+        if rank > bestRank {
+            bestRank = rank
+            bestA = a
+            bestCat = cat
+        }
+    }
+    fmt.Printf("%d %c\n", bestA, bestCat)
+}
+`
+
+// Keep the embedded reference solution reachable so it is preserved in the binary.
+var _ = solution1191ASource
+
+var testcases = []int{
+	30,
+	31,
+	32,
+	33,
+	34,
+	35,
+	36,
+	37,
+	38,
+	39,
+	40,
+	41,
+	42,
+	43,
+	44,
+	45,
+	46,
+	47,
+	48,
+	49,
+	50,
+	51,
+	52,
+	53,
+	54,
+	55,
+	56,
+	57,
+	58,
+	59,
+	60,
+	61,
+	62,
+	63,
+	64,
+	65,
+	66,
+	67,
+	68,
+	69,
+	70,
+	71,
+	72,
+	73,
+	74,
+	75,
+	76,
+	77,
+	78,
+	79,
+	80,
+	81,
+	82,
+	83,
+	84,
+	85,
+	86,
+	87,
+	88,
+	89,
+	90,
+	91,
+	92,
+	93,
+	94,
+	95,
+	96,
+	97,
+	98,
+	99,
+	100,
+	30,
+	31,
+	32,
+	33,
+	34,
+	35,
+	36,
+	37,
+	38,
+	39,
+	40,
+	41,
+	42,
+	43,
+	44,
+	45,
+	46,
+	47,
+	48,
+	49,
+	50,
+	51,
+	52,
+	53,
+	54,
+	55,
+	56,
+	57,
+	58,
 }
 
-func solveCase(x int) (int, byte) {
+func solveCase(x int) string {
 	bestRank := -1
 	bestA := 0
 	var bestCat byte
@@ -56,55 +181,30 @@ func solveCase(x int) (int, byte) {
 			bestCat = cat
 		}
 	}
-	return bestA, bestCat
+	return fmt.Sprintf("%d %c", bestA, bestCat)
 }
 
 func main() {
-	args := os.Args[1:]
-	if len(args) == 2 && args[0] == "--" {
-		args = args[1:]
-	}
-	if len(args) != 1 {
+	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierA.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := args[0]
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		x, err := strconv.Atoi(line)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "invalid number on line %d: %v\n", idx, err)
-			os.Exit(1)
-		}
-		expectA, expectCat := solveCase(x)
+	bin := os.Args[1]
+	for idx, x := range testcases {
 		input := fmt.Sprintf("%d\n", x)
-		got, err := runCandidate(bin, input)
+		expect := solveCase(x)
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(input)
+		out, err := cmd.CombinedOutput()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", idx, err, input)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\nstderr: %s\n", idx+1, err, string(out))
 			os.Exit(1)
 		}
-		expect := fmt.Sprintf("%d %c", expectA, expectCat)
+		got := strings.TrimSpace(string(out))
 		if got != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %q got %q\ninput:\n%s", idx, expect, got, input)
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %q got %q\ninput:\n%s", idx+1, expect, got, input)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

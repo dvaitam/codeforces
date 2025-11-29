@@ -1,94 +1,270 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+const testcasesData = `
+14 5 23 43 2 39 31 41 32 50 4 16 40 19 12 33
+17 2 48 21 6 17 45 34 20 44 9 35 41 4 21 6 10 33 45
+6 3 43 50 2 40 35 1
+3 2 49 35 24
+17 2 44 34 42 44 35 5 30 30 37 44 2 18 23 29 6 23 5
+7 3 49 37 1 37 26 13 37
+9 3 32 8 23 34 44 32 39 7 47
+19 3 33 20 7 20 6 40 8 37 21 35 29 37 48 38 19 29 19 49 33
+16 5 38 10 20 38 18 5 43 19 3 37 26 46 9 32 38 42
+12 4 8 37 19 28 15 16 25 35 38 5 26 44
+6 4 3 44 17 50 16 22
+4 4 25 7 9 16
+17 4 30 27 50 6 33 38 30 3 28 13 26 37 37 44 50 17 40
+6 3 25 4 2 42 4 29
+2 4 33 29
+12 3 45 43 14 47 29 40 14 43 13 25 22 50
+16 4 18 11 20 43 6 50 40 39 36 5 34 40 31 37 38 35
+9 2 32 8 29 33 35 11 8 45 42
+12 5 38 15 34 7 29 15 8 49 6 31 17 37
+18 4 2 22 39 44 25 16 28 10 33 37 29 5 31 17 27 48 35 37
+19 2 46 8 25 8 18 25 3 6 35 23 5 26 44 31 31 48 43 42 42
+7 5 3 17 26 44 26 25 29
+2 3 35 9
+4 5 26 14 7 50
+16 3 26 41 26 28 2 18 2 50 3 32 48 27 9 50 39 12
+8 5 19 6 36 3 27 46 10 30
+7 4 3 42 20 38 19 3 40
+18 4 19 3 32 6 11 48 41 50 44 49 39 25 45 41 32 17 29 2
+15 2 19 50 4 23 13 22 12 16 9 6 3 7 10 20 21
+17 5 2 25 37 35 25 16 48 34 10 36 50 7 27 36 25 15 36
+2 4 27 25
+19 3 9 28 12 8 37 8 47 20 12 23 31 32 50 34 11 38 18 41 45
+9 4 5 46 33 21 16 42 40 36 15
+10 3 41 9 4 30 23 9 40 16 20 48
+3 5 29 32 48
+3 3 36 25 43
+17 4 20 18 11 23 43 34 48 47 24 6 49 28 16 45 24 7 23
+9 2 24 44 35 43 43 44 20 3 37
+13 2 25 43 7 1 1 37 12 30 7 14 24 5 33
+6 5 12 29 39 7 33 18
+17 3 24 43 10 8 42 9 5 41 26 11 12 15 19 7 4 39 14
+2 3 1 41
+16 3 40 25 20 10 22 24 40 25 7 40 40 13 22 1 28 29
+8 3 2 33 17 30 15 6 5 14
+6 3 16 46 35 24 34 34
+2 3 29 3
+5 3 27 9 44 32 33
+9 3 4 24 11 36 43 11 28 35 16
+10 4 49 49 41 39 35 13 19 38 16 7
+19 2 22 20 36 12 48 9 27 21 35 19 39 2 50 42 35 16 2 21 31
+3 3 26 7 29
+14 5 35 36 13 49 50 29 7 44 41 13 49 49 42 12
+10 4 1 5 43 43 25 2 13 33 22 18
+20 3 50 31 36 10 29 3 25 33 26 26 4 41 4 19 23 15 47 13 30 36
+17 5 3 50 36 13 8 21 46 20 28 47 16 45 48 11 18 38 18
+19 4 7 43 45 24 28 33 28 29 31 15 7 12 34 39 29 40 30 4 7
+4 5 26 49 18 13
+17 4 39 25 35 33 8 38 1 16 32 25 17 40 18 6 11 26 7
+3 3 23 12 12
+11 2 15 42 50 1 27 19 11 10 38 9 39
+12 3 8 22 43 32 13 20 40 45 3 46 39 13
+7 4 43 33 13 13 42 28 8
+12 4 12 1 49 41 45 46 33 20 25 35 25 26
+4 4 22 9 17 18
+16 3 30 13 25 31 6 50 29 46 8 36 12 17 20 27 19 48
+11 3 23 42 45 9 43 39 49 14 35 42 7
+15 3 17 49 35 35 43 41 16 9 43 37 43 5 22 4 48
+16 4 41 46 4 43 4 39 16 3 48 23 6 11 43 12 13 13
+3 2 44 27 32
+3 3 34 16 43
+5 4 28 12 3 33 40
+14 4 23 2 30 22 25 29 32 31 23 47 42 11 28 4
+18 4 17 37 4 2 25 10 31 13 25 35 40 47 30 12 15 33 4 40
+7 5 30 48 38 42 47 1 13
+3 5 5 46 34
+14 2 10 15 45 26 22 14 7 42 25 21 3 39 5 13
+13 4 45 3 42 28 38 20 28 19 42 33 11 48 11
+18 3 43 45 1 37 1 28 14 15 29 7 1 28 11 36 19 34 48 30
+7 5 13 46 19 21 8 42 8
+19 2 31 4 36 25 23 36 4 7 30 18 4 38 21 47 29 9 20 30 4
+6 4 35 8 38 8 42 6
+15 5 33 6 28 23 36 38 11 45 37 32 32 46 42 46 39
+18 5 19 49 30 30 16 14 38 35 13 9 4 18 48 1 49 29 29 43
+7 3 19 35 20 10 6 12 34
+4 3 11 27 11 14
+15 4 22 50 43 10 36 15 27 22 48 49 1 50 49 48 47
+9 3 41 19 4 8 15 40 44 2 28
+20 2 34 3 12 44 39 2 35 29 47 48 28 41 10 24 26 15 49 44 37 32
+19 4 8 33 48 19 2 19 41 34 49 4 19 4 6 24 23 8 43 33 29
+10 2 4 36 18 22 23 16 50 18 32 17
+4 3 27 25 31 11
+15 5 28 15 30 50 33 41 6 48 33 26 25 13 13 40 9
+3 3 30 23 23
+5 4 16 21 20 2 44
+10 5 30 17 42 22 46 46 6 46 48 1
+10 5 45 10 15 39 24 40 25 49 1 16
+19 3 15 43 8 13 7 13 47 41 15 3 27 47 22 10 47 44 1 30 41
+8 2 40 3 46 49 7 3 13 23
+4 5 37 39 14 44
+12 5 19 11 39 19 20 18 38 24 15 15 8 48
+`
+
+type testCase struct {
+	n int
+	k int
+	a []int
+}
+
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesData), "\n")
+	var cases []testCase
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return nil, fmt.Errorf("invalid line: %q", line)
+		}
+		n, _ := strconv.Atoi(fields[0])
+		k, _ := strconv.Atoi(fields[1])
+		if len(fields)-2 != n {
+			return nil, fmt.Errorf("length mismatch in line %q", line)
+		}
+		arr := make([]int, n)
+		for i := 0; i < n; i++ {
+			v, _ := strconv.Atoi(fields[2+i])
+			arr[i] = v
+		}
+		cases = append(cases, testCase{n: n, k: k, a: arr})
 	}
-	oracle := filepath.Join(dir, "oracleD")
-	cmd := exec.Command("go", "build", "-o", oracle, "1225D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	return cases, nil
+}
+
+type pair struct{ p, e int }
+
+func buildStr(ps []pair) string {
+	if len(ps) == 0 {
+		return ""
 	}
-	return oracle, nil
+	var sb strings.Builder
+	for _, pr := range ps {
+		sb.WriteString(strconv.Itoa(pr.p))
+		sb.WriteByte('#')
+		sb.WriteString(strconv.Itoa(pr.e))
+		sb.WriteByte('#')
+	}
+	return sb.String()
+}
+
+func factor(x, k int, spf []int) (string, string) {
+	if x == 1 {
+		return "", ""
+	}
+	pairs := make([]pair, 0)
+	compPairs := make([]pair, 0)
+	for x > 1 {
+		p := spf[x]
+		if p == 0 {
+			p = x
+		}
+		cnt := 0
+		for x%p == 0 {
+			x /= p
+			cnt++
+		}
+		cnt %= k
+		if cnt != 0 {
+			pairs = append(pairs, pair{p, cnt})
+			cp := (k - cnt) % k
+			if cp != 0 {
+				compPairs = append(compPairs, pair{p, cp})
+			}
+		}
+	}
+	return buildStr(pairs), buildStr(compPairs)
+}
+
+func solve(tc testCase, spf []int) int64 {
+	count := make(map[string]int)
+	var res int64
+	for _, x := range tc.a {
+		norm, comp := factor(x, tc.k, spf)
+		if v, ok := count[comp]; ok {
+			res += int64(v)
+		}
+		count[norm]++
+	}
+	return res
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func buildInput(tc testCase) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.k))
+	for i, v := range tc.a {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(v))
+	}
+	sb.WriteByte('\n')
+	return sb.String()
 }
 
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierD.go /path/to/binary")
-		os.Exit(1)
+		return
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
+
+	testcases, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+		fmt.Println("failed to parse testcases:", err)
+		return
 	}
-	defer os.Remove(oracle)
 
-	file, err := os.Open("testcasesD.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
+	const maxA = 100000
+	spf := make([]int, maxA+1)
+	for i := 2; i <= maxA; i++ {
+		if spf[i] == 0 {
+			for j := i; j <= maxA; j += i {
+				if spf[j] == 0 {
+					spf[j] = i
+				}
+			}
+		}
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		parts := strings.Fields(line)
-		if len(parts) < 3 {
-			fmt.Printf("test %d bad line\n", idx)
-			os.Exit(1)
-		}
-		nmk := parts[0] + " " + parts[1]
-		rest := strings.Join(parts[2:], " ")
-		input := nmk + "\n" + rest + "\n"
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(input)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error: %v\n", err)
-			os.Exit(1)
-		}
-		expected := strings.TrimSpace(outO.String())
-
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		err := cmd.Run()
+	for idx, tc := range testcases {
+		input := buildInput(tc)
+		expected := strconv.FormatInt(solve(tc, spf), 10)
+		got, err := run(bin, input)
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
 		if got != expected {
-			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx, expected, got)
+			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

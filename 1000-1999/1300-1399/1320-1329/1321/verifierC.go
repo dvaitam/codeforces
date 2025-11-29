@@ -6,25 +6,156 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	ref := "./oracleC.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1321C.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v: %s", err, out)
-	}
-	return ref, nil
+// Embedded testcases from testcasesC.txt so we do not depend on external files.
+const testcasesRaw = `ynbiqpmzjplsgqejeydtzirwztejdxcvkprdlnktugrpoqibzr
+cx
+wzvuatpkhxkwcgshhzezrocckqpdjrjwdrkrgztrsjoctzmkshjf
+fbtvipccvyeebcwrvmwqiqzhg
+snsiopvuwzlcktdpsukghaxidwhlzfknbdzewhbsurtvcadugtsdmcldbtagfwdpgxzbvarntdichcujlnfbqob
+dwmgilxpsfwvgybzvffkqidtovfapvnsqjulmvierwaoxckxbriehypltjvlsutewjmxnucatgwkf
+huomwvsnbmwsnyvwbfociwfoqprtyab
+kjobzzngrucxeamvnkagawyavqtdgdtugjiwfdpmucaiozzdieuquuldeiabbgvi
+klsbxwtupwuounlrfgmsjaeeikkzlwckytbbifesjlmrejdpxhbjfqxcjmkjnddrppkzzkdp
+wpnbjkxvefusmzu
+trgmmcbbmcnnnrtztiueeskdqnhtwxqdvdzcumfapnkziwteyrmpxmclhtdmafjhtcguetxiifgluzdgzpvrldri
+aqsv
+hjcshmedpchlhifkq
+wlpzgejxdxzdahpbvmnssrmcdbtyikkbapmtuqkbwubqqkdfkvplnjorivxuqtwnpuxuyeqebsfzcsdxfzarpwfqufdgodqnpxws
+glslmwfketnawfoqizfzbdnizqcgbycjevxbzdbvittphjbgyvtrgxmvolygicducoqeudprltguktkmzzqwiocwgypuswzdo
+vxhddhymqdxopibkyrqazhyjfseribhuwthdgqsysmjjlcednezboykggweedehudnulkgbqsqqnyoinryqizeqojkiibeheip
+ungydk
+gndrcwnvbfmmhciizwrznehgjpahjsmbm
+hjrfbdjnlhrkitltl
+dzjkmdyxmvvmnpfoyxthqfxztlblbkfqmzylhuzyvwehuabmxzq
+cfnedkkytgecvkzjimelykzyhkdapahkrlygbwyikwtculqrfcfhoahpluluwswkzrexdkszmvwmofxrevlsli
+smbvlhzjrtqgvdwfknmkijtivujxtpelthnwlegkypskmnkptyifevplkfkkbcesxgvoqrn
+frxwzxjmiqwsdiexlleisgqvnwjjwotkwcyxajeiwbhrvhxgjtsorkthvjhietgaamvzjajywdzmxfkhpicm
+cswycjeywdkl
+ktvnlrayxacnihzrfebplbtvffahlzdqmiauyzjkvyhmzfqqphtxfkzumfn
+lalrcaclwqgefysnqpidsljyhxxrhlfypoexlwqttoqsnhiieurbrrqvrqodgtdhdcnfsomkxgklabwsmdu
+koafqrhllkicmehsktwdhgxqfckhabzanuoqi
+eewcsrcsbogbbidx
+kctzwxikrnnknvttdjprjrtnfkolkfh
+tugmhwbgmmpecnvfznyzrvolistbkyhyxxtyqzvxhuikpasoxjqezmyddu
+mijlw
+urrnprezoyhwyjttlkuemmvdevskcofmxwlybcuctuuvptnevapbhmxeyuvxwsubskbzmqnshtdfkyqcsjyrvcatbzhqontuu
+uh
+bsee
+uaeuetcxlgtppduxvonnldkskeypahfwszydsvtxqponcmbeejdtuv
+elxtkxfikdhxfzmyojhoctwauhvzkqg
+fccikcjjoeijpscbludwkeilbgmphgmcayfofkyigugtoehupneveuhimcziwow
+foejmagy
+igqrumzikbmhaawpqhbqzooiepoylmwvzecfeizhkybwvavixppilwmpmekdbahbumkjlovuwlhqku
+iekzynvjrjkcbdjsaavouvpztllejplbfx
+ggbqrfcdpxywixughoqyrwujbfnbqfcizkpunzrhqcnhwhqhennuevhfcthrithqyuwkpqredbnbeskpshz
+fuxrbbnlnwiovucyyhhlyohxzlqnthhtpjvqtporbzyjbscfywgvzdxaxnur
+ybcdzpjetrbbtxykgesgbcgefcqgefenhudzbapvyqt
+nqlfjbkgnzkjfjbtd
+mpekneoupdfdpfcwxnoesxskgffofpffzlptevfclocpsxwikeznilpocxv
+zlynwrktnujszqwkdsnjquazkzkugtrggzpnvzrlquvgsdcmzviywkxttacdbosgidlx
+fzfktgzkgbonyzekqjmsxxykwgvxoyykmzmbivhazchyzptbzuxrhcugsdrdvthjkghvwbmactperbdtdcoskec
+jbpzwgenmtgbmszkcnbr
+udzmuaidstouprahjbyuvztyvfqewamyqbsmrbzvwktyehipbesplfgywzplrhkljtwnlshvjldqrndanzglbpifbfnktn
+rjjvv
+ypvzorvfshgumwgkdjskxchjykwoybmdjqprnwkpblqhgzkklwctv
+qwffyarkmanwyogydqqx
+bpmdjcwxgkiqpdnvymonmbbiugzboaqzpe
+jozttymysbwkpmrtvzajswycdxqzluhupbv
+vcwcnzsrzgnfaq
+lhprhizzpjfqufyjzrlvubljvdvjnzytfodgmlnuawrpjxmymwmjvzbevvkhxylvw
+tqqkhrsdqpamofxngzgvntbcshgjcjfokygpgpo
+dfqlqfykq
+ruvjadxezlsxsongmeygxaqazsslinlr
+mbvuwrlkaywcfxtgr
+mkhyii
+dsrldkwbcaenynuzdojpyslqdkqcaypidhqgfvraytkhhpgfrd
+ysbjbdeojyqobuusfwfaoywlygmjhcxhzgvamymhbzlnprtnpvduxqnkitveepgqhhqreafqgouiumdjxcgju
+ufwxvlbpruwheampyazictbbhdcloefkymogxkdnvtlfhwjzkslnwkes
+gvexlkvzgqxftoaskqjcjsrdighvlzfxmnaajuckmutnysdzrzuekxtqpqpuzxifskaqchxekwfbwul
+rsshxfvyezftlmfcxopqrktxzvipbsdkk
+zmcaruzprzsqohzlrlylrgiujvpbjhsdjlwbtzuauwmdpdhibyiufjruhs
+wqvvkaijxvmzjzcjrdrdsqtazjhwwhrziadnurfyuymqrenkbcxube
+qltamvlmclhiswcaukatzvkwhrpqalxftpmrecsbxlbpnqqr
+tpsbjwjwregeubaajnyodacrqlnhsxmyjksfyqfycnwgivlqddggwgaijmnmtvk
+ncusrwil
+hwezzhxpznaofrt
+duxsjvcazyfcfhjcapthromtmykapnpojztctevqwkkionqgnwzicdnwigqnlwyfqbgpqbovqhowayvqblc
+acprlorrnr
+uwjhkxxdtldohunulkj
+ebeeplq
+mkxwcuukwmsgrztxvultbsplczgrezhm
+gvgjxpzhkmdllfbalzexeidcnwlsunxpnacqxw
+ixp
+hnxhzmyqzphzctmdejrju
+lsymzmdonhoyaxn
+jmelnlgqkjykx
+krjekkzdjv
+hunnfdxoseeemdjujkvsijawffav
+tnyrcpumqjdcsjkqqmyj
+xsjtmhbisbgwyjqrsoahht
+ufzvfzitzhzigrgydrvsedappdgldbwxtgbvmaqbaqywg
+zusaoehohgebeehsqnspkepzszvvqsmftguhwlfdozrnwctjywamvpdpk
+tkuwrjaadtrdijmbktyp
+jxywzngdey
+rfrynjezahmdifczqbhbkfcspcsushkzva
+xdzftgkjnnsuddquigmgibehmohlad
+eyoglrdpzmoagtxepdxapstuglagohyqusdhsutetsueks
+vhfgxqiqghbgskbzmllioalqqscleupkyugoclpxoukfvuxhszyixiqzvjratdpavwjaipykc
+kdfbffnklkbjqrngvbhymg
+yf
+matvlcwbkivdnjvrpzpywjmvksedpkkhiufisqlfewhgxrexuwifjvyktydhtaozbaniztrvzck
+wwzpehmnk
+fkaxdhhg`
+
+type testCase struct {
+	s string
 }
 
-func runProg(prog, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(prog, ".go") {
-		cmd = exec.Command("go", "run", prog)
-	} else {
-		cmd = exec.Command(prog)
+// referenceSolution replicates 1321C.go logic: remove chars if adjacent to previous letter.
+func referenceSolution(s string) int {
+	bytes := []byte(s)
+	removed := 0
+	for ch := byte('z'); ch > 'a'; ch-- {
+		for {
+			idx := -1
+			for i := 0; i < len(bytes); i++ {
+				if bytes[i] == ch {
+					if (i > 0 && bytes[i-1] == ch-1) || (i+1 < len(bytes) && bytes[i+1] == ch-1) {
+						idx = i
+						break
+					}
+				}
+			}
+			if idx == -1 {
+				break
+			}
+			bytes = append(bytes[:idx], bytes[idx+1:]...)
+			removed++
+		}
 	}
+	return removed
+}
+
+func parseTestcases() []testCase {
+	scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
+	scanner.Buffer(make([]byte, 1024), 1<<20)
+	tests := make([]testCase, 0)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		tests = append(tests, testCase{s: line})
+	}
+	return tests
+}
+
+func runBin(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
@@ -36,64 +167,29 @@ func runProg(prog, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func loadTests(path string) ([]string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	var tests []string
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		s := strings.TrimSpace(scanner.Text())
-		if s == "" {
-			continue
-		}
-		tests = append(tests, s)
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return tests, nil
-}
-
-func buildInput(s string) string {
-	return fmt.Sprintf("%d\n%s\n", len(s), s)
-}
-
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
-	tests, err := loadTests("testcasesC.txt")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	for i, s := range tests {
-		input := buildInput(s)
-		exp, err := runProg(oracle, input)
+	tests := parseTestcases()
+	for idx, tc := range tests {
+		input := fmt.Sprintf("%d\n%s\n", len(tc.s), tc.s)
+		expected := referenceSolution(tc.s)
+		gotStr, err := runBin(bin, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle runtime error on test %d: %v\n", i+1, err)
+			fmt.Printf("test %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got, err := runProg(bin, input)
+		got, err := strconv.Atoi(gotStr)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "candidate runtime error on test %d: %v\n", i+1, err)
+			fmt.Printf("test %d: cannot parse output %q\n", idx+1, gotStr)
 			os.Exit(1)
 		}
-		if exp != got {
-			fmt.Printf("Test %d failed\nInput:\n%sExpected:\n%s\nGot:\n%s\n", i+1, input, exp, got)
+		if got != expected {
+			fmt.Printf("test %d failed: expected %d got %d\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}

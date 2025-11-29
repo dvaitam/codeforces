@@ -10,98 +10,222 @@ import (
 	"strings"
 )
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("usage: go run verifierC.go /path/to/binary")
-		os.Exit(1)
-	}
-	binary := os.Args[1]
+const testcasesC = `2 -4 -4
+7 -3 5 -1 -1 4 -2 4
+2 4 5
+4 1 5 1 3
+7 3 2 3 -1 -5 -5 0
+9 0 1 1 3 -3 3 -3 -2 -2
+2 -3 0
+4 -3 3 3 0
+10 5 3 -3 2 1 3 0 4 0 0
+9 -3 1 2 5 3 -2 2 -1 2
+10 3 0 5 2 2 0 4 3 2 2
+5 0 -3 4 -1 2
+6 -1 3 3 3 3 5
+8 -1 -2 2 3 0 5 4 -4
+7 -5 -2 -4 -5 4 5 -5
+6 4 -2 5 -4 3 -3
+6 -2 -2 -5 1 -5 -5
+7 0 -3 -2 5 -5 -4 -4
+3 -5 -5 -5
+7 -1 -3 -3 -3 3 -5 1
+2 -2 -3
+2 -5 0
+3 -1 0 2
+2 -1 2
+10 4 -5 -1 1 4 -3 2 -2 -4 5
+7 -4 -5 2 -3 3 4 1
+9 3 0 -3 0 -1 -1 4 1 5
+2 3 -3
+2 -1 -5
+4 -3 -3 -4 2
+5 3 -5 -2 -2 2
+3 -1 -4 4
+5 4 4 0 -1 5
+8 -1 3 -5 -3 -5 1 1 -3
+3 3 -4 -2
+3 -4 -5 -3
+5 -4 -2 -5 3 5
+9 2 -1 3 5 1 -2 5 -2 1
+8 3 -5 4 4 -5 1 3 4
+4 -4 5 2 0
+2 3 -4
+7 -1 0 -1 -5 5 1 -4
+3 -1 -2 5
+2 2 -5
+8 5 2 2 -2 4 4 -4 -5
+6 -5 0 -1 -4 -2 2
+5 -4 4 0 1 2
+4 0 1 -4 -1
+3 -4 -4 4
+7 5 1 -2 -4 -5 4 5
+9 -5 2 -1 0 2 -3 0 -1 2
+10 2 1 2 5 -1 1 -2 -3 2 4
+6 3 1 5 -4 4 4
+3 -4 0 -3
+10 -3 1 -4 -4 5 5 -5 -3 -1 1
+5 5 5 0 2 -3
+10 -1 -4 -3 3 1 -4 0 3 -2 3
+6 -3 -3 2 -2 1 0
+4 2 2 -5 4
+8 -3 1 3 -5 2 -1 1 -1
+8 5 2 0 3 0 5 -4 -2
+10 4 -2 1 5 1 5 -5 0 2 3
+9 5 -3 -4 -5 1 -2 4 4 1
+5 -4 1 3 -2 -1
+5 2 4 -3 -5 4
+8 2 -1 3 4 -3 2 -2 -4
+7 -5 2 3 5 5 -4 4
+9 5 0 2 -1 3 2 -5 -4 4
+7 -3 1 -1 5 5 -3 -5
+4 2 1 2 5
+6 -3 -5 -1 3 2 -5
+7 -5 3 1 4 2 -2 5
+6 2 5 -3 2 3 -1
+3 -1 0 -1
+7 5 -1 5 5 1 3 -4
+10 5 -2 1 4 3 -3 3 5 -4 -1
+2 -2 2
+10 -2 3 -1 -5 -4 -4 5 1 0 -2
+7 0 -4 0 2 0 -3 2
+9 -1 2 -3 2 5 -2 -1 0 -3
+3 -2 2 -2
+7 -3 0 -3 -3 -2 -1 3
+8 1 0 -1 4 3 4 0 1
+6 3 4 5 5 -4 0
+6 1 2 -3 -1 0 2
+9 -4 -3 0 1 -3 -5 -4 0 -3
+7 -4 5 1 -5 3 0 -2
+8 3 -1 2 5 -3 0 0 -2
+9 -4 -3 -2 0 -1 -3 1 0 -1
+3 0 -2 -2
+5 4 -5 0 0 5
+2 -3 -3
+3 1 2 -1
+4 0 3 4 -4
+7 5 4 1 -2 -5 1 2
+9 4 0 3 4 4 -4 4 3 3
+9 1 2 -3 1 1 3 2 -5 -4
+9 4 -3 -4 5 3 -3 -4 1 -1
+9 -5 -1 -4 5 0 -2 -3 -5 -3
+8 5 -4 0 5 2 -5 2 -2`
 
-	file, err := os.Open("testcasesC.txt")
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
+type testCase struct {
+	n   int
+	arr []int
+}
 
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
 		}
-		idx++
-		parts := strings.Fields(line)
-		n, _ := strconv.Atoi(parts[0])
-		if len(parts) != n+1 {
-			fmt.Printf("test %d: wrong number of values\n", idx)
-			os.Exit(1)
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func referenceSolve(arr []int) string {
+	if arr[0] < arr[len(arr)-1] {
+		return "YES"
+	}
+	return "NO"
+}
+
+func parseTestcases() ([]testCase, error) {
+	scan := bufio.NewScanner(strings.NewReader(testcasesC))
+	scan.Split(bufio.ScanWords)
+	cases := make([]testCase, 0)
+	for {
+		if !scan.Scan() {
+			break
+		}
+		n, err := strconv.Atoi(scan.Text())
+		if err != nil {
+			return nil, fmt.Errorf("parse n: %w", err)
 		}
 		arr := make([]int, n)
 		for i := 0; i < n; i++ {
-			v, _ := strconv.Atoi(parts[i+1])
+			if !scan.Scan() {
+				return nil, fmt.Errorf("missing value %d for case %d", i+1, len(cases)+1)
+			}
+			v, err := strconv.Atoi(scan.Text())
+			if err != nil {
+				return nil, fmt.Errorf("parse value %d case %d: %w", i+1, len(cases)+1, err)
+			}
 			arr[i] = v
 		}
-		// Construct a safe permutation input for the candidate that preserves
-		// only the needed relation between first and last values.
-		// This avoids candidates that assume a permutation of 1..n from panicking
-		// on arbitrary/negative inputs from the testcase file.
-		var input strings.Builder
-		input.WriteString("1\n")
-		input.WriteString(fmt.Sprintf("%d\n", n))
-		perm := make([]int, n)
-		if n >= 2 {
-			// Expected is computed below based on original arr[0] < arr[n-1].
-			// Build a permutation so that perm[0] < perm[n-1] iff expected=="YES".
-			if arr[0] < arr[n-1] {
-				// YES case
-				perm[0] = 1
-				perm[n-1] = n
-				val := 2
-				for i := 1; i < n-1; i++ {
-					perm[i] = val
-					val++
-				}
-			} else {
-				// NO case (including equality)
-				perm[0] = n
-				perm[n-1] = 1
-				val := 2
-				for i := 1; i < n-1; i++ {
-					perm[i] = val
-					val++
-				}
-			}
-		} else {
-			// n == 1: trivial single element permutation
-			perm[0] = 1
-		}
-		for i, v := range perm {
-			if i > 0 {
-				input.WriteByte(' ')
-			}
-			input.WriteString(fmt.Sprintf("%d", v))
-		}
-		input.WriteByte('\n')
+		cases = append(cases, testCase{n: n, arr: arr})
+	}
+	if err := scan.Err(); err != nil {
+		return nil, fmt.Errorf("scanner error: %w", err)
+	}
+	return cases, nil
+}
 
-		cmd := exec.Command(binary)
-		cmd.Stdin = strings.NewReader(input.String())
-		var outBuf, errBuf bytes.Buffer
-		cmd.Stdout = &outBuf
-		cmd.Stderr = &errBuf
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("Test %d: runtime error: %v\nstderr: %s\n", idx, err, errBuf.String())
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errb bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: go run verifierC.go /path/to/binary")
+		os.Exit(1)
+	}
+
+	bin, cleanup, err := buildIfGo(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	cases, err := parseTestcases()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	for idx, tc := range cases {
+		var sb strings.Builder
+		sb.WriteString("1\n")
+		sb.WriteString(fmt.Sprintf("%d\n", tc.n))
+		for i, v := range tc.arr {
+			if i > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.Itoa(v))
+		}
+		sb.WriteByte('\n')
+		input := sb.String()
+
+		want := referenceSolve(tc.arr)
+		got, err := run(bin, input)
+		if err != nil {
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		out := strings.TrimSpace(outBuf.String())
-		expected := "NO"
-		if arr[0] < arr[n-1] {
-			expected = "YES"
-		}
-		if strings.ToUpper(out) != expected {
-			fmt.Printf("Test %d failed: expected %s got %s\n", idx, expected, out)
+		if strings.ToUpper(strings.TrimSpace(got)) != want {
+			fmt.Printf("case %d failed\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", idx+1, input, want, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

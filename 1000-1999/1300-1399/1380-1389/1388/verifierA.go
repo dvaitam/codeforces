@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,6 +8,109 @@ import (
 	"strconv"
 	"strings"
 )
+
+// Embedded testcases from testcasesA.txt.
+const testcasesRaw = `100
+50
+98
+54
+6
+34
+66
+63
+52
+39
+62
+46
+75
+28
+65
+18
+37
+18
+97
+13
+80
+33
+69
+91
+78
+19
+40
+13
+94
+10
+88
+43
+61
+72
+13
+46
+56
+41
+79
+82
+27
+71
+62
+57
+67
+34
+8
+71
+2
+12
+93
+52
+91
+86
+81
+1
+79
+64
+43
+32
+94
+42
+91
+9
+25
+73
+29
+31
+19
+70
+58
+12
+11
+41
+66
+63
+14
+39
+71
+38
+91
+16
+71
+43
+70
+27
+78
+71
+76
+37
+57
+12
+77
+50
+41
+74
+31
+38
+24
+25
+24`
 
 func expected(n int) (string, string) {
 	if n <= 30 {
@@ -67,33 +169,22 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Println("could not open testcasesA.txt:", err)
+	fields := strings.Fields(testcasesRaw)
+	if len(fields) == 0 {
+		fmt.Println("no embedded testcases")
 		os.Exit(1)
 	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || line[0] == '#' {
-			continue
-		}
-		n, err := strconv.Atoi(line)
-		if err != nil {
-			fmt.Printf("bad number on line %d\n", idx+1)
-			os.Exit(1)
-		}
-		idx++
+	t, _ := strconv.Atoi(fields[0])
+	if len(fields) != t+1 {
+		fmt.Println("embedded testcases count mismatch")
+		os.Exit(1)
+	}
+	for i := 0; i < t; i++ {
+		n, _ := strconv.Atoi(fields[i+1])
 		if err := runCase(bin, n); err != nil {
-			fmt.Printf("case %d failed: %v\n", idx, err)
+			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Println("scanner error:", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", t)
 }

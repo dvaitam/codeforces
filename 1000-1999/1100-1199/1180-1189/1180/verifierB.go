@@ -10,25 +10,253 @@ import (
 	"strings"
 )
 
-func run(bin string, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var errb bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
-	}
-	return strings.TrimSpace(out.String()), nil
+const testcases = `100
+5
+45 95 -84 -35 -70
+16
+94 15 20 66 -3 -47 -76 24 -93 -1 10 55 95 96 -100 78
+15
+-32 84 -42 51 -74 -19 -93 -95 -94 66 38 -98 -3 75 -45
+14
+85 -93 35 -44 95 12 26 41 -41 -12 -41 73 -44 94
+15
+-26 -95 6 42 64 -75 -53 61 85 -25 -70 90 -15 84 82
+17
+8 29 71 -52 -23 -28 50 27 29 0 50 -92 22 -38 90 3 6
+6
+-7 40 79 98 72 88
+12
+-78 12 69 30 -73 99 -59 33 0 -6 25 87
+1
+20
+2
+-22 80
+20
+51 48 0 65 -57 -57 28 -42 -97 97 -49 38 40 -41 3 31 -12 47 -10 17
+9
+68 40 55 86 -99 -2 100 89 31
+5
+32 99 43 -48 9
+2
+23 -7
+19
+41 -49 29 5 24 -9 6 -12 -100 37 38 59 56 -16 17 53 -93 -42 62
+6
+40 49 -54 -77 41 -35
+2
+72 -82
+3
+-96 15 -97
+9
+-37 -32 -72 59 -53 -12 -26 -83 -58
+6
+-35 35 -57 68 -31 65
+10
+16 79 -18 27 21 -71 -94 -21 -2 -13
+14
+-52 -34 -73 -36 86 30 -47 55 10 -95 -43 -96 1 -63
+2
+84 -59
+15
+80 29 73 9 39 -44 61 77 32 15 -43 34 66 -93 1
+19
+-18 68 61 9 -85 88 -24 -68 -46 -88 -22 -82 -81 -21 -24 90 -60 6 44
+9
+-67 -98 43 -91 51 -45 45 17 -57
+20
+30 -91 -4 -49 -12 -75 -48 46 72 10 51 -51 26 -74 70 -1 -25 29 27 -96
+11
+56 2 -28 -96 -60 -49 -17 44 100 -66 -14
+14
+-46 -32 72 -76 -3 40 -12 75 36 24 96 36 -40 -84
+2
+-79 -66
+6
+-58 37 -46 -32 94 -15
+20
+29 -35 -6 -14 -13 -71 -26 -40 54 99 83 25 -66 48 41 97 -74 -18 -90 4
+3
+-3 -63 -68
+11
+-71 57 50 100 -4 -81 46 40 -43 44 -80
+9
+-7 -25 44 36 -71 17 -30 -73 -89
+10
+-97 57 71 -97 -77 5 -71 -90 -52 -39
+19
+7 -59 -71 15 -58 74 -39 -60 90 -74 11 -4 38 -25 40 -36 82 22 -20
+4
+-47 66 -19 -90
+1
+-98
+10
+85 52 -19 15 0 -20 2 -84 -84 -19
+20
+16 -72 -36 -45 100 58 99 38 76 20 69 -9 -34 -54 38 -47 -22 -50 -37 -8
+3
+-29 -78 92
+15
+-77 66 47 64 -14 -42 -1 -22 -90 -17 -53 -19 48 -23 -38
+11
+-75 39 56 48 52 -77 -38 -44 -95 -38 2
+3
+-32 41 -82
+3
+-95 62 -98
+10
+92 -9 26 20 -61 -75 28 99 -17 -81
+17
+70 -56 -55 98 -62 -64 -19 -22 -73 81 31 54 -25 -68 -48 -64 39
+2
+99 -20
+20
+72 41 91 76 -48 -55 -24 10 37 -60 -88 82 70 -37 -36 99 -84 74 14 10
+18
+-36 38 12 37 16 -98 1 -14 -57 -34 24 -94 65 6 46 -96 -85 77
+12
+48 -65 51 -68 -65 -34 -30 1 44 2 -56 56
+3
+-41 24 -99
+6
+35 -19 28 66 12 75
+8
+-39 -20 26 75 22 -43 82 5
+11
+43 56 86 67 -30 65 -44 -88 -82 95 30
+12
+-60 30 96 -48 -21 -24 77 -24 41 -5 -58 79
+15
+52 -79 -69 55 31 46 -4 -55 -61 -36 9 -45 45 84 93
+2
+26 74
+13
+83 63 -11 -2 31 -58 39 86 -90 34 -77 -35 60
+4
+-32 88 -79 -65
+20
+68 75 79 -80 13 -39 -3 10 1 -58 -17 12 -68 59 24 -46 -70 10 53 36
+14
+-70 69 -25 -29 -37 -4 91 43 -99 -52 35 12 48 -95
+1
+60
+20
+-38 -34 -48 -56 -28 -63 38 -49 -31 -21 49 93 -36 74 14 -57 39 -9 25 7
+4
+96 -47 46 -2
+7
+-28 -73 -94 -70 45 91 -97
+18
+-25 72 94 85 66 -66 -81 28 -5 46 -21 11 28 73 -9 94 35 -18
+1
+-69
+15
+83 15 -11 -22 38 2 -14 100 87 74 46 26 -72 65 -4
+13
+-48 42 -100 -29 62 53 84 89 86 30 -50 18 53
+17
+4 90 82 -22 79 -57 15 58 71 35 -50 -8 34 -100 73 -1 48
+14
+3 -14 59 49 87 79 91 -83 26 90 -37 63 66 -26
+1
+4
+5
+62 99 1 100 -31
+6
+96 -82 98 54 -98 -11
+9
+81 5 75 39 -23 -62 18 -34 24
+6
+19 30 -89 -31 30 -75
+19
+8 -83 -10 -83 68 13 -95 -58 29 81 -59 76 -77 2 62 76 -30 54 -23
+7
+35 -47 -40 -15 -32 -83 -81
+17
+68 -6 19 30 42 88 -88 -57 -24 67 88 82 42 -31 -9 56 89
+8
+0 43 2 -56 23 -34 56 -16
+8
+-34 56 80 -38 69 -93 59 3
+11
+10 94 -37 -32 -52 -82 60 87 -58 48 13
+19
+86 -63 55 -33 17 34 -59 -65 99 -65 83 12 -8 -21 92 2 -39 -71 83
+7
+83 74 -22 -83 -73 -42 1
+11
+26 -75 -53 -89 -86 52 -95 92 -45 74 -92
+16
+80 35 85 56 13 -13 69 -30 -70 56 77 -56 -76 -44 2 -41
+16
+15 -4 92 -57 -41 -40 -28 18 40 48 -1 -46 15 83 -34 -16
+16
+51 -72 -46 -80 -89 -97 -99 22 -19 -2 48 -27 -50 2 -60 94
+5
+-93 -97 -1 -63 70
+18
+-86 44 -3 -35 -67 -80 18 66 -23 -97 -91 37 -85 34 -67 -90 -30 99
+4
+10 -77 -52 -93
+16
+63 -67 90 -29 75 -51 69 14 -1 -16 61 -32 -34 64 62 -38
+8
+-85 50 51 -56 -11 9 54 78
+18
+63 33 -85 -10 40 5 37 -49 82 37 8 69 -83 82 -32 90 56 84
+3
+-36 -55 -76
+5
+-85 -48 9 -89 -87
+3
+31 20 28
+12
+-75 -20 -90 -68 36 -92 13 70 -68 1 95 81
+5
+-12 29 49 87 10`
+
+type testCase struct {
+	n   int
+	arr []int
 }
 
-func solve(a []int) []int {
+func parseTestcases() ([]testCase, error) {
+	scan := bufio.NewScanner(strings.NewReader(testcases))
+	scan.Split(bufio.ScanWords)
+	if !scan.Scan() {
+		return nil, fmt.Errorf("empty testcases")
+	}
+	t, err := strconv.Atoi(scan.Text())
+	if err != nil {
+		return nil, fmt.Errorf("parse t: %w", err)
+	}
+	cases := make([]testCase, t)
+	for i := 0; i < t; i++ {
+		if !scan.Scan() {
+			return nil, fmt.Errorf("missing n for case %d", i+1)
+		}
+		n, err := strconv.Atoi(scan.Text())
+		if err != nil {
+			return nil, fmt.Errorf("parse n case %d: %w", i+1, err)
+		}
+		arr := make([]int, n)
+		for j := 0; j < n; j++ {
+			if !scan.Scan() {
+				return nil, fmt.Errorf("missing value %d for case %d", j+1, i+1)
+			}
+			arr[j], err = strconv.Atoi(scan.Text())
+			if err != nil {
+				return nil, fmt.Errorf("parse value %d case %d: %w", j+1, i+1, err)
+			}
+		}
+		cases[i] = testCase{n: n, arr: arr}
+	}
+	if err := scan.Err(); err != nil {
+		return nil, fmt.Errorf("scanner error: %w", err)
+	}
+	return cases, nil
+}
+
+func referenceSolve(a []int) []int {
 	n := len(a)
 	allZero := true
 	for i := 0; i < n; i++ {
@@ -61,70 +289,61 @@ func solve(a []int) []int {
 	return a
 }
 
-func main() {
-	args := os.Args[1:]
-	if len(args) == 2 && args[0] == "--" {
-		args = args[1:]
+func run(bin string, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errb bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
 	}
-	if len(args) != 1 {
+	return strings.TrimSpace(out.String()), nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := args[0]
-	f, err := os.Open("testcasesB.txt")
+	bin := os.Args[1]
+
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to open testcases:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer f.Close()
-	scan := bufio.NewScanner(f)
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Fprintln(os.Stderr, "empty test file")
-		os.Exit(1)
-	}
-	T, _ := strconv.Atoi(scan.Text())
-	for tc := 0; tc < T; tc++ {
-		if !scan.Scan() {
-			fmt.Fprintf(os.Stderr, "bad test %d\n", tc+1)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(scan.Text())
-		arr := make([]int, n)
-		for i := 0; i < n; i++ {
-			if !scan.Scan() {
-				fmt.Fprintf(os.Stderr, "bad test %d\n", tc+1)
-				os.Exit(1)
-			}
-			v, _ := strconv.Atoi(scan.Text())
-			arr[i] = v
-		}
-		input := fmt.Sprintf("%d\n", n)
-		for i, v := range arr {
+	for idx, cs := range cases {
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("%d\n", cs.n))
+		for i, v := range cs.arr {
 			if i > 0 {
-				input += " "
+				sb.WriteByte(' ')
 			}
-			input += fmt.Sprintf("%d", v)
+			sb.WriteString(strconv.Itoa(v))
 		}
-		input += "\n"
-		expectedArr := solve(append([]int(nil), arr...))
+		sb.WriteByte('\n')
+		input := sb.String()
+
+		wantArr := referenceSolve(append([]int(nil), cs.arr...))
 		var want strings.Builder
-		if n > 0 {
-			want.WriteString(fmt.Sprintf("%d", expectedArr[0]))
-			for i := 1; i < n; i++ {
-				want.WriteString(" ")
-				want.WriteString(fmt.Sprintf("%d", expectedArr[i]))
+		for i, v := range wantArr {
+			if i > 0 {
+				want.WriteByte(' ')
 			}
+			want.WriteString(strconv.Itoa(v))
 		}
+
 		got, err := run(bin, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d: %v\n", tc+1, err)
+			fmt.Fprintf(os.Stderr, "test %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
 		if strings.TrimSpace(got) != want.String() {
-			fmt.Fprintf(os.Stderr, "test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", tc+1, input, want.String(), got)
+			fmt.Fprintf(os.Stderr, "test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", idx+1, input, want.String(), got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", T)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

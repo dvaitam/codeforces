@@ -16,34 +16,451 @@ type testCaseD struct {
 	a, b    []int64
 }
 
-func parseTestcases(path string) ([]testCaseD, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
+// Embedded testcases from testcasesD.txt.
+const testcasesRaw = `100
+4 2
+3 4 5
+2 4 3 1
+4 1
+4 2
+4 4 4
+4 3 1 2
+1 2
+1 1
+2 1 3
+1
+1
+5 4
+5 4 4
+3 2 1 5 4
+3 2 5 4
+4 3
+4 3 4
+1 2 3 4
+1 3 4
+6 6
+1 3 5
+5 1 4 3 2 6
+5 1 4 3 2 6
+8 8
+1 6 1
+5 6 8 4 3 1 2 7
+5 6 8 4 3 1 2 7
+4 1
+3 1 1
+2 4 3 1
+4
+7 3
+5 3 2
+4 7 2 5 3 1 6
+5 1 6
+8 7
+5 2 5
+1 7 8 3 2 6 4 5
+1 7 8 3 2 6 5
+1 1
+5 1 1
+1
+1
+8 6
+3 5 4
+7 4 2 3 6 8 5 1
+4 2 3 6 5 1
+3 2
+3 3 3
+1 3 2
+1 2
+3 2
+5 1 3
+3 2 1
+3 2
+2 1
+5 2 3
+2 1
+1
+3 1
+3 3 2
+1 2 3
+2
+4 1
+1 2 3
+1 3 4 2
+1
+6 5
+2 4 3
+1 6 2 4 3 5
+1 6 2 4 3
+3 1
+1 2 5
+1 2 3
+3
+4 1
+4 3 5
+2 4 1 3
+1
+2 1
+1 1 5
+2 1
+1
+1 1
+4 1 2
+1
+1
+4 1
+5 4 1
+3 4 2 1
+2
+8 1
+3 4 2
+3 6 4 7 8 1 5 2
+3
+8 7
+1 5 2
+3 2 1 4 6 7 8 5
+3 2 1 6 7 8 5
+1 1
+4 1 1
+1
+1
+6 2
+3 1 3
+1 5 2 3 6 4
+5 2
+7 1
+2 5 1
+2 5 3 1 4 7 6
+2
+6 4
+5 6 5
+3 2 5 6 1 4
+2 5 6 4
+7 4
+1 2 2
+6 4 2 1 7 3 5
+6 4 2 1
+6 5
+3 1 4
+2 5 3 4 1 6
+2 3 4 1 6
+8 3
+2 7 1
+3 7 6 8 4 1 5 2
+3 7 5
+8 5
+5 5 1
+4 3 8 2 6 5 7 1
+4 3 8 6 7
+2 1
+2 1 4
+1 2
+2
+6 5
+4 3 5
+2 5 3 6 1 4
+5 3 6 1 4
+3 3
+4 1 2
+3 2 1
+3 2 1
+3 1
+3 1 2
+1 2 3
+1
+5 4
+5 5 5
+5 1 4 2 3
+5 1 4 2
+3 3
+3 1 3
+3 1 2
+3 1 2
+8 1
+4 2 4
+3 5 7 8 6 2 4 1
+8
+4 3
+2 2 5
+3 4 2 1
+3 4 1
+7 1
+1 1 1
+5 4 2 6 1 7 3
+5
+1 1
+3 1 4
+1
+1
+2 1
+5 2 4
+2 1
+1
+2 2
+1 2 1
+1 2
+1 2
+6 6
+3 4 3
+5 4 2 1 3 6
+5 4 2 1 3 6
+3 1
+3 3 4
+2 3 1
+1
+3 2
+5 2 5
+3 1 2
+1 2
+5 2
+1 1 2
+3 1 2 4 5
+2 5
+7 1
+2 1 4
+1 4 7 6 2 3 5
+6
+2 2
+4 1 2
+1 2
+1 2
+2 1
+2 2 4
+2 1
+2
+7 7
+2 5 5
+1 3 4 6 7 5 2
+1 3 4 6 7 5 2
+5 4
+5 3 4
+4 5 3 2 1
+4 5 2 1
+8 4
+2 4 1
+6 4 7 2 3 5 1 8
+6 4 3 5
+6 5
+2 5 1
+6 3 2 1 5 4
+6 3 2 5 4
+2 2
+2 1 2
+1 2
+1 2
+6 1
+1 4 1
+1 3 5 4 6 2
+2
+2 2
+2 2 3
+2 1
+2 1
+7 4
+2 4 1
+1 4 2 5 7 3 6
+1 4 5 7
+4 3
+3 2 4
+4 3 1 2
+4 3 2
+3 3
+1 1 1
+2 1 3
+2 1 3
+1 1
+4 1 3
+1
+1
+1 1
+2 1 1
+1
+1
+8 1
+2 4 1
+5 1 8 3 6 2 4 7
+2
+2 1
+3 2 4
+1 2
+2
+4 3
+1 3 3
+2 4 1 3
+2 1 3
+2 1
+1 1 2
+2 1
+1
+1 1
+5 1 2
+1
+1
+6 4
+3 6 1
+5 2 1 6 3 4
+5 2 1 6
+7 5
+3 5 4
+5 7 1 3 4 6 2
+7 3 4 6 2
+8 6
+3 3 5
+8 6 3 5 2 1 4 7
+8 3 2 1 4 7
+1 1
+4 1 3
+1
+1
+1 1
+2 1 1
+1
+1
+5 1
+4 1 2
+5 3 4 1 2
+2
+1 1
+2 1 2
+1
+1
+7 5
+5 3 5
+5 1 3 6 4 2 7
+5 6 4 2 7
+4 3
+1 1 4
+2 3 1 4
+3 1 4
+7 5
+4 7 1
+2 7 1 6 4 5 3
+2 1 6 4 3
+2 2
+3 1 4
+2 1
+2 1
+2 1
+2 2 1
+1 2
+1
+7 4
+1 3 2
+1 4 7 5 6 2 3
+7 5 6 2
+4 4
+4 4 4
+3 4 2 1
+3 4 2 1
+5 5
+5 1 4
+4 5 3 2 1
+4 5 3 2 1
+8 4
+3 3 1
+2 7 5 1 6 4 3 8
+5 4 3 8
+7 7
+3 2 4
+1 7 5 2 6 4 3
+1 7 5 2 6 4 3
+1 1
+2 1 5
+1
+1
+3 1
+1 1 4
+1 3 2
+2
+1 1
+2 1 1
+1
+1
+7 3
+1 5 5
+5 6 2 3 4 1 7
+3 1 7
+5 3
+1 1 4
+4 5 3 2 1
+5 3 2
+6 5
+2 3 1
+3 4 6 5 1 2
+3 4 5 1 2
+5 2
+1 2 5
+5 3 2 4 1
+2 4
+5 4
+3 5 2
+2 4 1 3 5
+2 4 3 5
+5 1
+3 5 5
+3 4 2 1 5
+2
+5 1
+4 1 3
+5 2 3 4 1
+2
+5 3
+2 4 4
+5 4 2 1 3
+5 4 2
+7 5
+3 1 2
+6 5 2 1 7 3 4
+6 5 2 7 3
+2 1
+3 1 4
+1 2
+2
+8 5
+3 1 2
+7 1 3 5 6 2 8 4
+7 1 5 2 4`
+
+func parseTestcases() []testCaseD {
+	scan := bufio.NewScanner(strings.NewReader(testcasesRaw))
+	scan.Split(bufio.ScanWords)
+	if !scan.Scan() {
+		panic("no testcases")
 	}
-	defer f.Close()
-	in := bufio.NewReader(f)
-	var T int
-	if _, err := fmt.Fscan(in, &T); err != nil {
-		return nil, err
-	}
+	T, _ := strconv.Atoi(scan.Text())
 	cases := make([]testCaseD, T)
 	for i := 0; i < T; i++ {
-		var n, m int
-		fmt.Fscan(in, &n, &m)
+		if !scan.Scan() {
+			panic("missing n")
+		}
+		n, _ := strconv.Atoi(scan.Text())
+		if !scan.Scan() {
+			panic("missing m")
+		}
+		m, _ := strconv.Atoi(scan.Text())
 		var x, k, y int64
-		fmt.Fscan(in, &x, &k, &y)
+		scan.Scan()
+		xv, _ := strconv.Atoi(scan.Text())
+		x = int64(xv)
+		scan.Scan()
+		kv, _ := strconv.Atoi(scan.Text())
+		k = int64(kv)
+		scan.Scan()
+		yv, _ := strconv.Atoi(scan.Text())
+		y = int64(yv)
 		a := make([]int64, n)
 		for j := 0; j < n; j++ {
-			fmt.Fscan(in, &a[j])
+			scan.Scan()
+			val, _ := strconv.Atoi(scan.Text())
+			a[j] = int64(val)
 		}
 		b := make([]int64, m)
 		for j := 0; j < m; j++ {
-			fmt.Fscan(in, &b[j])
+			scan.Scan()
+			val, _ := strconv.Atoi(scan.Text())
+			b[j] = int64(val)
 		}
 		cases[i] = testCaseD{n: n, m: m, x: x, k: k, y: y, a: a, b: b}
 	}
-	return cases, nil
+	return cases
 }
 
 func getBound(a []int64, idx int) int64 {
@@ -53,8 +470,8 @@ func getBound(a []int64, idx int) int64 {
 	return 0
 }
 
-func processSegment(seg []int64, left, right, x, k, y int64) (int64, bool) {
-	l := int64(len(seg))
+func processSegment(seg []int64, left, right int64, x, k, y int64) (int64, bool) {
+	l := len(seg)
 	if l == 0 {
 		return 0, true
 	}
@@ -69,18 +486,18 @@ func processSegment(seg []int64, left, right, x, k, y int64) (int64, bool) {
 		}
 	}
 	needFire := maxInside > maxV
-	if needFire && l < k {
+	if needFire && int64(l) < k {
 		return 0, false
 	}
 	var res int64
 	if needFire {
 		res += x
-		l -= k
+		l -= int(k)
 	}
 	if k*y < x {
-		res += l * y
+		res += int64(l) * y
 	} else {
-		res += (l/k)*x + (l%k)*y
+		res += (int64(l)/k)*x + (int64(l)%k)*y
 	}
 	if !needFire {
 		berserkOnly := int64(len(seg)) * y
@@ -130,7 +547,7 @@ func run(bin, input string) (string, string, error) {
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	err := cmd.Run()
-	return out.String(), errBuf.String(), err
+	return strings.TrimSpace(out.String()), errBuf.String(), err
 }
 
 func main() {
@@ -139,11 +556,7 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	cases, err := parseTestcases("testcasesD.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
-		os.Exit(1)
-	}
+	cases := parseTestcases()
 	for idx, tc := range cases {
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.m))

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,9 +9,130 @@ import (
 	"strings"
 )
 
-func expectedAns(n int, edges [][2]int) int {
+const testcasesData = `
+6 1 2 2 3 3 4 1 5 4 6
+3 1 2 1 3
+2 1 2
+5 1 2 2 3 3 4 1 5
+6 1 2 1 3 3 4 2 5 4 6
+5 1 2 1 3 3 4 2 5
+4 1 2 2 3 1 4
+3 1 2 2 3
+2 1 2
+4 1 2 1 3 1 4
+2 1 2
+4 1 2 1 3 2 4
+3 1 2 2 3
+3 1 2 1 3
+2 1 2
+3 1 2 1 3
+2 1 2
+5 1 2 1 3 3 4 2 5
+4 1 2 2 3 3 4
+5 1 2 1 3 1 4 4 5
+5 1 2 1 3 3 4 3 5
+2 1 2
+4 1 2 1 3 3 4
+2 1 2
+2 1 2
+4 1 2 1 3 3 4
+5 1 2 1 3 1 4 4 5
+5 1 2 2 3 3 4 3 5
+2 1 2
+4 1 2 1 3 1 4
+4 1 2 2 3 3 4
+4 1 2 1 3 1 4
+5 1 2 1 3 3 4 2 5
+3 1 2 1 3
+5 1 2 2 3 3 4 1 5
+5 1 2 1 3 1 4 3 5
+5 1 2 1 3 3 4 3 5
+6 1 2 1 3 1 4 2 5 3 6
+5 1 2 1 3 2 4 4 5
+4 1 2 2 3 2 4
+5 1 2 2 3 1 4 2 5
+2 1 2
+5 1 2 1 3 1 4 1 5
+4 1 2 1 3 2 4
+4 1 2 2 3 3 4
+4 1 2 2 3 1 4
+5 1 2 2 3 1 4 3 5
+5 1 2 2 3 2 4 2 5
+5 1 2 1 3 2 4 4 5
+6 1 2 1 3 1 4 2 5 4 6
+5 1 2 2 3 1 4 4 5
+3 1 2 1 3
+4 1 2 1 3 3 4
+4 1 2 2 3 3 4
+5 1 2 1 3 2 4 1 5
+6 1 2 1 3 3 4 2 5 3 6
+4 1 2 1 3 1 4
+5 1 2 1 3 3 4 3 5
+6 1 2 1 3 1 4 2 5 2 6
+5 1 2 2 3 3 4 3 5
+6 1 2 1 3 2 4 1 5 1 6
+3 1 2 2 3
+4 1 2 2 3 3 4
+5 1 2 2 3 2 4 2 5
+3 1 2 2 3
+4 1 2 1 3 3 4
+4 1 2 2 3 3 4
+4 1 2 1 3 1 4
+4 1 2 1 3 3 4
+5 1 2 1 3 2 4 4 5
+4 1 2 1 3 1 4
+4 1 2 1 3 3 4
+4 1 2 1 3 3 4
+6 1 2 2 3 3 4 4 5 5 6
+5 1 2 1 3 1 4 3 5
+3 1 2 2 3
+5 1 2 1 3 1 4 2 5
+3 1 2 2 3
+5 1 2 1 3 1 4 4 5
+3 1 2 1 3
+4 1 2 1 3 1 4
+4 1 2 2 3 2 4
+3 1 2 2 3
+5 1 2 1 3 1 4 4 5
+4 1 2 1 3 3 4
+5 1 2 1 3 2 4 1 5
+5 1 2 2 3 2 4 3 5
+2 1 2
+5 1 2 2 3 2 4 3 5
+2 1 2
+4 1 2 2 3 2 4
+6 1 2 1 3 1 4 1 5 1 6
+3 1 2 2 3
+5 1 2 2 3 1 4 4 5
+4 1 2 1 3 3 4
+6 1 2 2 3 2 4 2 5 2 6
+4 1 2 2 3 3 4
+5 1 2 1 3 3 4 1 5
+`
+
+type testCase struct {
+	n     int
+	edges [][2]int
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+// solve replicates 1375G.go logic to compute answer.
+func solve(tc testCase) int {
+	n := tc.n
 	adj := make([][]int, n)
-	for _, e := range edges {
+	for _, e := range tc.edges {
 		u, v := e[0], e[1]
 		adj[u] = append(adj[u], v)
 		adj[v] = append(adj[v], u)
@@ -50,61 +170,74 @@ func expectedAns(n int, edges [][2]int) int {
 	return c0
 }
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("usage: go run verifierG.go /path/to/binary")
-		os.Exit(1)
-	}
-	binary := os.Args[1]
-
-	file, err := os.Open("testcasesG.txt")
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesData), "\n")
+	cases := make([]testCase, 0, len(lines))
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		idx++
-		parts := strings.Fields(line)
-		n, _ := strconv.Atoi(parts[0])
-		expectEdges := (n - 1) * 2
-		if len(parts) != 1+expectEdges {
-			fmt.Printf("test %d: wrong number of values\n", idx)
-			os.Exit(1)
+		fields := strings.Fields(line)
+		if len(fields) < 1 {
+			return nil, fmt.Errorf("invalid line %d", idx+1)
+		}
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, err
+		}
+		expect := 1 + 2*(n-1)
+		if len(fields) != expect {
+			return nil, fmt.Errorf("line %d expected %d numbers got %d", idx+1, expect, len(fields))
 		}
 		edges := make([][2]int, n-1)
+		pos := 1
 		for i := 0; i < n-1; i++ {
-			u, _ := strconv.Atoi(parts[1+2*i])
-			v, _ := strconv.Atoi(parts[2+2*i])
+			u, err := strconv.Atoi(fields[pos])
+			if err != nil {
+				return nil, err
+			}
+			v, err := strconv.Atoi(fields[pos+1])
+			if err != nil {
+				return nil, err
+			}
 			edges[i] = [2]int{u - 1, v - 1}
+			pos += 2
 		}
+		cases = append(cases, testCase{n: n, edges: edges})
+	}
+	return cases, nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: go run verifierG.go /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
+
+	testcases, err := parseTestcases()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
+		os.Exit(1)
+	}
+
+	for idx, tc := range testcases {
 		var input strings.Builder
-		input.WriteString(fmt.Sprintf("%d\n", n))
-		for _, e := range edges {
+		input.WriteString(fmt.Sprintf("%d\n", tc.n))
+		for _, e := range tc.edges {
 			input.WriteString(fmt.Sprintf("%d %d\n", e[0]+1, e[1]+1))
 		}
-
-		cmd := exec.Command(binary)
-		cmd.Stdin = strings.NewReader(input.String())
-		var outBuf, errBuf bytes.Buffer
-		cmd.Stdout = &outBuf
-		cmd.Stderr = &errBuf
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("Test %d: runtime error: %v\nstderr: %s\n", idx, err, errBuf.String())
+		want := solve(tc)
+		got, err := run(bin, input.String())
+		if err != nil {
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		out := strings.TrimSpace(outBuf.String())
-		ansExp := expectedAns(n, edges)
-		if out != fmt.Sprintf("%d", ansExp) {
-			fmt.Printf("Test %d failed: expected %d got %s\n", idx, ansExp, out)
+		if strings.TrimSpace(got) != strconv.Itoa(want) {
+			fmt.Printf("case %d failed: expected %d got %s\n", idx+1, want, strings.TrimSpace(got))
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

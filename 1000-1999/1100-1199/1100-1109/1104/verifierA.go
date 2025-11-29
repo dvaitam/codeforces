@@ -10,49 +10,186 @@ import (
 	"strings"
 )
 
-func runBinary(path, input string) (string, error) {
+const testcasesRaw = `865
+395
+777
+912
+431
+42
+266
+989
+524
+498
+415
+941
+803
+850
+311
+992
+489
+367
+598
+914
+81
+890
+52
+702
+690
+119
+367
+315
+806
+136
+890
+559
+36
+805
+69
+644
+103
+620
+780
+604
+15
+467
+64
+665
+118
+402
+128
+845
+63
+93
+329
+636
+294
+101
+215
+358
+901
+98
+326
+464
+571
+981
+794
+792
+677
+281
+654
+451
+277
+278
+640
+154
+347
+235
+294
+862
+108
+6
+150
+485
+72
+881
+434
+546
+896
+140
+738
+317
+447
+282
+100
+873
+320
+451
+845
+266
+917
+847
+40
+518`
+
+// solve mirrors 1104A.go: find highest divisor of n in [9..1], output count and digit.
+func solve(n int) (int, int) {
+	div := 1
+	q := n
+	for i := 9; i >= 1; i-- {
+		if n%i == 0 {
+			div = i
+			q = n / i
+			break
+		}
+	}
+	return q, div
+}
+
+type testCase struct {
+	n int
+}
+
+func parseTestcases() ([]testCase, error) {
+	scan := bufio.NewScanner(strings.NewReader(testcasesRaw))
+	scan.Split(bufio.ScanWords)
+	var cases []testCase
+	for scan.Scan() {
+		v, err := strconv.Atoi(scan.Text())
+		if err != nil {
+			return nil, err
+		}
+		cases = append(cases, testCase{n: v})
+	}
+	if err := scan.Err(); err != nil {
+		return nil, err
+	}
+	return cases, nil
+}
+
+func buildInput(tc testCase) string {
+	return fmt.Sprintf("%d\n", tc.n)
+}
+
+func runBinary(bin, input string) (string, error) {
 	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
 	} else {
-		cmd = exec.Command(path)
+		cmd = exec.Command(bin)
 	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
-func verifyOutput(n int, out string) bool {
-	parts := strings.Fields(out)
-	if len(parts) < 1 {
-		return false
+func runCase(bin string, tc testCase) error {
+	input := buildInput(tc)
+	gotStr, err := runBinary(bin, input)
+	if err != nil {
+		return err
 	}
-	k, err := strconv.Atoi(parts[0])
-	if err != nil || k < 1 || k > n {
-		return false
+	tokens := strings.Fields(gotStr)
+	q, div := solve(tc.n)
+	if len(tokens) != q+1 {
+		return fmt.Errorf("expected %d tokens got %d", q+1, len(tokens))
 	}
-	if len(parts)-1 != k {
-		return false
+	first, err := strconv.Atoi(tokens[0])
+	if err != nil || first != q {
+		return fmt.Errorf("expected count %d got %q", q, tokens[0])
 	}
-	if k == 0 {
-		return false
-	}
-	digit, err := strconv.Atoi(parts[1])
-	if err != nil || digit < 1 || digit > 9 {
-		return false
-	}
-	sum := 0
-	for i := 1; i <= k; i++ {
-		d, err := strconv.Atoi(parts[i])
-		if err != nil || d != digit {
-			return false
+	for i := 1; i < len(tokens); i++ {
+		v, err := strconv.Atoi(tokens[i])
+		if err != nil || v != div {
+			return fmt.Errorf("expected digit %d got %q", div, tokens[i])
 		}
-		sum += d
 	}
-	return sum == n
+	return nil
 }
 
 func main() {
@@ -61,36 +198,16 @@ func main() {
 		return
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesA.txt")
+	tests, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		n, _ := strconv.Atoi(line)
-		input := fmt.Sprintf("%d\n", n)
-		out, err := runBinary(bin, input)
-		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\ninput:\n%s\noutput:\n%s\n", idx, err, input, out)
-			os.Exit(1)
-		}
-		if !verifyOutput(n, out) {
-			fmt.Printf("test %d failed for n=%d\noutput:\n%s\n", idx, n, out)
+	for i, tc := range tests {
+		if err := runCase(bin, tc); err != nil {
+			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

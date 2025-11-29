@@ -1,200 +1,1076 @@
 package main
 
 import (
-    "bufio"
-    "container/heap"
-    "bytes"
-    "fmt"
-    "os"
-    "os/exec"
-    "strconv"
-    "strings"
+	"bytes"
+	"fmt"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
 )
 
-type edgeE1 struct {
-    to, id int
-    w int64
+// Embedded testcases from testcasesE1.txt.
+const testcasesRaw = `10 889
+1 2 99
+2 3 80
+1 4 24
+4 5 100
+3 6 19
+1 7 26
+6 8 41
+8 9 49
+8 10 50
+12 352
+1 2 23
+1 3 44
+2 4 44
+4 5 12
+2 6 48
+5 7 97
+2 8 26
+4 9 57
+6 10 64
+1 11 40
+1 12 23
+14 596
+1 2 24
+1 3 83
+2 4 95
+2 5 99
+3 6 76
+1 7 93
+6 8 15
+6 9 77
+4 10 17
+2 11 98
+6 12 3
+11 13 58
+13 14 52
+10 325
+1 2 51
+2 3 68
+3 4 79
+4 5 52
+4 6 48
+1 7 76
+7 8 70
+1 9 57
+3 10 94
+11 487
+1 2 99
+1 3 74
+2 4 26
+4 5 14
+3 6 71
+6 7 13
+2 8 96
+2 9 44
+2 10 1
+6 11 64
+6 617
+1 2 78
+2 3 96
+1 4 72
+2 5 74
+3 6 14
+13 795
+1 2 39
+1 3 3
+1 4 42
+4 5 80
+3 6 4
+5 7 83
+5 8 17
+4 9 59
+2 10 59
+7 11 87
+3 12 46
+3 13 28
+7 442
+1 2 40
+1 3 8
+1 4 4
+2 5 23
+2 6 36
+2 7 38
+5 385
+1 2 71
+1 3 87
+3 4 37
+4 5 5
+10 619
+1 2 45
+2 3 30
+2 4 25
+4 5 65
+1 6 25
+5 7 17
+4 8 35
+1 9 82
+9 10 19
+13 524
+1 2 99
+1 3 94
+3 4 52
+2 5 71
+5 6 41
+6 7 68
+3 8 40
+6 9 19
+9 10 24
+7 11 88
+1 12 92
+2 13 7
+15 241
+1 2 67
+1 3 16
+2 4 94
+3 5 30
+4 6 97
+3 7 92
+4 8 60
+8 9 100
+1 10 38
+1 11 74
+8 12 47
+10 13 52
+5 14 40
+9 15 99
+6 937
+1 2 18
+1 3 5
+3 4 29
+4 5 67
+3 6 71
+4 458
+1 2 4
+2 3 23
+3 4 13
+3 999
+1 2 46
+2 3 24
+5 34
+1 2 52
+1 3 57
+1 4 58
+4 5 71
+15 367
+1 2 80
+2 3 54
+3 4 96
+2 5 87
+4 6 76
+1 7 45
+5 8 14
+5 9 16
+2 10 11
+8 11 12
+3 12 47
+3 13 74
+2 14 48
+3 15 58
+9 692
+1 2 6
+2 3 66
+1 4 99
+3 5 54
+5 6 82
+3 7 85
+1 8 15
+6 9 12
+5 749
+1 2 32
+1 3 50
+1 4 28
+2 5 80
+6 891
+1 2 84
+2 3 33
+1 4 43
+1 5 64
+3 6 96
+10 512
+1 2 37
+1 3 80
+1 4 96
+3 5 41
+1 6 21
+5 7 75
+7 8 39
+8 9 10
+2 10 4
+13 462
+1 2 100
+1 3 13
+3 4 89
+3 5 19
+2 6 95
+2 7 64
+6 8 76
+7 9 83
+6 10 30
+6 11 42
+6 12 47
+9 13 25
+9 934
+1 2 80
+1 3 79
+2 4 44
+1 5 92
+2 6 52
+5 7 40
+5 8 96
+1 9 38
+13 221
+1 2 48
+2 3 86
+3 4 87
+1 5 6
+2 6 72
+3 7 56
+5 8 50
+6 9 99
+2 10 64
+10 11 89
+1 12 46
+1 13 84
+9 591
+1 2 80
+1 3 55
+2 4 76
+1 5 45
+2 6 41
+1 7 24
+4 8 56
+3 9 22
+15 724
+1 2 83
+1 3 24
+3 4 79
+2 5 48
+4 6 85
+1 7 23
+1 8 97
+8 9 22
+3 10 69
+1 11 87
+5 12 93
+3 13 43
+4 14 42
+13 15 42
+15 277
+1 2 94
+2 3 88
+2 4 61
+3 5 49
+3 6 75
+2 7 43
+3 8 69
+1 9 23
+5 10 38
+9 11 31
+10 12 61
+3 13 61
+11 14 74
+2 15 3
+11 595
+1 2 78
+1 3 28
+2 4 40
+4 5 42
+2 6 14
+4 7 37
+4 8 32
+5 9 66
+9 10 17
+9 11 58
+15 864
+1 2 42
+1 3 7
+2 4 38
+4 5 21
+4 6 67
+4 7 76
+5 8 15
+3 9 36
+4 10 17
+1 11 61
+4 12 58
+2 13 22
+4 14 87
+7 15 81
+8 927
+1 2 30
+2 3 84
+3 4 85
+4 5 71
+2 6 39
+2 7 89
+1 8 33
+2 888
+1 2 13
+15 920
+1 2 8
+1 3 47
+2 4 35
+3 5 43
+3 6 83
+3 7 71
+3 8 69
+5 9 68
+2 10 40
+9 11 2
+3 12 83
+8 13 71
+8 14 99
+4 15 53
+13 246
+1 2 65
+1 3 47
+1 4 5
+4 5 40
+5 6 69
+3 7 46
+7 8 15
+2 9 84
+5 10 23
+2 11 30
+9 12 36
+12 13 63
+14 964
+1 2 8
+2 3 1
+2 4 34
+1 5 100
+5 6 8
+3 7 61
+1 8 86
+2 9 99
+2 10 98
+8 11 56
+4 12 47
+4 13 77
+13 14 90
+7 67
+1 2 50
+1 3 91
+2 4 81
+1 5 24
+5 6 100
+2 7 65
+3 544
+1 2 6
+2 3 46
+7 236
+1 2 83
+2 3 62
+1 4 67
+4 5 31
+3 6 59
+4 7 87
+10 9
+1 2 45
+1 3 13
+3 4 35
+2 5 76
+4 6 80
+6 7 62
+5 8 59
+2 9 81
+1 10 29
+2 941
+1 2 35
+8 662
+1 2 71
+2 3 46
+2 4 29
+1 5 74
+1 6 3
+2 7 29
+2 8 89
+7 463
+1 2 65
+2 3 43
+3 4 92
+1 5 92
+3 6 77
+5 7 39
+4 801
+1 2 96
+1 3 49
+3 4 79
+5 936
+1 2 96
+1 3 7
+2 4 36
+4 5 40
+8 123
+1 2 3
+1 3 87
+2 4 2
+3 5 83
+4 6 100
+6 7 49
+2 8 66
+9 716
+1 2 23
+2 3 58
+3 4 33
+4 5 55
+5 6 82
+5 7 17
+3 8 73
+1 9 3
+11 48
+1 2 6
+1 3 67
+3 4 46
+2 5 10
+3 6 83
+2 7 52
+2 8 51
+3 9 76
+3 10 15
+1 11 71
+3 777
+1 2 97
+2 3 89
+13 394
+1 2 13
+1 3 19
+2 4 60
+4 5 40
+2 6 19
+4 7 34
+3 8 11
+7 9 98
+6 10 1
+9 11 4
+7 12 10
+8 13 2
+4 911
+1 2 97
+2 3 2
+3 4 4
+11 929
+1 2 57
+2 3 66
+3 4 43
+4 5 69
+5 6 69
+1 7 19
+2 8 92
+3 9 19
+1 10 23
+3 11 32
+2 414
+1 2 80
+6 965
+1 2 47
+1 3 73
+1 4 94
+4 5 50
+2 6 14
+4 115
+1 2 88
+1 3 63
+1 4 5
+14 549
+1 2 12
+1 3 96
+1 4 32
+2 5 11
+4 6 16
+2 7 81
+7 8 14
+4 9 16
+8 10 45
+8 11 96
+10 12 36
+12 13 95
+1 14 47
+13 578
+1 2 88
+1 3 91
+1 4 51
+1 5 80
+2 6 91
+1 7 84
+2 8 90
+2 9 89
+2 10 63
+10 11 52
+3 12 37
+11 13 34
+7 805
+1 2 83
+2 3 40
+3 4 59
+3 5 24
+4 6 45
+6 7 87
+15 910
+1 2 65
+1 3 92
+1 4 19
+1 5 32
+1 6 24
+5 7 79
+3 8 11
+2 9 9
+2 10 35
+6 11 52
+8 12 87
+2 13 81
+2 14 41
+9 15 71
+2 115
+1 2 9
+6 812
+1 2 68
+1 3 64
+2 4 90
+3 5 48
+2 6 19
+14 11
+1 2 78
+2 3 45
+3 4 13
+4 5 47
+3 6 19
+5 7 10
+2 8 1
+4 9 37
+4 10 12
+2 11 94
+9 12 74
+12 13 46
+3 14 91
+10 398
+1 2 67
+2 3 67
+3 4 41
+4 5 28
+3 6 32
+2 7 8
+1 8 57
+7 9 87
+2 10 10
+12 2
+1 2 19
+2 3 100
+2 4 88
+3 5 71
+1 6 13
+5 7 12
+2 8 69
+5 9 78
+1 10 35
+7 11 40
+7 12 100
+11 517
+1 2 56
+1 3 23
+1 4 53
+3 5 91
+3 6 89
+1 7 11
+3 8 88
+8 9 5
+8 10 14
+7 11 12
+7 622
+1 2 49
+2 3 58
+3 4 69
+4 5 76
+1 6 67
+2 7 20
+11 853
+1 2 55
+2 3 8
+2 4 100
+1 5 87
+5 6 86
+6 7 100
+5 8 14
+3 9 95
+2 10 55
+5 11 83
+9 874
+1 2 5
+1 3 100
+3 4 99
+3 5 71
+5 6 11
+1 7 72
+7 8 27
+2 9 33
+7 560
+1 2 2
+2 3 32
+1 4 10
+4 5 41
+1 6 15
+3 7 61
+5 792
+1 2 60
+2 3 90
+3 4 41
+2 5 38
+4 379
+1 2 71
+2 3 91
+1 4 39
+9 215
+1 2 17
+2 3 61
+2 4 75
+2 5 90
+4 6 35
+2 7 88
+1 8 47
+3 9 46
+15 640
+1 2 79
+1 3 19
+2 4 91
+4 5 7
+3 6 63
+2 7 72
+1 8 78
+3 9 67
+9 10 46
+5 11 86
+11 12 1
+11 13 9
+6 14 18
+10 15 60
+4 172
+1 2 37
+1 3 97
+2 4 89
+4 601
+1 2 66
+2 3 25
+2 4 46
+8 280
+1 2 38
+2 3 28
+3 4 85
+2 5 54
+3 6 42
+1 7 65
+5 8 41
+8 713
+1 2 86
+1 3 43
+1 4 37
+2 5 15
+2 6 92
+5 7 56
+1 8 45
+7 330
+1 2 28
+1 3 32
+1 4 96
+4 5 81
+2 6 2
+4 7 93
+4 958
+1 2 38
+1 3 50
+2 4 27
+2 208
+1 2 90
+5 200
+1 2 28
+2 3 71
+2 4 76
+1 5 57
+11 938
+1 2 24
+2 3 27
+2 4 59
+3 5 23
+2 6 13
+5 7 66
+6 8 75
+1 9 21
+9 10 99
+2 11 23
+13 916
+1 2 85
+2 3 5
+1 4 13
+2 5 1
+4 6 31
+6 7 95
+5 8 49
+1 9 68
+7 10 44
+9 11 21
+4 12 77
+12 13 33
+2 283
+1 2 79
+7 406
+1 2 47
+2 3 84
+3 4 82
+2 5 41
+1 6 99
+3 7 27
+7 417
+1 2 98
+1 3 89
+2 4 4
+3 5 95
+2 6 81
+5 7 65
+2 203
+1 2 82
+6 277
+1 2 87
+1 3 61
+1 4 19
+1 5 92
+3 6 92
+12 867
+1 2 93
+1 3 82
+2 4 62
+1 5 61
+2 6 22
+3 7 71
+1 8 48
+1 9 19
+5 10 26
+8 11 88
+1 12 75
+5 834
+1 2 95
+2 3 10
+3 4 74
+1 5 75
+2 70
+1 2 51
+12 900
+1 2 28
+1 3 23
+3 4 89
+4 5 96
+5 6 48
+6 7 8
+4 8 31
+3 9 97
+7 10 29
+9 11 26
+5 12 33
+4 415
+1 2 33
+2 3 45
+3 4 67
+11 756
+1 2 94
+2 3 44
+2 4 31
+4 5 50
+5 6 62
+1 7 8
+6 8 41
+7 9 11
+8 10 45
+5 11 25
+13 886
+1 2 57
+1 3 14
+3 4 76
+4 5 67
+5 6 40
+2 7 93
+2 8 52
+7 9 55
+2 10 38
+5 11 94
+10 12 26
+3 13 32
+9 878
+1 2 11
+2 3 48
+3 4 22
+1 5 54
+1 6 12
+6 7 57
+6 8 87
+2 9 7
+2 261
+1 2 78
+10 683
+1 2 96
+2 3 79
+1 4 19
+2 5 42
+5 6 80
+6 7 12
+6 8 64
+8 9 88
+8 10 48
+4 701
+1 2 91
+1 3 20
+3 4 15
+9 406
+1 2 63
+2 3 63
+3 4 90
+3 5 45
+5 6 12
+1 7 31
+6 8 88
+7 9 5
+2 618
+1 2 35
+5 5
+1 2 84
+1 3 39
+2 4 43
+1 5 59`
+
+type edge struct {
+	to, id int
+	w      int64
 }
 
-type testCaseE1 struct {
-    n   int
-    S   int64
-    edges [][3]int
+type testCase struct {
+	n     int
+	S     int64
+	edges [][3]int
 }
 
-func parseTestcasesE1(path string) ([]testCaseE1, error) {
-    f, err := os.Open(path)
-    if err != nil {
-        return nil, err
-    }
-    defer f.Close()
-    scanner := bufio.NewScanner(f)
-    var cases []testCaseE1
-    for scanner.Scan() {
-        line := strings.TrimSpace(scanner.Text())
-        if line == "" {
-            continue
-        }
-        parts := strings.Fields(line)
-        if len(parts) != 2 {
-            return nil, fmt.Errorf("bad header: %s", line)
-        }
-        n, _ := strconv.Atoi(parts[0])
-        S, _ := strconv.ParseInt(parts[1], 10, 64)
-        edges := make([][3]int, 0, n-1)
-        for i := 0; i < n-1; i++ {
-            if !scanner.Scan() {
-                return nil, fmt.Errorf("unexpected EOF")
-            }
-            eparts := strings.Fields(scanner.Text())
-            if len(eparts) != 3 {
-                return nil, fmt.Errorf("bad edge line")
-            }
-            u, _ := strconv.Atoi(eparts[0])
-            v, _ := strconv.Atoi(eparts[1])
-            w, _ := strconv.Atoi(eparts[2])
-            edges = append(edges, [3]int{u, v, w})
-        }
-        cases = append(cases, testCaseE1{n, S, edges})
-    }
-    if err := scanner.Err(); err != nil {
-        return nil, err
-    }
-    return cases, nil
+func parseTests() ([]testCase, error) {
+	fields := strings.Fields(testcasesRaw)
+	pos := 0
+	var cases []testCase
+	for pos < len(fields) {
+		if pos+1 >= len(fields) {
+			return nil, fmt.Errorf("truncated case header at field %d", pos)
+		}
+		n, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return nil, fmt.Errorf("bad n at case %d: %v", len(cases)+1, err)
+		}
+		S, err := strconv.ParseInt(fields[pos+1], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("bad S at case %d: %v", len(cases)+1, err)
+		}
+		pos += 2
+		need := 3 * (n - 1)
+		if pos+need > len(fields) {
+			return nil, fmt.Errorf("case %d truncated edges", len(cases)+1)
+		}
+		es := make([][3]int, n-1)
+		for i := 0; i < n-1; i++ {
+			u, _ := strconv.Atoi(fields[pos])
+			v, _ := strconv.Atoi(fields[pos+1])
+			w, _ := strconv.Atoi(fields[pos+2])
+			es[i] = [3]int{u, v, w}
+			pos += 3
+		}
+		cases = append(cases, testCase{n: n, S: S, edges: es})
+	}
+	return cases, nil
 }
-
-// solver from 1399E1.go
-func solveE1(n int, S int64, edges [][3]int) int64 {
-    adj := make([][]edgeE1, n+1)
-    m := n - 1
-    weights := make([]int64, m)
-    for i := 0; i < m; i++ {
-        u := edges[i][0]
-        v := edges[i][1]
-        w := int64(edges[i][2])
-        adj[u] = append(adj[u], edgeE1{to: v, id: i, w: w})
-        adj[v] = append(adj[v], edgeE1{to: u, id: i, w: w})
-        weights[i] = w
-    }
-    leafCount := make([]int64, m)
-    type Frame struct{ v, parent, eid, idx int; leaves int64 }
-    stack := make([]Frame, 0, n)
-    stack = append(stack, Frame{v: 1, parent: 0, eid: -1, idx: 0, leaves: 0})
-    for len(stack) > 0 {
-        f := &stack[len(stack)-1]
-        if f.idx < len(adj[f.v]) {
-            e := adj[f.v][f.idx]
-            f.idx++
-            if e.to == f.parent {
-                continue
-            }
-            stack = append(stack, Frame{v: e.to, parent: f.v, eid: e.id, idx: 0, leaves: 0})
-        } else {
-            if f.leaves == 0 {
-                f.leaves = 1
-            }
-            if f.eid >= 0 {
-                leafCount[f.eid] = f.leaves
-            }
-            count := f.leaves
-            stack = stack[:len(stack)-1]
-            if len(stack) > 0 {
-                stack[len(stack)-1].leaves += count
-            }
-        }
-    }
-    var total int64
-    pq := &MaxHeap{}
-    heap.Init(pq)
-    for i := 0; i < m; i++ {
-        total += weights[i] * leafCount[i]
-        saving := (weights[i] - weights[i]/2) * leafCount[i]
-        heap.Push(pq, &Item{saving: saving, id: i})
-    }
-    var moves int64
-    for total > S {
-        it := heap.Pop(pq).(*Item)
-        if it.saving <= 0 {
-            break
-        }
-        total -= it.saving
-        moves++
-        i := it.id
-        weights[i] /= 2
-        newSave := (weights[i] - weights[i]/2) * leafCount[i]
-        heap.Push(pq, &Item{saving: newSave, id: i})
-    }
-    return moves
-}
-
-// Max-heap utilities
 
 type Item struct {
-    saving int64
-    id     int
+	saving int64
+	id     int
 }
 
 type MaxHeap []*Item
 
-func (h MaxHeap) Len() int           { return len(h) }
-func (h MaxHeap) Less(i, j int) bool { return h[i].saving > h[j].saving }
-func (h MaxHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h MaxHeap) Len() int            { return len(h) }
+func (h MaxHeap) Less(i, j int) bool  { return h[i].saving > h[j].saving }
+func (h MaxHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
 func (h *MaxHeap) Push(x interface{}) { *h = append(*h, x.(*Item)) }
 func (h *MaxHeap) Pop() interface{} {
-    old := *h
-    n := len(old)
-    it := old[n-1]
-    *h = old[:n-1]
-    return it
+	old := *h
+	n := len(old)
+	it := old[n-1]
+	*h = old[:n-1]
+	return it
 }
 
-func run(bin, input string) (string, error) {
-    var cmd *exec.Cmd
-    if strings.HasSuffix(bin, ".go") {
-        cmd = exec.Command("go", "run", bin)
-    } else {
-        cmd = exec.Command(bin)
-    }
-    cmd.Stdin = strings.NewReader(input)
-    var out bytes.Buffer
-    var errBuf bytes.Buffer
-    cmd.Stdout = &out
-    cmd.Stderr = &errBuf
-    if err := cmd.Run(); err != nil {
-        return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
-    }
-    return strings.TrimSpace(out.String()), nil
+func solve(n int, S int64, es [][3]int) int64 {
+	adj := make([][]edge, n+1)
+	m := n - 1
+	weights := make([]int64, m)
+	for i := 0; i < m; i++ {
+		u := es[i][0]
+		v := es[i][1]
+		w := int64(es[i][2])
+		adj[u] = append(adj[u], edge{to: v, id: i, w: w})
+		adj[v] = append(adj[v], edge{to: u, id: i, w: w})
+		weights[i] = w
+	}
+	leafCount := make([]int64, m)
+	type Frame struct {
+		v, parent, eid, idx int
+		leaves              int64
+	}
+	stack := make([]Frame, 0, n)
+	stack = append(stack, Frame{v: 1, parent: 0, eid: -1, idx: 0, leaves: 0})
+	for len(stack) > 0 {
+		f := &stack[len(stack)-1]
+		if f.idx < len(adj[f.v]) {
+			e := adj[f.v][f.idx]
+			f.idx++
+			if e.to == f.parent {
+				continue
+			}
+			stack = append(stack, Frame{v: e.to, parent: f.v, eid: e.id, idx: 0, leaves: 0})
+		} else {
+			if f.leaves == 0 {
+				f.leaves = 1
+			}
+			if f.eid >= 0 {
+				leafCount[f.eid] = f.leaves
+			}
+			count := f.leaves
+			stack = stack[:len(stack)-1]
+			if len(stack) > 0 {
+				stack[len(stack)-1].leaves += count
+			}
+		}
+	}
+	var total int64
+	pq := &MaxHeap{}
+	heapInit(pq)
+	for i := 0; i < m; i++ {
+		total += weights[i] * leafCount[i]
+		saving := (weights[i] - weights[i]/2) * leafCount[i]
+		heapPush(pq, &Item{saving: saving, id: i})
+	}
+	var moves int64
+	for total > S {
+		it := heapPop(pq)
+		if it == nil || it.saving <= 0 {
+			break
+		}
+		total -= it.saving
+		moves++
+		i := it.id
+		weights[i] /= 2
+		newSave := (weights[i] - weights[i]/2) * leafCount[i]
+		heapPush(pq, &Item{saving: newSave, id: i})
+	}
+	return moves
+}
+
+func heapInit(h *MaxHeap) {
+	*h = (*h)[:len(*h)]
+	if len(*h) > 0 {
+		for i := len(*h)/2 - 1; i >= 0; i-- {
+			heapDown(*h, i, len(*h))
+		}
+	}
+}
+
+func heapPush(h *MaxHeap, it *Item) {
+	*h = append(*h, it)
+	heapUp(*h, len(*h)-1)
+}
+
+func heapPop(h *MaxHeap) *Item {
+	if len(*h) == 0 {
+		return nil
+	}
+	last := len(*h) - 1
+	(*h)[0], (*h)[last] = (*h)[last], (*h)[0]
+	heapDown(*h, 0, last)
+	it := (*h)[last]
+	*h = (*h)[:last]
+	return it
+}
+
+func heapUp(h MaxHeap, i int) {
+	for i > 0 {
+		p := (i - 1) / 2
+		if !h.Less(i, p) {
+			break
+		}
+		h.Swap(i, p)
+		i = p
+	}
+}
+
+func heapDown(h MaxHeap, i, n int) {
+	for {
+		l := 2*i + 1
+		r := l + 1
+		b := i
+		if l < n && h.Less(l, b) {
+			b = l
+		}
+		if r < n && h.Less(r, b) {
+			b = r
+		}
+		if b == i {
+			break
+		}
+		h.Swap(i, b)
+		i = b
+	}
+}
+
+func runCandidate(bin string, input []byte) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = bytes.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
-    if len(os.Args) != 2 {
-        fmt.Println("usage: go run verifierE1.go /path/to/binary")
-        os.Exit(1)
-    }
-    bin := os.Args[1]
-    cases, err := parseTestcasesE1("testcasesE1.txt")
-    if err != nil {
-        fmt.Println("failed to parse testcases:", err)
-        os.Exit(1)
-    }
-    for idx, tc := range cases {
-        var sb strings.Builder
-        sb.WriteString("1\n")
-        sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.S))
-        for _, e := range tc.edges {
-            sb.WriteString(fmt.Sprintf("%d %d %d\n", e[0], e[1], e[2]))
-        }
-        expected := strconv.FormatInt(solveE1(tc.n, tc.S, tc.edges), 10)
-        got, err := run(bin, sb.String())
-        if err != nil {
-            fmt.Printf("case %d failed: %v\n", idx+1, err)
-            os.Exit(1)
-        }
-        if strings.TrimSpace(got) != expected {
-            fmt.Printf("case %d failed: expected %s got %s\n", idx+1, expected, got)
-            os.Exit(1)
-        }
-    }
-    fmt.Printf("All %d tests passed\n", len(cases))
-}
+	if len(os.Args) != 2 {
+		fmt.Println("usage: go run verifierE1.go /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
 
+	cases, err := parseTests()
+	if err != nil {
+		fmt.Println("failed to parse embedded tests:", err)
+		os.Exit(1)
+	}
+
+	for idx, tc := range cases {
+		var sb strings.Builder
+		sb.WriteString("1\n")
+		sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.S))
+		for _, e := range tc.edges {
+			sb.WriteString(fmt.Sprintf("%d %d %d\n", e[0], e[1], e[2]))
+		}
+		expected := strconv.FormatInt(solve(tc.n, tc.S, tc.edges), 10)
+		got, err := runCandidate(bin, []byte(sb.String()))
+		if err != nil {
+			fmt.Printf("case %d: %v\n", idx+1, err)
+			os.Exit(1)
+		}
+		if strings.TrimSpace(got) != expected {
+			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, expected, got)
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", len(cases))
+}

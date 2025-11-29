@@ -1,103 +1,349 @@
 package main
 
 import (
-    "bufio"
-    "bytes"
-    "fmt"
-    "os"
-    "os/exec"
-    "sort"
-    "strings"
+	"bufio"
+	"bytes"
+	"fmt"
+	"os"
+	"os/exec"
+	"sort"
+	"strconv"
+	"strings"
 )
 
-func solveCase(n int, arr []int) int {
-    sort.Sort(sort.Reverse(sort.IntSlice(arr)))
-    ans := 0
-    for i := 0; i < n; i++ {
-        if arr[i] >= i+1 {
-            ans = i + 1
-        }
-    }
-    return ans
+// Embedded source for the reference solution (was 1243A.go).
+const solutionSource = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
+)
+
+func main() {
+	reader := bufio.NewReader(os.Stdin)
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
+
+	var T int
+	if _, err := fmt.Fscan(reader, &T); err != nil {
+		return
+	}
+	for ; T > 0; T-- {
+		var n int
+		fmt.Fscan(reader, &n)
+		arr := make([]int, n)
+		for i := 0; i < n; i++ {
+			fmt.Fscan(reader, &arr[i])
+		}
+		sort.Sort(sort.Reverse(sort.IntSlice(arr)))
+		ans := 0
+		for i := 0; i < n; i++ {
+			if arr[i] >= i+1 {
+				ans = i + 1
+			}
+		}
+		fmt.Fprintln(writer, ans)
+	}
+}
+`
+
+const testcasesRaw = `100
+13
+13 7 1 5 9 8 7 13 5 8 6 10 4
+17
+5 10 5 4 9 5 10 4 3 11 16 4 12 14 11 7 16
+15
+14 9 5 1 13 15 9 15 1 2 12 14 7 12 14
+1
+1
+11
+4 6 2 4 10 4 4 3 9 8 2
+3
+2 3 2
+4
+3 3 1 3
+18
+7 18 10 15 3 13 11 8 10 6 7 6 2 9 16 3 3 5
+5
+1 1 5 4 5
+9
+9 4 4 7 5 8 8 6 2
+11
+10 2 8 10 11 6 4 4 1 5 2
+8
+6 3 6 7 1 2 3 4
+2
+1 1
+4
+2 1 4 1
+12
+2 1 10 1 4 3 12 2 8 4 12 1
+1
+1
+20
+4 9 3 8 3 10 12 14 6 2 17 15 2 20 4 13 7 9 12 16
+19
+6 7 2 6 6 11 17 9 4 15 6 1 16 14 19 17 10 12 13
+9
+3 9 1 8 2 6 1 9 5
+5
+2 4 3 5 3
+12
+10 11 10 3 12 5 7 12 7 11 2 1
+20
+7 11 6 8 8 15 13 19 14 2 13 19 14 2 6 15 3 9 6 15
+17
+16 1 2 16 11 10 15 2 14 7 3 5 1 13 14 11 1
+7
+1 6 7 1 7 6 5
+20
+4 7 4 20 7 10 9 6 4 16 13 3 1 9 15 4 9 5 17 12
+4
+2 3 1 1
+2
+1 2
+18
+11 12 2 16 15 14 12 18 6 7 13 10 1 5 5 9 11 11
+12
+12 2 6 10 1 1 5 3 3 10 5 6
+13
+9 3 5 2 8 12 4 1 5 3 9 12 2
+10
+7 6 5 7 2 2 9 8 8 6
+11
+2 8 2 8 7 1 5 6 11 3 3
+19
+13 3 3 3 7 8 2 13 1 4 13 18 17 10 15 16 19 7 14
+3
+2 1 2
+19
+6 14 7 12 4 3 1 17 15 7 4 16 13 9 7 2 7 5 4
+7
+4 4 3 5 7 2 1
+20
+16 5 19 13 14 17 16 11 16 16 7 18 20 8 1 11 11 11 2 17
+5
+3 5 2 4 5
+10
+8 2 2 9 1 2 4 3 1 5
+1
+1
+11
+3 3 11 8 6 9 7 9 9 1 10
+3
+3 3 3
+3
+3 2 1
+10
+9 10 7 8 7 10 10 4 1 1
+6
+3 5 5 3 3 1
+16
+9 10 14 13 13 2 6 5 8 10 11 2 2 16 14 5
+16
+3 5 12 14 2 15 13 15 2 4 16 5 1 2 5 11
+4
+3 2 4 4
+4
+1 4 3 1
+20
+10 5 13 10 4 17 7 2 13 15 12 7 15 12 3 2 2 16 9 1
+17
+7 8 3 17 17 14 17 10 4 5 14 14 3 4 14 3 4
+14
+13 3 12 1 13 8 7 11 7 1 8 14 6 12
+9
+2 6 2 2 6 1 6 6 3
+1
+1
+12
+2 10 3 4 1 4 11 11 12 2 12 1
+10
+6 1 10 4 3 3 8 2 8 6
+9
+3 1 4 6 6 8 5 5 9
+11
+3 10 2 2 9 10 5 3 7 3 3
+8
+6 4 4 3 5 6 7 1
+5
+5 1 4 1 1
+5
+4 3 5 4 2
+19
+14 10 12 3 8 15 12 17 2 13 14 1 14 11 15 7 12 10 16
+3
+1 1 2
+4
+2 4 4 2
+14
+7 3 4 8 6 9 3 6 8 11 11 2 8 13
+7
+3 1 7 6 4 5 4
+1
+1
+10
+2 5 9 10 3 7 8 2 8 4
+18
+13 9 1 4 9 2 1 9 13 17 13 15 4 9 12 10 7 3
+2
+1 2
+10
+9 6 2 9 4 3 2 7 5 5
+17
+5 17 7 4 14 13 9 10 15 12 5 6 4 4 13 13 15
+5
+5 3 3 4 4
+7
+4 4 6 5 3 4 6
+2
+2 2
+5
+4 1 5 2 1
+12
+8 7 1 9 2 11 2 11 12 11 7 1
+12
+1 2 10 1 5 11 12 5 12 4 3 10
+10
+4 2 7 8 6 7 3 6 7 7
+5
+4 2 5 3 2
+7
+2 4 3 7 4 4 7
+16
+13 8 7 15 7 2 13 2 8 3 6 12 2 6 8 10
+20
+3 17 10 12 14 15 2 17 18 14 19 15 16 9 16 7 11 9 2 2
+2
+1 2
+1
+1
+1
+1
+3
+2 3 1
+20
+13 18 8 15 7 11 20 4 20 3 11 11 18 15 11 9 1 17 2 7
+12
+2 4 9 6 4 4 5 11 12 12 5 5
+17
+13 9 16 12 8 2 10 3 1 15 16 15 2 14 16 15 15
+4
+1 1 2 1
+5
+4 2 4 5 1
+14
+9 13 14 7 1 3 4 8 4 3 14 14 5 6
+11
+7 2 9 5 10 9 4 5 8 9 10
+15
+9 11 5 5 4 1 2 10 13 12 2 3 12 7 4
+7
+3 6 6 1 6 5 5
+14
+14 1 2 7 11 5 2 12 10 6 4 11 12 12
+18
+10 8 8 3 17 10 11 8 12 16 10 6 5 1 18 17 11 12
+19
+1 5 13 5 6 17 3 5 7 16 19 7 8 5 8 13 12 19 5
+16
+4 1 12 16 15 10 1 8 6 16 16 11 3 9 5 13`
+
+type testCase struct {
+	n   int
+	arr []int
 }
 
-func runProg(bin, input string) (string, error) {
-    var cmd *exec.Cmd
-    if strings.HasSuffix(bin, ".go") {
-        cmd = exec.Command("go", "run", bin)
-    } else {
-        cmd = exec.Command(bin)
-    }
-    cmd.Stdin = strings.NewReader(input)
-    var out bytes.Buffer
-    var stderr bytes.Buffer
-    cmd.Stdout = &out
-    cmd.Stderr = &stderr
-    if err := cmd.Run(); err != nil {
-        return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
-    }
-    return strings.TrimSpace(out.String()), nil
+func expected(tc testCase) int {
+	arr := append([]int(nil), tc.arr...)
+	sort.Sort(sort.Reverse(sort.IntSlice(arr)))
+	ans := 0
+	for i := 0; i < tc.n; i++ {
+		if arr[i] >= i+1 {
+			ans = i + 1
+		}
+	}
+	return ans
+}
+
+func run(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func parseTests() ([]testCase, error) {
+	scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
+	scanner.Split(bufio.ScanWords)
+	if !scanner.Scan() {
+		return nil, fmt.Errorf("invalid test data")
+	}
+	t, _ := strconv.Atoi(scanner.Text())
+	cases := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		if !scanner.Scan() {
+			return nil, fmt.Errorf("unexpected EOF at case %d", i+1)
+		}
+		n, _ := strconv.Atoi(scanner.Text())
+		arr := make([]int, n)
+		for j := 0; j < n; j++ {
+			if !scanner.Scan() {
+				return nil, fmt.Errorf("unexpected EOF in case %d", i+1)
+			}
+			arr[j], _ = strconv.Atoi(scanner.Text())
+		}
+		cases = append(cases, testCase{n: n, arr: arr})
+	}
+	return cases, nil
 }
 
 func main() {
-    if len(os.Args) == 3 && os.Args[1] == "--" {
-        os.Args = append([]string{os.Args[0]}, os.Args[2])
-    }
-    if len(os.Args) != 2 {
-        fmt.Println("Usage: go run verifierA.go /path/to/binary")
-        os.Exit(1)
-    }
-    bin := os.Args[1]
-
-    f, err := os.Open("testcasesA.txt")
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "could not open testcasesA.txt: %v\n", err)
-        os.Exit(1)
-    }
-    defer f.Close()
-    reader := bufio.NewReader(f)
-
-    var t int
-    if _, err := fmt.Fscan(reader, &t); err != nil {
-        fmt.Fprintf(os.Stderr, "failed to read test count: %v\n", err)
-        os.Exit(1)
-    }
-
-    for caseNum := 1; caseNum <= t; caseNum++ {
-        var n int
-        if _, err := fmt.Fscan(reader, &n); err != nil {
-            fmt.Fprintf(os.Stderr, "case %d: read n: %v\n", caseNum, err)
-            os.Exit(1)
-        }
-        arr := make([]int, n)
-        for i := 0; i < n; i++ {
-            if _, err := fmt.Fscan(reader, &arr[i]); err != nil {
-                fmt.Fprintf(os.Stderr, "case %d: read arr: %v\n", caseNum, err)
-                os.Exit(1)
-            }
-        }
-        var input strings.Builder
-        fmt.Fprintf(&input, "1\n%d\n", n)
-        for i, v := range arr {
-            if i > 0 {
-                input.WriteByte(' ')
-            }
-            fmt.Fprintf(&input, "%d", v)
-        }
-        input.WriteByte('\n')
-
-        want := fmt.Sprintf("%d", solveCase(n, append([]int(nil), arr...)))
-        got, err := runProg(bin, input.String())
-        if err != nil {
-            fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", caseNum, err, input.String())
-            os.Exit(1)
-        }
-        if strings.TrimSpace(got) != strings.TrimSpace(want) {
-            fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", caseNum, want, got, input.String())
-            os.Exit(1)
-        }
-    }
-
-    fmt.Printf("All %d tests passed\n", t)
+	if len(os.Args) != 2 {
+		fmt.Println("Usage: go run verifierA.go /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
+	cases, err := parseTests()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	for i, tc := range cases {
+		var sb strings.Builder
+		sb.WriteString("1\n")
+		sb.WriteString(fmt.Sprintf("%d\n", tc.n))
+		for j, v := range tc.arr {
+			if j > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.Itoa(v))
+		}
+		sb.WriteByte('\n')
+		input := sb.String()
+		want := strconv.Itoa(expected(tc))
+		got, err := run(bin, input)
+		if err != nil {
+			fmt.Printf("case %d failed: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		if strings.TrimSpace(got) != want {
+			fmt.Printf("case %d failed: expected %s got %s\n", i+1, want, got)
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", len(cases))
 }
-

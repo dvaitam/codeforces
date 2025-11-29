@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,13 +9,143 @@ import (
 	"strings"
 )
 
-func runBinary(path, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	} else {
-		cmd = exec.Command(path)
+type testCase struct {
+	n int
+	k int
+}
+
+const testcasesRaw = `100
+138 73
+868 98
+65 33
+121 64
+780 58
+484 84
+389 27
+97 63
+30 50
+444 78
+781 99
+3 90
+457 35
+739 30
+606 14
+924 41
+32 3
+27 84
+555 2
+962 49
+703 28
+993 55
+744 4
+541 29
+783 57
+962 64
+567 30
+354 30
+694 29
+780 59
+976 38
+949 3
+427 72
+945 83
+103 24
+645 93
+881 38
+124 96
+341 93
+997 92
+513 55
+520 86
+195 39
+291 76
+997 64
+867 65
+403 76
+874 5
+492 32
+762 52
+425 86
+178 47
+562 90
+795 87
+756 48
+89 57
+680 66
+111 100
+168 67
+861 51
+380 63
+751 4
+481 6
+316 91
+869 79
+608 75
+404 83
+175 22
+515 30
+13 99
+205 70
+943 71
+238 52
+527 45
+976 74
+362 59
+932 35
+676 71
+624 94
+6 50
+803 95
+525 17
+532 100
+575 27
+437 8
+493 47
+584 71
+205 65
+424 63
+833 46
+425 45
+2 69
+554 80
+806 79
+340 59
+615 4
+824 30
+651 23
+564 75
+186 12`
+
+func parseTestcases(raw string) []testCase {
+	fields := strings.Fields(raw)
+	if len(fields) < 1 {
+		panic("no testcase data")
 	}
+	t, err := strconv.Atoi(fields[0])
+	if err != nil {
+		panic(fmt.Sprintf("bad test count: %v", err))
+	}
+	fields = fields[1:]
+	if len(fields)%2 != 0 || len(fields)/2 != t {
+		panic("testcase count mismatch")
+	}
+	res := make([]testCase, 0, t)
+	for i := 0; i < len(fields); i += 2 {
+		n, err := strconv.Atoi(fields[i])
+		if err != nil {
+			panic(fmt.Sprintf("bad n at pair %d: %v", i/2+1, err))
+		}
+		k, err := strconv.Atoi(fields[i+1])
+		if err != nil {
+			panic(fmt.Sprintf("bad k at pair %d: %v", i/2+1, err))
+		}
+		res = append(res, testCase{n: n, k: k})
+	}
+	return res
+}
+
+func runBinary(path, input string) (string, error) {
+	cmd := exec.Command(path)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -88,28 +217,13 @@ func runCase(bin string, n, k int) error {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("Usage: go run verifierB.go /path/to/binary")
+		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	data, err := os.ReadFile("testcasesB.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesB.txt:", err)
-		os.Exit(1)
-	}
-	sc := bufio.NewScanner(bytes.NewReader(data))
-	sc.Split(bufio.ScanWords)
-	if !sc.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(sc.Text())
-	for i := 0; i < t; i++ {
-		sc.Scan()
-		n, _ := strconv.Atoi(sc.Text())
-		sc.Scan()
-		k, _ := strconv.Atoi(sc.Text())
-		if err := runCase(bin, n, k); err != nil {
+	tests := parseTestcases(testcasesRaw)
+	for i, tc := range tests {
+		if err := runCase(bin, tc.n, tc.k); err != nil {
 			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}

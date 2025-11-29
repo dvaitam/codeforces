@@ -10,7 +10,130 @@ import (
 	"strings"
 )
 
-func solveCase(a, b int64) int64 {
+const testcasesA = `906691059 413653999
+813847339 955892128
+451585301 43469773
+278009742 548977048
+521760889 434794718
+985946604 841597326
+891047768 325679554
+511742081 384452587
+626401695 957413342
+975078788 234551094
+541903389 149544006
+302621084 150050891
+811538590 101823753
+663968655 858351976
+268979133 976832602
+571835844 757172936
+869964135 646287425
+968693314 157798602
+333018422 106046331
+783650878 79180332
+965120263 913189317
+734422154 354546567
+506959381 601095367
+108127101 379880545
+466188456 339513621
+655934894 687649391
+980338159 219556306
+593267777 512185345
+475338372 929119463
+559799206 279701488
+66872192 864392046
+986194169 589161385
+983541586 15077162
+100149903 772777019
+902041076 428233516
+762628805 885670547
+842938612 717424032
+671374073 1227089
+657019495 529975199
+889126174 931581386
+357701128 261897306
+784130654 349185522
+755530426 934661370
+67628851 205156723
+984641619 609360019
+238052747 256211901
+862585179 153002188
+862407391 583031024
+481003665 97942384
+86378036 343656008
+939617816 545397109
+525367680 117099972
+323676026 591918701
+312556224 758664543
+134014482 587810202
+357288142 874527131
+990258110 580125104
+218186327 858378321
+647665636 587583849
+630949021 308869635
+477803329 98389211
+640258139 856776200
+413284457 340426463
+618100572 259960578
+311738931 197427541
+203357385 882043705
+200499309 35403863
+657960185 705082653
+279233228 511671263
+74179727 96448168
+728774302 813471022
+139827434 941425018
+160578446 991472818
+41491065 904584778
+86165974 964406045
+750892138 991152222
+890519442 580464750
+733900802 420150928
+899650943 757292284
+563256980 295959887
+560267849 871479689
+252868059 912128612
+231070625 961040769
+729580033 633294196
+886119716 450352272
+622442780 295505360
+483788448 528984689
+708933076 688479846
+751861427 984558132
+851826326 383720486
+88447324 348241149
+657970849 123855847
+522315485 630366659
+676615553 359993933
+907395136 204417731
+260957515 17404311
+785430572 291024799
+125771988 757345666
+236717701 399496590
+853176974 183053408`
+
+type testCaseA struct {
+	a int64
+	b int64
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func referenceSolveA(a, b int64) int64 {
 	r := (a + b) / 3
 	if a < b {
 		if r > a {
@@ -24,52 +147,82 @@ func solveCase(a, b int64) int64 {
 	return r
 }
 
+func parseTestcasesA() ([]testCaseA, error) {
+	scan := bufio.NewScanner(strings.NewReader(testcasesA))
+	scan.Split(bufio.ScanWords)
+	cases := make([]testCaseA, 0, 100)
+	for {
+		if !scan.Scan() {
+			break
+		}
+		a, err := strconv.ParseInt(scan.Text(), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("parse a: %w", err)
+		}
+		if !scan.Scan() {
+			return nil, fmt.Errorf("missing b")
+		}
+		b, err := strconv.ParseInt(scan.Text(), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("parse b: %w", err)
+		}
+		cases = append(cases, testCaseA{a: a, b: b})
+	}
+	if err := scan.Err(); err != nil {
+		return nil, fmt.Errorf("scanner error: %w", err)
+	}
+	return cases, nil
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errb bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
 func main() {
-	if len(os.Args) < 2 {
+	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierA.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
 
-	file, err := os.Open("testcasesA.txt")
+	bin, cleanup, err := buildIfGo(os.Args[1])
 	if err != nil {
-		panic(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
-	defer file.Close()
+	defer cleanup()
 
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		fields := strings.Fields(line)
-		if len(fields) != 2 {
-			fmt.Printf("invalid test case %d\n", idx)
+	cases, err := parseTestcasesA()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	for idx, tc := range cases {
+		input := fmt.Sprintf("1\n%d %d\n", tc.a, tc.b)
+		want := referenceSolveA(tc.a, tc.b)
+		got, err := run(bin, input)
+		if err != nil {
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		a, _ := strconv.ParseInt(fields[0], 10, 64)
-		b, _ := strconv.ParseInt(fields[1], 10, 64)
-		expected := solveCase(a, b)
-
-		input := fmt.Sprintf("1\n%d %d\n", a, b)
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var errBuf bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &errBuf
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("Test %d: runtime error: %v\n%s", idx, err, errBuf.String())
+		g, err := strconv.ParseInt(strings.TrimSpace(got), 10, 64)
+		if err != nil {
+			fmt.Printf("case %d failed: non-integer output %q\n", idx+1, got)
 			os.Exit(1)
 		}
-		outStr := strings.TrimSpace(out.String())
-		if outStr != fmt.Sprintf("%d", expected) {
-			fmt.Printf("Test %d failed: expected %d got %s\n", idx, expected, outStr)
+		if g != want {
+			fmt.Printf("case %d failed\ninput:\n%s\nexpected:\n%d\ngot:\n%d\n", idx+1, input, want, g)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

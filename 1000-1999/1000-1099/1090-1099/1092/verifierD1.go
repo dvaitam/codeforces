@@ -6,30 +6,175 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+const testcases = `4 10 9 3 6
+10 8 10 2 10 1 8 5 9 4 4
+8 9 9 8 7 3 4 3 9
+7 1 2 3 10 1 5 1
+5 8 10 7 7 7
+10 8 3 6 2 1 3 8 4 5 7
+5 7 9 7 10 6
+9 10 7 10 4 6 1 5 10 3
+6 9 10 10 2 4 10
+5 5 2 2 8 8
+2 6 2
+7 3 1 5 7 7 2 1
+10 10 1 7 10 6 9 5 9 4 1
+5 1 2 2 10 9
+1 4
+7 5 10 5 3 1 6 6
+6 3 7 7 8 9 7
+10 9 2 10 9 5 7 4 5 7 5
+9 5 9 6 1 7 10 6 1 7
+10 10 3 1 6 8 6 6 10 5 8
+1 10
+1 1
+6 5 8 5 10 10 6
+3 6 3 6
+6 10 5 5 7 2 1
+10 3 5 9 4 5 4 6 3 7 2
+2 10 6
+6 4 8 3 2 6 4
+10 8 5 4 2 1 9 4 6 10 3
+5 6 2 10 6 10
+3 7 5 9
+5 8 6 7 5 7
+10 7 1 7 3 4 1 8 10 9 7
+9 4 1 8 9 5 9 6 4 2
+10 5 2 4 1 1 9 4 7 10 1
+1 8
+2 3 9
+5 4 1 9 9 7
+1 10
+2 6 3
+5 9 8 1 6 4
+4 2 9 2 3
+4 5 3 1 8
+10 7 1 5 4 5 10 9 9 7 1
+8 6 1 1 3 1 2 1 2
+8 1 2 9 9 8 6 3 6
+2 6 7
+7 10 5 6 5 4 6 7
+2 3 9
+1 7
+2 10 3
+1 6
+8 10 9 7 1 10 7 1 6
+8 6 7 7 8 1 4 4 9
+5 10 2 7 4 7
+3 1 6 6
+9 5 2 8 2 9 7 2 6 10
+9 2 10 1 8 3 4 7 1 9
+2 10 2
+7 3 1 6 2 1 2 8
+5 10 5 2 1 10
+9 9 4 2 9 2 9 1 9 6
+10 3 2 4 3 4 8 10 7 5 6
+10 7 6 9 7 2 7 9 4 7 3
+7 10 10 9 8 3 7 3
+3 2 8 8
+9 8 10 3 3 5 4 3 10 9
+6 4 9 5 7 10 10
+10 5 4 5 1 5 8 7 4 3 10
+6 4 6 8 3 7 8
+10 4 8 10 9 1 8 2 7 1 8
+4 4 2 4 5
+4 4 5 3 3
+10 1 5 3 1 6 3 7 2 2 2
+2 5 5
+1 6
+8 10 6 1 1 6 6 7 7
+8 2 4 10 8 7 3 9 6
+2 5 2
+7 2 8 9 5 2 9 6
+6 8 5 5 2 6 10
+9 9 2 8 9 6 1 5 10 3
+3 3 6 8
+2 2 9
+3 6 10 7
+9 5 3 8 8 5 3 2 2 3
+9 9 10 7 6 2 5 5 7 1
+3 1 8 9
+5 4 9 6 6 7
+8 9 2 6 8 2 3 5 10
+2 2 10
+2 3 4
+10 7 7 3 10 10 3 7 4 9 9
+3 10 3 4
+5 6 5 1 8 7
+7 6 9 10 5 8 9 5
+8 1 10 4 1 2 4 8 3
+9 8 4 4 9 4 1 9 8 2
+10 5 3 3 8 2 10 1 1 6 10
+4 9 2 8 9`
+
+type testCase struct {
+	n    int
+	nums []int
+}
+
+func parseTestcases() ([]testCase, error) {
+	scanner := bufio.NewScanner(strings.NewReader(testcases))
+	var cases []testCase
+	lineNum := 0
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		lineNum++
+		parts := strings.Fields(line)
+		if len(parts) == 0 {
+			continue
+		}
+		n, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: parse n: %w", lineNum, err)
+		}
+		nums := make([]int, 0, n)
+		for i, s := range parts[1:] {
+			val, err := strconv.Atoi(s)
+			if err != nil {
+				return nil, fmt.Errorf("line %d: parse num %d: %w", lineNum, i+1, err)
+			}
+			nums = append(nums, val)
+		}
+		if len(nums) != n {
+			return nil, fmt.Errorf("line %d: expected %d numbers, got %d", lineNum, n, len(nums))
+		}
+		cases = append(cases, testCase{n: n, nums: nums})
 	}
-	oracle := filepath.Join(dir, "oracleD1")
-	cmd := exec.Command("go", "build", "-o", oracle, "1092D1.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("scanner error: %w", err)
 	}
-	return oracle, nil
+	if len(cases) == 0 {
+		return nil, fmt.Errorf("no testcases found")
+	}
+	return cases, nil
+}
+
+func referenceSolve(nums []int) string {
+	stack := make([]int, 0, len(nums))
+	for _, v := range nums {
+		m := v % 2
+		l := len(stack)
+		if l > 0 && stack[l-1] == m {
+			stack = stack[:l-1]
+		} else {
+			stack = append(stack, m)
+		}
+	}
+	if len(stack) > 1 {
+		return "NO"
+	}
+	return "YES"
 }
 
 func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
@@ -47,47 +192,34 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
+
+	cases, err := parseTestcases()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.Remove(oracle)
 
-	f, err := os.Open("testcasesD1.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
+	for idx, tc := range cases {
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("%d\n", tc.n))
+		for i, v := range tc.nums {
+			if i > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.Itoa(v))
+		}
+		sb.WriteByte('\n')
 
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		input := line + "\n"
-		want, err := run(oracle, input)
+		want := referenceSolve(tc.nums)
+		got, err := run(bin, sb.String())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle failed on test %d: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got, err := run(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d: %v\n", idx, err)
-			os.Exit(1)
-		}
-		if want != got {
-			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", idx, input, want, got)
+		if got != want {
+			fmt.Printf("case %d failed\ninput:\n%sexpected: %s\ngot: %s\n", idx+1, sb.String(), want, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

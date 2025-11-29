@@ -1,26 +1,160 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+const solution112ASource = `package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+func main() {
+	var a, b string
+	// read two strings
+	if _, err := fmt.Scan(&a, &b); err != nil {
+		return
 	}
-	oracle := filepath.Join(dir, "oracleA")
-	cmd := exec.Command("go", "build", "-o", oracle, "112A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	ua := strings.ToUpper(a)
+	ub := strings.ToUpper(b)
+	switch {
+	case ua > ub:
+		fmt.Print("1")
+	case ua < ub:
+		fmt.Print("-1")
+	default:
+		fmt.Print("0")
 	}
-	return oracle, nil
+}
+`
+
+// Keep the embedded reference solution reachable so it is preserved in the binary.
+var _ = solution112ASource
+
+type testCase struct {
+	a string
+	b string
+}
+
+var testcases = []testCase{
+	{a: "bV", b: "rp"},
+	{a: "iVgR", b: "VIfL"},
+	{a: "cbfnoGM", b: "bJmTPSI"},
+	{a: "oCLrZaW", b: "ZkSBvrj"},
+	{a: "Wvgf", b: "ygww"},
+	{a: "qZcUDIhyfJ", b: "sONxKmTecQ"},
+	{a: "Xsfo", b: "gyrD"},
+	{a: "kxwnQr", b: "SRPeMO"},
+	{a: "IUp", b: "kDy"},
+	{a: "OSJoR", b: "uXXdo"},
+	{a: "Z", b: "u"},
+	{a: "renKTun", b: "PFzPDjq"},
+	{a: "pVJ", b: "IqV"},
+	{a: "BLzxoiGFfW", b: "dhjOkYRBMe"},
+	{a: "yMDHqJa", b: "RUhRIWr"},
+	{a: "hsBkDa", b: "UUqGWl"},
+	{a: "gOtOGMmjx", b: "WkIXHaMuF"},
+	{a: "h", b: "x"},
+	{a: "pdpKf", b: "fUFeW"},
+	{a: "XiiQEJkqH", b: "MBnIWUSmT"},
+	{a: "zQPxC", b: "HChpo"},
+	{a: "vb", b: "LJ"},
+	{a: "Loae", b: "TOdo"},
+	{a: "cv", b: "eG"},
+	{a: "rQFn", b: "IiUK"},
+	{a: "EpYEZAmggQ", b: "BwBADUdRPP"},
+	{a: "dz", b: "Uv"},
+	{a: "pm", b: "mI"},
+	{a: "iBlrDpeC", b: "ZJgdPIaf"},
+	{a: "kAFE", b: "nzdk"},
+	{a: "ayqYYDs", b: "BSUYJQT"},
+	{a: "jmsndLVI", b: "dVuddLEG"},
+	{a: "kdGfleMeR", b: "pzhKpLMcN"},
+	{a: "AQ", b: "LK"},
+	{a: "uqnQTupqz", b: "iQPtDuWea"},
+	{a: "NKgeInGq", b: "iwepxskC"},
+	{a: "TtNZPHaQJ", b: "tQgiqhgVJ"},
+	{a: "rsM", b: "nTv"},
+	{a: "ROqG", b: "Fqdf"},
+	{a: "rcavXiO", b: "qkVCJTB"},
+	{a: "aheSjIcxL", b: "JjBictxYc"},
+	{a: "nRpQgw", b: "XJANVj"},
+	{a: "kZZl", b: "AblV"},
+	{a: "YAZQVZ", b: "prkYSg"},
+	{a: "cEomDwt", b: "YoobQmz"},
+	{a: "reXrwP", b: "GzRIvb"},
+	{a: "ql", b: "Lq"},
+	{a: "g", b: "M"},
+	{a: "wUYuBMG", b: "hyKmqcT"},
+	{a: "aHZIRUV", b: "VQmxBeQ"},
+	{a: "NuQhUt", b: "GtQAuz"},
+	{a: "JimAQ", b: "yRVlN"},
+	{a: "tzJatsnBYL", b: "MPuDCCRnGE"},
+	{a: "Qfs", b: "GQO"},
+	{a: "vfWpRtoZmj", b: "bcpENXeDAO"},
+	{a: "mTSyFzpjPS", b: "aWXgXBolZS"},
+	{a: "DdJphDiZD", b: "QHJMuWCNU"},
+	{a: "BJCkVECqW", b: "pOrXXHFOp"},
+	{a: "CeTsp", b: "rvuIf"},
+	{a: "joy", b: "SjT"},
+	{a: "eAAv", b: "IDAd"},
+	{a: "AyXL", b: "SbWK"},
+	{a: "EawtWyA", b: "IVVIZMo"},
+	{a: "orBFbyvQ", b: "RZzUkDiN"},
+	{a: "bzLKQbfPB", b: "iDldqyunD"},
+	{a: "vWyrWA", b: "qfEbVI"},
+	{a: "w", b: "o"},
+	{a: "XP", b: "cW"},
+	{a: "p", b: "m"},
+	{a: "N", b: "j"},
+	{a: "iEQh", b: "KnDS"},
+	{a: "XxkMM", b: "VThXk"},
+	{a: "gLbtK", b: "RyzTm"},
+	{a: "LS", b: "Op"},
+	{a: "SX", b: "tR"},
+	{a: "ZhYKYcwIBQ", b: "xeGPvaAFgB"},
+	{a: "ODTjBl", b: "UHPrNZ"},
+	{a: "XEDBULrup", b: "frCpWDKNQ"},
+	{a: "vbFulFn", b: "wZqvrMS"},
+	{a: "JaHmf", b: "pUAFJ"},
+	{a: "SEPT", b: "FCYb"},
+	{a: "so", b: "zS"},
+	{a: "tQLx", b: "EJHw"},
+	{a: "VJvwSDr", b: "tqohUmu"},
+	{a: "VI", b: "WS"},
+	{a: "mnV", b: "ErU"},
+	{a: "WHMsgmsoxl", b: "taTIircdJs"},
+	{a: "OWF", b: "gaK"},
+	{a: "EECvl", b: "dqEhe"},
+	{a: "FeKORdj", b: "jZKtfph"},
+	{a: "WAMMYNoXH", b: "yCCtLBtKN"},
+	{a: "N", b: "V"},
+	{a: "Wn", b: "On"},
+	{a: "Qfkpl", b: "JekaA"},
+	{a: "SMEscosT", b: "sSDeRoqY"},
+	{a: "QZmBhIoPjr", b: "jedkYtMVKs"},
+	{a: "hDStSzrG", b: "IFCfMcBV"},
+	{a: "MqbfoR", b: "KLbWRr"},
+	{a: "cWWlEHPCrl", b: "LBOFfEwAvu"},
+	{a: "kv", b: "AS"},
+}
+
+func solveCase(tc testCase) string {
+	ua := strings.ToUpper(tc.a)
+	ub := strings.ToUpper(tc.b)
+	switch {
+	case ua > ub:
+		return "1"
+	case ua < ub:
+		return "-1"
+	default:
+		return "0"
+	}
 }
 
 func main() {
@@ -29,65 +163,21 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
-	f, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for {
-		if !scanner.Scan() {
-			break
-		}
-		s1 := scanner.Text()
-		if !scanner.Scan() {
-			fmt.Fprintf(os.Stderr, "missing second line for test %d\n", idx+1)
-			os.Exit(1)
-		}
-		s2 := scanner.Text()
-		idx++
-		input := s1 + "\n" + s2 + "\n"
-
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(input)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error: %v\n", err)
-			os.Exit(1)
-		}
-		expected := strings.TrimSpace(outO.String())
-
+	for idx, tc := range testcases {
+		input := tc.a + "\n" + tc.b + "\n"
+		want := solveCase(tc)
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		err := cmd.Run()
+		out, err := cmd.CombinedOutput()
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
+			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx+1, err, string(out))
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
-		if got != expected {
-			fmt.Printf("test %d failed\nexpected: %s\n got: %s\n", idx, expected, got)
+		got := strings.TrimSpace(string(out))
+		if got != want {
+			fmt.Printf("test %d failed: expected %s got %s\n", idx+1, want, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

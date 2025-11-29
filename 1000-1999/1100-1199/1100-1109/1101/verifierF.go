@@ -16,45 +16,453 @@ type caseF struct {
 	trucks [][4]int
 }
 
-func readCases(path string) ([]caseF, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
+const testcasesRaw = `100
+3 2
+10 12 18
+2 3 3 0
+2 3 4 1
+2 3
+8 11
+1 2 1 2
+1 2 2 1
+1 2 2 2
+2 1
+1 6
+1 2 2 1
+3 2
+2 10 18
+1 3 2 0
+1 3 3 2
+3 2
+2 9 13
+2 3 1 0
+2 3 4 2
+3 3
+3 7 13
+2 3 1 0
+2 3 3 1
+1 2 1 2
+2 1
+6 20
+1 2 5 0
+2 3
+5 18
+1 2 1 2
+1 2 1 1
+1 2 1 1
+4 2
+4 6 17 18
+1 3 4 2
+1 2 5 0
+4 3
+4 8 12 13
+3 4 5 2
+3 4 3 0
+3 4 2 2
+3 2
+10 12 17
+2 3 1 0
+1 3 2 2
+2 1
+4 16
+1 2 3 1
+2 1
+6 12
+1 2 1 2
+3 1
+7 9 11
+1 2 3 1
+2 2
+13 18
+1 2 3 0
+1 2 4 2
+3 1
+2 9 20
+1 3 4 0
+4 2
+6 8 9 12
+3 4 2 1
+1 4 5 2
+2 2
+2 10
+1 2 1 2
+1 2 2 1
+2 3
+7 18
+1 2 4 2
+1 2 3 1
+1 2 4 1
+2 2
+8 13
+1 2 5 2
+1 2 4 0
+2 3
+13 14
+1 2 3 0
+1 2 3 2
+1 2 2 1
+2 2
+9 17
+1 2 5 2
+1 2 4 0
+3 3
+9 11 19
+2 3 5 2
+1 3 5 2
+1 3 3 2
+4 2
+1 2 3 14
+2 3 1 1
+3 4 5 1
+4 2
+15 16 17 18
+3 4 5 0
+3 4 2 1
+3 1
+4 6 8
+2 3 4 1
+3 3
+5 9 16
+2 3 5 2
+1 2 3 2
+2 3 5 2
+4 1
+5 10 17 19
+1 2 3 0
+2 1
+16 20
+1 2 2 2
+3 3
+5 9 19
+1 3 3 0
+2 3 1 1
+1 2 5 2
+2 2
+10 19
+1 2 1 2
+1 2 4 2
+2 1
+9 14
+1 2 4 1
+2 2
+7 14
+1 2 1 0
+1 2 3 1
+3 2
+6 8 15
+1 3 2 1
+1 2 5 2
+4 2
+3 6 11 20
+1 3 3 2
+3 4 1 1
+3 2
+1 10 11
+1 3 2 0
+1 3 2 0
+4 3
+2 4 9 13
+3 4 4 1
+2 3 2 0
+1 2 1 1
+4 1
+3 4 7 10
+3 4 4 0
+4 2
+6 9 11 13
+2 3 2 2
+1 2 5 1
+4 3
+3 11 15 17
+2 4 4 0
+1 3 2 1
+1 2 1 0
+3 2
+4 8 12
+1 3 2 0
+1 3 4 1
+4 3
+9 10 16 17
+1 4 5 0
+2 3 5 2
+3 4 3 1
+2 1
+2 15
+1 2 3 2
+3 1
+5 11 16
+1 3 2 0
+2 3
+1 5
+1 2 3 1
+1 2 1 0
+1 2 4 2
+4 3
+7 12 13 14
+3 4 5 2
+1 4 1 1
+3 4 4 0
+2 1
+5 19
+1 2 3 1
+3 3
+11 14 16
+2 3 4 2
+2 3 3 1
+2 3 2 2
+3 2
+5 13 14
+1 3 2 0
+1 2 3 2
+4 1
+4 6 16 19
+2 3 4 0
+2 1
+2 17
+1 2 5 0
+2 3
+7 12
+1 2 1 1
+1 2 3 2
+1 2 5 2
+3 3
+4 5 10
+2 3 2 2
+1 2 3 1
+2 3 4 2
+3 3
+3 4 13
+1 2 2 1
+2 3 3 1
+1 3 1 1
+4 2
+2 8 10 13
+2 4 2 0
+3 4 4 0
+4 3
+5 6 11 18
+3 4 1 1
+2 4 3 0
+2 3 4 0
+2 2
+10 11
+1 2 4 0
+1 2 4 0
+3 1
+3 6 19
+2 3 5 2
+2 2
+5 11
+1 2 1 0
+1 2 2 1
+4 3
+1 7 11 13
+2 4 5 1
+2 3 3 1
+2 3 4 0
+4 3
+7 11 12 13
+2 3 2 2
+3 4 2 0
+2 4 2 1
+3 3
+6 13 20
+1 2 2 1
+2 3 1 2
+1 2 2 1
+4 2
+4 6 18 20
+3 4 4 1
+1 4 1 1
+2 1
+2 7
+1 2 2 2
+3 3
+3 5 19
+2 3 5 1
+2 3 5 1
+1 3 3 0
+3 2
+4 10 12
+1 3 1 2
+1 3 1 1
+2 2
+15 19
+1 2 2 2
+1 2 1 2
+2 1
+5 13
+1 2 2 2
+4 1
+1 2 13 18
+2 3 4 0
+4 2
+7 14 17 19
+2 3 1 1
+2 3 2 1
+3 3
+6 7 19
+1 2 2 0
+2 3 3 2
+2 3 2 2
+4 2
+2 4 9 13
+3 4 2 1
+1 3 4 0
+4 3
+2 12 15 17
+1 2 5 1
+2 3 5 2
+1 4 1 0
+2 2
+1 11
+1 2 5 2
+1 2 3 0
+3 1
+2 7 17
+2 3 4 0
+2 3
+7 9
+1 2 3 1
+1 2 1 1
+1 2 3 0
+3 1
+7 8 19
+2 3 5 1
+4 1
+1 2 12 13
+3 4 1 1
+4 1
+3 4 10 17
+3 4 5 1
+2 1
+4 10
+1 2 4 1
+2 3
+8 19
+1 2 2 1
+1 2 3 0
+1 2 3 2
+2 1
+13 15
+1 2 5 1
+3 1
+2 10 14
+1 3 5 0
+2 1
+8 13
+1 2 4 2
+4 2
+1 2 13 18
+3 4 5 1
+1 2 2 2
+4 1
+4 5 10 18
+2 4 5 0
+3 1
+6 11 20
+1 2 3 0
+2 3
+8 11
+1 2 4 2
+1 2 3 2
+1 2 1 2
+3 2
+8 11 17
+2 3 1 1
+1 2 1 1
+4 2
+1 9 11 15
+2 4 2 1
+3 4 3 2
+3 1
+1 13 18
+2 3 5 0
+4 1
+1 5 11 14
+1 2 1 2
+4 2
+3 7 8 12
+1 4 4 1
+3 4 1 0
+3 2
+6 7 13
+2 3 2 0
+1 2 1 1
+2 3
+8 20
+1 2 3 2
+1 2 4 2
+1 2 2 2
+2 1
+4 5
+1 2 5 2
+2 3
+14 20
+1 2 4 0
+1 2 2 2
+1 2 4 2
+4 1
+8 13 15 19
+2 4 1 1
+4 3
+9 15 17 20
+2 3 5 1
+2 3 4 1
+3 4 1 2
+3 3
+4 7 18
+1 2 1 1
+2 3 5 2
+1 3 2 1`
+
+var testcases = mustParseTestcases(testcasesRaw)
+
+func mustParseTestcases(raw string) []caseF {
+	scanner := bufio.NewScanner(strings.NewReader(strings.TrimSpace(raw)))
+	scanner.Split(bufio.ScanWords)
+
+	nextInt := func() int {
+		if !scanner.Scan() {
+			panic("unexpected EOF while reading testcases")
+		}
+		v, err := strconv.Atoi(scanner.Text())
+		if err != nil {
+			panic(fmt.Sprintf("invalid integer %q: %v", scanner.Text(), err))
+		}
+		return v
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		return nil, fmt.Errorf("bad file")
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	cases := make([]caseF, t)
+
+	t := nextInt()
+	cases := make([]caseF, 0, t)
 	for i := 0; i < t; i++ {
-		scan.Scan()
-		n, _ := strconv.Atoi(scan.Text())
-		scan.Scan()
-		m, _ := strconv.Atoi(scan.Text())
+		n := nextInt()
+		m := nextInt()
 		pos := make([]int, n)
 		for j := 0; j < n; j++ {
-			scan.Scan()
-			pos[j], _ = strconv.Atoi(scan.Text())
+			pos[j] = nextInt()
 		}
 		trucks := make([][4]int, m)
 		for j := 0; j < m; j++ {
-			scan.Scan()
-			s, _ := strconv.Atoi(scan.Text())
-			scan.Scan()
-			f, _ := strconv.Atoi(scan.Text())
-			scan.Scan()
-			c, _ := strconv.Atoi(scan.Text())
-			scan.Scan()
-			r, _ := strconv.Atoi(scan.Text())
+			s := nextInt()
+			f := nextInt()
+			c := nextInt()
+			r := nextInt()
 			trucks[j] = [4]int{s, f, c, r}
 		}
-		cases[i] = caseF{n, m, pos, trucks}
+		cases = append(cases, caseF{n: n, m: m, pos: pos, trucks: trucks})
 	}
-	return cases, nil
+
+	if err := scanner.Err(); err != nil {
+		panic(fmt.Sprintf("scanner error: %v", err))
+	}
+	if len(cases) == 0 {
+		panic("no testcases parsed")
+	}
+	return cases
 }
 
+// solveCase embeds the reference logic from 1101F.go.
 func solveCase(cf caseF) int64 {
 	n := cf.n
 	A := cf.pos
@@ -114,67 +522,75 @@ func solveCase(cf caseF) int64 {
 	return ans
 }
 
-func run(bin string, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+func runCandidate(bin string, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	var stderr bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &stderr
+	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	return strings.TrimSpace(out.String()), nil
+	return out.String(), nil
+}
+
+func parseCandidateOutput(out string) (int64, error) {
+	scanner := bufio.NewScanner(strings.NewReader(out))
+	scanner.Split(bufio.ScanWords)
+	if !scanner.Scan() {
+		return 0, fmt.Errorf("no output")
+	}
+	v, err := strconv.ParseInt(scanner.Text(), 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse output: %v", err)
+	}
+	if err := scanner.Err(); err != nil {
+		return 0, fmt.Errorf("scanner error: %v", err)
+	}
+	return v, nil
+}
+
+func checkCase(bin string, idx int, cs caseF) error {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d %d\n", cs.n, cs.m))
+	for i, v := range cs.pos {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(v))
+	}
+	sb.WriteByte('\n')
+	for _, tr := range cs.trucks {
+		sb.WriteString(fmt.Sprintf("%d %d %d %d\n", tr[0], tr[1], tr[2], tr[3]))
+	}
+	input := sb.String()
+
+	expected := solveCase(cs)
+	out, err := runCandidate(bin, input)
+	if err != nil {
+		return fmt.Errorf("runtime error: %v\ninput:\n%s", err, input)
+	}
+	got, err := parseCandidateOutput(out)
+	if err != nil {
+		return fmt.Errorf("output parse error: %v", err)
+	}
+	if got != expected {
+		return fmt.Errorf("expected %d got %d\ninput:\n%s", expected, got, input)
+	}
+	return nil
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierF.go /path/to/binary")
+	if len(os.Args) != 2 {
+		fmt.Println("usage: go run verifierF.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	if bin == "--" && len(os.Args) > 2 {
-		bin = os.Args[2]
-	}
-	cases, err := readCases("testcasesF.txt")
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	for idx, cs := range cases {
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d %d\n", cs.n, cs.m))
-		for i, v := range cs.pos {
-			if i > 0 {
-				sb.WriteByte(' ')
-			}
-			sb.WriteString(strconv.Itoa(v))
-		}
-		sb.WriteByte('\n')
-		for _, tr := range cs.trucks {
-			sb.WriteString(fmt.Sprintf("%d %d %d %d\n", tr[0], tr[1], tr[2], tr[3]))
-		}
-		input := sb.String()
-		expected := solveCase(cs)
-		out, err := run(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", idx+1, err, input)
-			os.Exit(1)
-		}
-		got, err := strconv.ParseInt(strings.TrimSpace(out), 10, 64)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d bad output: %v", idx+1, err)
-			os.Exit(1)
-		}
-		if got != expected {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %d got %d\ninput:\n%s", idx+1, expected, got, input)
+	for i, cs := range testcases {
+		if err := checkCase(bin, i, cs); err != nil {
+			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

@@ -1,23 +1,140 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 )
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+var testcases = []struct {
+	n int
+	a []int
+}{
+	{n: 3, a: []int{5, 1, 3}},
+	{n: 2, a: []int{4, 4}},
+	{n: 8, a: []int{4, 2, 1, 4, 1, 4, 4, 5}},
+	{n: 1, a: []int{4}},
+	{n: 5, a: []int{2, 5, 1, 3, 1}},
+	{n: 1, a: []int{1}},
+	{n: 9, a: []int{1, 4, 2, 4, 1, 5, 2, 4, 4}},
+	{n: 9, a: []int{2, 3, 2, 2, 4, 3, 1, 4, 5}},
+	{n: 2, a: []int{2, 3}},
+	{n: 2, a: []int{3, 5}},
+	{n: 7, a: []int{5, 2, 3, 3, 5, 4, 5}},
+	{n: 7, a: []int{5, 1, 4, 2, 4, 4, 2}},
+	{n: 6, a: []int{5, 3, 1, 4, 5, 1}},
+	{n: 3, a: []int{5, 4, 3}},
+	{n: 8, a: []int{1, 4, 1, 3, 5, 5, 5, 4}},
+	{n: 3, a: []int{2, 5, 2}},
+	{n: 1, a: []int{2}},
+	{n: 9, a: []int{5, 2, 4, 5, 3, 5, 3, 4, 3}},
+	{n: 9, a: []int{5, 1, 4, 5, 2, 5, 5, 2, 4}},
+	{n: 1, a: []int{4}},
+	{n: 6, a: []int{5, 5, 2, 5, 4, 4}},
+	{n: 6, a: []int{4, 3, 1, 5, 5, 5}},
+	{n: 10, a: []int{3, 4, 5, 1, 2, 2, 5, 5, 2, 1}},
+	{n: 9, a: []int{3, 1, 1, 1, 1, 4, 1, 3, 2}},
+	{n: 5, a: []int{1, 5, 2, 3, 3}},
+	{n: 2, a: []int{2, 2}},
+	{n: 5, a: []int{5, 2, 3, 3, 4}},
+	{n: 6, a: []int{4, 4, 1, 1, 3, 4}},
+	{n: 6, a: []int{4, 2, 3, 1, 3, 5}},
+	{n: 4, a: []int{5, 4, 1, 2}},
+	{n: 1, a: []int{4}},
+	{n: 3, a: []int{1, 2, 4}},
+	{n: 9, a: []int{4, 5, 2, 5, 4, 2, 5, 1, 4}},
+	{n: 10, a: []int{3, 4, 1, 3, 2, 2, 1, 3, 1, 1}},
+	{n: 5, a: []int{3, 2, 4, 5, 3}},
+	{n: 3, a: []int{1, 5, 1}},
+	{n: 10, a: []int{2, 5, 4, 2, 5, 5, 1, 4, 2, 3}},
+	{n: 2, a: []int{2, 5}},
+	{n: 7, a: []int{5, 2, 4, 1, 4, 3, 5}},
+	{n: 8, a: []int{1, 3, 5, 4, 3, 1, 2, 2}},
+	{n: 6, a: []int{5, 2, 3, 4, 2, 3}},
+	{n: 2, a: []int{4, 5}},
+	{n: 6, a: []int{5, 4, 5, 2, 1, 1}},
+	{n: 2, a: []int{2, 2}},
+	{n: 3, a: []int{5, 2, 3}},
+	{n: 6, a: []int{5, 5, 3, 3, 3, 3}},
+	{n: 2, a: []int{3, 2}},
+	{n: 10, a: []int{4, 2, 5, 5, 1, 3, 1, 4, 1, 4}},
+	{n: 3, a: []int{2, 3, 1}},
+	{n: 10, a: []int{5, 4, 1, 5, 5, 2, 5, 1, 3, 3}},
+	{n: 5, a: []int{5, 5, 1, 4, 3}},
+	{n: 2, a: []int{1, 3}},
+	{n: 1, a: []int{5}},
+	{n: 1, a: []int{1}},
+	{n: 7, a: []int{1, 1, 2, 2, 5, 4, 2}},
+	{n: 2, a: []int{4, 2}},
+	{n: 4, a: []int{2, 1, 4, 4}},
+	{n: 9, a: []int{3, 5, 3, 4, 3, 1, 2, 3, 1}},
+	{n: 1, a: []int{1}},
+	{n: 5, a: []int{5, 3, 4, 4, 3}},
+	{n: 7, a: []int{1, 1, 3, 5, 4, 1, 3}},
+	{n: 4, a: []int{5, 5, 4, 3}},
+	{n: 5, a: []int{2, 5, 2, 3, 2}},
+	{n: 4, a: []int{3, 1, 3, 1}},
+	{n: 8, a: []int{1, 5, 3, 2, 4, 3, 1, 3}},
+	{n: 3, a: []int{3, 5, 3}},
+	{n: 4, a: []int{3, 1, 5, 5}},
+	{n: 10, a: []int{5, 1, 2, 2, 1, 2, 4, 1, 3, 5}},
+	{n: 2, a: []int{1, 1}},
+	{n: 1, a: []int{3}},
+	{n: 6, a: []int{4, 4, 2, 1, 5, 3}},
+	{n: 2, a: []int{5, 2}},
+	{n: 3, a: []int{2, 2, 3}},
+	{n: 5, a: []int{1, 5, 5, 3, 2}},
+	{n: 4, a: []int{2, 5, 1, 3}},
+	{n: 10, a: []int{5, 2, 2, 3, 4, 5, 2, 1, 2, 3}},
+	{n: 2, a: []int{4, 4}},
+	{n: 9, a: []int{3, 5, 4, 5, 4, 1, 4, 3, 2}},
+	{n: 5, a: []int{4, 1, 4, 5, 1}},
+	{n: 1, a: []int{3}},
+	{n: 10, a: []int{2, 5, 2, 2, 3, 3, 4, 5, 4, 2}},
+	{n: 10, a: []int{1, 2, 4, 1, 2, 5, 3, 5, 4, 2}},
+	{n: 4, a: []int{3, 4, 4, 2}},
+	{n: 7, a: []int{3, 5, 5, 3, 2, 1, 1}},
+	{n: 9, a: []int{3, 2, 5, 2, 3, 3, 3, 5, 3}},
+	{n: 3, a: []int{4, 5, 1}},
+	{n: 2, a: []int{5, 5}},
+	{n: 10, a: []int{4, 2, 2, 3, 4, 2, 5, 1, 4, 4}},
+	{n: 6, a: []int{4, 5, 2, 5, 1, 5}},
+	{n: 2, a: []int{3, 1}},
+	{n: 5, a: []int{1, 2, 5, 1, 4}},
+	{n: 4, a: []int{4, 4, 4, 2}},
+	{n: 6, a: []int{4, 2, 5, 4, 2, 1}},
+	{n: 7, a: []int{5, 5, 4, 1, 3, 3, 2}},
+	{n: 7, a: []int{5, 1, 2, 5, 4, 5, 1}},
+	{n: 1, a: []int{5}},
+	{n: 4, a: []int{3, 2, 2, 3}},
+	{n: 3, a: []int{5, 2, 3}},
+	{n: 5, a: []int{5, 3, 4, 2, 5}},
+	{n: 6, a: []int{4, 4, 1, 2, 5, 4}},
+}
+
+const testcasesCount = 100
+
+func solveCase(a []int) string {
+	prefix := 0
+	for prefix < len(a) && a[prefix] == 1 {
+		prefix++
 	}
+	if prefix == len(a) {
+		if len(a)%2 == 1 {
+			return "First"
+		}
+		return "Second"
+	}
+	if prefix%2 == 0 {
+		return "First"
+	}
+	return "Second"
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
@@ -29,55 +146,22 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func buildRef(dir string) (string, error) {
-	ref := filepath.Join(dir, "refB.bin")
-	src := filepath.Join(dir, "1382B.go")
-	if err := exec.Command("go", "build", "-o", ref, src).Run(); err != nil {
-		return "", err
-	}
-	return ref, nil
-}
-
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("Usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
+	if len(testcases) != testcasesCount {
+		fmt.Fprintf(os.Stderr, "unexpected testcase count: got %d want %d\n", len(testcases), testcasesCount)
+		os.Exit(1)
+	}
 	cand := os.Args[1]
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
 
-	ref, err := buildRef(dir)
-	if err != nil {
-		fmt.Println("failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
-	f, err := os.Open(filepath.Join(dir, "testcasesB.txt"))
-	if err != nil {
-		fmt.Println("could not open testcasesB.txt:", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	in := bufio.NewReader(f)
-	var t int
-	if _, err := fmt.Fscan(in, &t); err != nil {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	for i := 0; i < t; i++ {
-		var n int
-		fmt.Fscan(in, &n)
-		a := make([]int, n)
-		for j := 0; j < n; j++ {
-			fmt.Fscan(in, &a[j])
-		}
+	for i, tc := range testcases {
 		var sb strings.Builder
 		sb.WriteString("1\n")
-		sb.WriteString(fmt.Sprintf("%d\n", n))
-		for j, v := range a {
+		sb.WriteString(fmt.Sprintf("%d\n", tc.n))
+		for j, v := range tc.a {
 			if j > 0 {
 				sb.WriteByte(' ')
 			}
@@ -86,11 +170,7 @@ func main() {
 		sb.WriteByte('\n')
 		input := sb.String()
 
-		want, err := run(ref, input)
-		if err != nil {
-			fmt.Printf("reference failed on test %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
+		want := solveCase(tc.a)
 		got, err := run(cand, input)
 		if err != nil {
 			fmt.Printf("candidate runtime error on test %d: %v\n", i+1, err)

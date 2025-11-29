@@ -1,39 +1,179 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleA")
-	cmd := exec.Command("go", "build", "-o", oracle, "1202A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
+const testcasesRaw = `1101100001 110001011
+1100001001 110101111
+101010 10001
+1111011101 1000001100
+111110010 11010000
+1110101101 1100100011
+1101010010 100110111
+1111100000 111101001
+101101111 100101011
+1110010010 11100000
+1000000101 10001111
+100100001 1001000
+1100000110 1100010
+1001111010 100000001
+1111110011 1110100100
+1000100010 10010111
+100111110 110011
+1011101100 1001100
+1110011001 1101100111
+1010111101 101010011
+1111100001 1100100
+1001111101 101001000
+1101000101 110000101
+1110000011 100101101
+1011011001 10110
+1010101010 100111
+1101011111 1100000011
+1111010000 1010011000
+101100100 111010
+10000010 111001
+1011111010 101100101
+1000100001 1010111
+110101010 1111011110
+1100010101 1111110100
+111100110 1110000010
+1111010010 1000100
+1100010001 111000
+1111110001 1100010
+111010111 1101000001
+1000110011 1100011101
+1001100100 1011011011
+110100011 111010001
+1010101 10110
+1011010 1010000011
+10111110 11011
+1000110010 101100010
+1101111110 1110100010
+101111111 111101
+1001111101 1010011110
+1111111101 111000011
+1011011001 100101101
+1010111011 1010110101
+1000010101 1101110010
+100100011 101111011
+110110011 110010010
+1101001011 100111001
+1110000100 111111110
+111100111 1100110
+11011110 11110111
+1000111111 101101111
+1001001011 1001011110
+100110 111010
+1001111 1111011
+101101101 101010011
+1100111000 101110001
+1011001100 100101000
+10000110 10010111
+1000011011 1011100110
+10011111 111110
+1001011010 1011001100
+1000110100 101101111
+110001 10100
+1110001 11011
+1111111110 100011
+10000111 1001100
+1011110 1011111
+1110111110 110010001
+1001100100 1101010001
+1000001000 10101011
+101000010 110001011
+11111101 1011001111
+110010101 1100101011
+1110010000 1101100011
+100100011 10011100
+1110101 100111
+10001001 11110110
+101111010 1101111
+1100000100 10111101
+100001101 11101000
+10101001 110001101
+1101011001 1001001100
+11000000 1100101001
+1001110100 111000111
+10101001 11110100
+1001110010 101001010
+1011110001 1010001
+1000011011 100001011
+1000111101 110000100
+10010011 1110010101
+1111010101 101010011
+1101010101 1111011000
+101011101 101111101
+100110 1110011
+1000001010 1100110`
+
+type testCase struct {
+	x string
+	y string
 }
 
-func run(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
+func solve(tc testCase) int {
+	x, y := tc.x, tc.y
+	trailing := 0
+	for i := len(y) - 1; i >= 0 && y[i] == '0'; i-- {
+		trailing++
+	}
+	j := trailing
+	for j < len(x) && x[len(x)-1-j] == '0' {
+		j++
+	}
+	return j - trailing
+}
+
+func runCase(bin string, tc testCase) error {
+	input := fmt.Sprintf("1\n%s\n%s\n", tc.x, tc.y)
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	var errb bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &errb
+	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
+		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
-	return strings.TrimSpace(out.String()), nil
+	got := strings.TrimSpace(out.String())
+	want := strconv.Itoa(solve(tc))
+	if got != want {
+		return fmt.Errorf("expected %s got %s", want, got)
+	}
+	return nil
+}
+
+func parseTestcases(raw string) ([]testCase, error) {
+	lines := strings.Split(raw, "\n")
+	tests := make([]testCase, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid testcase: %q", line)
+		}
+		tests = append(tests, testCase{x: parts[0], y: parts[1]})
+	}
+	if len(tests) == 0 {
+		return nil, fmt.Errorf("no testcases")
+	}
+	return tests, nil
 }
 
 func main() {
@@ -42,54 +182,16 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
+	tests, err := parseTestcases(testcasesRaw)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
-	defer os.Remove(oracle)
-
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to open testcasesA.txt:", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		fields := strings.Fields(line)
-		if len(fields) != 2 {
-			fmt.Printf("test %d invalid line\n", idx)
-			os.Exit(1)
-		}
-		x := fields[0]
-		y := fields[1]
-		input := fmt.Sprintf("1\n%s\n%s\n", x, y)
-		expected, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on test %d: %v\n", idx, err)
-			os.Exit(1)
-		}
-		got, err := run(bin, input)
-		if err != nil {
-			fmt.Printf("test %d: %v\n", idx, err)
-			os.Exit(1)
-		}
-		if got != expected {
-			fmt.Printf("test %d failed\nexpected: %s\n got: %s\n", idx, expected, got)
+	for i, tc := range tests {
+		if err := runCase(bin, tc); err != nil {
+			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

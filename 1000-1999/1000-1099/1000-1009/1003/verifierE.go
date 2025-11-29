@@ -10,6 +10,115 @@ import (
 	"strings"
 )
 
+const testcasesRaw = `100
+8 3 1
+13 8 2
+3 1 1
+13 9 3
+2 1 5
+18 12 3
+6 1 3
+7 1 3
+9 4 2
+10 5 3
+3 2 4
+17 8 2
+8 4 3
+3 2 1
+10 5 5
+7 4 4
+20 10 4
+15 3 2
+10 5 1
+3 1 4
+9 8 3
+5 2 1
+14 4 4
+9 3 3
+14 12 5
+11 9 2
+11 2 1
+8 3 5
+20 8 1
+11 3 3
+15 1 1
+12 2 3
+11 1 3
+10 6 2
+14 10 1
+10 4 4
+10 3 3
+13 10 2
+11 10 1
+12 1 4
+6 3 3
+10 2 4
+7 4 2
+4 1 1
+2 1 5
+5 1 5
+16 10 2
+11 1 1
+17 10 4
+7 4 2
+8 4 4
+16 1 2
+14 8 2
+14 4 4
+7 1 1
+9 5 2
+17 7 2
+14 5 2
+11 1 3
+19 4 5
+13 11 1
+16 7 1
+14 4 5
+6 3 3
+16 13 3
+14 9 2
+9 6 4
+16 2 3
+7 1 4
+20 5 3
+2 1 4
+19 16 4
+13 4 1
+7 2 1
+20 9 1
+13 7 2
+18 2 2
+6 5 3
+18 16 5
+15 1 1
+2 1 4
+18 9 5
+5 1 3
+3 1 3
+12 2 1
+18 15 4
+7 3 4
+8 7 4
+13 2 1
+4 3 3
+17 14 4
+15 2 2
+10 8 4
+4 3 2
+12 3 2
+5 3 4
+11 5 5
+1 1 1
+10 2 5
+4 2 5
+`
+
+type testCase struct {
+	n int
+	d int
+	k int
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a
@@ -17,12 +126,14 @@ func min(a, b int) int {
 	return b
 }
 
-func buildTree(N, d, k int) ([][2]int, bool) {
+// referenceSolution embeds the construction algorithm from 1003E.go so the
+// verifier does not need any external oracle or file.
+func referenceSolution(N, d, k int) (bool, [][2]int) {
 	if d >= N || (k == 1 && N > 2) {
-		return nil, false
+		return false, nil
 	}
 	if N == 1 && d == 1 {
-		return [][2]int{}, true
+		return true, [][2]int{}
 	}
 	count := make([]int, N+2)
 	depth := make([]int, N+2)
@@ -43,7 +154,7 @@ func buildTree(N, d, k int) ([][2]int, bool) {
 			j++
 		}
 		if i == j {
-			return nil, false
+			return false, nil
 		}
 		edges = append(edges, [2]int{i, j})
 		count[i]++
@@ -52,9 +163,9 @@ func buildTree(N, d, k int) ([][2]int, bool) {
 		i++
 	}
 	if len(edges) != N-1 {
-		return nil, false
+		return false, nil
 	}
-	return edges, true
+	return true, edges
 }
 
 func diameter(n int, edges [][2]int) int {
@@ -96,16 +207,26 @@ func diameter(n int, edges [][2]int) int {
 	return dist
 }
 
-func checkTree(N, d, k int, edges [][2]int) error {
-	if len(edges) != N-1 {
-		return fmt.Errorf("expected %d edges got %d", N-1, len(edges))
+func validateTree(n, d, k int, edges [][2]int) error {
+	if len(edges) != n-1 {
+		return fmt.Errorf("expected %d edges got %d", n-1, len(edges))
 	}
-	deg := make([]int, N+1)
-	parent := make([]int, N+1)
-	count := 0
+	deg := make([]int, n+1)
+	parent := make([]int, n+1)
+	for i := 1; i <= n; i++ {
+		parent[i] = i
+	}
+	var find func(int) int
+	find = func(x int) int {
+		if parent[x] != x {
+			parent[x] = find(parent[x])
+		}
+		return parent[x]
+	}
+	components := n
 	for _, e := range edges {
 		u, v := e[0], e[1]
-		if u < 1 || u > N || v < 1 || v > N {
+		if u < 1 || u > n || v < 1 || v > n {
 			return fmt.Errorf("invalid vertex")
 		}
 		deg[u]++
@@ -113,30 +234,25 @@ func checkTree(N, d, k int, edges [][2]int) error {
 		if deg[u] > k || deg[v] > k {
 			return fmt.Errorf("degree limit exceeded")
 		}
-		// union find for connectivity
-		pu, pv := u, v
-		for parent[pu] != 0 {
-			pu = parent[pu]
+		ru := find(u)
+		rv := find(v)
+		if ru == rv {
+			return fmt.Errorf("cycle detected")
 		}
-		for parent[pv] != 0 {
-			pv = parent[pv]
-		}
-		if pu != pv {
-			parent[pv] = pu
-			count++
-		}
+		parent[ru] = rv
+		components--
 	}
-	if count != N-1 {
+	if components != 1 {
 		return fmt.Errorf("graph not connected")
 	}
-	if diameter(N, edges) != d {
+	if diameter(n, edges) != d {
 		return fmt.Errorf("diameter mismatch")
 	}
 	return nil
 }
 
-func runCase(bin string, n, d, k int) error {
-	input := fmt.Sprintf("%d %d %d\n", n, d, k)
+func runCase(bin string, tc testCase) error {
+	input := fmt.Sprintf("%d %d %d\n", tc.n, tc.d, tc.k)
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
 		cmd = exec.Command("go", "run", bin)
@@ -151,43 +267,74 @@ func runCase(bin string, n, d, k int) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
+	possible, _ := referenceSolution(tc.n, tc.d, tc.k)
 	scanner := bufio.NewScanner(bytes.NewReader(out.Bytes()))
 	scanner.Split(bufio.ScanWords)
 	if !scanner.Scan() {
 		return fmt.Errorf("no output")
 	}
 	first := scanner.Text()
-	edgesExp, _ := buildTree(n, d, k)
-	if first == "NO" {
-		if len(edgesExp) != 0 {
+	switch first {
+	case "NO":
+		if possible {
 			return fmt.Errorf("expected YES but got NO")
 		}
 		return nil
+	case "YES":
+		if !possible {
+			return fmt.Errorf("expected NO but got YES")
+		}
+	default:
+		return fmt.Errorf("invalid output %q", first)
 	}
-	if first != "YES" {
-		return fmt.Errorf("invalid output")
-	}
-	if len(edgesExp) == 0 {
-		return fmt.Errorf("expected NO but got YES")
-	}
-	edges := make([][2]int, 0, n-1)
+	edges := make([][2]int, 0, tc.n-1)
 	for scanner.Scan() {
 		uStr := scanner.Text()
 		if !scanner.Scan() {
 			return fmt.Errorf("incomplete edge")
 		}
 		vStr := scanner.Text()
-		u, _ := strconv.Atoi(uStr)
-		v, _ := strconv.Atoi(vStr)
+		u, err := strconv.Atoi(uStr)
+		if err != nil {
+			return fmt.Errorf("invalid vertex %q", uStr)
+		}
+		v, err := strconv.Atoi(vStr)
+		if err != nil {
+			return fmt.Errorf("invalid vertex %q", vStr)
+		}
 		edges = append(edges, [2]int{u, v})
 	}
 	if err := scanner.Err(); err != nil {
 		return err
 	}
-	if err := checkTree(n, d, k, edges); err != nil {
-		return err
+	return validateTree(tc.n, tc.d, tc.k, edges)
+}
+
+func parseTestcases(raw string) ([]testCase, error) {
+	scan := bufio.NewScanner(strings.NewReader(raw))
+	scan.Split(bufio.ScanWords)
+	if !scan.Scan() {
+		return nil, fmt.Errorf("invalid test file")
 	}
-	return nil
+	t, err := strconv.Atoi(scan.Text())
+	if err != nil {
+		return nil, err
+	}
+	tests := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		vals := make([]int, 3)
+		for j := 0; j < 3; j++ {
+			if !scan.Scan() {
+				return nil, fmt.Errorf("invalid test file")
+			}
+			vals[j], err = strconv.Atoi(scan.Text())
+			if err != nil {
+				return nil, err
+			}
+		}
+		tests = append(tests, testCase{n: vals[0], d: vals[1], k: vals[2]})
+	}
+	return tests, nil
 }
 
 func main() {
@@ -196,36 +343,13 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesE.txt")
+	tests, err := parseTestcases(testcasesRaw)
 	if err != nil {
-		fmt.Println("could not open testcasesE.txt:", err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
-	defer f.Close()
-	scan := bufio.NewScanner(f)
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Println("invalid test file")
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(scan.Text())
-		if !scan.Scan() {
-			fmt.Println("invalid test file")
-			os.Exit(1)
-		}
-		d, _ := strconv.Atoi(scan.Text())
-		if !scan.Scan() {
-			fmt.Println("invalid test file")
-			os.Exit(1)
-		}
-		k, _ := strconv.Atoi(scan.Text())
-		if err := runCase(bin, n, d, k); err != nil {
+	for i, tc := range tests {
+		if err := runCase(bin, tc); err != nil {
 			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}

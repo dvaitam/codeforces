@@ -39,8 +39,14 @@ func main() {
 					zeros = append(zeros, i)
 				}
 			}
+			if len(zeros) == 0 {
+				break
+			}
 			for ch >= 0 && freq[ch] < len(zeros) {
 				ch--
+			}
+			if ch < 0 {
+				break
 			}
 			for _, pos := range zeros {
 				res[pos] = byte('a' + ch)
