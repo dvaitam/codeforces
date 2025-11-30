@@ -1,22 +1,124 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
+	"math/bits"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 )
 
+const testcasesRaw = `2 2 2 1
+1 2 1
+5 0 1 2 3 5 4
+3 1 2 3 1
+4 1 3 1 4 2
+4 2 2 4 3 1
+5 2 3 1 2 5 4
+2 2 1 2
+4 1 3 1 4 2
+2 2 2 1
+3 2 2 3 1
+2 1 2 1
+4 1 1 3 2 4
+4 1 4 3 2 1
+3 1 1 2 3
+4 2 3 4 2 1
+4 1 2 1 3 4
+1 1 1
+5 0 5 2 4 1 3
+4 2 1 2 4 3
+5 1 2 1 3 4 5
+5 0 4 2 1 3 5
+4 0 4 3 1 2
+5 1 1 3 5 4 2
+2 1 1 2
+4 1 3 4 1 2
+5 1 3 5 2 1 4
+5 0 3 4 5 1 2
+1 0 1
+4 1 2 4 3 1
+2 2 1 2
+5 0 4 2 1 3 5
+3 0 1 3 2
+1 1 1
+1 0 1
+5 2 5 2 4 3 1
+5 1 4 5 3 1 2
+4 1 3 4 1 2
+3 1 1 3 2
+4 0 3 2 1 4
+2 1 2 1
+2 1 1 2
+3 1 1 3 2
+2 0 1 2
+2 2 1 2
+2 1 2 1
+1 2 1
+5 2 2 5 1 3 4
+3 0 1 3 2
+1 0 1
+4 1 1 4 2 3
+1 0 1
+3 2 2 3 1
+5 0 3 5 1 2 4
+1 0 1
+4 2 4 3 2 1
+4 2 4 1 3 2
+1 0 1
+2 2 2 1
+4 2 3 4 2 1
+5 2 5 4 3 2 1
+4 0 1 2 3 4
+3 2 3 2 1
+3 0 2 3 1
+2 2 1 2
+4 2 4 3 2 1
+3 1 2 3 1
+3 0 3 1 2
+2 0 2 1
+4 1 3 4 2 1
+1 1 1
+2 0 2 1
+5 2 1 5 2 4 3
+5 2 2 4 1 5 3
+3 0 2 1 3
+3 1 2 3 1
+1 1 1
+5 2 1 3 2 4 5
+5 1 4 1 5 3 2
+5 2 2 3 5 4 1
+1 2 1
+1 0 1
+1 0 1
+3 1 2 1 3
+1 2 1
+1 0 1
+2 1 1 2
+5 2 5 2 1 4 3
+1 2 1
+2 2 2 1
+4 2 3 4 2 1
+2 0 2 1
+3 1 1 3 2
+3 2 1 3 2
+3 1 1 2 3
+4 2 1 4 2 3
+4 1 3 2 4 1
+3 1 3 1 2
+2 1 2 1
+2 2 2 1`
+
+type testCase struct {
+	n int
+	k int
+	p []int
+}
+
 func runCandidate(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errb bytes.Buffer
@@ -28,105 +130,192 @@ func runCandidate(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func inversions(perm []int) int {
-	inv := 0
-	for i := 0; i < len(perm); i++ {
-		for j := i + 1; j < len(perm); j++ {
-			if perm[i] > perm[j] {
-				inv++
-			}
+func minInversions(p []int, k int) int {
+	n := len(p)
+	arr := make([]int, n+1)
+	for i, v := range p {
+		arr[v] = i + 1
+	}
+	w := k + 1
+	future := make([][]int, n+1)
+	for i := range future {
+		future[i] = make([]int, w)
+	}
+	bit := make([]int, n+2)
+	update := func(i, val int) {
+		for i <= n {
+			bit[i] += val
+			i += i & -i
 		}
 	}
-	return inv
-}
-
-func expected(n, k int, p []int) int {
-	idx := make([]int, n)
-	for i := range idx {
-		idx[i] = i + 1
+	query := func(i int) int {
+		s := 0
+		for i > 0 {
+			s += bit[i]
+			i -= i & -i
+		}
+		return s
 	}
-	best := int(^uint(0) >> 1)
-	var permute func(int)
-	permute = func(pos int) {
-		if pos == n {
-			for i := 0; i < n; i++ {
-				for j := i + 1; j < n; j++ {
-					if p[idx[i]-1] > p[idx[j]-1]+k {
-						return
+	for i := n; i >= 1; i-- {
+		limit := i - k
+		if limit < 1 {
+			limit = 1
+		}
+		for j := i; j >= limit; j-- {
+			future[i][i-j] = query(arr[j] - 1)
+		}
+		update(arr[i], 1)
+	}
+
+	const INF = int(1e18)
+	dp := make([][]int, n+1)
+	for i := range dp {
+		dp[i] = make([]int, 1<<uint(w))
+		for j := range dp[i] {
+			dp[i][j] = -1
+		}
+	}
+
+	var dfs func(int, int) int
+	dfs = func(i, mask int) int {
+		if i == n && mask == 0 {
+			return 0
+		}
+		if dp[i][mask] != -1 {
+			return dp[i][mask]
+		}
+		res := INF
+		if mask != 0 {
+			for j := 0; j < w; j++ {
+				if mask>>uint(j)&1 == 1 {
+					idx := i - j
+					if idx <= 0 {
+						continue
+					}
+					val := arr[idx]
+					newMask := mask & ^(1 << uint(j))
+					small := future[i][i-idx]
+					for q := 0; q < w; q++ {
+						if newMask>>uint(q)&1 == 1 {
+							idx2 := i - q
+							if idx2 > 0 && arr[idx2] < val {
+								small++
+							}
+						}
+					}
+					cand := dfs(i, newMask) + small
+					if cand < res {
+						res = cand
 					}
 				}
 			}
-			inv := inversions(idx)
-			if inv < best {
-				best = inv
+		}
+		if i < n && bits.OnesCount(uint(mask)) < w && (mask>>uint(w-1)&1) == 0 {
+			newMask := (mask << 1) | 1
+			cand := dfs(i+1, newMask)
+			if cand < res {
+				res = cand
 			}
-			return
 		}
-		for i := pos; i < n; i++ {
-			idx[pos], idx[i] = idx[i], idx[pos]
-			permute(pos + 1)
-			idx[pos], idx[i] = idx[i], idx[pos]
-		}
+		dp[i][mask] = res
+		return res
 	}
-	permute(0)
-	return best
+
+	return dfs(0, 0)
 }
 
-func main() {
-	arg := ""
-	if len(os.Args) == 2 {
-		arg = os.Args[1]
-	} else if len(os.Args) == 3 && os.Args[1] == "--" {
-		arg = os.Args[2]
-	} else {
-		fmt.Println("usage: go run verifierF.go /path/to/binary")
-		os.Exit(1)
-	}
-	bin := arg
-	file, err := os.Open("testcasesF.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcasesF.txt: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
+	var cases []testCase
+	for idx, line := range lines {
+		fields := strings.Fields(strings.TrimSpace(line))
+		if len(fields) < 3 {
+			return nil, fmt.Errorf("line %d malformed", idx+1)
 		}
-		idx++
-		parts := strings.Fields(line)
-		if len(parts) < 3 {
-			fmt.Printf("test %d: invalid line\n", idx)
-			os.Exit(1)
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, fmt.Errorf("line %d parse n: %v", idx+1, err)
 		}
-		n, _ := strconv.Atoi(parts[0])
-		k, _ := strconv.Atoi(parts[1])
-		if len(parts) != 2+n {
-			fmt.Printf("test %d: invalid line\n", idx)
-			os.Exit(1)
+		k, err := strconv.Atoi(fields[1])
+		if err != nil {
+			return nil, fmt.Errorf("line %d parse k: %v", idx+1, err)
+		}
+		if len(fields) != 2+n {
+			return nil, fmt.Errorf("line %d expected %d numbers got %d", idx+1, 2+n, len(fields))
 		}
 		p := make([]int, n)
 		for i := 0; i < n; i++ {
-			p[i], _ = strconv.Atoi(parts[2+i])
+			p[i], err = strconv.Atoi(fields[2+i])
+			if err != nil {
+				return nil, fmt.Errorf("line %d parse p[%d]: %v", idx+1, i, err)
+			}
 		}
-		expect := fmt.Sprintf("%d", expected(n, k, p))
-		input := fmt.Sprintf("%d %d\n%s\n", n, k, strings.Join(parts[2:], " "))
-		got, err := runCandidate(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx, err)
-			os.Exit(1)
-		}
-		if got != expect {
-			fmt.Printf("case %d failed: expected %s got %s\n", idx, expect, got)
-			os.Exit(1)
-		}
+		cases = append(cases, testCase{n: n, k: k, p: p})
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "scanner error:", err)
+	return cases, nil
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: go run verifierF.go /path/to/binary")
 		os.Exit(1)
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+	cases, err := parseTestcases()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	bin, cleanup, err := buildIfGo(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	for idx, tc := range cases {
+		expect := minInversions(tc.p, tc.k)
+		var input strings.Builder
+		fmt.Fprintf(&input, "%d %d\n", tc.n, tc.k)
+		for i, v := range tc.p {
+			if i > 0 {
+				input.WriteByte(' ')
+			}
+			input.WriteString(strconv.Itoa(v))
+		}
+		input.WriteByte('\n')
+
+		got, err := runCandidate(bin, input.String())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx+1, err)
+			os.Exit(1)
+		}
+		gotVal, err := strconv.Atoi(strings.Fields(got)[0])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: parse output %q\n", idx+1, got)
+			os.Exit(1)
+		}
+		if gotVal != expect {
+			fmt.Printf("case %d failed: expected %d got %d\n", idx+1, expect, gotVal)
+			fmt.Printf("input:\n%s", input.String())
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

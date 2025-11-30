@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,44 +9,113 @@ import (
 	"strings"
 )
 
-type testCaseB struct {
-	n int64
-	k int64
-	g int64
+const testcaseData = `926756583 911666162 60721577
+98338421 91130615 387682511
+897110090 181552145 790241760
+868616384 719117539 916797692
+330859007 270135510 650627597
+227868216 651548404 38369567
+624063061 731482525 170062306
+462428005 685553379 422551572
+862933493 776328310 923680072
+546607010 399496698 584305650
+477658549 539090651 288021301
+967664506 38573449 935264532
+29468690 390857518 499175978
+341949325 974689258 408037917
+454848810 957551637 949257102
+564522741 176618099 601843424
+190520928 253535582 247607738
+25617421 189751635 349119567
+186389512 146777704 547787319
+547848685 386215698 551621330
+724217064 601177651 195252964
+959465133 478499741 855514451
+445249592 788557811 564107143
+973447513 975470904 819142057
+391116385 847985071 637250267
+379875879 388572542 922308596
+478640783 173070700 809605710
+429350158 767887427 793055212
+495431669 703205304 569465118
+268329981 526148444 299683747
+993030873 534793687 537774000
+553398164 892842619 854930682
+380023224 710479498 947953961
+488218368 966046150 969778546
+495008046 376641580 609568674
+779413299 988197282 598700026
+777145290 490218026 522491961
+707472709 238167758 348608794
+874759917 751159320 896602773
+178315967 941345350 974893683
+661796563 287910461 829985309
+978584499 515144982 332390879
+325662395 858197687 758282711
+892352299 541433041 603645524
+555927422 544770103 699450889
+661219038 631300829 436659160
+334840296 784829979 223143391
+524959310 549639486 393631867
+734688326 669225784 947114968
+80933685 842114074 880897793
+366638722 779482119 9042863
+974585656 875163457 205517117
+799704362 113985128 63091884
+616773365 701056700 52516857
+293238605 635333383 243327646
+732804812 940051486 983376752
+114102229 809998391 560882649
+146565645 916914326 285444821
+262886336 885565901 226000038
+945517469 64837708 454104368
+964185657 769831116 815409285
+34223451 60984684 389077771
+386781650 184555813 267900405
+722376394 25171399 89016610
+123719838 72441703 27213684
+43888742 783212526 986371494
+22704135 400610153 274545112
+137210386 873332619 168704475
+788971575 197288043 561665123
+742487568 2079038 413998211
+632925972 46343767 852720573
+266102218 162586096 38943540
+4505540 369583008 660608364
+674048166 797209946 802813575
+121456203 307118761 362080537
+524803158 33082906 331126531
+481737770 592172191 822453959
+649781225 794511680 49147806
+968536772 283405752 811386064
+431487430 926044099 667432686
+757358577 164771655 507643130
+242158388 100345089 709559197
+738085255 339630901 900226688
+109574399 25988662 480845058
+846548076 939269660 136941234
+556505467 628091396 838656388
+421929585 522828225 552765190
+352145243 154435705 938926311
+366200764 278202664 281145765
+650771229 450709083 701491246
+19363021 751054284 599094383
+150935221 720009710 60968130
+271621165 36030746 141413865
+173049617 183299291 102941715
+486823714 681907343 248737741
+545739138 983974821 760309602
+33716921 264957127 249616889
+766509364 477490259 78971203
+269273794 86360209 634836266
+245031338 670191043 849956394`
+
+type testCase struct {
+	input    string
+	expected string
 }
 
-func parseTestsB() ([]testCaseB, error) {
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	var tests []testCaseB
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		fields := strings.Fields(line)
-		if len(fields) != 3 {
-			return nil, fmt.Errorf("invalid test case: %s", line)
-		}
-		n, err1 := strconv.ParseInt(fields[0], 10, 64)
-		k, err2 := strconv.ParseInt(fields[1], 10, 64)
-		g, err3 := strconv.ParseInt(fields[2], 10, 64)
-		if err1 != nil || err2 != nil || err3 != nil {
-			return nil, fmt.Errorf("invalid numbers: %s", line)
-		}
-		tests = append(tests, testCaseB{n, k, g})
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return tests, nil
-}
-
-func expectedB(n, k, g int64) int64 {
+func solve(n, k, g int64) int64 {
 	tVal := (g - 1) / 2
 	maxSave := tVal * n
 	total := k * g
@@ -57,51 +125,74 @@ func expectedB(n, k, g int64) int64 {
 	return (maxSave / g) * g
 }
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+func loadCases() ([]testCase, error) {
+	lines := strings.Split(testcaseData, "\n")
+	cases := make([]testCase, 0, len(lines))
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) != 3 {
+			return nil, fmt.Errorf("case %d: expected 3 tokens got %d", idx+1, len(parts))
+		}
+		n, err := strconv.ParseInt(parts[0], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("case %d: bad n: %w", idx+1, err)
+		}
+		k, err := strconv.ParseInt(parts[1], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("case %d: bad k: %w", idx+1, err)
+		}
+		g, err := strconv.ParseInt(parts[2], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("case %d: bad g: %w", idx+1, err)
+		}
+
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "1\n%d %d %d\n", n, k, g)
+		cases = append(cases, testCase{
+			input:    sb.String(),
+			expected: strconv.FormatInt(solve(n, k, g), 10),
+		})
 	}
+	return cases, nil
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
 	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierB.go /path/to/binary")
+		fmt.Println("usage: verifierB /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	tests, err := parseTestsB()
+	cases, err := loadCases()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "failed to load testcases: %v\n", err)
 		os.Exit(1)
 	}
-	for i, tc := range tests {
-		input := fmt.Sprintf("1\n%d %d %d\n", tc.n, tc.k, tc.g)
-		expect := expectedB(tc.n, tc.k, tc.g)
-		out, err := run(bin, input)
+	for idx, tc := range cases {
+		got, err := run(os.Args[1], tc.input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d: %v\n", i+1, err)
+			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		val, err := strconv.ParseInt(strings.TrimSpace(out), 10, 64)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d: non-integer output %q\n", i+1, out)
-			os.Exit(1)
-		}
-		if val != expect {
-			fmt.Printf("test %d failed: expected %d got %d\n", i+1, expect, val)
+		if got != tc.expected {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, tc.expected, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(tests))
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

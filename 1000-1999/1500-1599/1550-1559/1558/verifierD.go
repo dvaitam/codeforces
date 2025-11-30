@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -12,6 +11,276 @@ import (
 
 const MOD int64 = 998244353
 
+type pair struct {
+	x int
+	y int
+}
+
+type testCase struct {
+	n   int
+	ops []pair
+}
+
+// Embedded testcases from testcasesD.txt.
+const testcaseData = `
+100
+3 2
+2 1
+3 1
+6 0
+5 2
+2 1
+3 2
+5 1
+3 1
+6 3
+2 1
+5 3
+6 1
+4 3
+2 1
+3 2
+4 1
+4 0
+2 0
+5 1
+4 3
+5 2
+4 2
+5 3
+6 4
+2 1
+3 1
+5 3
+6 5
+6 4
+2 1
+3 1
+4 1
+5 4
+5 0
+4 0
+5 1
+2 1
+5 3
+2 1
+4 3
+5 3
+6 2
+3 1
+6 3
+2 0
+2 0
+3 1
+3 2
+3 2
+2 1
+3 2
+3 1
+3 2
+6 3
+2 1
+4 2
+6 2
+4 3
+2 1
+3 2
+4 3
+4 0
+5 4
+2 1
+3 2
+4 3
+5 3
+5 0
+6 0
+2 1
+2 1
+4 2
+2 1
+3 2
+4 2
+3 1
+4 1
+6 5
+2 1
+3 2
+4 1
+5 4
+6 1
+2 1
+2 1
+5 1
+2 1
+3 2
+2 1
+3 1
+2 0
+4 1
+3 2
+2 1
+2 1
+4 2
+3 2
+4 2
+5 4
+2 1
+3 1
+4 2
+5 4
+6 5
+2 1
+3 1
+4 1
+5 3
+6 1
+3 0
+2 0
+5 4
+2 1
+3 2
+4 1
+5 1
+6 4
+2 1
+4 1
+5 3
+6 5
+5 0
+4 1
+2 1
+6 0
+3 0
+4 1
+2 1
+6 3
+2 1
+4 3
+6 5
+6 3
+2 1
+3 1
+5 2
+2 0
+2 0
+5 0
+2 1
+2 1
+4 0
+4 3
+2 1
+3 2
+4 1
+4 3
+2 1
+3 1
+4 3
+3 0
+4 3
+2 1
+3 1
+4 2
+5 2
+4 2
+5 4
+2 0
+3 2
+2 1
+3 1
+5 1
+2 1
+4 2
+2 1
+3 2
+2 1
+2 1
+5 1
+3 2
+2 0
+6 0
+5 1
+2 1
+2 0
+2 1
+2 1
+2 0
+6 4
+2 1
+3 2
+4 3
+6 2
+2 0
+3 2
+2 1
+3 2
+4 3
+2 1
+3 1
+4 2
+3 1
+3 1
+5 1
+3 1
+5 3
+2 1
+4 2
+5 2
+3 2
+2 1
+3 2
+6 4
+2 1
+3 2
+4 2
+6 4
+3 0
+6 2
+3 2
+4 1
+5 3
+2 1
+3 1
+5 4
+2 1
+2 1
+2 0
+4 1
+2 1
+3 0
+6 5
+2 1
+3 2
+4 1
+5 1
+6 1
+2 1
+2 1
+4 3
+2 1
+3 2
+4 2
+5 3
+2 1
+4 2
+5 2
+6 2
+2 1
+4 3
+5 0
+5 4
+2 1
+3 2
+4 3
+5 3
+2 1
+2 1
+6 2
+2 1
+4 3
+3 0
+`
+
+// Combination utilities.
 var fact, inv []int64
 
 func modPow(a, b int64) int64 {
@@ -39,7 +308,7 @@ func initComb(n int) {
 	}
 }
 
-func C(n, k int) int64 {
+func comb(n, k int) int64 {
 	if k < 0 || k > n {
 		return 0
 	}
@@ -75,13 +344,18 @@ func (b *BIT) kth(k int) int {
 	return idx + 1
 }
 
-func solve(n int, pairs [][2]int) int64 {
+// solve mirrors 1558D.go.
+func solve(tc testCase) string {
+	n := tc.n
+	m := len(tc.ops)
 	j := make([]int, n+1)
 	for i := 1; i <= n; i++ {
 		j[i] = i
 	}
-	for _, p := range pairs {
-		j[p[0]] = p[1]
+	for k := 0; k < m; k++ {
+		x := tc.ops[k].x
+		y := tc.ops[k].y
+		j[x] = y
 	}
 	bit := BIT{}
 	bit.init(n)
@@ -100,85 +374,103 @@ func solve(n int, pairs [][2]int) int64 {
 			r++
 		}
 	}
-	return C(2*n-1-r, n)
+	ans := comb(2*n-1-r, n)
+	return strconv.FormatInt(ans, 10)
 }
 
-func runCase(bin string, n int, pairs [][2]int) error {
+func parseTestcases() ([]testCase, error) {
+	fields := strings.Fields(testcaseData)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no data")
+	}
+	pos := 0
+	t, err := strconv.Atoi(fields[pos])
+	if err != nil {
+		return nil, fmt.Errorf("bad t: %v", err)
+	}
+	pos++
+	cases := make([]testCase, 0, t)
+	for caseIdx := 0; caseIdx < t; caseIdx++ {
+		if pos+1 >= len(fields) {
+			return nil, fmt.Errorf("case %d missing n/m", caseIdx+1)
+		}
+		n, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return nil, fmt.Errorf("case %d bad n: %v", caseIdx+1, err)
+		}
+		m, err := strconv.Atoi(fields[pos+1])
+		if err != nil {
+			return nil, fmt.Errorf("case %d bad m: %v", caseIdx+1, err)
+		}
+		pos += 2
+		ops := make([]pair, m)
+		for i := 0; i < m; i++ {
+			if pos+1 >= len(fields) {
+				return nil, fmt.Errorf("case %d missing pair %d", caseIdx+1, i+1)
+			}
+			x, err := strconv.Atoi(fields[pos])
+			if err != nil {
+				return nil, fmt.Errorf("case %d bad x: %v", caseIdx+1, err)
+			}
+			y, err := strconv.Atoi(fields[pos+1])
+			if err != nil {
+				return nil, fmt.Errorf("case %d bad y: %v", caseIdx+1, err)
+			}
+			ops[i] = pair{x: x, y: y}
+			pos += 2
+		}
+		cases = append(cases, testCase{n: n, ops: ops})
+	}
+	if pos != len(fields) {
+		return nil, fmt.Errorf("extra data at end")
+	}
+	return cases, nil
+}
+
+func runCandidate(bin string, tc testCase) (string, error) {
 	var sb strings.Builder
 	sb.WriteString("1\n")
-	sb.WriteString(fmt.Sprintf("%d %d\n", n, len(pairs)))
-	for _, pr := range pairs {
-		sb.WriteString(fmt.Sprintf("%d %d\n", pr[0], pr[1]))
+	sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, len(tc.ops)))
+	for _, op := range tc.ops {
+		sb.WriteString(fmt.Sprintf("%d %d\n", op.x, op.y))
 	}
 	cmd := exec.Command(bin)
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	}
 	cmd.Stdin = strings.NewReader(sb.String())
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
-	got := strings.TrimSpace(out.String())
-	exp := fmt.Sprintf("%d", solve(n, pairs))
-	if got != exp {
-		return fmt.Errorf("expected %s got %s", exp, got)
-	}
-	return nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("Usage: go run verifierD.go /path/to/binary")
+		fmt.Println("usage: go run verifierD.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	initComb(400000)
-	f, err := os.Open("testcasesD.txt")
+
+	tests, err := parseTestcases()
 	if err != nil {
-		fmt.Println("could not open testcasesD.txt:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	scanner.Split(bufio.ScanWords)
-	if !scanner.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scanner.Text())
-	for caseNum := 0; caseNum < t; caseNum++ {
-		if !scanner.Scan() {
-			fmt.Println("invalid test file")
+	initComb(400000)
+
+	for idx, tc := range tests {
+		expect := solve(tc)
+		got, err := runCandidate(bin, tc)
+		if err != nil {
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		n, _ := strconv.Atoi(scanner.Text())
-		if !scanner.Scan() {
-			fmt.Println("invalid test file")
-			os.Exit(1)
-		}
-		m, _ := strconv.Atoi(scanner.Text())
-		pairs := make([][2]int, m)
-		for i := 0; i < m; i++ {
-			if !scanner.Scan() {
-				fmt.Println("invalid test file")
-				os.Exit(1)
-			}
-			x, _ := strconv.Atoi(scanner.Text())
-			if !scanner.Scan() {
-				fmt.Println("invalid test file")
-				os.Exit(1)
-			}
-			y, _ := strconv.Atoi(scanner.Text())
-			pairs[i] = [2]int{x, y}
-		}
-		if err := runCase(bin, n, pairs); err != nil {
-			fmt.Printf("case %d failed: %v\n", caseNum+1, err)
+		if got != expect {
+			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, expect, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

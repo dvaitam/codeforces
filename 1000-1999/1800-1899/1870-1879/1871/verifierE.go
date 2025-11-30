@@ -1,26 +1,62 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
+const testcasesB64 = "LTQwIC0yMwotNzQgODQKMSAyMgotNjEgLTc3Ci04MyAtOTUKMiA0MAotMjYgOTUKLTg1IC00NAozMyAzNwotOCAtMzAKOTkgLTU2Ci03MyAtMzMKLTQ2IC05NAo2NCAtMzQKLTMxIC01MQotNTggLTIxCi0yNiA2MAo4NyAtNQotNzggNTUKLTE0IDcxCi0xIDI5Ci0zNyAtNTUKLTM3IDIxCi0yOSAtNzgKNDAgLTI0Ci05OSAtMjYKNDYgODAKLTIxIDk1CjMwIC01MQo1IDgKNTMgLTI3CjEwIDE1Ci01OSAtNDEKLTIyIC0zNAotODkgLTgwCi04OSAxOAo2MCAtMjkKMzIgMzYKNjUgMjAKNzkgLTEzCi02MyA3MgotNTAgLTgzCjUgLTQ5CjYyIDYxCjEyIC0zMAotNTMgLTkKMTEgOTEKNTAgLTE4CjYyIDQyCi01MCAtMTgKLTc1IC04NQo4MSAtNDIKLTI5IDk1CjQ5IDU3Ci00MCAtNjkKLTE2IC01NQotMjYgMTcKLTk0IC05MAotOSA3OAotNzkgLTI3Cjg4IDcyCi0xNyAtOTYKLTE4IC0yNwotMTggLTYxCjk4IDY2CjUgNTgKNzQgLTgxCi0yNSA1OAotNTEgMTMKLTI2IC02NgotMzYgLTMKNTMgLTYwCi0xNiA0NgotOTggLTcKLTg5IDE2Ci01NyAtNwoxMDAgLTgKLTI2IDQ2Ci03NiAxMgotNDcgOAotNDcgLTcxCi04NSAtODUKLTg2IDg4Ci01NyA1Mgo3MyAtNjIKNTUgLTkwCjM5IDI1CjQ5IC0zNwotMTggLTkxCi02OSAzNQotMjYgOTgKNCA2NgotNDkgMjIKLTQ5IC0zOQoxMiA1CjI1IC05MQotNDQgNwoxMyAtMzcKNjUgOQotNDUgMjcK"
+
+func run(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	out, err := cmd.CombinedOutput()
+	return strings.TrimSpace(string(out)), err
+}
+
+func gcd(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	if a < 0 {
+		a = -a
+	}
+	return a
+}
+
+func loadCases() ([]string, []int) {
+	data, err := base64.StdEncoding.DecodeString(testcasesB64)
 	if err != nil {
-		return "", err
+		fmt.Fprintf(os.Stderr, "failed to decode embedded testcases: %v\n", err)
+		os.Exit(1)
 	}
-	oracle := filepath.Join(dir, "oracleE")
-	cmd := exec.Command("go", "build", "-o", oracle, "1871E.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	fields := strings.Fields(string(data))
+	if len(fields)%2 != 0 || len(fields) == 0 {
+		fmt.Fprintln(os.Stderr, "invalid embedded testcases")
+		os.Exit(1)
 	}
-	return oracle, nil
+	var inputs []string
+	var exps []int
+	for i := 0; i < len(fields); i += 2 {
+		a, errA := strconv.Atoi(fields[i])
+		b, errB := strconv.Atoi(fields[i+1])
+		if errA != nil || errB != nil {
+			fmt.Fprintln(os.Stderr, "invalid numbers in embedded tests")
+			os.Exit(1)
+		}
+		inputs = append(inputs, fmt.Sprintf("%d %d\n", a, b))
+		exps = append(exps, gcd(a, b))
+	}
+	return inputs, exps
 }
 
 func main() {
@@ -30,59 +66,17 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
-	file, err := os.Open("testcasesE.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		input := line + "\n"
-
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(input)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error: %v\n", err)
+	inputs, exps := loadCases()
+	for idx, input := range inputs {
+		out, err := run(bin, input)
+		if err != nil {
+			fmt.Printf("case %d failed: %v\n%s", idx+1, err, out)
 			os.Exit(1)
 		}
-		expected := strings.TrimSpace(outO.String())
-
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var errBuf bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &errBuf
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, errBuf.String())
-			os.Exit(1)
-		}
-		got := strings.TrimSpace(out.String())
-		if got != expected {
-			fmt.Printf("test %d failed\nexpected: %s\ngot: %s\n", idx, expected, got)
+		if strings.TrimSpace(out) != fmt.Sprintf("%d", exps[idx]) {
+			fmt.Printf("case %d failed: expected %d got %s\n", idx+1, exps[idx], out)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(inputs))
 }

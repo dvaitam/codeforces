@@ -1,6 +1,22 @@
 package main
 
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
 func main() {
-	var a []int
-	_ = a[0] // panic: index out of range
+	in := bufio.NewReader(os.Stdin)
+	var n int
+	if _, err := fmt.Fscan(in, &n); err != nil {
+		return
+	}
+	sum := 0
+	for i := 0; i < n; i++ {
+		var v int
+		fmt.Fscan(in, &v)
+		sum += v
+	}
+	fmt.Println(sum)
 }

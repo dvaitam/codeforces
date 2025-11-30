@@ -1,27 +1,145 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
+	_ "embed"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+//go:embed testcasesF.txt
+var testcases string
+
+type dsu struct {
+	parent, size []int
+}
+
+func newDSU(n int) *dsu {
+	p := make([]int, n+1)
+	sz := make([]int, n+1)
+	for i := 0; i <= n; i++ {
+		p[i] = i
+		sz[i] = 1
 	}
-	oracle := filepath.Join(dir, "oracleF")
-	cmd := exec.Command("go", "build", "-o", oracle, "1927F.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	return &dsu{parent: p, size: sz}
+}
+
+func (d *dsu) find(x int) int {
+	if d.parent[x] != x {
+		d.parent[x] = d.find(d.parent[x])
 	}
-	return oracle, nil
+	return d.parent[x]
+}
+
+func (d *dsu) union(a, b int) {
+	ra, rb := d.find(a), d.find(b)
+	if ra == rb {
+		return
+	}
+	if d.size[ra] < d.size[rb] {
+		ra, rb = rb, ra
+	}
+	d.parent[rb] = ra
+	d.size[ra] += d.size[rb]
+}
+
+type edge struct {
+	u, v, w int
+}
+
+func solveCase(n int, edges []edge) (int, []int) {
+	sort.Slice(edges, func(i, j int) bool {
+		return edges[i].w > edges[j].w
+	})
+	d := newDSU(n)
+	g := make([][]int, n+1)
+	st, en, cost := 0, 0, 0
+	for _, e := range edges {
+		u, v, w := e.u, e.v, e.w
+		g[u] = append(g[u], v)
+		g[v] = append(g[v], u)
+		if d.find(u) == d.find(v) {
+			st, en, cost = u, v, w
+		}
+		d.union(u, v)
+	}
+	vis := make([]bool, n+1)
+	parent := make([]int, n+1)
+	q := []int{st}
+	vis[st] = true
+	for head := 0; head < len(q); head++ {
+		u := q[head]
+		if u == en {
+			break
+		}
+		for _, v := range g[u] {
+			if u == st && v == en {
+				continue
+			}
+			if !vis[v] {
+				vis[v] = true
+				parent[v] = u
+				q = append(q, v)
+			}
+		}
+	}
+	path := make([]int, 0)
+	cur := en
+	for {
+		path = append(path, cur)
+		if cur == st {
+			break
+		}
+		cur = parent[cur]
+	}
+	return cost, path
+}
+
+type testCase struct {
+	n, m  int
+	edges []edge
+}
+
+func parseCases(raw string) ([]testCase, error) {
+	lines := strings.Split(raw, "\n")
+	var res []testCase
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		vals := strings.Fields(line)
+		if len(vals) < 2 {
+			return nil, fmt.Errorf("line %d too short", idx+1)
+		}
+		n, err := strconv.Atoi(vals[0])
+		if err != nil {
+			return nil, err
+		}
+		m, err := strconv.Atoi(vals[1])
+		if err != nil {
+			return nil, err
+		}
+		need := 2 + 3*m
+		if len(vals) < need {
+			return nil, fmt.Errorf("line %d length mismatch", idx+1)
+		}
+		es := make([]edge, m)
+		pos := 2
+		for i := 0; i < m; i++ {
+			u, _ := strconv.Atoi(vals[pos])
+			v, _ := strconv.Atoi(vals[pos+1])
+			w, _ := strconv.Atoi(vals[pos+2])
+			pos += 3
+			es[i] = edge{u: u, v: v, w: w}
+		}
+		res = append(res, testCase{n: n, m: m, edges: es})
+	}
+	return res, nil
 }
 
 func runProg(bin, input string) (string, error) {
@@ -33,11 +151,11 @@ func runProg(bin, input string) (string, error) {
 	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	var errb bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &errb
+	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
 	return strings.TrimSpace(out.String()), nil
 }
@@ -48,70 +166,38 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
+	cases, err := parseCases(testcases)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
 		os.Exit(1)
 	}
-	defer os.Remove(oracle)
 
-	f, err := os.Open("testcasesF.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
+	for idx, tc := range cases {
+		cost, path := solveCase(tc.n, tc.edges)
+		var exp strings.Builder
+		exp.WriteString(fmt.Sprintf("%d %d\n", cost, len(path)))
+		for _, v := range path {
+			exp.WriteString(strconv.Itoa(v))
+			exp.WriteByte(' ')
+		}
+		want := strings.TrimSpace(exp.String())
 
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
+		var input strings.Builder
+		input.WriteString("1\n")
+		input.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.m))
+		for _, e := range tc.edges {
+			input.WriteString(fmt.Sprintf("%d %d %d\n", e.u, e.v, e.w))
 		}
-		idx++
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
-			fmt.Printf("test %d invalid\n", idx)
-			os.Exit(1)
-		}
-		pos := 0
-		n, _ := strconv.Atoi(fields[pos])
-		pos++
-		m, _ := strconv.Atoi(fields[pos])
-		pos++
-		if len(fields) != 2+3*m {
-			fmt.Printf("test %d wrong edge count\n", idx)
-			os.Exit(1)
-		}
-		var sb strings.Builder
-		sb.WriteString("1\n")
-		sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
-		for i := 0; i < m; i++ {
-			u := fields[pos+3*i]
-			v := fields[pos+3*i+1]
-			w := fields[pos+3*i+2]
-			sb.WriteString(fmt.Sprintf("%s %s %s\n", u, v, w))
-		}
-		input := sb.String()
-		expect, err := runProg(oracle, input)
+
+		got, err := runProg(bin, input.String())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on test %d: %v\n", idx, err)
+			fmt.Printf("test %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got, err := runProg(bin, input)
-		if err != nil {
-			fmt.Printf("test %d: %v\n", idx, err)
-			os.Exit(1)
-		}
-		if got != expect {
-			fmt.Printf("test %d failed\nexpected:\n%s\ngot:\n%s\n", idx, expect, got)
+		if strings.TrimSpace(got) != want {
+			fmt.Printf("test %d failed\nexpected:\n%s\ngot:\n%s\n", idx+1, want, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

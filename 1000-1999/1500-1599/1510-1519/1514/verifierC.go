@@ -1,13 +1,115 @@
 package main
 
 import (
-	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 )
+
+// Embedded copy of testcasesC.txt so the verifier is self-contained.
+const testcasesRaw = `980
+885
+972
+871
+59
+95
+88
+371
+857
+175
+755
+830
+687
+876
+317
+259
+622
+219
+623
+38
+597
+699
+164
+443
+655
+404
+824
+742
+882
+523
+974
+382
+559
+960
+457
+516
+276
+924
+38
+893
+30
+374
+478
+956
+328
+931
+391
+435
+915
+907
+540
+170
+575
+183
+243
+238
+26
+182
+334
+179
+141
+524
+524
+370
+528
+692
+575
+188
+917
+458
+817
+426
+754
+539
+930
+932
+783
+374
+810
+609
+364
+372
+881
+986
+458
+167
+979
+774
+411
+734
+758
+474
+672
+545
+257
+503
+287
+949
+512
+514`
 
 func gcd(a, b int) int {
 	for b != 0 {
@@ -16,12 +118,12 @@ func gcd(a, b int) int {
 	return a
 }
 
-func solveCase(line string) string {
-	fields := strings.Fields(line)
-	if len(fields) == 0 {
-		return ""
-	}
-	n, _ := strconv.Atoi(fields[0])
+type testCase struct {
+	n int
+}
+
+func solveCase(tc testCase) (int, []int) {
+	n := tc.n
 	result := make([]int, 0)
 	prod := 1 % n
 	for i := 1; i < n; i++ {
@@ -39,64 +141,94 @@ func solveCase(line string) string {
 		}
 		result = filtered
 	}
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d", len(result)))
-	if len(result) > 0 {
-		sb.WriteByte('\n')
-		for i, v := range result {
-			if i > 0 {
-				sb.WriteByte(' ')
-			}
-			sb.WriteString(strconv.Itoa(v))
-		}
-	}
-	return strings.TrimSpace(sb.String())
+	return len(result), result
 }
 
-func run(bin, input string) (string, error) {
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
+	res := make([]testCase, 0, len(lines))
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		n, err := strconv.Atoi(line)
+		if err != nil {
+			return nil, fmt.Errorf("case %d: parse n: %v", idx+1, err)
+		}
+		res = append(res, testCase{n: n})
+	}
+	if len(res) == 0 {
+		return nil, fmt.Errorf("no embedded testcases")
+	}
+	return res, nil
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("runtime error: %v", err)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	return strings.TrimSpace(string(out)), nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierC.go /path/to/binary")
+		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	file, err := os.Open("testcasesC.txt")
+
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
+
+	bin, cleanup, err := buildIfGo(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	for i, tc := range cases {
+		cnt, values := solveCase(tc)
+		expected := strconv.Itoa(cnt)
+		if cnt > 0 {
+			expected = expected + "\n" + strings.TrimSpace(strings.Trim(fmt.Sprint(values), "[]"))
 		}
-		idx++
-		expected := solveCase(line)
-		got, err := run(bin, line+"\n")
+
+		input := fmt.Sprintf("%d\n", tc.n)
+		got, err := runCandidate(bin, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
+			fmt.Printf("case %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if got != expected {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx, expected, got)
+		if strings.TrimSpace(got) != expected {
+			fmt.Printf("case %d failed\nexpected:\n%s\ngot:\n%s\n", i+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

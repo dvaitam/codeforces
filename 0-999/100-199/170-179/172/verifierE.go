@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,13 +9,119 @@ import (
 	"strings"
 )
 
+const testcasesRaw = `<c><c><c/><a><d></d></a></c></c>|1|c c a d
+<d/>|2|d|d
+<b></b>|3|a|a b|b
+<d/>|3|d|a|d
+<d></d>|1|d
+<b></b>|3|b|b|b
+<c></c>|1|c a
+<c><c></c><a><b/><c></c></a></c>|2|c a b|c a
+<b></b>|2|d|a
+<d/>|3|d|d|d c
+<a></a>|2|a|a
+<c><a><c></c><d><d></d></d></a></c>|3|d c|c a d d|c
+<a><c/></a>|2|a|b
+<d></d>|1|b
+<b></b>|3|b|b|b
+<b></b>|3|b|c d|b
+<c></c>|1|b d
+<c></c>|2|a a|c
+<a/>|1|b
+<d><b></b><b></b></d>|3|d b|d|a a
+<d><b></b></d>|2|b a|b
+<a><c><d></d></c></a>|3|d|c c|a
+<a></a>|3|a|a|c
+<c></c>|1|c b
+<a><b><b><b/><d></d></b></b></a>|2|c a|d
+<a><c></c></a>|2|a c|d a
+<c></c>|3|c|b|c
+<d></d>|1|d
+<b><b></b></b>|1|d
+<d><c></c></d>|2|d c|d
+<a></a>|3|d b|a|a
+<b></b>|1|c
+<b/>|1|b
+<c><d><c></c></d></c>|2|d|d
+<c><a><a><a/></a></a></c>|3|d d|b a|c
+<d/>|3|d|c d|d
+<c><b><c><a/><b></b></c></b><b/></c>|1|c b c a
+<a></a>|1|c
+<a></a>|2|c|a
+<a><c/></a>|2|a|a c
+<d><d></d></d>|2|c|d
+<d><d></d></d>|2|b d|d d
+<c></c>|1|c
+<a/>|2|a|a
+<b></b>|2|c|a
+<d><d></d></d>|3|d|d|c
+<a></a>|1|d b
+<d><b><c></c></b></d>|1|b
+<c><a><c></c></a></c>|1|c a
+<b></b>|1|d a
+<c></c>|2|c|d c
+<d><c></c><b></b></d>|3|d b|d c|d c
+<c/>|2|c|b a
+<a></a>|1|a
+<c><b><a><b></b><c></c></a><c></c></b><d><b><a/></b><b></b></d></c>|2|d c|c c
+<c><c><d><a/></d></c><d><d><b></b><b/></d></d></c>|1|a
+<c><b></b><d></d></c>|2|a|a
+<b/>|2|b|b
+<c><b><d></d><b></b></b><b></b></c>|1|c c
+<b><c></c><d/></b>|2|d a|b c
+<d/>|3|d|d|a b
+<b><c><a><d/></a></c><d><a></a></d></b>|2|b c|b c a d
+<a></a>|2|b b|a
+<b><b><c></c><a/></b></b>|2|a|c c
+<c><a><d></d></a></c>|3|d|b c|c
+<b><b></b></b>|2|c|d
+<a></a>|1|a a
+<b></b>|2|b|a
+<d></d>|3|d|d|d
+<b><a></a><a><c><b></b><a></a></c><c></c></a></b>|2|b c|b
+<d/>|2|a b|a a
+<a></a>|2|a|a
+<a><b></b></a>|3|a b|b a|a
+<b><b></b><a/></b>|2|b b|d
+<c/>|1|b d
+<b><b><c><b/><d/></c></b></b>|3|b|a c|b b c d
+<b><a><b/></a></b>|2|d a|b c
+<a><d><a><a/><b></b></a></d></a>|1|a d
+<b></b>|3|c|a|c
+<b><a></a><d><b/></d></b>|3|b d|b|b a
+<c><a></a></c>|2|b a|d d
+<c><d/></c>|3|b a|b c|c a
+<a><d></d><b></b></a>|1|c
+<c></c>|2|c|c
+<c></c>|3|a|d c|c
+<b></b>|2|b c|b
+<d></d>|3|d|c d|d
+<b><c><d/><c><a></a><a/></c></c><d></d></b>|1|b c
+<b></b>|1|c a
+<a><d></d><d></d></a>|1|a
+<c><b><c><c></c></c></b><d><a></a><b/></d></c>|3|d d|c d a|b b
+<c><d></d><d></d></c>|2|c d|c
+<c><c></c></c>|3|a d|a|a b
+<a></a>|1|a
+<a></a>|2|c c|a
+<d><c></c></d>|3|a c|d|d c
+<c><b><d><a/></d><b><c></c></b></b><c><c/></c></c>|2|c b b|c b b
+<c></c>|1|c
+<c><a></a></c>|2|a|c a
+<a><a><b><a></a></b></a><d><a/></d></a>|2|a c|a a b`
+
+type occ struct {
+	qid       int
+	positions []int
+}
+
+type testCase struct {
+	doc     string
+	queries []string
+}
+
 func runProg(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errb bytes.Buffer
@@ -28,146 +133,159 @@ func runProg(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-type node struct {
-	tag      string
-	children []*node
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
 }
 
-// parse the BHTML document into a tree
-func buildTree(doc string) *node {
-	root := &node{}
-	stack := []*node{root}
-	n := len(doc)
+func parseQueries(raw []string) ([][]string, []int, map[string]map[int][]int) {
+	m := len(raw)
+	queries := make([][]string, m)
+	lengths := make([]int, m)
+	tagMap := make(map[string]map[int][]int)
+	for i, line := range raw {
+		parts := strings.Fields(strings.TrimSpace(line))
+		for _, token := range parts {
+			queries[i] = append(queries[i], token)
+			if tagMap[token] == nil {
+				tagMap[token] = make(map[int][]int)
+			}
+			tagMap[token][i] = append(tagMap[token][i], len(queries[i]))
+		}
+		lengths[i] = len(queries[i])
+	}
+	return queries, lengths, tagMap
+}
 
+func solve(doc string, queryLines []string) []int {
+	_, lengths, tagMap := parseQueries(queryLines)
+
+	occMap := make(map[string][]occ)
+	for tag, m1 := range tagMap {
+		tmp := make([]occ, 0, len(m1))
+		for qi, ps := range m1 {
+			for l, r := 0, len(ps)-1; l < r; l, r = l+1, r-1 {
+				ps[l], ps[r] = ps[r], ps[l]
+			}
+			tmp = append(tmp, occ{qid: qi, positions: ps})
+		}
+		occMap[tag] = tmp
+	}
+
+	m := len(queryLines)
+	dp := make([][]bool, m)
+	for i := 0; i < m; i++ {
+		dp[i] = make([]bool, lengths[i]+1)
+		dp[i][0] = true
+	}
+	ans := make([]int, m)
+
+	var changeStack []int
+	type change struct{ qid, pos int }
+	var changes []change
+
+	n := len(doc)
 	for i := 0; i < n; {
 		if doc[i] != '<' {
 			i++
 			continue
 		}
-
 		j := i + 1
-		closing := false
+		isClose := false
 		if j < n && doc[j] == '/' {
-			closing = true
+			isClose = true
 			j++
 		}
-
-		start := j
-		for j < n && doc[j] != '>' && doc[j] != '/' {
-			j++
+		k := j
+		for k < n && doc[k] != '>' {
+			k++
 		}
-		name := doc[start:j]
-
+		content := doc[j:k]
 		selfClose := false
-		if !closing && j < n && doc[j] == '/' {
+		if !isClose && len(content) > 0 && content[len(content)-1] == '/' {
 			selfClose = true
-			j++
+			content = content[:len(content)-1]
 		}
-		if j < n && doc[j] == '>' {
-			j++
-		}
-
-		if closing {
-			// pop matching opening tag
-			if len(stack) > 1 {
-				stack = stack[:len(stack)-1]
-			}
-			i = j
-			continue
-		}
-
-		cur := &node{tag: name}
-		parent := stack[len(stack)-1]
-		parent.children = append(parent.children, cur)
-		if !selfClose {
-			stack = append(stack, cur)
-		}
-		i = j
-	}
-
-	return root
-}
-
-// compute expected output using an internal implementation of the rules
-func expected(doc string, queries []string) ([]int, error) {
-	tree := buildTree(doc)
-
-	// map tags to integer ids for faster comparison
-	tagToID := make(map[string]int)
-	getID := func(tag string) int {
-		if id, ok := tagToID[tag]; ok {
-			return id
-		}
-		id := len(tagToID)
-		tagToID[tag] = id
-		return id
-	}
-
-	qIDs := make([][]int, len(queries))
-	for i, q := range queries {
-		parts := strings.Fields(q)
-		if len(parts) == 0 {
-			qIDs[i] = nil
-			continue
-		}
-		qIDs[i] = make([]int, len(parts))
-		for j, p := range parts {
-			qIDs[i][j] = getID(p)
-		}
-	}
-
-	results := make([]int, len(queries))
-
-	var dfs func(*node, []int)
-	dfs = func(u *node, states []int) {
-		var nextStates []int
-		if u.tag != "" {
-			tagID := getID(u.tag)
-			nextStates = make([]int, len(states))
-			for i, idx := range states {
-				pat := qIDs[i]
-				if pat == nil {
-					continue
-				}
-				plen := len(pat)
-
-				// Check if current node matches the target (last element)
-				// and we have matched all ancestors (idx == plen-1)
-				if idx == plen-1 && pat[plen-1] == tagID {
-					results[i]++
-				}
-
-				// Update state for children (ancestor matching)
-				// Greedy match: if current node matches the expected ancestor, advance index
-				if idx < plen-1 && pat[idx] == tagID {
-					nextStates[i] = idx + 1
-				} else {
-					nextStates[i] = idx
-				}
+		tag := content
+		if isClose {
+			last := changeStack[len(changeStack)-1]
+			changeStack = changeStack[:len(changeStack)-1]
+			for len(changes) > last {
+				c := changes[len(changes)-1]
+				dp[c.qid][c.pos] = false
+				changes = changes[:len(changes)-1]
 			}
 		} else {
-			// Virtual root, pass states as is
-			nextStates = states
+			prev := len(changes)
+			changeStack = append(changeStack, prev)
+			if occs, ok := occMap[tag]; ok {
+				for _, oc := range occs {
+					q := oc.qid
+					for _, posi := range oc.positions {
+						if !dp[q][posi] && dp[q][posi-1] {
+							dp[q][posi] = true
+							changes = append(changes, change{qid: q, pos: posi})
+							if posi == lengths[q] {
+								ans[q]++
+							}
+						}
+					}
+				}
+			}
+			if selfClose {
+				last := changeStack[len(changeStack)-1]
+				changeStack = changeStack[:len(changeStack)-1]
+				for len(changes) > last {
+					c := changes[len(changes)-1]
+					dp[c.qid][c.pos] = false
+					changes = changes[:len(changes)-1]
+				}
+			}
 		}
-
-		for _, ch := range u.children {
-			dfs(ch, nextStates)
-		}
+		i = k + 1
 	}
-
-	initialStates := make([]int, len(queries))
-	dfs(tree, initialStates)
-
-	return results, nil
+	return ans
 }
 
-func matchChain(path, query []int) bool {
-	// Deprecated, kept/removed as needed. 
-	// Since I am replacing the block, I should probably remove it or replace it with nothing if possible.
-	// The tool requires replacing exact text. 
-	// I will include it in old_string and remove it in new_string if I can capture it.
-	// But simpler to just define expected and let matchChain be unused (or remove it if I target it).
-	return false
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
+	var cases []testCase
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.Split(line, "|")
+		if len(parts) < 2 {
+			return nil, fmt.Errorf("line %d malformed", idx+1)
+		}
+		doc := parts[0]
+		m, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return nil, fmt.Errorf("line %d parse m: %v", idx+1, err)
+		}
+		if len(parts) != m+2 {
+			return nil, fmt.Errorf("line %d expected %d queries got %d", idx+1, m, len(parts)-2)
+		}
+		queries := make([]string, m)
+		for i := 0; i < m; i++ {
+			queries[i] = strings.TrimSpace(parts[2+i])
+		}
+		cases = append(cases, testCase{doc: doc, queries: queries})
+	}
+	return cases, nil
 }
 
 func main() {
@@ -175,71 +293,46 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierE.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	file, err := os.Open("testcasesE.txt")
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		parts := strings.Split(line, "|")
-		if len(parts) < 2 {
-			fmt.Fprintf(os.Stderr, "test %d malformed\n", idx)
-			os.Exit(1)
-		}
-		m, err := strconv.Atoi(parts[1])
-		if err != nil || len(parts) != m+2 {
-			fmt.Fprintf(os.Stderr, "test %d bad m\n", idx)
-			os.Exit(1)
-		}
-		doc := parts[0]
-		queries := parts[2:]
-		want, err := expected(doc, queries)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d reference error: %v\n", idx, err)
-			os.Exit(1)
-		}
+	bin, cleanup, err := buildIfGo(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	for idx, tc := range cases {
+		expected := solve(tc.doc, tc.queries)
+
 		var input strings.Builder
-		input.WriteString(doc)
+		input.WriteString(tc.doc)
 		input.WriteByte('\n')
-		input.WriteString(fmt.Sprintf("%d\n", m))
-		for _, q := range queries {
+		fmt.Fprintf(&input, "%d\n", len(tc.queries))
+		for _, q := range tc.queries {
 			input.WriteString(q)
 			input.WriteByte('\n')
 		}
-		gotStr, err := runProg(bin, input.String())
+
+		got, err := runProg(bin, input.String())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		scan := bufio.NewScanner(strings.NewReader(gotStr))
-		outVals := []int{}
-		for scan.Scan() {
-			v, _ := strconv.Atoi(strings.TrimSpace(scan.Text()))
-			outVals = append(outVals, v)
-		}
-		if len(outVals) != m {
-			fmt.Fprintf(os.Stderr, "case %d wrong output length\n", idx)
+		outLines := strings.Split(strings.TrimSpace(got), "\n")
+		if len(outLines) != len(expected) {
+			fmt.Fprintf(os.Stderr, "case %d wrong number of lines\n", idx+1)
 			os.Exit(1)
 		}
-		for i := 0; i < m; i++ {
-			if outVals[i] != want[i] {
-				fmt.Fprintf(os.Stderr, "case %d failed at query %d: expected %d got %d\n", idx, i+1, want[i], outVals[i])
+		for i := 0; i < len(expected); i++ {
+			if strings.TrimSpace(outLines[i]) != strconv.Itoa(expected[i]) {
+				fmt.Fprintf(os.Stderr, "case %d query %d failed: expected %d got %s\n", idx+1, i+1, expected[i], strings.TrimSpace(outLines[i]))
 				os.Exit(1)
 			}
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,55 +8,197 @@ import (
 	"strings"
 )
 
-func isPal(s string) bool {
-	r := []rune(s)
+// Embedded copy of testcasesB.txt so the verifier is self-contained.
+const testcasesRaw = `kfzeuolqmqqbscv
+ytcxnygjrtnpzmtsh
+v
+x
+jqsikc
+ijynmzmbfuehjxkb
+pn
+ptwcv
+zlnbt
+mobdpyeabtteukd
+ulgmzyypdbtwotukud
+jzemzjxvzdqzgbzmolyg
+lzucbbpiaqvssgh
+yuy
+wqnqjdensncdncdny
+xazon
+apkxiclcdlwall
+ahlcte
+agvvxdx
+j
+wathefodplwi
+aglkp
+jrukfscdrs
+fmeezhkqhh
+jlnvbe
+amcwcenjrnxesnjulcho
+uqbmnanxkogl
+pcfzdidrtw
+zwomf
+nfhokqelouucpy
+jawotoa
+jdyujrt
+nwypc
+yhrymiuadivbaimq
+wmodxiljyvgtcbczijr
+dqhyfcnjjqe
+qugrdnurmxyzijolsue
+dwdmms
+ervjlupxngppwqk
+ubojexpbtgalpmaq
+vcv
+albdtaiuwjxhe
+jgdnowkmfknuvneoweq
+egfolzmnzpm
+zgogswbm
+hu
+flb
+htjtcw
+yjylnobuwqvurxnso
+iwpgkibbbflajuae
+znv
+tmrhogkt
+tczk
+rokiaqbglcg
+lggivxxjjqmiplwhb
+rcaopxobzn
+oodcchdyengotcnr
+bfhpheilkndrj
+rzgwjyoqtoruiihadtzw
+fxnh
+jxvaxrq
+bdmuidxslhvwwr
+hxhcqjvkhl
+jsfezarqklsuazem
+fqcey
+zypsywg
+xehymlts
+updta
+tlpojahrufvpzxprk
+iet
+wgkzjmbgbkxxh
+ovxvvhilvfj
+l
+rbxuelapubahbahukcb
+vnegoneljfuk
+manirrzxvwoybs
+nmfa
+etvqxweckhfhazfxz
+fwcntdtuowettbikzx
+aubpcljveohql
+xymkiz
+majqjrpbyrsrivbo
+xdmlpbaixbivv
+wyjvygyqqkmigdskzhs
+vlfekxasbselljujkp
+tnfazesboekax
+vvyixtgcrnifqfcv
+sdquzr
+mynijjanywiirqrkkgwz
+zeayqezvwzsmlo
+rn
+zzyhalqfvguluwpaxxhs
+ifyncsoh
+qzzwdgfocnumiin
+tkcjapayigym
+nyuuvmwbsolse
+wikampqebcsllacgwdv
+pbkakmeyuinvetemjq
+fe
+pwuwy`
+
+type testCase struct {
+	s string
+}
+
+func solveCase(tc testCase) string {
+	r := []rune(tc.s)
 	for i, j := 0, len(r)-1; i < j; i, j = i+1, j-1 {
 		if r[i] != r[j] {
-			return false
+			return "0"
 		}
 	}
-	return true
+	return "1"
 }
+
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
+	cases := make([]testCase, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		cases = append(cases, testCase{s: line})
+	}
+	if len(cases) == 0 {
+		return nil, fmt.Errorf("no embedded testcases")
+	}
+	return cases, nil
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	f, err := os.Open("testcasesB.txt")
+
+	cases, err := parseTestcases()
 	if err != nil {
-		panic(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
-	defer f.Close()
-	sc := bufio.NewScanner(f)
-	idx := 0
-	for sc.Scan() {
-		s := strings.TrimSpace(sc.Text())
-		if s == "" {
-			continue
-		}
-		idx++
-		expect := "0"
-		if isPal(s) {
-			expect = "1"
-		}
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(fmt.Sprintf("%s\n", s))
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &out
-		if err := cmd.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n%s", idx, err, out.String())
+
+	bin, cleanup, err := buildIfGo(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	for i, tc := range cases {
+		expected := solveCase(tc)
+		got, err := runCandidate(bin, tc.s+"\n")
+		if err != nil {
+			fmt.Printf("case %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
-		if got != expect {
-			fmt.Fprintf(os.Stderr, "test %d failed: expected %s got %s\n", idx, expect, got)
+		if strings.TrimSpace(got) != expected {
+			fmt.Printf("case %d failed\nexpected: %s\ngot: %s\n", i+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := sc.Err(); err != nil {
-		panic(err)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

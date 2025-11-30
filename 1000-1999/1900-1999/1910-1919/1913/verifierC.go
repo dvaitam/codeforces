@@ -6,41 +6,161 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	src := filepath.Join(dir, "1913C.go")
-	bin := filepath.Join(os.TempDir(), "oracle1913C.bin")
-	cmd := exec.Command("go", "build", "-o", bin, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+// solution logic from 1913C.go
+func solveCase(fields []string) (string, error) {
+	if len(fields) < 1 {
+		return "", fmt.Errorf("empty test line")
 	}
-	return bin, nil
+	m, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return "", err
+	}
+	if len(fields) != 1+2*m {
+		return "", fmt.Errorf("expected %d numbers got %d", 1+2*m, len(fields))
+	}
+
+	counts := make([]int64, 30)
+	var outputs []string
+	idx := 1
+	for i := 0; i < m; i++ {
+		t, _ := strconv.Atoi(fields[idx])
+		v, _ := strconv.Atoi(fields[idx+1])
+		idx += 2
+		if t == 1 {
+			if v >= 0 && v < 30 {
+				counts[v]++
+			}
+		} else {
+			w := int64(v)
+			carry := int64(0)
+			possible := true
+			for b := 0; b < 30; b++ {
+				carry += counts[b]
+				if (w>>b)&1 == 1 {
+					if carry == 0 {
+						possible = false
+						break
+					}
+					carry--
+				}
+				carry /= 2
+			}
+			if possible {
+				outputs = append(outputs, "YES")
+			} else {
+				outputs = append(outputs, "NO")
+			}
+		}
+	}
+	return strings.Join(outputs, "\n"), nil
 }
 
-func run(prog, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(prog, ".go") {
-		cmd = exec.Command("go", "run", prog)
-	} else {
-		cmd = exec.Command(prog)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
-	}
-	return strings.TrimSpace(out.String()), nil
-}
+const testcasesData = `
+9 1 1 1 2 1 1 2 91 1 2 1 5 1 4 2 95 1 5
+4 1 2 2 40 1 2 1 2
+4 2 62 1 1 1 5 1 3
+8 1 3 1 1 1 0 2 96 2 2 2 12 2 33 1 2
+2 1 5 1 3
+8 1 0 2 36 1 4 1 3 1 3 2 91 2 12 1 2
+6 2 61 1 5 1 2 1 2 2 37 2 0
+10 2 76 2 8 1 3 2 85 2 92 1 4 2 79 2 33 2 60 2 0
+4 1 3 1 1 1 0 1 5
+9 1 1 2 55 1 3 1 1 1 2 1 3 1 3 1 5 2 74
+10 2 53 1 0 1 0 1 5 1 2 1 0 1 2 2 2 1 4 2 41
+2 1 2 2 71
+1 1 1
+10 1 1 1 5 1 3 1 3 1 3 2 52 2 0 1 2 1 4 1 2
+1 2 85
+8 1 2 1 0 1 5 1 4 1 0 1 3 1 0 1 0
+10 1 1 1 3 2 48 1 1 2 74 1 0 2 22 2 73 2 75 1 2
+2 1 4 1 4
+6 1 4 2 13 1 2 1 5 1 0 1 1
+3 2 78 1 5 1 2
+7 2 7 1 5 2 96 1 5 1 1 1 5 2 98
+10 1 0 1 1 2 69 1 2 1 5 2 6 2 29 2 46 1 5 1 3
+1 2 83
+10 1 5 2 31 2 15 1 3 1 1 1 5 2 37 1 0 1 5 2 99
+10 1 2 1 4 1 2 1 1 1 5 1 2 2 19 1 0 2 35 2 75
+5 2 73 2 98 1 5 1 4 1 5
+2 1 0 2 95
+1 1 2
+1 1 3
+3 1 4 2 75 2 42
+8 1 5 2 33 2 60 2 46 1 0 1 2 2 68 2 76
+8 1 2 1 5 2 80 1 1 2 97 2 93 1 0 1 5
+6 2 8 2 2 1 0 1 4 2 72 1 2
+5 1 5 1 5 1 4 1 0 1 0
+8 2 59 1 1 1 1 1 1 2 57 1 1 2 13 1 3
+4 1 4 2 19 1 2 1 1
+9 2 91 2 37 1 4 1 2 1 4 1 2 1 0 1 5 1 3
+4 1 1 1 5 2 68 2 21
+4 1 2 1 5 2 39 2 28
+2 1 0 2 35
+2 1 0 2 75
+9 2 93 1 5 1 3 2 63 1 2 2 89 1 5 1 0 1 2
+7 1 1 2 35 2 6 1 4 1 5 1 1 1 3
+9 1 1 2 7 2 67 2 73 1 2 2 79 2 22 1 4 1 3
+5 2 55 1 5 1 2 2 19 1 4
+6 1 0 2 12 1 3 1 1 1 1 1 4
+5 2 13 2 36 2 74 2 45 2 97
+3 2 6 1 4 1 3
+5 1 4 2 87 1 5 2 12 1 4
+5 1 2 1 0 1 3 1 5 2 62
+4 2 32 2 29 2 15 2 82
+3 1 5 1 0 1 5
+9 2 36 1 0 2 28 1 0 2 100 1 1 1 1 1 4 1 1
+10 1 1 2 8 1 2 1 2 1 1 2 38 2 92 1 0 1 1 2 65
+5 1 5 1 0 1 0 1 0 1 1
+8 1 3 1 3 1 0 1 1 1 5 1 2 1 1 1 4
+7 1 5 1 3 1 1 1 2 2 78 2 74 2 94
+1 1 4
+6 2 79 1 3 2 44 1 4 2 15 1 1
+10 2 39 1 2 2 96 1 0 1 0 1 3 1 5 2 27 1 0 2 29
+5 1 2 2 92 1 5 2 90 2 4
+5 2 2 1 1 1 0 1 0 2 87
+5 2 30 2 80 2 56 1 4 2 96
+6 2 85 1 0 1 3 1 5 1 5 1 5
+7 1 4 1 5 2 80 1 1 1 4 2 29 2 10
+6 2 30 1 0 1 5 2 47 1 2 1 5
+4 1 0 1 1 1 4 2 9
+9 2 22 1 5 2 69 1 3 1 2 1 0 2 23 1 5 2 33
+10 2 33 1 5 1 3 2 55 1 2 1 2 2 19 2 24 1 1 2 30
+7 1 0 1 2 1 2 1 2 2 76 2 56 2 86
+4 2 65 2 89 1 1 1 0
+8 1 3 2 0 1 4 2 91 2 75 1 3 2 80 2 12
+4 2 38 1 1 1 4 2 6
+10 1 3 2 79 1 1 2 25 1 1 1 0 1 3 1 0 1 4 1 4
+2 1 0 1 2
+10 1 3 1 3 2 71 1 5 2 21 1 3 1 0 2 22 1 2 2 72
+8 1 2 1 3 1 3 2 76 2 3 1 4 2 14 2 42
+7 2 94 2 96 1 2 1 4 2 18 2 32 1 4
+3 2 56 1 4 1 3
+5 2 78 2 20 2 100 1 4 1 4
+2 1 3 1 5
+4 1 0 1 4 1 1 1 3
+6 2 71 2 83 1 3 1 2 1 4 1 5
+8 1 2 2 10 1 0 2 44 1 5 1 1 2 67 1 2
+6 2 58 2 63 1 1 1 0 2 81 1 1
+2 1 0 1 0
+2 1 1 1 5
+6 1 1 1 2 2 29 1 5 1 2 2 86
+9 2 55 1 3 2 47 2 49 2 74 1 0 2 54 2 36 2 0
+6 1 5 2 64 1 2 1 2 1 0 1 4
+9 2 40 2 46 1 4 1 3 1 3 2 37 2 69 2 62 2 48
+1 1 1
+10 1 0 1 5 1 5 1 3 1 0 1 4 1 2 1 0 2 45 1 3
+2 2 59 2 56
+6 1 0 2 95 2 22 1 5 1 2 1 4
+3 1 5 2 32 1 2
+3 2 23 1 2 1 0
+10 2 60 1 1 2 56 2 50 1 1 2 84 1 0 1 3 1 2 1 3
+10 1 3 1 4 2 81 2 29 1 5 2 85 1 0 1 1 1 0 1 1
+8 1 5 2 58 1 2 1 3 2 24 2 79 1 5 2 8
+`
 
 func lineToInput(line string) (string, error) {
 	fields := strings.Fields(line)
@@ -75,20 +195,8 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
-	f, err := os.Open("testcasesC.txt")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to open testcasesC.txt:", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesData))
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -101,16 +209,23 @@ func main() {
 			fmt.Fprintf(os.Stderr, "bad test %d: %v\n", idx, err)
 			os.Exit(1)
 		}
-		want, err := run(oracle, input)
+		want, err := solveCase(strings.Fields(line))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle failed on test %d: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "bad solve on test %d: %v\n", idx, err)
 			os.Exit(1)
 		}
-		got, err := run(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d: %v\n", idx, err)
+
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(input)
+		var out bytes.Buffer
+		var errBuf bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &errBuf
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("Test %d: runtime error: %v\nstderr: %s\n", idx, err, errBuf.String())
 			os.Exit(1)
 		}
+		got := strings.TrimSpace(out.String())
 		if got != want {
 			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", idx, input, want, got)
 			os.Exit(1)

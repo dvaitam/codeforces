@@ -1,100 +1,1027 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
+	"math/bits"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleF")
-	cmd := exec.Command("go", "build", "-o", oracle, "1887F.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
+const testcaseData = `
+100
+5
+0 5 1 4 5
+2
+3 0
+1
+4
+3
+2 3 2
+2
+0 3
+4
+5 4 4 4
+1
+4
+5
+5 4 3 2 0
+3
+4 3 0
+5
+5 2 0 4 2
+1
+4
+2
+2 5
+2
+2 3
+2
+3 2
+5
+0 3 3 5 1
+1
+4
+4
+3 0 4 4
+3
+5 1 0
+2
+2 5
+5
+4 4 0 5 2
+4
+3 2 2 3
+5
+2 5 3 0 2
+4
+0 2 2 1
+5
+3 0 5 2 3
+3
+2 5 4
+1
+2
+4
+1 3 2 3
+4
+1 5 5 1
+5
+2 4 4 0 4
+5
+3 3 2 1 3
+4
+4 3 4 0
+3
+0 4 2
+5
+2 3 4 5 1
+1
+4
+2
+1 3
+1
+1
+1
+1
+3
+4 3 0
+4
+5 3 1 0
+2
+0 1
+3
+2 2 2
+2
+1 1
+2
+0 2
+4
+2 5 2 1
+4
+5 1 5 0
+5
+4 1 2 3 4
+2
+5 5
+3
+5 3 0
+3
+1 4 2
+4
+0 2 4 4
+2
+1 3
+3
+1 4 5
+3
+2 0 0
+5
+4 4 2 3 0
+1
+3
+2
+0 1
+3
+3 3 1
+2
+2 1
+2
+1 3
+5
+5 3 2 1 5
+1
+4
+3
+0 4 2
+4
+4 1 1 1
+2
+1 4
+4
+5 3 4 2
+2
+1 5
+2
+2 1
+4
+3 4 3 5
+5
+3 2 1 2 4
+5
+0 2 3 1 3
+1
+2
+5
+5 1 5 3 3
+4
+2 0 5 4
+3
+5 0 4
+4
+1 3 2 3
+2
+4 0
+3
+1 2 1
+1
+2
+2
+4 0
+2
+2 5
+3
+5 1 3
+4
+3 4 5 0
+2
+1 1
+5
+4 1 0 5 5
+3
+4 0 0
+2
+0 4
+4
+0 3 4 4
+1
+2
+2
+5 4
+3
+0 1 2
+3
+1 5 4
+3
+2 0 4
+4
+1 5 1 4
+4
+5 3 0 5
+4
+3 5 3 2
+4
+4 2 0 0
+4
+3 1 0 5
+4
+0 5 2 4
+4
+4 2 2 5
+2
+2 2
+5
+4 2 0 5 2
+5
+3 0 4 1 2
+4
+3 4 5 4
+4
+4 1 5 5
+2
+3 5
+5
+3 3 3 2 4
+4
+2 4 3 2
+2
+4 1
+5
+5 0 0 5 1
+5
+2 5 2 3 2
+5
+0 1 0 0 1
+1
+2
+4
+1 1 3 5
+3
+0 3 3
+2
+2 2
+5
+1 3 4 2 1
+4
+1 5 1 0
+1
+1
+3
+2 4 2
+1
+3
+4
+1 5 1 2
+3
+4 5 1
+1
+1
+5
+1 4 4 4 5
+4
+4 2 2 0
+5
+3 0 2 2 4
+2
+5 3
+3
+2 0 3
+5
+2 2 4 1 4
+5
+5 4 0 4 5
+3
+4 3 4
+2
+3 5
+5
+1 4 2 4 5
+5
+5 4 5 4 2
+4
+4 3 5 1
+5
+0 2 5 4 1
+1
+1
+3
+1 2 2
+2
+0 0
+3
+2 2 1
+1
+2
+4
+4 5 5 1
+5
+1 0 4 2 3
+4
+0 1 4 1
+4
+0 3 3 3
+4
+0 5 5 0
+3
+0 3 1
+1
+1
+1
+2
+3
+3 0 2
+4
+3 4 0 3
+5
+5 5 1 5 1
+3
+2 1 2
+3
+2 4 2
+3
+5 5 0
+2
+4 1
+4
+1 2 2 3
+3
+0 5 5
+5
+3 1 2 4 3
+3
+0 3 4
+4
+2 2 2 3
+3
+1 0 4
+4
+1 5 3 4
+5
+3 4 0 5 4
+1
+4
+5
+4 1 5 0 5
+2
+5 5
+1
+4
+4
+2 1 0 1
+2
+1 2
+5
+2 0 2 0 0
+3
+3 3 1
+5
+2 5 2 4 5
+4
+1 0 4 3
+2
+1 3
+4
+4 3 2 5
+4
+5 5 4 5
+3
+1 1 4
+1
+4
+3
+5 3 4
+2
+1 5
+1
+1
+3
+2 1 3
+4
+4 0 1 3
+5
+2 1 1 2 2
+4
+4 3 5 1
+4
+0 0 2 0
+3
+5 0 0
+1
+4
+5
+5 0 5 3 1
+4
+2 2 5 1
+5
+0 2 5 0 4
+5
+0 5 2 4 4
+2
+2 4
+3
+1 3 3
+5
+5 2 0 3 5
+1
+5
+3
+1 5 5
+4
+5 3 4 4
+4
+5 1 4 5
+1
+2
+3
+1 2 1
+5
+4 5 5 0 5
+2
+2 5
+5
+3 0 5 2 1
+1
+5
+4
+0 4 4 0
+2
+3 1
+1
+5
+2
+0 3
+2
+1 4
+3
+5 3 5
+3
+4 2 0
+5
+5 4 1 2 5
+4
+3 4 1 1
+5
+4 2 4 5 3
+2
+4 5
+3
+0 5 5
+4
+5 2 5 0
+2
+3 4
+5
+4 2 0 0 2
+4
+2 4 3 5
+5
+1 4 0 3 2
+4
+1 0 4 1
+4
+1 4 1 2
+2
+3 1
+4
+5 2 3 0 3
+5
+3 4 4 4 0
+2
+2 0
+2
+1 2
+4
+2 5 3 3
+4
+2 5 3 0
+5
+1 1 3 2 2
+1
+5
+2
+2 0
+5
+2 2 1 5 0
+2
+4 1
+5
+4 3 4 1 1
+4
+0 2 4 0
+5
+3 4 1 4 2
+4
+4 2 2 2
+1
+3
+5
+5 0 4 5 5
+4
+2 3 5 4
+2
+3 4
+2
+0 5
+2
+3 4
+3
+2 2 5
+3
+1 0 2
+2
+1 2
+4
+4 5 1 4
+2
+3 4
+4
+2 1 3 4
+1
+2
+4
+0 0 2 2
+4
+5 4 0 1
+4
+0 1 4 3
+5
+5 3 5 1 3
+3
+4 1 1
+5
+5 2 3 2 4
+3
+2 0 2
+2
+1 1
+5
+3 4 0 2 4
+2
+1 1
+2
+5 1
+5
+0 0 0 3 0
+3
+5 5 3
+3
+2 1 3
+4
+2 4 2 2
+4
+3 1 2 2
+1
+1
+3
+3 0 3
+2
+0 0
+3
+2 3 4
+3
+2 5 4
+2
+3 1
+2
+1 0
+5
+0 4 0 5 2
+4
+4 4 0 2
+4
+0 2 0 5
+5
+5 4 4 1 2
+4
+2 3 1 1
+3
+4 4 2
+1
+1
+5
+4 2 3 4 1
+4
+3 1 4 0
+1
+2
+3
+0 1 2
+5
+2 4 3 4 0
+1
+4
+1
+1
+3
+4 0 1
+5
+2 5 1 5 5
+1
+4
+5
+5 2 0 0 2
+4
+4 5 3 1
+5
+0 4 0 1 1
+1
+4
+3
+5 5 0
+4
+1 1 0 3
+1
+2
+1
+1
+3
+1 1 1
+4
+1 1 4 4
+5
+2 0 1 4 0
+2
+5 1
+5
+4 4 1 1 5
+2
+3 4
+1
+1
+1
+3
+0 1 0
+3
+2 5 1
+4
+4 3 1 3
+2
+3 3
+2
+2 2
+3
+3 5 2
+5
+5 5 2 2 1
+1
+2
+3
+4 1 4
+3
+5 5 5
+1
+1
+2
+2 0
+4
+2 0 4 5
+4
+5 5 0 4
+4
+2 3 5 4
+1
+4
+3
+2 1 1
+5
+3 2 4 4 2
+3
+3 0 2
+2
+4 4
+4
+4 3 1 5
+1
+1
+5
+5 2 3 3 0
+1
+2
+5
+5 5 1 4 3
+4
+2 4 5 1
+5
+3 3 4 3 1
+5
+1 1 3 2 0
+5
+4 0 0 0 5
+3
+2 5 5
+3
+3 1 2
+5
+1 1 1 1 1
+1
+1
+5
+1 3 0 0 1
+3
+3 0 5
+2
+1 4
+4
+4 2 5 4
+5
+1 3 0 1 1
+1
+4
+5
+3 1 0 2 2
+5
+2 2 0 5 1
+2
+4 5
+3
+0 4 1
+4
+2 2 1 0
+5
+2 2 3 3 5
+4
+0 0 4 2
+5
+5 2 2 4 3
+4
+3 3 5 2
+5
+4 0 1 0 5
+1
+2
+4
+4 4 5 1
+1
+3
+3
+0 5 5
+2
+1 2
+5
+2 2 5 0 1
+2
+3 4
+3
+3 3 5
+3
+3 4 5
+5
+5 5 0 1 4
+5
+5 2 4 5 0
+5
+5 2 4 2 4
+3
+0 3 4
+5
+2 4 2 4 1
+4
+3 3 5 5
+4
+0 0 0 1
+4
+4 1 5 2
+2
+2 1
+2
+2 1
+3
+5 3 1
+5
+5 2 5 0 3
+5
+2 0 5 0 5
+2
+4 1
+4
+0 5 4 3
+4
+1 2 2 2
+4
+5 3 3 0
+2
+1 2
+1
+1
+1
+1
+1
+2
+4
+3
+4
+4
+4
+2
+1
+5
+2
+2
+5
+1
+4
+2
+5
+5
+3
+4
+1
+5
+`
+
+type testCase struct {
+	input    string
+	expected string
 }
 
-func runProg(exe, input string) (string, error) {
-	cmd := exec.Command(exe)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	var errBuf bytes.Buffer
-	cmd.Stderr = &errBuf
-	err := cmd.Run()
-	if err != nil {
-		return out.String() + errBuf.String(), fmt.Errorf("%v", err)
-	}
-	return strings.TrimSpace(out.String()), nil
+// Fenwick tree for prefix sums and find by order
+type BIT struct {
+	n    int
+	tree []int
 }
 
-func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierF.go /path/to/binary")
-		os.Exit(1)
-	}
-	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
+func NewBIT(n int) *BIT {
+	return &BIT{n: n, tree: make([]int, n+1)}
+}
 
-	f, err := os.Open("testcasesF.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not open testcasesF.txt: %v\n", err)
-		os.Exit(1)
+func (b *BIT) Update(i, delta int) {
+	for i <= b.n {
+		b.tree[i] += delta
+		i += i & -i
 	}
-	defer f.Close()
-	reader := bufio.NewReader(f)
-	var t int
-	if _, err := fmt.Fscan(reader, &t); err != nil {
-		fmt.Fprintln(os.Stderr, "invalid test file")
-		os.Exit(1)
+}
+
+func (b *BIT) Sum(i int) int {
+	if i > b.n {
+		i = b.n
 	}
-	for caseIdx := 1; caseIdx <= t; caseIdx++ {
-		var n int
-		if _, err := fmt.Fscan(reader, &n); err != nil {
-			fmt.Fprintf(os.Stderr, "bad test file at case %d: %v\n", caseIdx, err)
-			os.Exit(1)
+	s := 0
+	for i > 0 {
+		s += b.tree[i]
+		i -= i & -i
+	}
+	return s
+}
+
+func (b *BIT) FindByOrder(k int) int {
+	idx := 0
+	bitMask := 1 << (bits.Len(uint(b.n)) - 1)
+	for d := bitMask; d > 0; d >>= 1 {
+		ni := idx + d
+		if ni <= b.n && b.tree[ni] < k {
+			idx = ni
+			k -= b.tree[ni]
+		}
+	}
+	return idx + 1
+}
+
+func solveCase(b []int) string {
+	n := len(b)
+	ok := true
+	for i := 1; i < n; i++ {
+		if b[i] < b[i-1] {
+			ok = false
+			break
+		}
+	}
+	if b[0] > n {
+		ok = false
+	}
+	if !ok {
+		return "No"
+	}
+	kval := n + 1
+	p := -1
+	l, r := 1, n+1
+	nxt := make([]int, n+2)
+	vis := make([]bool, n+2)
+	bExt := append([]int{0}, b...)
+	bExt = append(bExt, 0)
+	bExt[kval] = kval
+	if bExt[1] >= 1 && bExt[1] <= n {
+		vis[bExt[1]] = true
+	}
+	for i := 1; i <= n; i++ {
+		if bExt[i] < bExt[i+1] {
+			if bExt[i+1] <= n {
+				nxt[i] = bExt[i+1]
+				vis[nxt[i]] = true
+			} else {
+				p = i
+			}
+		}
+	}
+	for l <= n && bExt[l] <= n {
+		l++
+	}
+	a := make([]int, n+2)
+	check := func(kval, pval int) (int, string) {
+		cnt := 0
+		bit := NewBIT(n)
+		for i := n; i >= 1; i-- {
+			if nxt[i] != 0 {
+				a[i] = a[nxt[i]]
+			} else if i >= kval || i == pval {
+				cnt++
+				a[i] = cnt
+			} else {
+				c := bit.Sum(bExt[i])
+				if c == 0 {
+					return -1, ""
+				}
+				idx := bit.FindByOrder(c)
+				a[i] = a[idx]
+				bit.Update(idx, -1)
+			}
+			if !vis[i] {
+				bit.Update(i, 1)
+			}
+		}
+		total := bit.Sum(n)
+		if total > 0 {
+			idx := bit.FindByOrder(total)
+			if idx > bExt[1] {
+				return 1, ""
+			}
 		}
 		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d\n", n))
+		sb.WriteString("Yes\n")
+		for i := 1; i <= n; i++ {
+			if i > 1 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.Itoa(a[i]))
+		}
+		return 0, sb.String()
+	}
+	for l <= r {
+		mid := (l + r) >> 1
+		res, out := check(mid, p)
+		if res == 0 {
+			return strings.TrimSpace(out)
+		}
+		if res == 1 {
+			l = mid + 1
+		} else {
+			r = mid - 1
+		}
+	}
+	return "No"
+}
+
+func loadCases() ([]testCase, error) {
+	r := strings.NewReader(testcaseData)
+	var t int
+	if _, err := fmt.Fscan(r, &t); err != nil {
+		return nil, fmt.Errorf("bad test count: %w", err)
+	}
+	cases := make([]testCase, 0, t)
+	for caseIdx := 0; caseIdx < t; caseIdx++ {
+		var n int
+		if _, err := fmt.Fscan(r, &n); err != nil {
+			return nil, fmt.Errorf("case %d: read n: %w", caseIdx+1, err)
+		}
+		arr := make([]int, n)
 		for i := 0; i < n; i++ {
-			var v int
-			fmt.Fscan(reader, &v)
+			if _, err := fmt.Fscan(r, &arr[i]); err != nil {
+				return nil, fmt.Errorf("case %d: read value: %w", caseIdx+1, err)
+			}
+		}
+		var sb strings.Builder
+		sb.WriteString("1\n")
+		sb.WriteString(strconv.Itoa(n))
+		sb.WriteByte('\n')
+		for i, v := range arr {
 			if i > 0 {
 				sb.WriteByte(' ')
 			}
 			sb.WriteString(strconv.Itoa(v))
 		}
 		sb.WriteByte('\n')
-		input := sb.String()
-		exp, err := runProg(oracle, input)
+		cases = append(cases, testCase{
+			input:    sb.String(),
+			expected: solveCase(arr),
+		})
+	}
+	return cases, nil
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: verifierF /path/to/binary")
+		os.Exit(1)
+	}
+	cases, err := loadCases()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load cases: %v\n", err)
+		os.Exit(1)
+	}
+	for idx, tc := range cases {
+		got, err := run(os.Args[1], tc.input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle runtime error on case %d: %v\n", caseIdx, err)
+			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got, err := runProg(bin, input)
-		if err != nil {
-			fmt.Printf("case %d: runtime error: %v\n%s", caseIdx, err, got)
-			os.Exit(1)
-		}
-		if got != exp {
-			fmt.Printf("case %d failed:\nexpected: %s\n got: %s\n", caseIdx, exp, got)
+		if got != tc.expected {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", idx+1, tc.expected, got, tc.input)
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

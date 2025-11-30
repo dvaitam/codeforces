@@ -10,6 +10,1010 @@ import (
 	"strings"
 )
 
+const testcaseData = `
+100
+..XX......
+.X.......X
+XX......XX
+.X...X....
+.....X....
+..........
+..X..X.X..
+.......X..
+.X...X.X.X
+X.X..XX...
+X.X.X.X.XX
+.XX..X.XX.
+..X.X.....
+...X..X..X
+...X.X..X.
+XXXXX.....
+X.X....X..
+XX.X.XXXXX
+....X.....
+.X..XX....
+.X..X.X...
+X...X.XX..
+X.X.....XX
+X....X....
+...X......
+XX.X.....X
+..X.XX...X
+XX....X...
+X..X......
+.X.X..X...
+..........
+X.....X...
+..X.....X.
+.X..X.X..X
+..X.XX....
+...X.XX.X.
+.....XX..X
+X.........
+...X......
+.X.......X
+.XX.X....X
+.X.X......
+XXX....X..
+..........
+....X....X
+....X.XX..
+.....X..X.
+X..XXXX.X.
+XX....XX..
+.X........
+..........
+...XX.X...
+X..XX.XX.X
+..X.X..X.X
+X.....X.XX
+XXXX......
+.XX..X.X..
+.....X..X.
+..X.XX....
+..X....XXX
+..X....XX.
+.X.......X
+.X.X.....X
+.......XX.
+X...X..X..
+...X.XX.X.
+.X.....X.X
+X..X......
+XX..X.....
+XXX.X.....
+..XX..X..X
+...X......
+XX.XX.....
+X.X..X....
+....X.....
+...X..X...
+.X.....XX.
+...X.XX...
+.X.XXXX..X
+.X....X...
+........X.
+X.X....X..
+.XX....X..
+....X.....
+..........
+.X........
+....X.....
+..........
+.X.X....X.
+.X....XXX.
+.X.......X
+.X.....X..
+X..XX..X.X
+...X...XX.
+....XX.XX.
+XX..X....X
+.X....XX.X
+...XX.X.X.
+.XX..XX...
+..X.XXX...
+......X.XX
+....X....X
+X..X....X.
+...X...X.X
+X........X
+..X....XX.
+.X..X.....
+.X..XX....
+X..XX...XX
+X..X...XX.
+..XXXXX...
+.....X.X..
+..XX...X..
+..XX......
+..XX.X...X
+.X........
+....XXXX..
+.X.X.X...X
+X.....X..X
+..X.X.X...
+..X.......
+..XXX....X
+XXX...X...
+.X....XXXX
+X..X.X...X
+..XX.XX.XX
+XX...X...X
+.X........
+.X..X.X...
+XX...X..X.
+..X.XXX...
+X.XXX.....
+.X...X...X
+.....X.XXX
+.........X
+.X..XX....
+X....X....
+..........
+..X...XX..
+....X...X.
+....X.XX..
+X.X..X...X
+XXXX..X...
+..X.....X.
+.XX.X.XX..
+.......XX.
+..X.X.XX..
+......XX..
+.....X....
+....X..XXX
+.X.X....X.
+X..X...X..
+.......X..
+.X...X..X.
+...X.X.XX.
+....X..X.X
+X.XXX.....
+.XX.X.X...
+..X.X.....
+..X..X....
+XXXX..XXX.
+..XX.X....
+.X........
+X..X...XXX
+...X......
+........X.
+X.....XX..
+..........
+.X.XX...XX
+XX.X.....X
+X...X..XX.
+...X..X.X.
+.X.X......
+XX...X....
+.X........
+..........
+.X.XXX...X
+..X.X.XXXX
+.XXXX....X
+.X..X.....
+.X.X....X.
+..X....X..
+.....X...X
+X..XX.X...
+..XXXX..X.
+XXX.X..X..
+.X...X..X.
+..XX......
+.X...XXX.X
+...X....X.
+.XX....X..
+.X.....XXX
+..X.......
+...X.X..X.
+..XXX.....
+......XX..
+..........
+X..X...X..
+...XX.....
+X....X....
+XX........
+....XX....
+..X..X.X..
+...X..X.X.
+.....XX..X
+XX........
+X.......X.
+.X....XX..
+..X...X...
+.....X....
+X.....XX..
+....X.....
+....X.XX..
+....XX..X.
+..X....X..
+.......X..
+X....X...X
+.XX...XX..
+X.X..X..X.
+X.X...X...
+XX..X.X.XX
+...X.X.X..
+XXXX....X.
+XX..X.....
+.X....X.X.
+..XX.X.X..
+....X..XXX
+....X.....
+......X...
+XX...X....
+.........X
+.......X..
+...XX.X.XX
+XX....X..X
+.X....X.X.
+.......X..
+X.X.X.....
+..........
+..X...X.X.
+...XXX.XX.
+.....X.X..
+.X...X....
+...X......
+.X..X...XX
+...XXX.X.X
+.X...X.X..
+........XX
+X.X.XX..XX
+.X....XX.X
+X.........
+......X...
+.X..X..X.X
+..X.X....X
+X...XX....
+XX.X......
+X...XXX...
+....X..X.X
+....X.X.X.
+.........X
+..X...X...
+..XX....XX
+...X.XXX..
+.X....XXX.
+.....X....
+.X..X...X.
+X...XX...X
+......XX..
+..XX....XX
+XX..X.....
+XXX.XXXX..
+..X....XX.
+.X...X.X..
+..X.X.X...
+..........
+X...X...X.
+X.X.......
+.....X....
+..XX..X.XX
+.XX.......
+..X.X....X
+.X..X..X.X
+XXX.X..X..
+X.X.XX..XX
+X...X..X..
+XXX.X...XX
+.X........
+X..X......
+...XX.....
+..X.X.....
+.XXXX.X.X.
+.X...X...X
+.XX...X.XX
+..........
+..X..X.X..
+XXXXX.....
+.........X
+....X...XX
+.X..X.....
+X.........
+.X.XX..X..
+....X.....
+..X.X.XXX.
+...X......
+.........X
+..X....XXX
+....X..X..
+..X.....X.
+......X...
+XX.....X.X
+....X....X
+...X....XX
+.XXX......
+..X..XX...
+..X...X...
+.X...XX..X
+...X.X..XX
+...XX.....
+.......X..
+.X....X..X
+.X..X.....
+X.X.X....X
+XXXXXX.X.X
+......X...
+.X.X...XX.
+X...XX..XX
+XXX...X...
+..XX.X...X
+..X...X..X
+X.......XX
+X..X.X.X..
+........X.
+.X........
+XX.XX.X.XX
+....X.X.XX
+X.....XX.X
+....X...X.
+..X....X..
+X.XX...X..
+...X......
+..X.XXX...
+XXX....XX.
+X.....XX.X
+X.XX......
+....XX....
+..X.X..X..
+X....X..XX
+.....X.X..
+.......X.X
+X..X...XX.
+.X.....X..
+X.X.....X.
+......XX..
+.....X..X.
+...X......
+....X.....
+..X..X.X..
+.X.X..X...
+X.....X..X
+..X.....X.
+X..X..X..X
+X..X....XX
+.....XXX.X
+.X.....X..
+.....X...X
+...X..XX..
+.......X..
+XXX..X..XX
+..X..XX..X
+X..X.X.XX.
+.....X...X
+...X....X.
+.X..X...X.
+.X.X.X....
+.X......XX
+...XX.X..X
+XXXX..X...
+X....X.X..
+XX........
+.......XX.
+X.X.XXX.X.
+..X.....XX
+X.X....X.X
+....XXX..X
+..X..XXX..
+.X...X....
+...X...XX.
+..X.XX...X
+XX..X..X..
+X.X..X....
+...XX.X...
+X.....X.X.
+X.X.X...XX
+X..XX..X..
+.........X
+......X...
+.X.X....X.
+.X.XX.X...
+..X...X...
+.XXX....X.
+..X..X.X.X
+..XX.XX...
+.X.X..XX..
+.X..XX.X..
+.X...X....
+X..X.X.XX.
+.........X
+....X.X...
+..X.X.X...
+...X.X.X.X
+.X..X....X
+X...XX..XX
+X.X.....XX
+.X..X..X..
+........XX
+XX.X.X....
+.X.X....X.
+...X...X..
+....XX....
+...X..XX.X
+.X.X.X..X.
+..X..X...X
+X....XX...
+...X...XXX
+.X......XX
+.X..X..X.X
+X...X....X
+X....X....
+..X....XX.
+X.X....XX.
+.X..X.XXX.
+...X..XXX.
+XX.X.X...X
+X..X.X..X.
+XX........
+X...X.....
+X.X...XXX.
+..X....X.X
+X.X..XX...
+..........
+X.......XX
+..XX.....X
+.X.XX...XX
+X.......X.
+..X.X.X...
+.XX.X.X.X.
+......XXX.
+....XX....
+..X.X.....
+...X.XXX..
+X..X....X.
+..X..X..X.
+..X.....X.
+..X...X.X.
+X..XXXX..X
+....X..X..
+.X.....X.X
+X.....XX..
+.X...XX.X.
+..X.X...X.
+.XXX.XXX..
+X.XXX....X
+.......X..
+.X...X...X
+X.....X...
+.....X...X
+...XXXX...
+X..X.X.X..
+X........X
+..........
+X...X..XX.
+X....XXX..
+..XX....X.
+..........
+.X....X...
+..X....XXX
+XX........
+.....XX...
+X...X..X.X
+..X.X.X.XX
+..X.X.XX..
+....X.....
+........XX
+.XX..XX..X
+.X.....X..
+..X.XX..X.
+....X....X
+..X.X.....
+...XX.....
+.X........
+.XX.X...X.
+...X.X....
+XXXX...XX.
+.....X.X..
+.X.X..X...
+.X........
+....X..X..
+..X......X
+.X.X.XX.X.
+X.X.X..X.X
+.X.....X..
+XX.XXX.X.X
+X...X...X.
+....XX...X
+....XX.X..
+.X...X....
+X..XX...X.
+.....X....
+.....XX..X
+X.X.X..X.X
+...X..XXX.
+...X..X..X
+.....X....
+..XX..X.X.
+.....XX.XX
+X.X.XX...X
+X.X....XXX
+..X....X.X
+X.......X.
+..X..XX...
+.X..XXXX..
+.....X.X.X
+........X.
+XX.X.XX..X
+....XX.X..
+XX..X..X..
+.....XX...
+.X.XX...XX
+...X......
+XX.X....X.
+X...X.....
+X.X..X....
+...X....X.
+..X.XX....
+...XX...X.
+.X..X.....
+X..X......
+.......XX.
+...X......
+.XXX......
+..........
+..X....X..
+..XX.X....
+........X.
+..XX..X...
+.X...XX...
+........X.
+.X..X....X
+.....X....
+......X.XX
+....XX....
+.X.....XX.
+.X..XXX...
+XX.XX..X..
+X...X...XX
+.X...XXX..
+.X..X.....
+X........X
+..........
+X..XXX....
+..........
+.X...X.X..
+.XX.XXX.XX
+..X...X..X
+XX.X.X...X
+.X........
+X.X.XX.X..
+X........X
+.XX.X....X
+..........
+.X..X..X.X
+.X......X.
+.....X....
+....X....X
+XX..X.X...
+....XX.X.X
+...XXX....
+X.X...X.X.
+..........
+...X.XX...
+X..X......
+......X...
+......XX.X
+X........X
+XX..X..X..
+X..X....XX
+......X...
+....XX...X
+...X...X..
+.....XXX..
+XXX..XXX..
+X...XXXX.X
+......XX..
+....X.X...
+......XX..
+.......XXX
+XXX...X...
+........X.
+....X.....
+..X.X.....
+X......XXX
+.....XXXXX
+....X..XXX
+X...XX.XXX
+XX.X..X...
+.....XX...
+.X...XX...
+..X..XX..X
+..XX.X..X.
+X...XX...X
+...XX..XX.
+X.X.XX..XX
+....X.XX..
+..X.......
+.XX..X.X..
+..XX..X.X.
+X.X..XX...
+XX......X.
+....X.....
+..X..X..X.
+..XX..X..X
+X.XX.X.XX.
+.....XX...
+X.X.......
+....X...X.
+X.X...X...
+..X.X.X.XX
+.....X....
+...XXX..XX
+X.....X...
+.XX......X
+...XX....X
+...XXXX...
+XXX....X..
+..X...X..X
+...XX.....
+...X.X...X
+X..X......
+XX....X...
+..XX...X..
+..X...XX..
+X.....X.X.
+.X..X.X...
+.X....X...
+.X.X..XX..
+....XXX...
+.XX.XXXXX.
+X.X.XXX..X
+.XX.......
+......XX.X
+X.X...X...
+.XX.......
+....X....X
+.X.X.XX.XX
+.......X..
+XX...X.X.X
+..X.......
+..XX......
+..........
+XX...XX..X
+..........
+..X.X.....
+X.....X...
+.X...X...X
+..X......X
+.....XX...
+.......X..
+..X......X
+X...X.....
+.XX...X...
+...X...X..
+.X......X.
+.XXX..X.X.
+..XXXX.X..
+X....X.X..
+XX..X.....
+....X.....
+..XXX.....
+X.X....X..
+..X..XX..X
+........X.
+..X..X...X
+....X.X..X
+.......X..
+X...XX...X
+X...X..XX.
+X..X...X..
+......X...
+...XX....X
+X.XXX..X..
+.X..X.X...
+..X.......
+..X...XXXX
+.......XX.
+XX.X...X.X
+..X.XXX...
+.......XX.
+....XXX...
+X..XXX..X.
+.X.X....XX
+........X.
+.X..X..X..
+.X.....XX.
+..X.X..XX.
+.....XX.X.
+XXXX.XX..X
+..X.....X.
+.XXX...X..
+XX....XX..
+......X..X
+.....XX..X
+.........X
+...XXX.X.X
+..........
+...XX..X.X
+...X..X...
+.XX..XX...
+..XX......
+.XX....X..
+......X...
+X..X...XX.
+X....X.XX.
+XX..X...XX
+.......XX.
+......XX..
+.X.XXXXX..
+XX.X.....X
+X....X....
+X.X.......
+...X.....X
+.....X..XX
+.X.XX.X...
+......X...
+X.......X.
+.....X....
+.....X.XX.
+.X..X...X.
+.XXXX...XX
+XX..XXX.X.
+X..XX.....
+....XX...X
+.X....XXX.
+....X.....
+.....XX...
+...XX..XX.
+X..X.X...X
+....X.....
+XX......XX
+.XXX.X.X..
+X.......X.
+..........
+.X..X...X.
+..XX......
+..XXX.....
+.X......X.
+XX.X....X.
+X..X....X.
+.XX....X..
+X.X..X.X..
+....XX.X..
+......XXX.
+..X..X.XXX
+....X.X.XX
+........X.
+......XX.X
+XX..X..X..
+XXX.X.XX..
+..X.......
+...XX..X..
+......XX..
+.X.X.XXX.X
+.XX.X..XXX
+X..X.X....
+..XXX..X.X
+...XX.....
+.......X.X
+XXX..X..XX
+...XX.X..X
+...X......
+X...XXXX.X
+X.X....X..
+..X.XX.X..
+.......X.X
+X...X.X..X
+X...X..XX.
+...X.X....
+.........X
+...X..XX..
+X...XXX...
+..XXX...X.
+X..XX...X.
+X.X......X
+X.........
+..X.X..X..
+XX..X..XX.
+....X....X
+X.X.X.XX..
+X...XXXX..
+..X.X.....
+....XX...X
+...XX...X.
+.X....X..X
+......X.X.
+.X..X.X..X
+.X......X.
+X.X.......
+......X...
+....X...X.
+.XX.X.....
+..........
+...X.XX...
+.X.X....X.
+X.X.X..X..
+.XX.......
+......X..X
+...X...X.X
+.X........
+X.....XX..
+X.XX....X.
+.X........
+.....XXXXX
+X..X....X.
+......XX.X
+XX....X.X.
+.X.X.X.XX.
+....X.X.X.
+.......X..
+.X...XXX.X
+X..X..X.X.
+.X..X.X...
+....XXX..X
+..........
+....X....X
+......X...
+......X.XX
+......XX..
+.XX......X
+X........X
+...X.X...X
+....XXX.X.
+.X..XX.X..
+X..X..XXX.
+X.X.XXXX..
+...XX.....
+..........
+..XX..XX..
+.X...X.X..
+...X.X.XX.
+.X...X.XX.
+X.X.X.X..X
+..........
+.XX...XX..
+XX..XX..X.
+....X...X.
+....X.X...
+..XX.XXXX.
+.XX.......
+...XX..X..
+.X...X.X..
+.X.X.X.X..
+.....X...X
+.X....X.X.
+XX...X...X
+..X.....X.
+......X.XX
+X...X.....
+X.......X.
+XX.......X
+X.........
+.X...XXXXX
+X..XX.....
+..XX.X...X
+..X..XXX..
+...XX.X...
+.XX.......
+......X.XX
+.....X...X
+..........
+XX.......X
+....X.X...
+...X.X...X
+...X...X.X
+XXXX....X.
+X.....X...
+.X...X....
+..XX....X.
+XXX...X...
+X...X.XX..
+.XXX.....X
+....XX..XX
+.X...X..XX
+.......X..
+X......XXX
+XXX...XXX.
+.X.XX..XXX
+..XXXX..X.
+.X..X..X..
+.X...X..XX
+X..XX..X..
+.......XX.
+XX........
+..X....X.X
+........X.
+.X..X.....
+X...X..X..
+XX.X.XX...
+X.......X.
+..X..X.XXX
+..X.X...X.
+X..X.X...X
+...X.XX..X
+X...X...XX
+.XX.......
+....XX..XX
+..........
+....XXX...
+....XX..X.
+......XX..
+...XX....X
+........X.
+X.XX..XXX.
+..X......X
+....XX...X
+..X..X....
+...X......
+X.X..X.X..
+....XX.X..
+.X.XX..X.X
+.X..X.X.XX
+X...X.X.X.
+.X.....XXX
+....X....X
+X..X..XXX.
+...X.X..X.
+X.....X...
+.......X..
+X.X....X..
+XX..X.....
+.X.......X
+..........
+.XXX.X.XXX
+......XX.X
+.XXX.X....
+X.........
+...XX.X.X.
+..XXX..XX.
+XX....XX..
+..X.......
+..XX.X...X
+XX..X.....
+..XX.X..X.
+...XX...X.
+....X....X
+...X.....X
+....X....X
+.X..X.....
+..X..XX...
+X..X......
+....XXXX.X
+..X....XX.
+.X...X...X
+X..XX.XX..
+.X..X..X..
+.X..X.X...
+.....X.X.X
+.X.X.X....
+..XX......
+.....XX...
+X....X.XXX
+...X...X..
+...XXX..XX
+.X.X.X....
+.....XX..X
+.......XX.
+..........
+......X...
+..X..XXX.X
+XXXXX..X..
+X.XX.XX...
+X....XX..X
+.XX.X...X.
+X.X..X...X
+.X........
+.X.....X..
+...XX...X.
+X....XX...
+..X...X...
+X.X.X.....
+..........
+.XXXXXX...
+...X.X...X
+..XXXX....
+......X.XX
+XXXX.XX.X.
+.XXXX..XX.
+....X..XX.
+..X....X.X
+.XX....X..
+...X..XX..
+...XX...X.
+....XX..X.
+`
+
 func min(a, b int) int {
 	if a < b {
 		return a
@@ -17,7 +1021,7 @@ func min(a, b int) int {
 	return b
 }
 
-func expected(grid []string) string {
+func solve(grid []string) string {
 	score := 0
 	for i := 0; i < 10; i++ {
 		row := grid[i]
@@ -28,56 +1032,38 @@ func expected(grid []string) string {
 			}
 		}
 	}
-	return fmt.Sprintf("%d\n", score)
+	return strconv.Itoa(score)
 }
 
-func runCase(exe, input, expect string) error {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(exe, ".go") {
-		cmd = exec.Command("go", "run", exe)
-	} else {
-		cmd = exec.Command(exe)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
-	}
-	got := strings.TrimSpace(out.String())
-	expect = strings.TrimSpace(expect)
-	if got != expect {
-		return fmt.Errorf("expected %q got %q", expect, got)
-	}
-	return nil
+type testCase struct {
+	input    string
+	expected string
 }
 
-func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("Usage: go run verifierC.go /path/to/binary")
-		os.Exit(1)
+func loadCases() ([]testCase, error) {
+	scanner := bufio.NewScanner(strings.NewReader(testcaseData))
+	var first string
+	for scanner.Scan() {
+		first = strings.TrimSpace(scanner.Text())
+		if first != "" {
+			break
+		}
 	}
-	exe := os.Args[1]
-	data, err := os.ReadFile("testcasesC.txt")
+	if first == "" {
+		return nil, fmt.Errorf("no data")
+	}
+	t, err := strconv.Atoi(first)
 	if err != nil {
-		fmt.Println("could not read testcasesC.txt:", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("bad test count: %w", err)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(strings.TrimSpace(scan.Text()))
+	cases := make([]testCase, 0, t)
 	for caseIdx := 0; caseIdx < t; caseIdx++ {
 		grid := make([]string, 10)
 		for i := 0; i < 10; i++ {
-			if !scan.Scan() {
-				fmt.Println("bad file")
-				os.Exit(1)
+			if !scanner.Scan() {
+				return nil, fmt.Errorf("case %d: missing grid line", caseIdx+1)
 			}
-			grid[i] = scan.Text()
+			grid[i] = scanner.Text()
 		}
 		var input strings.Builder
 		input.WriteString("1\n")
@@ -85,11 +1071,50 @@ func main() {
 			input.WriteString(grid[i])
 			input.WriteByte('\n')
 		}
-		exp := expected(grid)
-		if err := runCase(exe, input.String(), exp); err != nil {
-			fmt.Printf("case %d failed: %v\ninput:\n%s", caseIdx+1, err, input.String())
+		cases = append(cases, testCase{
+			input:    input.String(),
+			expected: solve(grid),
+		})
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return cases, nil
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: verifierC /path/to/binary")
+		os.Exit(1)
+	}
+	cases, err := loadCases()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load cases: %v\n", err)
+		os.Exit(1)
+	}
+	for idx, tc := range cases {
+		got, err := run(os.Args[1], tc.input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx+1, err)
+			os.Exit(1)
+		}
+		if got != tc.expected {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, tc.expected, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

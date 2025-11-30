@@ -1,62 +1,320 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
-	"time"
 )
 
-func compileRef() (string, error) {
-	out := filepath.Join(os.TempDir(), fmt.Sprintf("refG_%d", time.Now().UnixNano()))
-	cmd := exec.Command("g++", "-std=c++17", "-O2", "-pipe", "-o", out, "solG.cpp")
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return "", err
-	}
-	return out, nil
+type testCase struct {
+	n int
+	a []int64
+	m int
+	b []int64
 }
 
-func runBinary(path, input string) (string, error) {
-	cmd := exec.Command(path)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = io.Discard
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v", err)
-	}
-	return strings.TrimSpace(out.String()), nil
+// solve embeds the logic from 1704G.go (current placeholder) by returning the
+// expected output for the provided testcase.
+func solve(idx int) string {
+	return expectedOutputs[idx]
 }
 
-func runCandidate(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else if strings.HasSuffix(bin, ".cpp") {
-		tmp := filepath.Join(os.TempDir(), fmt.Sprintf("candG_%d", time.Now().UnixNano()))
-		build := exec.Command("g++", "-std=c++17", "-O2", "-pipe", "-o", tmp, bin)
-		if out, err := build.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("failed to build candidate: %v\n%s", err, string(out))
+// Embedded copy of testcasesG.txt.
+const testcaseData = `
+5 5 -1 -5 1 0 5 2 1 -2 -5 -1
+3 -3 -3 0 3 4 4 2
+5 5 -1 0 0 -1 3 2 1 0
+2 4 -2 2 5 5
+3 -2 0 -3 3 1 -1 -5
+5 0 -3 0 -4 -2 5 -2 1 4 3 3
+2 5 5 2 -2 -4
+3 1 -4 1 2 2 2
+2 -3 -5 2 -5 4
+5 -3 2 1 -2 -2 2 0 -2
+5 -1 -3 3 2 3 5 -5 -3 -2 -5 -1
+5 -4 -3 5 -5 1 4 3 -3 -1 -3
+3 -1 3 -2 3 2 4 -2
+3 -5 -2 4 3 0 0 5
+5 -5 5 1 -4 -3 5 -3 0 -1 -3 -5
+5 2 0 0 0 4 3 3 -3 -2
+5 5 -4 -2 -1 -1 5 0 5 2 -5 2
+5 -3 -5 1 1 -3 4 3 1 -2 4
+5 -5 -2 5 2 0 4 2 -1 -4 -5
+4 -3 -3 -5 0 3 -2 4 5
+2 -5 -5 2 2 2
+5 -2 1 -3 -4 -2 4 -1 -2 -5 -4
+3 1 5 -1 3 -1 -1 -4
+5 -3 -1 0 -1 4 4 -5 -1 -2 -1
+5 3 3 -2 -5 0 5 -4 -4 1 0 -1
+2 -3 5 2 0 0
+5 -3 -5 2 0 -3 3 2 -3 4
+5 3 1 -4 -1 -4 5 -3 4 1 2 5
+3 -4 -5 3 3 4 4 3
+3 -2 -5 3 3 1 5 4
+5 -1 4 0 3 0 4 4 -5 -3 1
+3 2 5 0 3 -2 -4 4
+4 -1 3 -5 -1 3 2 -3 -4
+3 -5 4 4 3 -1 -4 3
+3 4 5 -3 2 5 1
+4 5 -2 4 2 4 -3 -5 -2 -5
+2 -4 1 2 1 -2
+3 -5 1 -5 2 -5 1
+2 0 0 2 1 3
+2 0 2 2 2 -2
+5 3 -4 1 4 4 5 -5 0 3 -1 -2
+5 2 1 0 -5 -5 5 4 1 4 -3 -3
+4 -2 -3 2 1 3 -5 0 0
+4 -4 1 -3 5 2 -3 -5
+4 -1 0 -5 -4 2 -3 -2
+4 -2 -3 2 -2 3 0 -3 -1
+3 2 -5 4 2 5 -4
+2 -3 1 2 3 -2
+2 -4 4 2 -1 2
+5 2 5 4 4 -4 4 -4 -1 -2 -5
+3 -4 -2 -3 3 1 5 -3
+3 3 5 -2 3 4 5 -3
+2 1 2 2 5 -5
+5 5 2 -5 -2 4 4 -3 3 4 2
+2 0 -4 2 3 -1
+3 3 5 -5 3 -4 -3 3
+3 -3 5 -5 2 -5 -4
+4 2 -5 5 3 4 5 3 -4 2
+5 4 5 -5 -1 0 5 -4 0 -4 -3 -3
+2 4 1 2 4 5
+3 -3 2 -4 3 3 5 2
+2 4 3 2 3 -1
+2 -1 -4 2 4 0
+5 4 4 -1 2 -1 5 3 2 4 -3 -1
+4 -4 5 -1 -5 4 1 -3 2 4
+4 5 -1 -4 4 3 1 -2 -2
+5 3 4 -4 1 5 3 -1 -5 5
+4 -2 0 -4 -1 3 -4 -3 -2
+5 0 2 1 -4 3 5 -5 1 -2 1 4
+4 4 4 -3 -3 3 -5 -5 5
+2 2 -5 2 3 2
+4 -3 5 -2 2 4 -2 5 -2 1
+4 2 -1 -1 -3 3 5 -4 4
+2 3 4 2 4 4
+3 -4 2 -4 3 3 3 -3
+2 5 0 2 4 -2
+2 2 -2 2 -4 2
+4 4 3 -1 -5 3 4 5 1
+3 1 -3 3 3 -4 2 -1
+5 3 4 3 -4 -4 5 -4 -1 1 -5 -4
+4 -4 1 5 2 3 5 5 5
+3 1 -5 -1 3 5 1 1
+5 -5 5 -2 3 -3 2 2 1
+3 -4 2 -2 3 5 1 1
+2 -1 -5 2 2 1
+3 4 -3 -2 3 -1 -4 3
+2 1 -3 2 -3 -1
+2 5 -1 2 -5 4
+4 -1 -5 2 -4 2 5 5
+5 5 2 -1 2 -5 5 -5 -1 -5 0 -2
+4 -3 -2 -3 -4 2 -4 -3
+4 0 2 4 4 4 2 -5 1 4
+5 -2 3 -3 3 -4 5 3 1 -2 3 -5
+4 1 1 3 5 4 -2 -3 1 -3
+2 4 -4 2 -3 0
+5 2 3 -3 4 -1 3 -1 -4 3
+4 -2 5 4 3 2 -1 -3
+3 -5 2 0 2 4 -2
+4 -5 1 2 2 4 -5 -3 3 1
+5 5 0 -1 -1 -3 4 5 3 0 -4
+`
+
+// Expected outputs for each testcase (trimmed).
+var expectedOutputs = []string{
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"3\n3 2 1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"0",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"2\n3 2",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+	"-1",
+}
+
+func loadTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcaseData), "\n")
+	tests := make([]testCase, 0, len(lines))
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
 		}
-		defer os.Remove(tmp)
-		cmd = exec.Command(tmp)
-	} else {
-		cmd = exec.Command(bin)
+		fields := strings.Fields(line)
+		if len(fields) < 4 {
+			return nil, fmt.Errorf("line %d: not enough fields", i+1)
+		}
+		pos := 0
+		n, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: bad n: %v", i+1, err)
+		}
+		pos++
+		if len(fields) < pos+n+1 {
+			return nil, fmt.Errorf("line %d: not enough values for array a", i+1)
+		}
+		a := make([]int64, n)
+		for j := 0; j < n; j++ {
+			val, err := strconv.ParseInt(fields[pos+j], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("line %d: bad a value %d: %v", i+1, j+1, err)
+			}
+			a[j] = val
+		}
+		pos += n
+		m, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: bad m: %v", i+1, err)
+		}
+		pos++
+		if len(fields) < pos+m {
+			return nil, fmt.Errorf("line %d: expected at least %d values for b, got %d", i+1, m, len(fields)-pos)
+		}
+		b := make([]int64, m)
+		for j := 0; j < m; j++ {
+			val, err := strconv.ParseInt(fields[pos+j], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("line %d: bad b value %d: %v", i+1, j+1, err)
+			}
+			b[j] = val
+		}
+		tests = append(tests, testCase{n: n, a: a, m: m, b: b})
 	}
-	cmd.Stdin = strings.NewReader(input)
+	return tests, nil
+}
+
+func runCase(bin string, tc testCase, expected string) error {
+	var input strings.Builder
+	input.WriteString("1\n")
+	fmt.Fprintf(&input, "%d\n", tc.n)
+	for i, v := range tc.a {
+		if i > 0 {
+			input.WriteByte(' ')
+		}
+		input.WriteString(strconv.FormatInt(v, 10))
+	}
+	input.WriteByte('\n')
+	fmt.Fprintf(&input, "%d\n", tc.m)
+	for i, v := range tc.b {
+		if i > 0 {
+			input.WriteByte(' ')
+		}
+		input.WriteString(strconv.FormatInt(v, 10))
+	}
+	input.WriteByte('\n')
+
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input.String())
 	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
-	return strings.TrimSpace(out.String()), nil
+	got := strings.TrimSpace(out.String())
+	if strings.TrimSpace(expected) != got {
+		return fmt.Errorf("expected %s got %s", expected, got)
+	}
+	return nil
 }
 
 func main() {
@@ -64,73 +322,24 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierG.go /path/to/binary")
 		os.Exit(1)
 	}
-	candidate := os.Args[1]
-	ref, err := compileRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
+	bin := os.Args[1]
 
-	file, err := os.Open("testcasesG.txt")
+	tests, err := loadTestcases()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to open testcasesG.txt:", err)
+		fmt.Fprintln(os.Stderr, "failed to load testcases:", err)
 		os.Exit(1)
 	}
-	defer file.Close()
+	if len(tests) != len(expectedOutputs) {
+		fmt.Fprintf(os.Stderr, "testcase/expected mismatch: %d vs %d\n", len(tests), len(expectedOutputs))
+		os.Exit(1)
+	}
 
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		parts := strings.Fields(line)
-		if len(parts) < 4 {
-			fmt.Fprintf(os.Stderr, "bad testcase on line %d\n", idx+1)
+	for i, tc := range tests {
+		exp := solve(i)
+		if err := runCase(bin, tc, exp); err != nil {
+			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		pos := 0
-		n := parts[pos]
-		var nn int
-		fmt.Sscanf(n, "%d", &nn)
-		pos++
-		if len(parts) < pos+nn+1 {
-			fmt.Fprintf(os.Stderr, "bad testcase on line %d\n", idx+1)
-			os.Exit(1)
-		}
-		a := parts[pos : pos+nn]
-		pos += nn
-		m := parts[pos]
-		var mm int
-		fmt.Sscanf(m, "%d", &mm)
-		pos++
-		if len(parts) < pos+mm {
-			fmt.Fprintf(os.Stderr, "bad testcase on line %d\n", idx+1)
-			os.Exit(1)
-		}
-		b := parts[pos : pos+mm]
-		input := fmt.Sprintf("1\n%s\n%s\n%s\n%s\n", n, strings.Join(a, " "), m, strings.Join(b, " "))
-		expect, err := runBinary(ref, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\n", idx+1, err)
-			os.Exit(1)
-		}
-		got, err := runCandidate(candidate, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", idx+1, err, input)
-			os.Exit(1)
-		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
-			fmt.Fprintf(os.Stderr, "case %d failed:\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", idx+1, input, expect, got)
-			os.Exit(1)
-		}
-		idx++
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "scanner error:", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

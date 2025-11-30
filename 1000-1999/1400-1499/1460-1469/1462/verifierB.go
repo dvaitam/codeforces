@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,7 +9,110 @@ import (
 	"strings"
 )
 
-func solve(n int, s string) string {
+// Embedded copy of testcasesB.txt so the verifier is self-contained.
+const testcasesRaw = `100
+19 5420355744852911894
+9 622358332
+13 5602906112648
+17 29645137580660657
+10 5471214189
+8 76266237
+14 82571734079703
+13 1489267173864
+24 014004689671454391014485
+7 8321644
+20 29838168644759221166
+22 7284576377857074270930
+15 760811605019044
+11 29431675625
+17 62728523275667633
+18 390603125023949184
+15 670886977473540
+5 02504
+24 021639683735919155875408
+5 35138
+15 334448647530481
+4 7770
+17 77711131263791686
+5 23732
+12 556184983478
+23 78443019126334088601641
+22 5384331845357492208855
+22 0262281237933236599271
+23 08957740382778514296354
+16 0305357345240598
+5 25070
+4 3003
+24 510562376254256606488709
+7 6620829
+25 8215323028216919729904560
+24 071542738526547604848708
+22 8407616570040494388564
+10 1953985225
+4 9092
+15 544576962029072
+14 07493186428212
+22 1889664440644888553620
+20 29657086930582357039
+11 42619737813
+9 716644659
+14 14070436666097
+15 929450678201955
+4 1318
+19 0505624629264802227
+24 080862591182434544872782
+5 92805
+6 379378
+9 527808185
+4 1169
+15 975685125022059
+10 0604609251
+17 07599449762074361
+15 110502690578771
+5 86408
+7 1551702
+20 40065282222395076033
+24 452353267592690290622005
+20 00019922606695325838
+16 1269516637636376
+22 1448580997340956180260
+17 66179722576294815
+15 257803429546048
+17 06463522195206967
+6 168822
+8 32308275
+23 45164258582684365678466
+7 2209981
+24 399814926100157517594732
+21 818202869376409262790
+16 1965387079148786
+19 4238524927117696814
+19 3142512029830068971
+19 8551033744307585114
+22 6356234375469216587355
+17 45641741725325731
+25 6678799368473580175636090
+17 14352125030068021
+23 93173089618233667063609
+12 095557298141
+7 4029263
+22 5368818171877278526461
+22 8537357607086736347723
+18 457928134810250592
+18 636732605835288996
+8 97939703
+19 9583000237931864573
+9 585767571
+8 31267835
+5 06316
+22 9683028746881197036954
+6 039098
+15 274197436685394
+6 025997
+6 876560
+7 6922016`
+
+func solveCase(n int, s string) string {
 	for k := 0; k <= 4; k++ {
 		if k <= n && 4-k <= n {
 			if s[:k]+s[n-(4-k):] == "2020" {
@@ -21,26 +123,62 @@ func solve(n int, s string) string {
 	return "NO"
 }
 
-func runCase(bin string, n int, s string) error {
-	input := fmt.Sprintf("1\n%d\n%s\n", n, s)
-	cmd := exec.Command(bin)
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
+type testCase struct {
+	n int
+	s string
+}
+
+func parseTestcases() ([]testCase, error) {
+	fields := strings.Fields(testcasesRaw)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no embedded testcases")
 	}
+	t, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return nil, fmt.Errorf("invalid t: %v", err)
+	}
+	if len(fields) != 1+2*t {
+		return nil, fmt.Errorf("expected %d pairs, found %d fields", t, len(fields)-1)
+	}
+	res := make([]testCase, t)
+	for i := 0; i < t; i++ {
+		n, err := strconv.Atoi(fields[1+2*i])
+		if err != nil {
+			return nil, fmt.Errorf("parse n%d: %v", i+1, err)
+		}
+		s := fields[1+2*i+1]
+		res[i] = testCase{n: n, s: s}
+	}
+	return res, nil
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
+	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	got := strings.TrimSpace(out.String())
-	exp := solve(n, s)
-	if got != exp {
-		return fmt.Errorf("expected %q got %q", exp, got)
-	}
-	return nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
@@ -48,36 +186,32 @@ func main() {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	f, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Println("could not open testcasesB.txt:", err)
-		os.Exit(1)
-	}
-	defer f.Close()
 
-	scanner := bufio.NewScanner(f)
-	scanner.Split(bufio.ScanWords)
-	if !scanner.Scan() {
-		fmt.Println("invalid test file")
+	cases, err := parseTestcases()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	t, _ := strconv.Atoi(scanner.Text())
-	for i := 0; i < t; i++ {
-		if !scanner.Scan() {
-			fmt.Println("invalid test file")
+
+	bin, cleanup, err := buildIfGo(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	for i, tc := range cases {
+		input := fmt.Sprintf("1\n%d\n%s\n", tc.n, tc.s)
+		expected := solveCase(tc.n, tc.s)
+		got, err := runCandidate(bin, input)
+		if err != nil {
+			fmt.Printf("test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		n, _ := strconv.Atoi(scanner.Text())
-		if !scanner.Scan() {
-			fmt.Println("invalid test file")
-			os.Exit(1)
-		}
-		s := scanner.Text()
-		if err := runCase(bin, n, s); err != nil {
-			fmt.Printf("case %d failed: %v\n", i+1, err)
+		if strings.TrimSpace(got) != expected {
+			fmt.Printf("test %d failed\nexpected: %s\ngot: %s\n", i+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

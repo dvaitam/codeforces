@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,7 +9,123 @@ import (
 	"strings"
 )
 
-func expectedA(nums []int) string {
+const testcaseData = `
+100
+5 2 1 2 3 2
+5 2 2 2 3 1
+6 1 2 1 1 3 2
+6 3 3 1 2 1 3
+2 3 2
+5 3 1 2 2 2
+6 3 1 3 2 2 3
+4 1 3 1 1
+5 3 3 3 1 3
+5 2 1 3 2 3
+2 1 3
+3 1 1 3
+5 1 1 2 3 2
+2 2 3
+4 3 1 3 2
+6 1 3 3 3 2 2
+2 3 2
+4 3 1 2 1
+3 1 1 3
+4 2 1 1 3
+3 1 1 1
+6 3 2 3 3 2 3
+3 1 3 3
+5 3 2 2 2 3
+4 1 2 3 1
+5 3 3 2 1 1
+2 3 2
+2 3 1
+4 1 2 2 1
+2 1 3
+3 1 3 3
+6 3 3 1 1 1 3
+3 3 3 1
+5 1 2 1 1 3
+2 1 1
+2 2 1
+2 3 1
+6 2 3 1 2 1 1
+2 3 2
+4 2 1 1 3
+5 1 3 1 3 2
+3 2 2 3
+5 3 1 3 3 1
+2 3 1
+3 2 3 2
+2 3 2
+3 1 2 3
+5 3 3 2 3 2
+5 3 2 1 3 3
+2 2 3
+2 2 3
+2 3 2
+3 1 2 2
+6 2 3 2 3 3 3
+3 3 2 2
+5 3 1 1 3 1
+4 1 1 1 3
+5 2 3 3 3 2
+2 2 3
+6 2 3 3 1 1 2
+2 2 3
+3 2 3 2
+6 3 1 1 2 2 2
+5 1 2 1 3 3
+2 3 1
+2 2 3
+5 2 1 1 1 3
+2 3 3
+6 1 1 1 3 3 1
+4 2 3 1 1
+5 2 3 1 1 2
+5 1 2 1 3 3
+4 1 1 2 1
+2 1 1
+4 3 2 2 3
+2 3 3
+6 3 2 3 3 2 3
+5 2 3 1 1 2
+6 2 1 1 1 2 2
+4 2 3 1 2
+6 1 1 2 1 1 3
+4 2 2 3 1
+4 1 2 3 1
+2 2 1
+6 3 1 2 2 2 2
+5 1 1 3 2 2
+4 2 1 2 1
+5 2 1 2 2 3
+3 1 3 3
+5 3 1 1 1 1
+3 1 2 1
+2 2 3
+6 2 2 2 3 3 3
+3 2 1 2
+3 2 3 1
+5 1 2 1 1 3
+2 3 2
+3 1 2 2
+4 1 3 1 1
+6 1 1 1 2 2 2
+`
+
+type testCase struct {
+	input    string
+	expected string
+}
+
+func absInt(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func solve(nums []int) string {
 	freq := make(map[int]int)
 	for _, x := range nums {
 		freq[x]++
@@ -25,77 +140,96 @@ func expectedA(nums []int) string {
 	for _, c := range freq {
 		counts = append(counts, c)
 	}
-	if counts[0]-counts[1] < 0 {
-		counts[1], counts[0] = counts[0], counts[1]
-	}
-	if counts[0]-counts[1] <= 1 {
+	if absInt(counts[0]-counts[1]) <= 1 {
 		return "Yes"
 	}
 	return "No"
 }
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "Usage: go run verifierA.go /path/to/binary")
-		os.Exit(1)
+func loadCases() ([]testCase, error) {
+	fields := strings.Fields(testcaseData)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no testcases")
 	}
-	bin := os.Args[len(os.Args)-1]
-	data, err := os.ReadFile("testcasesA.txt")
+	t, err := strconv.Atoi(fields[0])
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "could not read testcasesA.txt:", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("bad test count: %w", err)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Fprintln(os.Stderr, "invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	for caseNum := 1; caseNum <= t; caseNum++ {
-		if !scan.Scan() {
-			fmt.Fprintf(os.Stderr, "bad test case %d\n", caseNum)
-			os.Exit(1)
+	pos := 1
+	cases := make([]testCase, 0, t)
+	for caseIdx := 0; caseIdx < t; caseIdx++ {
+		if pos >= len(fields) {
+			return nil, fmt.Errorf("case %d: missing n", caseIdx+1)
 		}
-		n, _ := strconv.Atoi(scan.Text())
+		n, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return nil, fmt.Errorf("case %d: bad n: %w", caseIdx+1, err)
+		}
+		pos++
+		if pos+n > len(fields) {
+			return nil, fmt.Errorf("case %d: not enough numbers", caseIdx+1)
+		}
 		nums := make([]int, n)
+		numStr := make([]string, n)
 		for i := 0; i < n; i++ {
-			if !scan.Scan() {
-				fmt.Fprintf(os.Stderr, "bad test case %d\n", caseNum)
-				os.Exit(1)
+			val, err := strconv.Atoi(fields[pos+i])
+			if err != nil {
+				return nil, fmt.Errorf("case %d: bad value: %w", caseIdx+1, err)
 			}
-			nums[i], _ = strconv.Atoi(scan.Text())
+			nums[i] = val
+			numStr[i] = fields[pos+i]
 		}
+		pos += n
 		var sb strings.Builder
-		fmt.Fprintf(&sb, "1\n%d\n", n)
-		for i, v := range nums {
-			if i > 0 {
-				sb.WriteByte(' ')
-			}
-			sb.WriteString(strconv.Itoa(v))
-		}
+		sb.WriteString("1\n")
+		sb.WriteString(strconv.Itoa(n))
 		sb.WriteByte('\n')
-		expect := expectedA(nums)
-		var cmd *exec.Cmd
-		if strings.HasSuffix(bin, ".go") {
-			cmd = exec.Command("go", "run", bin)
-		} else {
-			cmd = exec.Command(bin)
-		}
-		cmd.Stdin = strings.NewReader(sb.String())
-		var out bytes.Buffer
-		var errBuf bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &errBuf
-		if err := cmd.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d runtime error: %v\n%s", caseNum, err, errBuf.String())
+		sb.WriteString(strings.Join(numStr, " "))
+		sb.WriteByte('\n')
+		cases = append(cases, testCase{
+			input:    sb.String(),
+			expected: solve(nums),
+		})
+	}
+	if pos != len(fields) {
+		return nil, fmt.Errorf("extra data after parsing")
+	}
+	return cases, nil
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: verifierA /path/to/binary")
+		os.Exit(1)
+	}
+	cases, err := loadCases()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load cases: %v\n", err)
+		os.Exit(1)
+	}
+	for idx, tc := range cases {
+		got, err := run(os.Args[1], tc.input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
-		if got != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", caseNum, expect, got)
+		if got != tc.expected {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, tc.expected, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

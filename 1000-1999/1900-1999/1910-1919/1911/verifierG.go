@@ -10,16 +10,20 @@ import (
 	"strings"
 )
 
-func candidate(strs []string) string {
+// solution logic from 1911G.go
+func solve(strs []string) string {
 	base := []byte(strs[0])
-	m := len(base)
+	n := len(base)
 	best := ""
-	try := func(b []byte) {
-		s := string(b)
+	check := func(candidate []byte) {
+		s := string(candidate)
+		if best != "" && s >= best {
+			return
+		}
 		for _, t := range strs {
 			diff := 0
-			for i := 0; i < m; i++ {
-				if b[i] != t[i] {
+			for i := 0; i < n; i++ {
+				if candidate[i] != t[i] {
 					diff++
 					if diff > 1 {
 						break
@@ -30,28 +34,130 @@ func candidate(strs []string) string {
 				return
 			}
 		}
-		if best == "" || s < best {
-			best = s
-		}
+		best = s
 	}
 
-	try(base)
-	for i := 0; i < m; i++ {
+	check(base)
+	for i := 0; i < n; i++ {
 		orig := base[i]
 		for c := byte('a'); c <= 'z'; c++ {
 			if c == orig {
 				continue
 			}
 			base[i] = c
-			try(base)
+			check(base)
 		}
 		base[i] = orig
 	}
+
 	if best == "" {
 		return "-1"
 	}
 	return best
 }
+
+const testcaseData = `
+4 qva pxh iqj zig
+4 opjka ysytt yjdkw cemoi
+3 tvxy hwfr ooip
+1 vfr
+1 lklb
+4 kfjpb rqjki ytukc lazot
+2 tjwi paof
+2 hdub mozm
+5 kav aoi gwf odw yxm
+5 ide bai nqv ysj zck
+4 kikhb xqhoq wavmk bqgwx
+1 haxrk
+2 hsprp nfoif
+1 vjxk
+3 mab yvd etk
+5 abz rfs ece erf nma
+3 lysy ahsa lyyl
+3 svv llc ngl
+5 zegq fteq zdks srut dtfl
+3 iofm nldk eizf
+3 yclz livl engg
+2 otnvz swhya
+3 aon szd bmj
+5 gnawt hmtpp tnmmb jffkd qtofs
+4 wei aoz ykp lqy
+2 sapw eigl
+1 tnxh
+1 ztm
+2 xusz rgye
+4 vxplv ptwze axtmv nljze
+3 imwt hzoz gwfp
+4 xxn gqj wnd jif
+2 jef lgs
+5 bde isj jfb isl dni
+3 trqui drrzb akxnt
+4 vszh dnnv csiy rlxz
+2 aem lza
+3 qszs mrwd dtrg
+2 urme bcbu
+3 nsw udn gkc
+1 yzeih
+2 mng gaq
+3 wzgq dzyt luki
+5 psg sbs vdi nud zbd
+3 dtjd hzjz scdm
+4 khe heb wsb opr
+5 nhg tdk fwj doo gup
+3 gzov ftgs mlni
+4 ext rpd zht lvs
+3 jog mhj ska
+3 nxy asz urz
+1 bbntj
+4 uarm dniz xbzk bblu
+1 wxauq
+1 yrbgs
+5 iddf derh hpti mgbq qpch
+2 wvoc hhyd
+2 vpni tzgr
+1 wvmew
+4 szebj mspvo txznk yurhc
+3 qhkxj hqnij zmkxk
+2 jjg dhn
+5 kgn zoh iql mcs pov
+1 udz
+5 iamm gatf zbnn knzx mbip
+5 acbet rhfxk neqjy phuci etghe
+1 aoijx
+5 moz tyu fbf uaq mlc
+3 vox qhi mbn
+4 fgud rqdq guyw xrmk
+3 xtb kvi cwz
+5 zfdoy aplin fbwqf fnxww yxgjt
+5 bbhas yvylz iozxt jiqkl ecuor
+1 defkn
+2 ixlul iqxaq
+1 nvdsw
+4 zcxd xoue mxfn rbln
+3 ecus orkz tgrv
+1 oxx
+5 errb xgjr gibq lwxj mebg
+5 goja bnnr wawf vdln hyiy
+4 lsexc kgvbm ymikg qwyhs
+5 bzpzh giffo hbchm mnuya etjwz
+3 bsgjp mdtvz wlcvo
+3 tsb zdl vog
+3 xdya cvtn gpgp
+5 xmqpf eaqoc nuwkx fcsyt kotgw
+4 znbfi jrjvn ysaup cpjxo
+5 ptcu jgyn olou eywp lciu
+5 sev qju cfx ars xyv
+5 zrpi faun ljnb wbbh nyuc
+1 ptgd
+3 fpt bca ieo
+2 huh rva
+1 pkeu
+1 vtb
+1 hmyyi
+1 izdr
+2 lxk uqu
+2 vtztz grqjq
+`
 
 func main() {
 	if len(os.Args) != 2 {
@@ -59,12 +165,8 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesG.txt")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
+
+	scanner := bufio.NewScanner(strings.NewReader(testcaseData))
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -75,7 +177,7 @@ func main() {
 		parts := strings.Fields(line)
 		k, _ := strconv.Atoi(parts[0])
 		strs := parts[1 : 1+k]
-		expected := candidate(strs)
+		expected := solve(strs)
 
 		var input strings.Builder
 		input.WriteString(fmt.Sprintf("%d\n", k))

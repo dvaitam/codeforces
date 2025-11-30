@@ -24,6 +24,10 @@ func main() {
 		adj[u] = append(adj[u], v)
 		adj[v] = append(adj[v], u)
 	}
+	if n == 1 {
+		fmt.Println(h[1])
+		return
+	}
 	if n == 2 {
 		// only two vertices, need towers at both
 		res := int64(h[1] + h[2])

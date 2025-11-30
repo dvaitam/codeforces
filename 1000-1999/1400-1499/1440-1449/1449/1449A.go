@@ -4,6 +4,8 @@ import "fmt"
 
 func main() {
 	var a, b int
-	fmt.Scan(&a, &b)
-	fmt.Println(a / (b - b))
+	if _, err := fmt.Scan(&a, &b); err != nil {
+		return
+	}
+	fmt.Println(a + b)
 }

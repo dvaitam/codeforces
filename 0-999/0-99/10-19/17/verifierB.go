@@ -1,15 +1,816 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
+const testcaseData = `100
+2
+11 3
+0
+2
+6 5
+2
+1 2 6
+2 1 17
+2
+16 14
+0
+2
+12 6
+1
+1 2 18
+4
+3 19 14 5
+0
+5
+13 18 16 9 20
+11
+5 1 4
+2 4 10
+5 2 9
+3 4 13
+2 3 19
+5 4 7
+1 4 18
+5 1 5
+1 4 10
+3 4 1
+1 4 17
+5
+10 0 6 0 0
+16
+1 5 6
+3 4 8
+1 3 4
+1 2 3
+3 5 10
+3 5 1
+3 5 20
+1 2 12
+1 3 10
+3 2 1
+3 4 9
+1 4 9
+1 3 9
+1 5 9
+1 3 10
+3 2 5
+5
+20 2 2 2 6
+7
+1 4 0
+1 4 17
+5 3 14
+2 3 6
+5 4 0
+2 4 15
+5 4 17
+3
+18 12 20
+5
+3 2 15
+3 1 20
+1 2 7
+3 1 10
+3 2 4
+2
+2 16
+0
+2
+7 4
+0
+4
+0 14 10 5
+12
+2 4 11
+4 1 18
+2 3 13
+2 1 12
+4 1 9
+2 4 7
+4 1 11
+2 3 14
+2 4 6
+3 1 16
+2 1 12
+3 1 6
+3
+7 2 20
+6
+1 2 16
+3 2 2
+1 2 2
+1 2 4
+3 1 14
+1 2 13
+4
+8 2 11 2
+1
+3 1 11
+4
+5 0 7 11
+1
+3 1 0
+3
+4 5 14
+0
+5
+11 8 4 0 6
+11
+3 4 9
+1 5 20
+5 3 5
+2 3 4
+2 3 7
+3 4 1
+2 5 0
+2 4 2
+2 5 13
+2 4 20
+1 4 1
+4
+14 6 11 9
+7
+1 2 3
+4 2 17
+3 2 5
+3 4 20
+1 4 6
+1 3 14
+1 4 15
+3
+17 12 8
+5
+1 2 8
+2 3 18
+1 3 14
+3 2 9
+1 3 7
+3
+2 13 9
+2
+3 1 18
+3 1 6
+5
+20 17 12 8 9
+14
+3 5 20
+1 4 3
+2 5 14
+2 4 20
+2 4 10
+1 5 6
+1 3 15
+1 5 16
+1 3 20
+3 4 4
+2 3 13
+2 5 14
+2 4 6
+3 4 13
+5
+12 7 6 14 6
+18
+2 3 1
+1 2 7
+1 5 19
+4 1 13
+4 3 13
+4 2 10
+1 2 1
+1 2 9
+4 2 7
+1 5 3
+1 2 11
+1 2 16
+4 3 6
+4 3 7
+1 3 17
+4 1 14
+1 2 7
+4 2 14
+2
+13 17
+1
+2 1 7
+3
+8 11 10
+3
+2 3 9
+3 1 8
+2 3 13
+2
+17 16
+1
+2 2 12
+3
+11 20 15
+2
+3 1 4
+2 1 16
+3
+16 2 4
+6
+1 2 18
+1 2 7
+1 3 18
+1 3 19
+3 2 15
+1 3 0
+3
+15 15 17
+2
+3 1 8
+3 1 12
+4
+9 12 1 6
+0
+4
+7 10 14 7
+4
+3 2 9
+3 1 18
+2 1 0
+3 1 20
+2
+11 13
+0
+3
+14 13 4
+2
+2 3 20
+1 2 12
+4
+17 17 14 1
+9
+1 4 12
+1 3 16
+1 3 7
+3 4 0
+1 4 2
+3 4 4
+3 4 9
+1 3 1
+1 3 3
+2
+8 18
+2
+2 1 16
+2 1 8
+4
+5 4 10 0
+9
+1 2 11
+1 2 20
+1 4 4
+3 1 15
+3 2 2
+3 1 5
+2 4 8
+2 4 16
+3 4 1
+5
+20 19 7 0 11
+16
+3 4 20
+1 2 18
+2 3 5
+1 2 18
+2 4 2
+3 4 8
+1 3 10
+1 4 0
+5 4 12
+5 3 4
+1 5 12
+1 2 0
+1 5 15
+1 3 0
+3 4 4
+3 4 4
+3
+12 9 16
+0
+3
+4 4 15
+5
+2 1 1
+3 2 2
+3 1 14
+3 1 18
+3 2 6
+3
+14 16 5
+5
+2 3 4
+2 3 1
+2 1 16
+3 1 13
+1 3 0
+3
+0 10 19
+1
+3 1 20
+4
+2 13 1 14
+5
+2 1 18
+4 3 6
+4 1 11
+1 3 0
+4 3 15
+2
+20 16
+0
+2
+10 11
+0
+5
+1 4 16 20 9
+1
+3 1 10
+5
+20 12 1 7 7
+20
+2 3 5
+4 3 13
+2 5 12
+1 4 5
+2 2 0
+2 3 13
+2 4 17
+5 3 3
+2 4 7
+2 4 12
+1 5 8
+5 3 7
+1 2 17
+1 4 13
+2 3 5
+5 3 5
+2 3 11
+2 5 10
+1 3 20
+4 3 1
+5
+6 11 4 4 3
+19
+4 5 0
+1 4 2
+2 1 4
+3 5 15
+2 3 3
+2 4 17
+1 2 7
+2 1 18
+2 5 3
+3 5 3
+2 4 2
+4 2 3
+2 5 17
+1 5 5
+4 5 16
+2 4 12
+2 4 18
+2 4 18
+1 4 2
+5
+10 7 16 14 1
+15
+5 3 8
+5 1 19
+3 4 7
+3 1 4
+4 1 4
+4 5 11
+3 1 0
+1 1 15
+3 5 13
+3 2 12
+4 5 9
+3 5 12
+4 2 20
+3 1 13
+4 2 11
+3
+5 10 15
+1
+3 2 12
+3
+12 16 9
+3
+1 3 16
+2 1 2
+2 3 5
+2
+4 3
+2
+1 2 14
+2 2 0
+3
+19 16 2
+2
+1 3 3
+1 2 4
+3
+18 10 6
+3
+1 3 3
+2 3 5
+1 3 13
+4
+7 14 7 11
+7
+4 1 14
+2 4 14
+2 3 15
+4 3 7
+2 1 19
+2 3 16
+2 4 4
+5
+6 5 12 1 10
+16
+5 4 5
+5 2 19
+3 5 7
+1 2 1
+2 4 19
+3 4 16
+2 2 11
+1 2 12
+3 1 6
+1 4 6
+1 4 18
+5 4 17
+5 4 4
+3 4 17
+5 1 2
+5 4 0
+3
+13 19 11
+2
+1 3 0
+1 3 0
+4
+4 14 8 3
+9
+3 1 7
+3 4 10
+3 4 13
+3 3 9
+2 3 3
+2 4 8
+2 3 11
+2 3 6
+3 2 10
+4
+14 2 13 16
+8
+4 1 2
+4 3 5
+3 2 20
+4 3 1
+3 1 20
+4 1 8
+4 3 5
+1 2 15
+5
+0 7 2 9 3
+5
+4 1 0
+4 1 15
+2 5 11
+2 3 4
+5 2 17
+3
+7 16 9
+6
+2 1 0
+2 3 12
+1 3 17
+2 3 12
+2 3 11
+2 1 18
+5
+4 19 20 16 9
+0
+3
+11 11 11
+6
+2 2 20
+2 2 14
+3 1 16
+2 2 19
+3 1 1
+3 3 6
+2
+0 19
+0
+4
+7 12 15 11
+5
+3 2 3
+4 1 10
+2 1 13
+2 1 20
+3 2 10
+4
+15 15 19 10
+4
+1 4 5
+2 4 17
+3 1 13
+3 1 3
+2
+1 19
+0
+3
+3 13 12
+6
+2 1 10
+3 1 2
+3 2 20
+3 1 9
+3 2 17
+3 1 8
+2
+16 2
+0
+4
+4 4 16 4
+1
+3 1 10
+3
+10 18 2
+0
+4
+6 8 14 10
+10
+3 4 17
+3 2 17
+3 4 4
+2 1 19
+4 2 10
+3 1 1
+3 2 10
+3 4 15
+4 1 20
+2 1 11
+5
+16 5 12 9 18
+15
+5 3 14
+2 2 20
+3 2 17
+5 3 14
+5 2 10
+3 2 4
+1 4 5
+4 2 5
+5 3 19
+4 2 17
+3 4 8
+5 2 11
+1 2 0
+5 4 5
+1 3 16
+4
+15 13 10 12
+0
+2
+1 10
+0
+4
+19 17 14 9
+8
+1 3 11
+1 2 0
+1 4 9
+2 3 8
+1 2 4
+1 3 6
+1 3 8
+2 4 4
+2
+16 10
+0
+3
+14 10 14
+1
+3 3 8
+4
+6 9 17 12
+1
+4 2 3
+5
+8 17 6 5 2
+8
+3 4 12
+4 5 4
+1 3 4
+2 4 16
+2 4 2
+1 5 12
+1 5 14
+2 1 6
+3
+7 3 19
+3
+3 1 17
+3 1 17
+3 2 20
+5
+20 8 15 20 20
+19
+1 3 11
+4 2 6
+5 2 0
+5 3 14
+4 3 10
+1 2 20
+3 2 7
+5 3 4
+3 2 10
+1 3 16
+3 2 6
+5 2 18
+4 3 6
+1 2 4
+1 4 13
+4 2 1
+5 2 18
+4 2 0
+1 3 19
+2
+8 19
+1
+2 1 1
+4
+10 8 20 13
+6
+1 2 20
+3 1 14
+3 4 18
+4 2 18
+3 1 14
+3 2 20
+4
+9 2 11 4
+7
+1 4 20
+3 4 20
+4 2 5
+4 2 3
+1 2 5
+1 4 3
+4 2 19
+2
+7 11
+2
+2 1 5
+1 2 4
+3
+9 8 16
+0
+4
+0 4 0 2
+5
+2 3 6
+4 3 17
+2 4 12
+2 3 0
+2 4 2
+4
+5 14 18 0
+8
+1 4 3
+2 4 12
+3 2 13
+1 4 19
+3 4 11
+3 2 11
+3 1 14
+3 4 19
+4
+7 0 3 14
+11
+3 2 12
+2 1 13
+4 3 6
+4 3 0
+1 2 19
+2 3 14
+3 4 17
+2 3 13
+3 2 0
+1 2 2
+1 2 20
+3
+0 20 16
+5
+2 3 13
+3 1 12
+2 2 5
+2 1 8
+2 3 9
+3
+12 2 13
+0
+2
+2 11
+0
+4
+9 1 0 1
+9
+1 2 19
+1 2 20
+1 2 3
+1 2 19
+1 4 13
+1 2 15
+1 2 16
+1 4 11
+1 1 9
+2
+4 8
+2
+2 1 5
+2 1 4
+4
+10 6 20 3
+9
+2 4 12
+1 4 17
+3 2 8
+3 4 2
+3 1 7
+2 4 6
+1 4 9
+1 2 0
+3 2 12
+3
+18 17 6
+0
+3
+14 17 14
+4
+2 1 11
+3 3 11
+2 3 0
+2 2 19
+3
+8 2 5
+4
+1 2 5
+1 2 8
+2 3 20
+3 2 8
+5
+19 16 0 15 20
+16
+5 2 13
+1 4 1
+5 1 8
+4 5 15
+5 3 0
+2 3 13
+1 2 3
+2 4 14
+4 3 4
+4 3 16
+5 3 11
+5 1 20
+1 3 16
+5 1 0
+2 4 18
+1 3 8
+4
+4 14 11 1
+5
+2 1 19
+2 1 12
+3 1 15
+2 4 10
+2 4 14
+3
+10 7 15
+1
+3 2 18
+`
+
 const infB = int64(1 << 60)
+
+type testCase struct {
+	input    string
+	expected string
+}
 
 func solveCaseB(n int, quals []int, edges [][3]int) (int64, bool) {
 	best := make([]int64, n+1)
@@ -50,74 +851,126 @@ func solveCaseB(n int, quals []int, edges [][3]int) (int64, bool) {
 	return sum, true
 }
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run verifierB.go /path/to/binary")
-		os.Exit(1)
+func loadCases() ([]testCase, error) {
+	fields := strings.Fields(testcaseData)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no testcases")
 	}
-	data, err := os.ReadFile("testcasesB.txt")
+	pos := 0
+	t, err := strconv.Atoi(fields[pos])
 	if err != nil {
-		fmt.Println("could not read testcasesB.txt:", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("bad test count: %w", err)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	expected := make([]string, t)
-	for i := 0; i < t; i++ {
-		scan.Scan()
-		n, _ := strconv.Atoi(scan.Text())
+	pos++
+	cases := make([]testCase, 0, t)
+	for caseNum := 0; caseNum < t; caseNum++ {
+		if pos >= len(fields) {
+			return nil, fmt.Errorf("case %d: missing n", caseNum+1)
+		}
+		n, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return nil, fmt.Errorf("case %d: bad n: %w", caseNum+1, err)
+		}
+		pos++
 		quals := make([]int, n+1)
-		for j := 1; j <= n; j++ {
-			scan.Scan()
-			v, _ := strconv.Atoi(scan.Text())
-			quals[j] = v
+		for i := 1; i <= n; i++ {
+			if pos >= len(fields) {
+				return nil, fmt.Errorf("case %d: missing qualification", caseNum+1)
+			}
+			v, err := strconv.Atoi(fields[pos])
+			if err != nil {
+				return nil, fmt.Errorf("case %d: bad qualification: %w", caseNum+1, err)
+			}
+			quals[i] = v
+			pos++
 		}
-		scan.Scan()
-		m, _ := strconv.Atoi(scan.Text())
+		if pos >= len(fields) {
+			return nil, fmt.Errorf("case %d: missing m", caseNum+1)
+		}
+		m, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return nil, fmt.Errorf("case %d: bad m: %w", caseNum+1, err)
+		}
+		pos++
 		edges := make([][3]int, m)
-		for j := 0; j < m; j++ {
-			scan.Scan()
-			a, _ := strconv.Atoi(scan.Text())
-			scan.Scan()
-			b, _ := strconv.Atoi(scan.Text())
-			scan.Scan()
-			c, _ := strconv.Atoi(scan.Text())
-			edges[j] = [3]int{a, b, c}
+		var sb strings.Builder
+		sb.WriteString(strconv.Itoa(n))
+		sb.WriteByte('\n')
+		for i := 1; i <= n; i++ {
+			if i > 1 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.Itoa(quals[i]))
 		}
-		if res, ok := solveCaseB(n, quals, edges); ok {
-			expected[i] = fmt.Sprintf("%d", res)
-		} else {
-			expected[i] = "-1"
+		sb.WriteByte('\n')
+		sb.WriteString(strconv.Itoa(m))
+		sb.WriteByte('\n')
+		for i := 0; i < m; i++ {
+			if pos+2 >= len(fields) {
+				return nil, fmt.Errorf("case %d: missing edge values", caseNum+1)
+			}
+			a, err := strconv.Atoi(fields[pos])
+			if err != nil {
+				return nil, fmt.Errorf("case %d: bad edge a: %w", caseNum+1, err)
+			}
+			b, err := strconv.Atoi(fields[pos+1])
+			if err != nil {
+				return nil, fmt.Errorf("case %d: bad edge b: %w", caseNum+1, err)
+			}
+			c, err := strconv.Atoi(fields[pos+2])
+			if err != nil {
+				return nil, fmt.Errorf("case %d: bad edge c: %w", caseNum+1, err)
+			}
+			pos += 3
+			edges[i] = [3]int{a, b, c}
+			sb.WriteString(fmt.Sprintf("%d %d %d\n", a, b, c))
 		}
+		res, ok := solveCaseB(n, quals, edges)
+		exp := "-1"
+		if ok {
+			exp = strconv.FormatInt(res, 10)
+		}
+		cases = append(cases, testCase{
+			input:    sb.String(),
+			expected: exp,
+		})
 	}
-	cmd := exec.Command(os.Args[1])
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.CombinedOutput()
+	return cases, nil
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: verifierB /path/to/binary")
+		os.Exit(1)
+	}
+	cases, err := loadCases()
 	if err != nil {
-		fmt.Println("execution failed:", err)
+		fmt.Fprintf(os.Stderr, "failed to load testcases: %v\n", err)
 		os.Exit(1)
 	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
-	for i := 0; i < t; i++ {
-		if !outScan.Scan() {
-			fmt.Printf("missing output for test %d\n", i+1)
+	for idx, tc := range cases {
+		got, err := run(os.Args[1], tc.input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got := outScan.Text()
-		if got != expected[i] {
-			fmt.Printf("test %d failed: expected %s got %s\n", i+1, expected[i], got)
+		if got != tc.expected {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, tc.expected, got)
 			os.Exit(1)
 		}
 	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
-		os.Exit(1)
-	}
-	fmt.Println("All tests passed!")
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

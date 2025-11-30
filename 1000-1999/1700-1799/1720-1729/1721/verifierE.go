@@ -9,21 +9,142 @@ import (
 	"strings"
 )
 
+const testcasesRaw = `hjdxmpeccamrjzybhqrl
+100
+yfdig
+u
+zigfj
+uxlct
+vmqhfh
+icrjajsw
+yqgnn
+jnofhjizbc
+o
+qrupw
+evgcng
+iflnxsku
+gkdbwhiys
+hdkfjoablw
+jx
+akjkey
+tvcjtgo
+eimtf
+salbof
+zzljsd
+gngdbbbx
+tve
+brpshkbdqj
+ugpghon
+bhnohung
+gbbiihqg
+niek
+k
+dsmuuzwxbp
+cngsfkj
+zuknqguz
+kmpci
+bmte
+vbfwu
+spxmmgza
+fati
+mz
+hrbgfvt
+rvj
+jszqu
+ogqvhdv
+plg
+ubqbku
+rzduhudwuq
+bkahd
+wanubxy
+ky
+kxyfhoauzv
+jteelvkaz
+rxtto
+xrkqa
+qv
+ldbewaug
+vuxmltikiz
+uejcq
+kuvumw
+otmvoanmj
+ybjmmo
+vybwwknyco
+eneqzefwi
+xxjhxrmgwn
+xlgelg
+ih
+kmrvjftd
+qmde
+lfgxbvz
+txupibfc
+ejfvb
+zjuttp
+uplcs
+ooryxgw
+suoruklzps
+ojde
+ivokz
+zpvoklazg
+emh
+igsqb
+oxcxpxyqs
+ttijsihw
+amifi
+cdlyzd
+tnrxwccdp
+bezqvqjxh
+iczlejvbex
+hn
+rbh
+tpe
+uootgxhxpb
+maymew
+bsqliqgiib
+oob
+idjuawzsn
+dtzsvqym
+onvtxcwuq
+tfnoc
+afcpxp
+hzcyea
+xahpotmna
+vrskjbploh
+ethbewui`
+
+type testCase struct {
+	s       string
+	queries []string
+}
+
 func runExe(path, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	} else {
-		cmd = exec.Command(path)
-	}
+	cmd := exec.Command(path)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("%v\n%s", err, out.String())
+		return "", fmt.Errorf("%v\n%s", err, errBuf.String())
 	}
 	return strings.TrimSpace(out.String()), nil
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
 }
 
 func prefix(s string) []int {
@@ -80,36 +201,50 @@ func solveAll(s string, queries []string) []string {
 	return results
 }
 
+func parseTestcases() (testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
+	if len(lines) < 2 {
+		return testCase{}, fmt.Errorf("not enough lines")
+	}
+	s := strings.TrimSpace(lines[0])
+	q, err := strconv.Atoi(strings.TrimSpace(lines[1]))
+	if err != nil {
+		return testCase{}, fmt.Errorf("parse q: %v", err)
+	}
+	if len(lines)-2 != q {
+		return testCase{}, fmt.Errorf("expected %d queries got %d", q, len(lines)-2)
+	}
+	queries := make([]string, q)
+	for i := 0; i < q; i++ {
+		queries[i] = strings.TrimSpace(lines[2+i])
+	}
+	return testCase{s: s, queries: queries}, nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierE.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	data, err := os.ReadFile("testcasesE.txt")
+	tc, err := parseTestcases()
 	if err != nil {
-		fmt.Println("could not read testcasesE.txt:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-	if len(lines) < 2 {
-		fmt.Println("bad test file")
+	bin, cleanup, err := buildIfGo(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	s := lines[0]
-	q, _ := strconv.Atoi(strings.TrimSpace(lines[1]))
-	if len(lines) != q+2 {
-		fmt.Println("bad test file")
-		os.Exit(1)
-	}
-	queries := lines[2:]
-	expected := solveAll(s, queries)
+	defer cleanup()
+
+	expected := solveAll(tc.s, tc.queries)
 
 	var input strings.Builder
-	input.WriteString(s)
+	input.WriteString(tc.s)
 	input.WriteByte('\n')
-	fmt.Fprintf(&input, "%d\n", q)
-	for _, t := range queries {
+	fmt.Fprintf(&input, "%d\n", len(tc.queries))
+	for _, t := range tc.queries {
 		input.WriteString(t)
 		input.WriteByte('\n')
 	}
@@ -120,11 +255,11 @@ func main() {
 		os.Exit(1)
 	}
 	outLines := strings.Split(strings.TrimSpace(got), "\n")
-	if len(outLines) != q {
+	if len(outLines) != len(expected) {
 		fmt.Println("wrong number of output lines")
 		os.Exit(1)
 	}
-	for i := 0; i < q; i++ {
+	for i := 0; i < len(expected); i++ {
 		if strings.TrimSpace(outLines[i]) != expected[i] {
 			fmt.Printf("case %d failed: expected %s got %s\n", i+1, expected[i], strings.TrimSpace(outLines[i]))
 			os.Exit(1)

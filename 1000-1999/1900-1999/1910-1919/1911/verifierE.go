@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,15 +9,120 @@ import (
 	"strings"
 )
 
-func isPowerOfTwo(x int) bool { return x > 0 && (x&(x-1)) == 0 }
+const testcases = `4 29 4 23 22
+6 41 27 25 2 19 42
+5 14 50 6 38 47
+4 16 34 14 29
+7 1 49 17 27 38 34 36
+4 46 22 46 37
+12 35 25 13 20 7 29 42 41 18 16 42 17
+6 6 24 10 29 2 25
+12 29 4 41 50 50 19 33 40 50 28 30 40
+11 48 34 13 11 1 18 7 25 46 17 13
+9 31 17 33 26 9 39 32 18 12
+2 14 22
+6 46 46 7 43 2 28
+6 21 40 47 13 22 27
+4 42 8 16 23
+9 29 12 44 23 28 28 27 24 38
+3 6 36 29
+4 7 1 34 45
+8 42 31 16 26 41 47 7 27
+2 44 19
+11 11 20 18 34 8 36 43 44 22 1 10
+2 6 22
+7 29 13 16 24 43 37 30
+6 35 11 29 26 1 7
+2 7 22
+5 20 35 8 33 50
+6 6 7 35 40 19 48
+2 16 8
+12 11 29 11 11 30 17 45 11 29 46 37 2
+10 25 2 8 7 20 6 41 50 25 14
+6 47 25 15 30 42 39
+10 36 24 12 28 41 1 38 27 39 15
+6 23 33 21 31 41 49
+9 48 46 17 23 18 50 11 12 15
+9 21 42 2 24 31 40 45 19 44
+5 2 7 30 47 34
+4 13 25 45 39
+7 36 9 3 32 27 30 29
+7 1 13 37 14 5 32 9
+12 6 47 34 45 43 36 26 40 18 14 6 28
+2 35 31
+7 48 1 13 40 19 49 50
+8 29 46 33 45 19 5 3 6
+7 25 42 27 25 42 45 49
+12 50 15 19 32 26 36 1 41 28 41 19 44
+9 10 26 44 28 26 46 50 38 47
+11 20 31 36 24 20 27 38 42 50 11 23
+2 28 29
+9 20 5 44 15 22 15 25 2 40
+7 10 12 32 5 50 7 12
+11 3 15 42 12 1 42 34 44 28 44 28
+4 19 26 29 20
+10 3 11 31 11 7 43 8 31 47 19
+6 20 26 3 38 18 22
+9 5 4 49 42 46 19 15 30 41
+6 36 14 25 5 28 3
+2 6 24
+2 19 20
+2 1 3
+11 3 10 39 11 31 42 6 38 9 2 48
+10 9 7 5 46 5 39 50 43 8 13
+3 32 28 6
+3 31 46 29
+10 47 11 35 7 9 24 47 28 33 9
+3 41 33 3
+10 16 7 47 25 24 34 21 36 45 37
+10 26 20 16 37 45 6 10 39 26 50
+7 48 19 23 33 24 2 1
+2 10 17
+12 45 14 42 9 12 8 32 48 31 43 9 18
+6 9 3 12 43 23 48
+7 13 41 7 33 32 10 41
+6 21 13 41 8 40 43
+5 23 26 50 7 18
+8 36 23 3 41 22 15 26 3
+8 35 18 50 11 17 3 48 18
+3 22 42 27
+2 50 44
+6 15 42 50 46 12 17
+7 34 41 8 11 32 13 37
+11 38 5 27 19 45 44 3 17 1 2 39
+4 22 12 26 15
+11 36 13 3 42 35 49 13 30 35 43 29
+11 40 22 23 24 8 50 2 27 24 12 31
+5 47 44 47 41 48
+12 25 49 39 1 43 13 40 48 32 27 49 26
+4 10 44 28 25
+9 48 47 42 48 14 17 5 45 11
+11 1 20 48 12 7 10 17 12 26 17 34
+12 27 21 35 47 28 32 30 8 17 39 21 17
+6 47 19 25 39 33 2
+9 42 33 33 13 28 18 47 42 49
+8 47 3 2 27 36 6 18 46
+2 2 32
+12 25 35 23 36 31 34 29 36 48 47 46 31
+11 12 38 49 2 39 23 14 20 28 5 15
+3 11 39 30
+12 9 32 21 29 45 10 32 17 32 22 46 34
+5 50 3 24 33 17
+8 35 42 39 7 20 9 33 9`
 
-func hasPair(arr []int) bool {
-	for i := 0; i < len(arr); i++ {
-		for j := i + 1; j < len(arr); j++ {
-			if isPowerOfTwo(arr[i] + arr[j]) {
+func hasPair(arr []int64) bool {
+	powers := make([]int64, 0, 61)
+	for p := int64(1); p <= (int64(1) << 60); p <<= 1 {
+		powers = append(powers, p)
+	}
+	counts := make(map[int64]int, len(arr))
+	for _, x := range arr {
+		for _, p := range powers {
+			if counts[p-x] > 0 {
 				return true
 			}
 		}
+		counts[x]++
 	}
 	return false
 }
@@ -29,24 +133,24 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesE.txt")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	lines := strings.Split(testcases, "\n")
+	count := 0
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		idx++
+		count++
 		fields := strings.Fields(line)
 		n, _ := strconv.Atoi(fields[0])
-		arr := make([]int, n)
+		if len(fields) != n+1 {
+			fmt.Fprintf(os.Stderr, "invalid testcase at line %d\n", idx+1)
+			os.Exit(1)
+		}
+		arr := make([]int64, n)
 		for i := 0; i < n; i++ {
-			arr[i], _ = strconv.Atoi(fields[i+1])
+			v, _ := strconv.ParseInt(fields[i+1], 10, 64)
+			arr[i] = v
 		}
 		expected := "NO"
 		if hasPair(arr) {
@@ -59,7 +163,7 @@ func main() {
 			if i > 0 {
 				input.WriteByte(' ')
 			}
-			input.WriteString(strconv.Itoa(v))
+			input.WriteString(strconv.FormatInt(v, 10))
 		}
 		input.WriteByte('\n')
 
@@ -70,14 +174,14 @@ func main() {
 		cmd.Stdout = &out
 		cmd.Stderr = &errBuf
 		if err := cmd.Run(); err != nil {
-			fmt.Printf("Test %d: runtime error: %v\nstderr: %s\n", idx, err, errBuf.String())
+			fmt.Printf("Test %d: runtime error: %v\nstderr: %s\n", idx+1, err, errBuf.String())
 			os.Exit(1)
 		}
 		outStr := strings.TrimSpace(out.String())
 		if outStr != expected {
-			fmt.Printf("Test %d failed: expected %s got %s\n", idx, expected, outStr)
+			fmt.Printf("Test %d failed: expected %s got %s\n", idx+1, expected, outStr)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", count)
 }

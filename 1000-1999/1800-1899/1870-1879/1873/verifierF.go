@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,7 +9,311 @@ import (
 	"strings"
 )
 
-func expected(n int, k int64, a, h []int64) string {
+const testcaseData = `
+100
+20 17
+6 9 1 8 4 1 3 2 6 8 4 7 9 2 10 4 1 4 7 5
+3 7 3 2 3 10 10 8 3 3 1 1 4 4 3 3 5 6 4 9
+7 12
+4 7 5 1 6 7 3
+3 5 2 6 5 10 10
+1 39
+6
+2
+10 23
+5 8 6 3 8 8 3 1 5 1
+6 7 1 9 7 6 7 10 1 8
+2 46
+3 10
+4 2
+8 30
+6 9 6 9 5 8 2 10
+6 5 1 7 2 4 6 9
+20 24
+3 6 5 9 2 5 6 5 3 2 3 5 8 3 1 2 10 9 7 1
+4 10 6 5 8 7 3 1 1 8 6 4 3 10 3 7 2 3 7 6
+5 4
+7 5 3 8 10
+3 9 8 8 6
+16 18
+5 8 7 3 2 7 9 3 8 6 3 2 8 5 9 9
+9 6 2 6 10 1 5 6 9 5 8 5 5 6 3 10
+1 31
+9
+5
+11 43
+5 8 5 9 6 6 5 6 7 6 3
+8 6 6 9 3 9 3 4 6 8 5
+3 47
+7 3 10
+10 9 7
+10 40
+9 5 1 4 3 10 8 10 3 4
+3 1 8 4 3 1 3 2 6 3
+16 13
+9 1 7 8 6 7 10 2 10 4 4 6 1 6 7 5
+7 2 9 6 1 9 10 5 2 5 9 9 6 10 5 6
+5 27
+7 10 9 6 8
+3 3 10 7 10
+16 13
+3 10 2 6 1 7 2 6 10 10 9 3 6 10 7 7
+7 4 8 5 8 7 7 3 10 10 5 5 8 5 7 1
+11 20
+8 5 3 8 1 2 10 8 4 5 1
+3 7 1 8 9 9 5 4 8 1 4
+16 18
+3 5 5 8 10 8 9 10 2 1 3 5 5 9 6 10
+5 9 1 8 6 6 10 3 1 1 5 9 8 2 9 4
+1 28
+7
+10
+19 45
+8 7 8 7 4 5 8 2 5 1 7 10 5 8 5 3 3 8 9
+8 6 9 3 7 10 9 1 2 4 5 2 2 1 6 7 2 7 8
+2 8
+2 4
+10 2
+5 19
+8 3 3 10 3
+7 3 2 10 4
+2 36
+2 7
+2 5
+2 37
+10 2
+7 10
+5 1
+7 2 6 10 8
+8 6 6 1 3
+10 10
+10 9 5 9 9 10 4 5 2 9
+4 5 5 9 3 4 6 8 7 3
+5 46
+1 6 2 10 1
+2 2 9 10 8
+8 25
+8 8 6 2 9 1 9 7
+1 3 7 4 2 2 8 4
+5 45
+10 7 6 4 5
+6 10 6 7 7
+5 47
+6 5 7 6 9
+1 10 10 4 3
+13 5
+2 1 1 3 4 4 1 8 8 6 1 7 8
+5 10 7 6 8 8 2 4 3 3 2 6 7
+16 10
+9 5 2 5 3 5 4 1 8 1 6 6 6 1 1 8
+8 3 2 6 5 8 4 3 1 4 1 10 4 2 10 7
+12 44
+5 3 8 6 5 2 8 3 4 3 4 1
+10 7 5 1 8 1 8 7 3 1 1 9
+17 37
+6 2 2 4 8 2 8 1 4 1 8 7 1 1 5 7 8
+5 1 1 4 3 9 7 4 9 4 2 6 2 2 9 3 10
+3 47
+4 10 1
+8 9 6
+16 28
+10 7 9 3 1 5 8 4 9 2 3 5 8 2 5 7
+6 3 3 9 2 8 4 2 7 10 4 5 1 8 4 1
+7 19
+6 2 2 7 6 7 9
+1 5 3 10 1 8 3
+1 47
+1
+7
+9 7
+7 9 3 6 2 5 3 3 5
+8 6 5 1 2 9 9 1 1
+4 4
+3 6 7 5
+10 1 4 9
+14 9
+6 4 6 6 1 3 10 10 3 2 5 9 10 3
+3 8 7 7 2 6 6 8 4 8 10 7 3 8
+2 50
+3 9
+8 8
+20 1
+2 3 7 1 4 1 1 10 4 8 6 7 8 4 4 5 4 5 9 9
+6 4 6 6 4 1 10 8 7 6 3 3 4 8 7 1 2 3 7 2
+10 13
+6 8 8 9 10 2 4 7 1 2
+9 10 10 10 3 7 1 6 1 10
+10 33
+7 9 8 9 7 8 10 9 1 9
+3 7 6 10 1 9 4 5 5 2
+1 6
+6
+10
+19 49
+7 5 1 5 4 2 1 2 5 6 10 10 9 4 8 9 2 2 4
+6 9 7 7 1 7 7 3 9 4 10 6 7 6 2 9 6 4 2
+7 19
+5 5 10 2 3 2 7
+3 4 2 10 10 9 7
+14 15
+7 8 9 10 4 5 7 5 2 10 6 3 7 1
+3 2 5 10 9 10 10 3 7 4 6 10 2 6
+3 4
+8 3 9
+2 6 4
+15 42
+7 4 10 8 2 1 4 3 2 2 6 3 6 10 2
+10 8 6 3 9 10 2 6 2 2 4 4 6 6 3
+15 44
+2 4 7 9 8 7 1 2 10 6 3 1 8 7 6
+2 8 5 1 2 8 6 4 6 7 3 5 8 2 10
+4 19
+7 6 2 9
+7 1 4 7
+8 18
+2 3 5 2 9 8 7 3
+9 7 4 2 8 6 3 2
+1 50
+3
+6
+1 2
+5
+9
+15 25
+9 2 1 4 4 8 1 8 9 2 5 10 8 9 1
+1 3 7 9 7 10 10 10 1 4 1 7 7 7 7
+1 49
+3
+6
+5 20
+4 7 2 6 4
+7 7 4 5 3
+16 24
+5 1 2 3 8 2 2 7 1 7 3 4 1 8 6 10
+8 3 8 4 2 6 10 1 1 3 7 2 5 3 6 6
+7 10
+5 9 9 2 5 2 2
+7 6 5 6 8 9 10
+15 16
+10 3 5 1 9 1 7 3 4 8 1 1 1 4 7
+4 9 10 4 5 1 9 4 1 7 6 1 9 5 8
+15 7
+2 6 10 9 5 10 10 7 7 5 3 10 2 8 1
+4 9 10 7 2 9 5 9 6 7 3 8 6 2 8
+1 37
+10
+4
+19 30
+1 1 2 2 6 3 6 6 5 5 8 3 2 5 5 1 5 7 3
+4 5 10 8 3 10 3 10 1 6 9 2 1 8 1 10 8 1 1
+19 27
+2 7 9 10 8 10 10 4 9 2 2 10 2 1 2 8 5 9 9
+2 5 2 7 5 5 8 5 5 1 6 9 8 8 7 3 4 5 6
+20 14
+8 2 3 6 2 7 8 10 9 7 3 4 3 8 3 9 8 10 6 1
+3 7 5 10 8 9 9 4 9 4 3 7 9 5 6 5 10 2 4 5
+14 23
+9 5 8 2 2 2 6 2 2 5 10 3 1 9
+7 3 6 5 2 7 6 2 5 2 5 6 7 7
+3 5
+5 2 3
+1 2 9
+14 7
+8 7 2 4 7 1 10 9 5 2 9 6 6 2
+8 7 2 3 4 2 10 9 2 2 9 7 7 2
+9 20
+9 8 7 1 4 9 3 7 3
+4 6 9 2 3 5 1 8 5
+15 36
+10 9 5 5 3 5 8 8 7 10 2 3 10 4 8
+2 8 4 3 4 3 2 8 5 10 8 3 8 2 5
+19 17
+6 1 9 9 2 4 1 6 10 10 8 8 9 10 5 10 6 1 5
+3 9 7 5 7 6 3 5 4 1 1 8 3 5 7 5 7 10 8
+11 47
+9 9 6 10 1 3 10 8 1 9 8
+8 6 1 4 9 1 8 2 4 3 3
+17 16
+7 2 7 7 4 5 1 4 4 10 2 9 6 7 10 5 4
+2 6 9 10 9 8 1 5 9 1 3 7 1 8 1 4 4
+4 12
+8 8 8 8
+5 9 2 1
+20 40
+8 10 10 10 10 4 1 8 9 4 2 6 4 2 9 6 2 3 4 7
+1 1 7 1 5 4 7 7 3 2 7 4 4 3 7 8 3 7 1 5
+15 34
+4 5 2 4 7 7 9 8 4 4 6 10 5 1 4
+9 3 6 2 10 7 6 3 5 3 1 9 3 7 2
+1 45
+9
+8
+11 47
+2 8 3 6 1 1 10 6 8 5 10
+8 6 10 9 7 3 7 7 9 8 1
+8 31
+5 2 9 2 9 8 4 2
+10 6 2 2 6 7 3 6
+12 50
+1 5 2 9 2 2 1 8 9 8 4 8
+5 3 7 5 10 8 10 2 9 4 5 2
+19 20
+2 7 5 7 2 3 6 7 2 6 4 6 2 8 6 2 8 6 1
+8 1 10 4 5 5 5 8 9 9 6 9 9 2 9 10 8 7 4
+20 47
+7 7 2 3 2 8 6 1 5 6 7 10 10 2 3 1 8 3 5 1
+10 2 10 1 2 2 5 5 5 7 4 1 7 8 5 3 6 9 9 10
+13 30
+10 8 1 3 6 8 6 10 2 2 8 5 6
+6 2 7 7 8 5 3 3 9 8 6 5 3
+6 27
+1 7 6 5 4 10
+3 7 10 9 8 2
+10 25
+1 4 4 7 4 8 10 9 1 2
+9 5 2 6 6 10 6 3 1 1
+7 32
+1 5 8 9 4 1 4
+6 6 4 6 8 1 1
+4 49
+4 2 5 2
+4 2 2 10
+12 22
+5 7 3 5 5 2 7 3 4 8 1 5
+8 4 1 9 4 7 10 2 5 8 1 5
+1 30
+3
+2
+3 16
+6 6 4
+10 8 1
+1 38
+6
+9
+13 23
+6 5 4 10 5 8 3 1 10 10 4 4 1
+10 5 2 4 4 4 7 10 4 5 3 4 3
+4 39
+10 10 10 8
+4 8 5 5
+3 39
+3 10 8
+9 2 6
+19 31
+9 1 5 1 9 3 10 3 5 7 5 8 10 10 6 3 4 8 9
+9 4 2 10 1 8 3 5 9 1 4 5 3 5 7 5 2 6 5
+4 40
+4 1 10 4
+5 7 8 5
+3 31
+7 8 3
+7 8 9
+2 50
+7 10
+10 1
+`
+
+func solve(n int, k int64, a, h []int64) int {
 	ans := 0
 	l := 0
 	var sum int64
@@ -28,86 +331,111 @@ func expected(n int, k int64, a, h []int64) string {
 			ans = r - l + 1
 		}
 	}
-	return fmt.Sprintf("%d\n", ans)
+	return ans
 }
 
-func runCase(exe, input, expect string) error {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(exe, ".go") {
-		cmd = exec.Command("go", "run", exe)
-	} else {
-		cmd = exec.Command(exe)
+type testCase struct {
+	input    string
+	expected string
+}
+
+func loadCases() ([]testCase, error) {
+	fields := strings.Fields(testcaseData)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no testcases")
 	}
+	t, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return nil, fmt.Errorf("bad test count: %w", err)
+	}
+	pos := 1
+	cases := make([]testCase, 0, t)
+	for caseIdx := 0; caseIdx < t; caseIdx++ {
+		if pos+2 > len(fields) {
+			return nil, fmt.Errorf("case %d: incomplete header", caseIdx+1)
+		}
+		n, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return nil, fmt.Errorf("case %d: bad n: %w", caseIdx+1, err)
+		}
+		k, err := strconv.ParseInt(fields[pos+1], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("case %d: bad k: %w", caseIdx+1, err)
+		}
+		pos += 2
+		if pos+n > len(fields) {
+			return nil, fmt.Errorf("case %d: not enough a values", caseIdx+1)
+		}
+		a := make([]int64, n)
+		aStr := make([]string, n)
+		for i := 0; i < n; i++ {
+			val, err := strconv.ParseInt(fields[pos+i], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("case %d: bad a[%d]: %w", caseIdx+1, i, err)
+			}
+			a[i] = val
+			aStr[i] = fields[pos+i]
+		}
+		pos += n
+		if pos+n > len(fields) {
+			return nil, fmt.Errorf("case %d: not enough h values", caseIdx+1)
+		}
+		h := make([]int64, n)
+		hStr := make([]string, n)
+		for i := 0; i < n; i++ {
+			val, err := strconv.ParseInt(fields[pos+i], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("case %d: bad h[%d]: %w", caseIdx+1, i, err)
+			}
+			h[i] = val
+			hStr[i] = fields[pos+i]
+		}
+		pos += n
+		input := fmt.Sprintf("1\n%d %d\n%s\n%s\n", n, k, strings.Join(aStr, " "), strings.Join(hStr, " "))
+		cases = append(cases, testCase{
+			input:    input,
+			expected: strconv.Itoa(solve(n, k, a, h)),
+		})
+	}
+	if pos != len(fields) {
+		return nil, fmt.Errorf("extra data after parsing testcases")
+	}
+	return cases, nil
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
-	got := strings.TrimSpace(out.String())
-	expect = strings.TrimSpace(expect)
-	if got != expect {
-		return fmt.Errorf("expected %q got %q", expect, got)
-	}
-	return nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("Usage: go run verifierF.go /path/to/binary")
+		fmt.Println("usage: verifierF /path/to/binary")
 		os.Exit(1)
 	}
-	exe := os.Args[1]
-	data, err := os.ReadFile("testcasesF.txt")
+	cases, err := loadCases()
 	if err != nil {
-		fmt.Println("could not read testcasesF.txt:", err)
+		fmt.Fprintf(os.Stderr, "failed to load cases: %v\n", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(strings.TrimSpace(scan.Text()))
-	for caseIdx := 0; caseIdx < t; caseIdx++ {
-		if !scan.Scan() {
-			fmt.Println("bad file")
+	for idx, tc := range cases {
+		got, err := run(os.Args[1], tc.input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		parts := strings.Fields(scan.Text())
-		if len(parts) != 2 {
-			fmt.Println("bad file")
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(parts[0])
-		k, _ := strconv.ParseInt(parts[1], 10, 64)
-		if !scan.Scan() {
-			fmt.Println("bad file")
-			os.Exit(1)
-		}
-		aParts := strings.Fields(scan.Text())
-		if !scan.Scan() {
-			fmt.Println("bad file")
-			os.Exit(1)
-		}
-		hParts := strings.Fields(scan.Text())
-		aArr := make([]int64, n)
-		hArr := make([]int64, n)
-		for i := 0; i < n && i < len(aParts); i++ {
-			val, _ := strconv.ParseInt(aParts[i], 10, 64)
-			aArr[i] = val
-		}
-		for i := 0; i < n && i < len(hParts); i++ {
-			val, _ := strconv.ParseInt(hParts[i], 10, 64)
-			hArr[i] = val
-		}
-		input := fmt.Sprintf("1\n%d %d\n%s\n%s\n", n, k, strings.Join(aParts, " "), strings.Join(hParts, " "))
-		exp := expected(n, k, aArr, hArr)
-		if err := runCase(exe, input, exp); err != nil {
-			fmt.Printf("case %d failed: %v\ninput:\n%s", caseIdx+1, err, input)
+		if got != tc.expected {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", idx+1, tc.expected, got, tc.input)
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

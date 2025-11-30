@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,6 +9,7 @@ import (
 	"strings"
 )
 
+// gcd mirrors 1525A.go.
 func gcd(a, b int) int {
 	for b != 0 {
 		a, b = b, a%b
@@ -17,19 +17,148 @@ func gcd(a, b int) int {
 	return a
 }
 
-func expected(k int) int {
-	g := gcd(k, 100)
-	return 100 / g
+type testCase struct {
+	k int
 }
 
-func runProg(prog, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(prog, ".go") {
-		cmd = exec.Command("go", "run", prog)
-	} else {
-		cmd = exec.Command(prog)
+// Embedded testcases from testcasesA.txt.
+const testcaseData = `
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+`
+
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcaseData), "\n")
+	res := make([]testCase, 0, len(lines))
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		k, err := strconv.Atoi(line)
+		if err != nil {
+			return nil, fmt.Errorf("case %d bad integer: %v", i+1, err)
+		}
+		res = append(res, testCase{k: k})
 	}
-	cmd.Stdin = strings.NewReader(input)
+	if len(res) == 0 {
+		return nil, fmt.Errorf("no test data")
+	}
+	return res, nil
+}
+
+// solve mirrors 1525A.go.
+func solve(tc testCase) string {
+	g := gcd(tc.k, 100)
+	return fmt.Sprintf("%d", 100/g)
+}
+
+func runCandidate(bin string, tcs []testCase) (string, error) {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d\n", len(tcs)))
+	for _, tc := range tcs {
+		sb.WriteString(fmt.Sprintf("%d\n", tc.k))
+	}
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(sb.String())
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
 	cmd.Stdout = &out
@@ -46,40 +175,29 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesA.txt")
+
+	tests, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to open testcases:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		k, err := strconv.Atoi(line)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "bad integer on line %d\n", idx)
-			os.Exit(1)
-		}
-		input := fmt.Sprintf("1\n%d\n", k)
-		want := fmt.Sprintf("%d", expected(k))
-		got, err := runProg(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
-			os.Exit(1)
-		}
-		if strings.TrimSpace(got) != want {
-			fmt.Printf("case %d failed: expected %s got %s\n", idx, want, got)
-			os.Exit(1)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "scanner error:", err)
+
+	got, err := runCandidate(bin, tests)
+	if err != nil {
+		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+	outputs := strings.Fields(got)
+	if len(outputs) != len(tests) {
+		fmt.Printf("expected %d outputs got %d\n", len(tests), len(outputs))
+		os.Exit(1)
+	}
+	for i, tc := range tests {
+		expect := solve(tc)
+		if outputs[i] != expect {
+			fmt.Printf("case %d failed: expected %s got %s\n", i+1, expect, outputs[i])
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

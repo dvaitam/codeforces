@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,7 +9,110 @@ import (
 	"strings"
 )
 
-func expected(arr []int) int64 {
+const testcaseData = `
+2 2 2
+12 26 5 23 25 21 27 9 8 19 6 19 1
+19 21 5 13 20 12 25 23 27 16 30 11 17 29 14 16 8 28 1 27
+1 11
+15 29 10 29 12 13 28 28 16 5 17 5 7 7 0 5
+11 5 4 16 16 11 16 21 17 5 28 14
+14 23 16 29 29 24 11 25 18 11 11 27 30 14 5
+13 22 23 14 20 16 7 15 8 29 15 16 16 26
+12 21 28 14 28 28 14 11 18 23 29 17 23
+15 15 21 7 30 10 26 22 26 5 28 29 19 8 24 29
+16 9 9 30 25 22 26 16 17 16 16 20 19 18 13 9 23
+7 15 16 11 29 21 19 28
+3 25 26 10
+1 29
+7 23 3 1 18 20 1 8
+19 7 21 28 29 3 24 16 4 27 8 7 26 6 30 28 1 13 28 22
+2 1 11
+12 5 7 21 0 2 3 30 2 0 1 23 29
+1 11
+9 4 26 29 5 23 5 16 22 0
+13 18 1 25 7 4 1 0 11 30 19 20 23 23
+4 9 10 15 0
+10 14 17 24 19 23 1 28 8 24 12
+20 22 4 15 30 7 2 21 21 10 26 3 0 14 25 27 30 4 16 18 24
+13 15 16 10 4 27 30 10 8 8 19 13 20 0
+18 30 4 21 1 8 1 4 5 5 3 14 20 7 16 29 22 29 1
+8 7 22 14 2 8 2 18 7
+20 25 25 19 22 11 8 21 13 8 16 24 0 4 1 12 13 5 3 16 23
+3 7 3 3
+1 5
+8 3 6 0 16 21 14 14 9
+18 20 12 6 21 29 24 30 6 23 25 13 13 16 0 18 18 1 28
+14 29 16 18 5 29 3 21 25 15 11 0 16 30 29
+4 19 11 9 22
+12 9 0 27 21 13 3 3 9 6 26 24 21
+1 25
+15 1 13 20 15 14 6 28 18 19 2 0 9 0 11 9
+3 7 24 15
+7 3 18 11 12 22 14 4
+12 12 28 3 8 3 3 2 19 27 10 20 12
+7 22 3 0 19 21 15 24
+2 23 22
+16 9 11 30 14 4 25 11 8 15 16 27 15 23 30 23 25
+14 29 15 26 21 9 12 7 5 15 19 8 17 13 22
+3 18 23 26
+19 3 2 11 5 17 4 25 13 28 2 25 2 29 28 21 25 20 1 4
+10 12 7 22 21 28 21 10 14 5 16
+10 3 4 17 30 24 13 3 10 16 7
+17 8 5 28 5 14 30 22 7 12 27 11 25 24 18 23 4 14
+15 23 0 25 19 12 28 23 5 12 16 1 15 8 12 8
+14 22 20 15 11 30 17 10 22 23 29 21 2 24 26
+8 17 19 6 12 26 21 12 28
+1 10
+15 16 22 29 28 14 20 5 26 3 0 12 30 6 23 18
+20 12 28 6 28 3 12 26 17 24 25 6 8 23 29 18 18 6 15 25 19
+5 0 19 21 13 15
+9 16 18 5 14 22 6 30 24 2
+12 0 28 15 17 26 21 21 2 24 18 15 29
+11 14 8 28 16 14 0 2 19 24 11 5
+13 8 21 20 25 26 27 23 4 1 5 15 12 14
+10 4 0 9 17 14 30 0 11 1 17
+13 18 14 6 27 21 9 15 20 4 15 22 17 22
+10 2 8 26 10 9 10 20 30 25 9
+13 16 26 29 2 16 20 6 12 19 16 27 27 4
+17 20 2 9 1 7 30 14 17 7 16 8 1 30 3 3 21 26
+13 27 11 6 10 11 2 10 14 11 5 15 14 27
+10 14 28 4 29 22 14 20 6 29 8
+11 5 3 28 7 15 6 24 21 27 11 5
+12 4 25 4 7 8 25 17 20 12 12 25 26
+11 8 28 23 29 19 16 18 22 23 30 10
+13 24 22 27 22 29 20 24 22 9 17 19 20 21
+3 11 9 12
+16 5 8 30 28 11 14 15 2 28 29 5 10 30 12 4 30
+1 3
+12 5 11 2 29 28 28 23 24 20 13 0 17
+11 7 26 26 19 12 17 9 15 20 28 4
+12 10 6 29 15 3 4 25 6 10 8 4 13
+12 8 2 10 6 7 22 7 23 19 1 10 30
+12 20 24 19 1 27 4 5 27 2 13 14 24
+9 4 10 16 18 27 3 10 20 24
+20 30 12 7 1 12 24 15 15 19 27 10 17 26 19 19 2 18 16 17 21
+16 12 26 22 14 5 13 12 16 14 1 28 3 14 18 4 3
+17 29 5 2 12 9 14 25 22 0 8 3 21 11 7 5 0 4
+14 21 2 10 26 20 14 1 27 28 15 7 2 15 4
+18 0 4 22 16 17 1 1 6 17 29 0 26 26 16 10 21 16 28
+8 4 11 15 0 4 17 3 7
+4 14 6 25 1
+20 6 20 12 10 19 20 27 12 28 29 22 16 16 24 29 21 5 16 3 26
+5 20 30 6 5 12
+7 9 10 13 4 13 4 12
+11 25 9 25 3 17 3 15 8 9 16 24
+16 8 7 13 22 4 22 17 21 3 0 19 17 24 6 6 6
+13 18 1 20 4 20 0 23 8 22 23 15 17 1
+8 26 4 19 10 1 22 6 3
+5 20 22 17 29 5
+3 21 28 27
+15 20 9 30 6 5 26 10 22 26 8 27 28 16 18 2
+14 28 13 21 23 1 14 9 21 27 3 20 22 23 8
+1 6
+14 10 8 17 23 12 18 16 23 29 28 6 13 24 4
+`
+
+func solve(arr []int) int64 {
 	n := len(arr)
 	freq := make(map[int]int)
 	for _, v := range arr {
@@ -40,13 +142,52 @@ func expected(arr []int) int64 {
 	return costA
 }
 
-func run(bin string, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+type testCase struct {
+	input    string
+	expected string
+}
+
+func loadCases() ([]testCase, error) {
+	lines := strings.Split(testcaseData, "\n")
+	cases := []testCase{}
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		n, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: bad n: %w", idx+1, err)
+		}
+		if len(parts) != n+1 {
+			return nil, fmt.Errorf("line %d: expected %d values, got %d", idx+1, n+1, len(parts))
+		}
+		arr := make([]int, n)
+		vals := make([]string, n)
+		for i := 0; i < n; i++ {
+			v, err := strconv.Atoi(parts[1+i])
+			if err != nil {
+				return nil, fmt.Errorf("line %d: bad value: %w", idx+1, err)
+			}
+			arr[i] = v
+			vals[i] = parts[1+i]
+		}
+		var sb strings.Builder
+		sb.WriteString("1\n")
+		fmt.Fprintf(&sb, "%d\n", n)
+		sb.WriteString(strings.Join(vals, " "))
+		sb.WriteByte('\n')
+		cases = append(cases, testCase{
+			input:    sb.String(),
+			expected: strconv.FormatInt(solve(arr), 10),
+		})
 	}
+	return cases, nil
+}
+
+func run(bin string, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -61,69 +202,24 @@ func run(bin string, input string) (string, error) {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierD.go /path/to/binary")
+		fmt.Println("usage: verifierD /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	f, err := os.Open("testcasesD.txt")
+	cases, err := loadCases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to load cases: %v\n", err)
 		os.Exit(1)
 	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		parts := strings.Fields(line)
-		if len(parts) < 1 {
-			fmt.Printf("test %d: invalid line\n", idx)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(parts[0])
-		if len(parts) != 1+n {
-			fmt.Printf("test %d: expected %d numbers, got %d\n", idx, n+1, len(parts))
-			os.Exit(1)
-		}
-		arr := make([]int, n)
-		for i := 0; i < n; i++ {
-			v, _ := strconv.Atoi(parts[1+i])
-			arr[i] = v
-		}
-		exp := expected(arr)
-		var sb strings.Builder
-		sb.WriteString("1\n")
-		fmt.Fprintf(&sb, "%d\n", n)
-		for i, v := range arr {
-			if i > 0 {
-				sb.WriteByte(' ')
-			}
-			sb.WriteString(fmt.Sprintf("%d", v))
-		}
-		sb.WriteByte('\n')
-		out, err := run(bin, sb.String())
+	for idx, tc := range cases {
+		got, err := run(os.Args[1], tc.input)
 		if err != nil {
-			fmt.Printf("test %d: %v\n", idx, err)
+			fmt.Printf("case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got, err := strconv.ParseInt(strings.TrimSpace(out), 10, 64)
-		if err != nil {
-			fmt.Printf("test %d: cannot parse output %q\n", idx, out)
-			os.Exit(1)
-		}
-		if got != exp {
-			fmt.Printf("test %d failed: expected %d got %d\n", idx, exp, got)
+		if got != tc.expected {
+			fmt.Printf("case %d failed: expected %s got %s\ninput:\n%s", idx+1, tc.expected, got, tc.input)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

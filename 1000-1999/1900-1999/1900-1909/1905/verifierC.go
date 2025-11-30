@@ -1,14 +1,115 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 )
+
+const testcases = `c
+lf
+itgtb
+vfnumzxqlr
+qibalokm
+qfrfhha
+kfe
+qlqvrfozn
+ylzsllofy
+wxouqhp
+pqqzl
+olsxrxop
+kwft
+ypjjz
+rqqutsnjx
+pqlv
+czkxagxdbs
+i
+hvdyqeihgb
+wybbllf
+vacd
+ab
+l
+efxfq
+m
+bzhebaltux
+jk
+ajorytxb
+ymtwe
+hcvvkdao
+qsy
+pqkekii
+nuawrevbib
+ffd
+uhqwbhhw
+cicshtzz
+wlivniqyae
+m
+fdqxchd
+af
+dgaq
+ojrumgvy
+xznn
+assbnqsfd
+laqdtljw
+javndd
+gyvaz
+bnupogst
+aj
+l
+xchyp
+dslm
+eylmdidd
+tk
+gwdatvp
+x
+jloezlip
+pxxznpvjm
+fpti
+nwvwcsxsd
+lf
+eznczcvzu
+e
+mhwvv
+ofqjde
+yndkqhwqi
+fow
+mlzy
+xeooxaztmx
+mqb
+imiwxnwu
+lrkwxvcy
+rtgm
+uakoqwo
+dam
+xstm
+dmry
+ixss
+pzte
+t
+piqsfow
+ycla
+rvvcyspv
+oiqoac
+ylfyyzmivu
+bfp
+ovjeajr
+albrmsog
+puepw
+wjcikjkuz
+uumqc
+ugmtqezqu
+jb
+orhq
+bddvz
+lgklcko
+fpojoe
+ugikfdhp
+yvlf
+ezehiz`
 
 func run(bin, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -30,68 +131,49 @@ func run(bin, input string) (string, error) {
 
 func solve(s string) int {
 	n := len(s)
-	
-	// Find the lexicographically largest subsequence
-	// We can iterate from right to left to find this.
-	// The elements included are those >= max suffix so far.
-	type pair struct {
-		val byte
-		idx int
+	if sort.SliceIsSorted([]byte(s), func(i, j int) bool { return s[i] < s[j] }) {
+		return 0
 	}
-	var seq []pair
+
+	// Collect lexicographically largest non-increasing subsequence from right to left.
+	var subIdx []int
 	suffixMax := byte(0)
 	for i := n - 1; i >= 0; i-- {
 		if s[i] >= suffixMax {
-			seq = append(seq, pair{s[i], i})
+			subIdx = append(subIdx, i)
 			suffixMax = s[i]
 		}
 	}
-	// seq is in reverse order (right to left).
-	// Let's reverse it to be left to right.
-	for i, j := 0, len(seq)-1; i < j; i, j = i+1, j-1 {
-		seq[i], seq[j] = seq[j], seq[i]
+	// Reverse to maintain increasing index order.
+	for i, j := 0, len(subIdx)-1; i < j; i, j = i+1, j-1 {
+		subIdx[i], subIdx[j] = subIdx[j], subIdx[i]
 	}
-	
-	// Simulate the cyclic shift on the chosen indices.
-	// The elements at indices seq[0].idx, seq[1].idx, ..., seq[k].idx
-	// will be replaced by seq[k].val, seq[0].val, ..., seq[k-1].val respectively.
-	// Effectively, the new char at seq[i].idx is seq[(i-1)%k].val if we index 0..k-1.
-	// BUT: cyclic shift to RIGHT.
-	// t_1 t_2 ... t_m -> t_m t_1 ... t_{m-1}
-	// So position seq[0].idx gets seq[m-1].val
-	// Position seq[1].idx gets seq[0].val
-	// ...
-	// Position seq[i].idx gets seq[i-1].val
-	
-	t := []byte(s)
-	m := len(seq)
-	for i := 0; i < m; i++ {
-		prevIdx := (i - 1 + m) % m
-		t[seq[i].idx] = seq[prevIdx].val
+
+	m := len(subIdx)
+	orig := []byte(s)
+	subVals := make([]byte, m)
+	for i, idx := range subIdx {
+		subVals[i] = orig[idx]
 	}
-	
-	// Check if sorted
-	if !sort.SliceIsSorted(t, func(i, j int) bool { return t[i] < t[j] }) {
+
+	// Apply cyclic right shift on selected indices.
+	for i, idx := range subIdx {
+		prev := (i - 1 + m) % m
+		orig[idx] = subVals[prev]
+	}
+
+	if !sort.SliceIsSorted(orig, func(i, j int) bool { return orig[i] < orig[j] }) {
 		return -1
 	}
-	
-	// If sorted, the number of operations is m - count(max_char in seq)
-	// Actually, wait. The logic is simpler.
-	// The subsequence is already non-increasing. 
-	// Example: z z z y x c b a
-	// Shifting right makes: a z z z y x c b (not sorted if rest is interlaced badly)
-	// 
-	// Actually, if the resulting string is sorted, then the cost is:
-	// (number of elements in the subsequence) - (number of occurrences of the maximum character in the subsequence)
-	
-	maxVal := seq[0].val
+
+	// Cost is length minus count of maximal char in the chosen subsequence.
+	maxVal := subVals[0]
 	countMax := 0
-	for _, p := range seq {
-		if p.val == maxVal {
+	for _, v := range subVals {
+		if v == maxVal {
 			countMax++
 		}
 	}
-	
 	return m - countMax
 }
 
@@ -101,39 +183,30 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesC.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		s := strings.TrimSpace(scanner.Text())
+	cases := strings.Split(testcases, "\n")
+	count := 0
+	for idx, line := range cases {
+		s := strings.TrimSpace(line)
 		if s == "" {
 			continue
 		}
-		idx++
-		
-		// Calculate expected result using our correct solve function
-		expected := solve(s)
-		want := fmt.Sprintf("%d", expected)
-		
+		count++
+		want := solve(s)
 		input := fmt.Sprintf("1\n%d\n%s\n", len(s), s)
-		got, err := run(bin, input)
+		gotStr, err := run(bin, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != want {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\nInput: %s\n", idx, want, got, s)
+		got, err := strconv.Atoi(strings.TrimSpace(gotStr))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d output parse error: %v\n", idx+1, err)
+			os.Exit(1)
+		}
+		if got != want {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %d got %d\nInput: %s\n", idx+1, want, got, s)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", count)
 }

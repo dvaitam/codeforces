@@ -8,7 +8,6 @@ func main() {
 	for ; t > 0; t-- {
 		var n int
 		fmt.Scan(&n)
-		arr := []int{}
-		fmt.Println(arr[n]) // panic index out of range
+		fmt.Println(n * n)
 	}
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,16 +9,145 @@ import (
 	"strings"
 )
 
-const N = 1000000
+type testCase struct {
+	c int
+}
 
-var ans []int32
+// Embedded testcases from testcasesG.txt.
+const testcaseData = `
+45
+811
+961
+732
+932
+144
+328
+959
+684
+955
+764
+368
+463
+766
+196
+915
+410
+475
+862
+823
+88
+880
+404
+375
+11
+292
+217
+599
+365
+384
+855
+984
+641
+8
+98
+457
+816
+863
+778
+416
+315
+717
+178
+307
+753
+990
+961
+668
+225
+763
+338
+934
+341
+217
+991
+42
+53
+983
+20
+725
+187
+616
+474
+333
+990
+731
+38
+273
+817
+608
+539
+925
+912
+279
+988
+68
+736
+656
+256
+904
+933
+886
+13
+134
+770
+424
+356
+277
+828
+905
+872
+511
+40
+396
+114
+313
+709
+430
+770
+255
+`
 
-func precompute() {
-	ans = make([]int32, N+1)
-	lp := make([]int32, N+1)
-	pw := make([]int32, N+1)
-	sumP := make([]int32, N+1)
-	sigma := make([]int32, N+1)
+func parseTestcases() ([]testCase, int, error) {
+	lines := strings.Split(strings.TrimSpace(testcaseData), "\n")
+	res := make([]testCase, 0, len(lines))
+	maxC := 0
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		v, err := strconv.Atoi(line)
+		if err != nil {
+			return nil, 0, fmt.Errorf("case %d bad integer: %v", i+1, err)
+		}
+		if v > maxC {
+			maxC = v
+		}
+		res = append(res, testCase{c: v})
+	}
+	if len(res) == 0 {
+		return nil, 0, fmt.Errorf("no test data")
+	}
+	return res, maxC, nil
+}
+
+// precompute mirrors 1512G.go but with configurable limit.
+func precompute(limit int) []int32 {
+	ans := make([]int32, limit+1)
+	lp := make([]int32, limit+1)
+	pw := make([]int32, limit+1)
+	sumP := make([]int32, limit+1)
+	sigma := make([]int32, limit+1)
 	primes := make([]int32, 0)
 
 	pw[1] = 1
@@ -27,7 +155,7 @@ func precompute() {
 	sigma[1] = 1
 	ans[1] = 1
 
-	for i := 2; i <= N; i++ {
+	for i := 2; i <= limit; i++ {
 		if lp[i] == 0 {
 			lp[i] = int32(i)
 			primes = append(primes, int32(i))
@@ -38,7 +166,7 @@ func precompute() {
 		li := lp[i]
 		for _, p32 := range primes {
 			p := int(p32)
-			if p > int(li) || i*p > N {
+			if p > int(li) || i*p > limit {
 				break
 			}
 			idx := i * p
@@ -54,49 +182,28 @@ func precompute() {
 			}
 		}
 		s := sigma[i]
-		if int(s) <= N && ans[s] == 0 {
+		if int(s) <= limit && ans[s] == 0 {
 			ans[s] = int32(i)
 		}
 	}
+	return ans
 }
 
-func parseTestcasesG(path string) ([]int, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	var cases []int
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		v, _ := strconv.Atoi(line)
-		cases = append(cases, v)
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return cases, nil
-}
-
-func solveG(c int) string {
-	if c <= N && ans[c] != 0 {
+func solve(ans []int32, c int) string {
+	if c < len(ans) && ans[c] != 0 {
 		return strconv.Itoa(int(ans[c]))
 	}
 	return "-1"
 }
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+func runCandidate(bin string, tests []testCase) (string, error) {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d\n", len(tests)))
+	for _, tc := range tests {
+		sb.WriteString(fmt.Sprintf("%d\n", tc.c))
 	}
-	cmd.Stdin = strings.NewReader(input)
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(sb.String())
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
 	cmd.Stdout = &out
@@ -112,37 +219,36 @@ func main() {
 		fmt.Println("usage: go run verifierG.go /path/to/binary")
 		os.Exit(1)
 	}
-	precompute()
 	bin := os.Args[1]
-	cases, err := parseTestcasesG("testcasesG.txt")
+
+	tests, maxC, err := parseTestcases()
 	if err != nil {
-		fmt.Println("failed to parse testcases:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d\n", len(cases)))
-	expected := make([]string, len(cases))
-	for i, c := range cases {
-		sb.WriteString(fmt.Sprintf("%d\n", c))
-		expected[i] = solveG(c)
+	limit := maxC
+	if limit < 1 {
+		limit = 1
 	}
+	ans := precompute(limit)
 
-	got, err := run(bin, sb.String())
+	got, err := runCandidate(bin, tests)
 	if err != nil {
 		fmt.Printf("failed: %v\n", err)
 		os.Exit(1)
 	}
 	outputs := strings.Fields(got)
-	if len(outputs) != len(expected) {
-		fmt.Printf("expected %d lines of output, got %d\n", len(expected), len(outputs))
+	if len(outputs) != len(tests) {
+		fmt.Printf("expected %d outputs got %d\n", len(tests), len(outputs))
 		os.Exit(1)
 	}
-	for i, exp := range expected {
-		if outputs[i] != exp {
-			fmt.Printf("case %d failed: expected %s got %s\n", i+1, exp, outputs[i])
+	for i, tc := range tests {
+		expect := solve(ans, tc.c)
+		if outputs[i] != expect {
+			fmt.Printf("case %d failed: expected %s got %s\n", i+1, expect, outputs[i])
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(cases))
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

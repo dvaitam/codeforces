@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,6 +8,116 @@ import (
 	"strconv"
 	"strings"
 )
+
+// Embedded copy of testcasesA.txt so the verifier is self-contained.
+const testcasesRaw = `
+3 1 2 3
+3 3 2 1
+5 1 3 5 2 4
+15 11 15 6 2 10 3 4 12 14 8 9 5 1 7 13
+11 4 9 10 7 6 1 8 11 5 2 3
+13 2 13 12 1 3 5 11 8 9 4 10 6 7
+5 5 2 3 1 4
+13 11 3 1 8 5 7 10 9 13 2 6 12 4
+13 11 7 4 3 12 1 6 10 13 5 2 8 9
+19 11 9 12 8 1 14 2 16 5 4 17 6 7 13 18 3 15 10 19
+5 4 3 1 5 2
+19 18 19 2 1 3 6 15 16 5 12 7 10 11 4 14 8 9 17 13
+17 17 16 9 13 14 10 8 3 6 15 2 5 12 1 4 7 11
+3 2 1 3
+3 2 3 1
+5 3 5 2 1 4
+3 2 1 3
+9 7 6 9 5 1 8 4 2 3
+5 2 5 4 1 3
+11 11 2 9 10 8 4 5 1 3 7 6
+9 7 1 3 2 9 4 8 6 5
+3 2 1 3
+7 4 2 6 1 7 5 3
+7 7 2 5 3 6 4 1
+15 15 4 13 7 10 6 12 2 8 1 9 3 5 11 14
+17 2 8 17 9 1 4 14 7 5 3 13 15 16 6 11 10 12
+13 2 10 13 6 5 11 1 9 7 8 12 4 3
+7 6 5 7 2 3 1 4
+19 10 3 15 12 13 6 17 18 9 4 7 19 8 14 5 11 16 2 1
+13 6 3 12 7 5 10 8 2 9 11 13 4 1
+7 3 2 5 7 6 4 1
+17 7 13 17 5 10 1 8 15 2 6 12 14 16 11 3 9 4
+19 15 10 1 13 5 4 17 3 9 6 7 14 8 19 18 16 2 12 11
+7 2 1 4 5 6 7 3
+13 4 12 7 6 8 9 2 3 5 11 1 10 13
+11 9 7 6 10 5 11 3 1 4 8 2
+13 13 12 10 1 6 3 4 8 9 11 2 7 5
+17 10 4 17 15 8 9 1 16 7 13 3 11 12 6 5 2 14
+3 3 2 1
+19 8 1 19 14 5 3 9 6 2 7 4 11 12 18 13 16 15 10 17
+13 12 5 7 3 6 10 11 4 8 9 1 13 2
+9 7 1 5 9 6 4 8 2 3
+5 3 2 1 4 5
+15 14 3 12 1 2 7 5 4 10 13 6 11 8 9 15
+13 2 6 8 13 4 12 10 7 11 5 3 9 1
+5 3 4 1 5 2
+3 1 3 2
+7 1 6 5 3 4 2 7
+19 6 16 1 18 11 15 10 8 14 9 5 4 13 7 12 19 3 2 17
+7 4 1 2 7 6 5 3
+17 5 2 8 11 12 6 17 4 16 3 1 15 14 7 13 10 9
+15 13 14 11 9 4 5 1 7 6 15 2 12 10 8 3
+5 5 3 1 2 4
+7 4 2 5 7 1 3 6
+17 14 1 13 3 17 9 7 5 16 6 11 15 8 12 10 2 4
+19 19 11 5 10 12 3 14 9 1 18 16 8 4 17 6 15 13 2 7
+19 5 6 18 9 4 8 1 11 12 15 13 16 7 3 2 10 19 14 17
+17 4 11 16 9 7 3 15 10 13 2 5 12 6 8 1 17 14
+3 3 2 1
+5 4 3 1 2 5
+9 4 6 5 9 8 7 3 1 2
+17 2 7 11 13 8 14 10 9 15 17 1 3 5 12 6 16 4
+5 4 2 1 3 5
+7 4 5 1 6 3 7 2
+11 2 10 8 11 4 9 5 3 1 7 6
+7 2 1 6 7 5 3 4
+15 15 12 3 9 10 7 14 1 13 8 4 2 6 11 5
+17 14 9 1 10 4 6 17 16 11 15 13 3 2 8 5 12 7
+15 10 2 5 14 1 7 11 13 12 15 9 6 8 4 3
+3 1 2 3
+17 10 14 12 8 17 4 6 16 3 9 15 11 13 2 5 7 1
+11 8 4 9 3 7 10 6 5 2 1 11
+17 16 12 7 14 15 3 8 1 2 10 17 11 13 5 6 9 4
+7 2 7 6 5 3 4 1
+19 17 3 1 13 2 16 10 6 8 15 5 12 19 9 11 14 4 18 7
+15 1 12 14 15 2 4 11 13 6 5 9 3 8 10 7
+17 17 16 7 13 6 9 14 11 4 10 1 8 12 3 5 15 2
+5 3 5 2 1 4
+5 4 3 2 1 5
+9 6 7 9 8 4 1 2 5 3
+15 10 4 1 9 5 2 14 8 15 13 12 11 7 6 3
+7 1 6 2 5 7 3 4
+9 7 3 6 9 1 5 2 8 4
+5 5 4 1 3 2
+9 1 4 8 7 3 9 6 2 5
+3 1 2 3
+17 7 11 13 15 14 3 2 17 10 1 5 6 4 8 12 9 16
+7 5 7 3 6 2 4 1
+17 13 12 4 5 1 17 3 8 9 16 6 14 15 2 10 11 7
+5 5 4 1 3 2
+11 9 6 1 2 8 4 3 7 10 5 11
+19 19 5 4 6 9 17 13 2 10 11 14 7 18 8 12 16 15 1 3
+9 9 3 1 6 5 4 7 2 8
+9 9 1 7 5 6 3 2 4 8
+19 3 17 4 11 6 1 2 12 5 15 14 16 9 8 13 19 7 18 10
+9 2 3 8 9 1 7 6 5 4
+15 9 8 3 1 7 15 13 14 4 6 10 12 2 5 11
+13 13 12 7 10 9 1 2 3 5 8 11 6 4
+7 5 3 7 1 6 2 4
+17 11 13 2 9 15 5 1 16 14 10 6 17 4 3 12 8 7
+
+`
+
+type testCase struct {
+	n   int
+	arr []int
+}
 
 func isSorted(a []int) bool {
 	for i := 0; i+1 < len(a); i++ {
@@ -19,23 +128,22 @@ func isSorted(a []int) bool {
 	return true
 }
 
-func expectedA(arr []int) int {
+func solveCase(tc testCase) int {
 	ans := 0
-	n := len(arr)
-	a := make([]int, n)
-	copy(a, arr)
+	a := make([]int, tc.n)
+	copy(a, tc.arr)
 	for {
 		if isSorted(a) {
 			break
 		}
 		if ans%2 == 0 {
-			for j := 0; j+1 < n; j += 2 {
+			for j := 0; j+1 < tc.n; j += 2 {
 				if a[j] > a[j+1] {
 					a[j], a[j+1] = a[j+1], a[j]
 				}
 			}
 		} else {
-			for j := 1; j+1 < n; j += 2 {
+			for j := 1; j+1 < tc.n; j += 2 {
 				if a[j] > a[j+1] {
 					a[j], a[j+1] = a[j+1], a[j]
 				}
@@ -46,20 +154,60 @@ func expectedA(arr []int) int {
 	return ans
 }
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
+	cases := make([]testCase, 0, len(lines))
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: parse n: %v", idx+1, err)
+		}
+		if len(fields) != 1+n {
+			return nil, fmt.Errorf("line %d: expected %d numbers got %d", idx+1, 1+n, len(fields))
+		}
+		tc := testCase{n: n, arr: make([]int, n)}
+		for i := 0; i < n; i++ {
+			v, err := strconv.Atoi(fields[1+i])
+			if err != nil {
+				return nil, fmt.Errorf("line %d: parse value: %v", idx+1, err)
+			}
+			tc.arr[i] = v
+		}
+		cases = append(cases, tc)
 	}
+	return cases, nil
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
+	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
 	return strings.TrimSpace(out.String()), nil
 }
@@ -69,58 +217,53 @@ func main() {
 		fmt.Println("usage: go run verifierA.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
 
-	file, err := os.Open("testcasesA.txt")
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		fields := strings.Fields(line)
-		n, _ := strconv.Atoi(fields[0])
-		if len(fields)-1 != n {
-			fmt.Fprintf(os.Stderr, "test %d bad length", idx)
-			os.Exit(1)
-		}
-		arr := make([]int, n)
-		for i := 0; i < n; i++ {
-			v, _ := strconv.Atoi(fields[i+1])
-			arr[i] = v
-		}
-		expected := expectedA(arr)
+	bin, cleanup, err := buildIfGo(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	for i, tc := range cases {
+		expected := solveCase(tc)
 		var sb strings.Builder
 		sb.WriteString("1\n")
-		sb.WriteString(fmt.Sprintf("%d\n", n))
-		for i := 0; i < n; i++ {
-			if i > 0 {
+		sb.WriteString(strconv.Itoa(tc.n))
+		sb.WriteByte('\n')
+		for idx, v := range tc.arr {
+			if idx > 0 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(fmt.Sprintf("%d", arr[i]))
+			sb.WriteString(strconv.Itoa(v))
 		}
 		sb.WriteByte('\n')
-		out, err := run(bin, sb.String())
+
+		got, err := runCandidate(bin, sb.String())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d: %v\n", idx, err)
+			fmt.Printf("case %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if out != fmt.Sprintf("%d", expected) {
-			fmt.Printf("test %d failed: expected %d got %s\n", idx, expected, out)
+		vals := strings.Fields(got)
+		if len(vals) != 1 {
+			fmt.Printf("case %d: expected single integer output, got %q\n", i+1, got)
+			os.Exit(1)
+		}
+		gotVal, err := strconv.Atoi(vals[0])
+		if err != nil {
+			fmt.Printf("case %d: non-integer output %q\n", i+1, vals[0])
+			os.Exit(1)
+		}
+		if gotVal != expected {
+			fmt.Printf("case %d failed\nexpected: %d\ngot: %d\n", i+1, expected, gotVal)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

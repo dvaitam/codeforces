@@ -1,15 +1,122 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 const modE = 51123987
+
+const testcaseData = `100
+10 jfbisldnik
+23 trquidrrzbakxntpzkvszhd
+14 nvcsiyrlxzebae
+13 lzalzkqszsmrw
+4 dtrg
+7 kurmebc
+30 bulgnswudngkcdxyzeihvxfgmnggaq
+9 nwzgqdzyt
+12 ukiqhpsgsbsv
+4 inud
+26 bdkkdtjdhzjzscdmpekhehebws
+2 op
+18 rhnhgtdkfwjdoogupi
+26 pgzovftgsmlnimfextrpdzhtlv
+28 siajogmhjskalbnxyaszurzaxbbn
+20 jokuarmdnizxbzkbbluz
+22 yvdtwxauqudsyrbgssnidd
+6 derhhp
+30 timgbqqpchemwvochhydenvpnitzgr
+2 rw
+22 mewpxszebjmspvotxznkyu
+28 rhcjrqhkxjhqnijzmkxkgdjjgdhn
+18 fkgnzohiqlmcspovdf
+21 dzqziiammgatfzbnnknzx
+13 bipvssacbetrh
+6 xkneqj
+30 yphucietgheawaoijxqamoztyufbfu
+28 aqmlckavoxqhimbnopfgudrqdqgu
+25 wxrmkihxtbkvicwztszfdoyap
+12 infbwqffnxww
+30 yxgjtrsbbhasyvylziozxtjiqklecu
+15 rdxdefkngrixlul
+9 qxaqzcvnv
+30 dswnozcxdxouemxfnrblnijecusork
+30 ztgrvzvvbhoxxuqnerrbxgjrgibqlw
+24 jmebgtjgojabnnrwawfvdlnh
+28 yiymqlsexckgvbmymikgqwyhsssb
+26 pzhgiffohbchmmnuyaetjwzjub
+19 gjpmdtvzwlcvolhtsbz
+4 lvog
+10 jxdyacvtng
+16 gprvxmqpfeaqocnu
+29 wkxfcsytkotgwpvznbfijrjvnysau
+16 cpjxovrlptcujgyn
+15 loueywplciusgse
+22 qjucfxarsxyvwrozrpifau
+29 nljnbwbbhnyucbmptgdiafptbcaie
+15 yfghuhrvabzopke
+21 cbvtbbuhmyyizapizdrec
+12 xkuqugrvtztz
+7 rqjqhff
+12 cdjnnqiqedlm
+4 fbnr
+1 s
+9 vxsxkhyab
+30 bahzkduxuwcjiobydnhiiystxvxder
+4 llzi
+30 lbcnjzliaepkhgcnlrvcffuthrcjwq
+25 ymbulgossgoqdogltkkwwttza
+27 nyuxdkmnlhelmmwrjwwvgzgczmg
+6 gbkzmu
+3 dzt
+18 tbleflonkjyjknxfov
+5 voenr
+21 lkdawewlkvgdwjltbdwou
+18 uthaopchcgguztglla
+10 wivaktblfn
+3 xvn
+30 rwevoprvukalacopwahqbvdmdnepss
+30 jsmarbsgftfofogaqybqppmiuyoktt
+18 uudyfsvuxuboppinhy
+26 bbxxkmphtsarugsykgwezjrrwf
+14 tdwimgctlmeyzv
+28 nzrpdinlzlymlynviagolgckamng
+19 nhuuxwuvnkdagujcgjc
+7 fhswynu
+11 jfhuqpayepu
+20 cajoxigqreuvkjefykmw
+10 lopnftogiy
+14 unpbkzpkubkplu
+21 occxrjujtnkuuodlvounr
+2 mr
+12 ualyaspqtnhv
+23 bjqzrgtrgvdqmdrbikkbovx
+25 eqsatuzttnipitxrvhjfhgpxh
+8 yilgswke
+3 zmg
+25 gttgmfpwjtcxdywjgablcojjp
+13 ihvrlqtdukmld
+18 yetptsmqlzirevezce
+3 ibw
+29 uhuqlxmrlxdwxzqwsxpaygrznanvn
+19 rrhdcknrjugpofuuvss
+10 qrpzldxaky
+12 oeribcofzpuj
+21 qefscvhqvwfobdzqlyknl
+8 dnzxpxts
+17 cstwsojakrpdvvzrx
+10 dtzlbysyfz
+10 vfkphmkuwr`
+
+type testCase struct {
+	input    string
+	expected string
+}
 
 func minE(a, b int) int {
 	if a < b {
@@ -110,55 +217,77 @@ func solveCaseE(s string) int64 {
 	return ans
 }
 
+func loadCases() ([]testCase, error) {
+	fields := strings.Fields(testcaseData)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no testcases")
+	}
+	pos := 0
+	t, err := strconv.Atoi(fields[pos])
+	if err != nil {
+		return nil, fmt.Errorf("bad test count: %w", err)
+	}
+	pos++
+	cases := make([]testCase, 0, t)
+	for caseNum := 0; caseNum < t; caseNum++ {
+		if pos >= len(fields) {
+			return nil, fmt.Errorf("case %d: missing n", caseNum+1)
+		}
+		n, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return nil, fmt.Errorf("case %d: bad n: %w", caseNum+1, err)
+		}
+		pos++
+		if pos >= len(fields) {
+			return nil, fmt.Errorf("case %d: missing string", caseNum+1)
+		}
+		s := fields[pos]
+		pos++
+		if len(s) != n {
+			return nil, fmt.Errorf("case %d: length mismatch", caseNum+1)
+		}
+		input := fmt.Sprintf("%d\n%s\n", n, s)
+		cases = append(cases, testCase{
+			input:    input,
+			expected: strconv.FormatInt(solveCaseE(s), 10),
+		})
+	}
+	return cases, nil
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run verifierE.go /path/to/binary")
+	if len(os.Args) != 2 {
+		fmt.Println("usage: verifierE /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesE.txt")
+	cases, err := loadCases()
 	if err != nil {
-		fmt.Println("could not read testcasesE.txt:", err)
+		fmt.Fprintf(os.Stderr, "failed to load testcases: %v\n", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	expected := make([]string, t)
-	for i := 0; i < t; i++ {
-		scan.Scan()
-		n, _ := strconv.Atoi(scan.Text())
-		scan.Scan()
-		s := scan.Text()
-		_ = n
-		expected[i] = fmt.Sprintf("%d", solveCaseE(s))
-	}
-	cmd := exec.Command(os.Args[1])
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println("execution failed:", err)
-		os.Exit(1)
-	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
-	for i := 0; i < t; i++ {
-		if !outScan.Scan() {
-			fmt.Printf("missing output for test %d\n", i+1)
+	for idx, tc := range cases {
+		got, err := run(os.Args[1], tc.input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got := outScan.Text()
-		if got != expected[i] {
-			fmt.Printf("test %d failed: expected %s got %s\n", i+1, expected[i], got)
+		if got != tc.expected {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, tc.expected, got)
 			os.Exit(1)
 		}
 	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
-		os.Exit(1)
-	}
-	fmt.Println("All tests passed!")
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

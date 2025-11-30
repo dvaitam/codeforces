@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,27 +9,152 @@ import (
 	"strings"
 )
 
-func runCandidate(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var errb bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
-	}
-	return strings.TrimSpace(out.String()), nil
+type testCase struct {
+	n int
+	k int
+	s string
 }
 
-func expected(n, k int, s string) int {
-	first := -1
-	last := -1
+// Embedded testcases from testcasesB.txt.
+const testcaseData = `
+9 2 ....*.*..
+25 7 ...*.....................
+25 14 ...................*.....
+1 1 *
+15 10 .*.............
+2 1 *.
+1 1 *
+47 2 .................................*.*...........
+36 15 ......................*...*.........
+19 1 .............*.....
+36 7 ...........*........................
+47 19 .......*.......................................
+47 46 ................................*..............
+28 17 ..........................*.
+13 5 ....*........
+32 26 ..*.............................
+48 26 ..........................*.....................
+24 18 ......................*.
+48 24 .....*..........................................
+33 7 ..........*......................
+26 12 ...............*..........
+31 2 .........*.....................
+40 38 .....................................*..
+11 3 ........**.
+35 15 .........................*.........
+37 23 .............................*.......
+43 36 ......................................*....
+1 1 *
+36 14 ...........................*........
+31 28 ...........*...................
+13 9 ......*......
+23 14 ...........*........*..
+40 22 .............................*..........
+15 11 ..*............
+12 2 ........*...
+17 2 ..**.............
+49 49 .................*.......*.......................
+12 6 ....*.*.*...
+42 19 .............................*............
+32 31 .......*............*...........
+13 5 .*....*......
+39 28 .*............*.......................*
+29 23 ................*............
+35 15 .................................*.
+34 2 .........................*........
+21 21 .............*......*
+4 3 *...
+20 10 .....*..............
+17 5 *................
+3 3 *..
+37 30 ..........*..........................
+50 46 .......................................*..........
+25 7 ...........*....*........
+28 19 ......*.....................
+43 25 ..................*........................
+2 2 .*
+2 1 *.
+37 9 .....................*...............
+18 4 ............*.....
+23 22 .................*.....
+35 16 ....*..............................
+6 2 .**.*.
+17 12 ..........*......
+19 8 ...............*.*.
+27 3 ............*..............
+10 3 .....*..*.
+25 3 ..................*......
+37 6 .................*...................
+19 19 .................*.
+30 29 ........*.*...................
+1 1 *
+3 1 *..
+38 27 ..........*.....*.....................
+11 2 ......*....
+25 18 .........*...............
+46 31 ....................*....................*....
+2 1 .*
+21 15 ............*........
+5 1 ..*..
+30 4 ........*...*.................
+17 6 ......*..........
+16 12 ..*.............
+6 4 *.....
+42 22 ..............*...........................
+20 2 ..........*.**......
+38 6 ...............*.*....................
+18 18 ..*...............
+2 1 .*
+23 16 ...............*.......
+10 2 ........*.
+21 3 ................*....
+12 3 ..*.........
+21 10 ...*.................
+39 19 ........*..............................
+10 9 *.........
+40 36 .............*.........................*
+4 2 ..*.
+44 29 ...........................*................
+35 29 ..................................*
+26 11 .....**...................
+`
+
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcaseData), "\n")
+	res := make([]testCase, 0, len(lines))
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			return nil, fmt.Errorf("case %d invalid data", i+1)
+		}
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, fmt.Errorf("case %d bad n: %v", i+1, err)
+		}
+		k, err := strconv.Atoi(fields[1])
+		if err != nil {
+			return nil, fmt.Errorf("case %d bad k: %v", i+1, err)
+		}
+		s := fields[2]
+		if len(s) != n {
+			return nil, fmt.Errorf("case %d expected string length %d got %d", i+1, n, len(s))
+		}
+		res = append(res, testCase{n: n, k: k, s: s})
+	}
+	if len(res) == 0 {
+		return nil, fmt.Errorf("no test data")
+	}
+	return res, nil
+}
+
+// solve mirrors 1506B.go for one test case.
+func solve(tc testCase) int {
+	n, k, s := tc.n, tc.k, tc.s
+	first, last := -1, -1
 	for i := 0; i < n; i++ {
 		if s[i] == '*' {
 			if first == -1 {
@@ -42,7 +166,7 @@ func expected(n, k int, s string) int {
 	if first == last {
 		return 1
 	}
-	count := 1
+	cnt := 1
 	pos := first
 	for pos < last {
 		next := pos + k
@@ -55,60 +179,54 @@ func expected(n, k int, s string) int {
 		if next == pos {
 			break
 		}
-		count++
+		cnt++
 		pos = next
 	}
-	return count
+	return cnt
+}
+
+func runCandidate(bin string, tc testCase) (string, error) {
+	var sb strings.Builder
+	sb.WriteString("1\n")
+	sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.k))
+	sb.WriteString(tc.s)
+	sb.WriteByte('\n')
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(sb.String())
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
-	arg := ""
-	if len(os.Args) == 2 {
-		arg = os.Args[1]
-	} else if len(os.Args) == 3 && os.Args[1] == "--" {
-		arg = os.Args[2]
-	} else {
+	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := arg
-	file, err := os.Open("testcasesB.txt")
+	bin := os.Args[1]
+
+	tests, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcasesB.txt: %v\n", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		parts := strings.Fields(line)
-		if len(parts) < 3 {
-			fmt.Printf("test %d: invalid line\n", idx)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(parts[0])
-		k, _ := strconv.Atoi(parts[1])
-		s := parts[2]
-		expect := fmt.Sprintf("%d", expected(n, k, s))
-		input := fmt.Sprintf("1\n%d %d\n%s\n", n, k, s)
-		got, err := runCandidate(bin, input)
+
+	for idx, tc := range tests {
+		expect := solve(tc)
+		got, err := runCandidate(bin, tc)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx, err)
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if got != expect {
-			fmt.Printf("case %d failed: expected %s got %s\n", idx, expect, got)
+		if got != strconv.Itoa(expect) {
+			fmt.Printf("case %d failed: expected %d got %s\n", idx+1, expect, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "scanner error:", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

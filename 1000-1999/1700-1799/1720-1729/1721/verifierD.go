@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,25 +9,17 @@ import (
 	"strings"
 )
 
-func runExe(path, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	} else {
-		cmd = exec.Command(path)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("%v\n%s", err, out.String())
-	}
-	return strings.TrimSpace(out.String()), nil
+type testCase struct {
+	n int
+	a []int
+	b []int
 }
 
-func solveCase(a, b []int) string {
-	n := len(a)
+// solve embeds the logic from 1721D.go.
+func solve(tc testCase) string {
+	n := tc.n
+	a := tc.a
+	b := tc.b
 	ans := 0
 	for bit := 29; bit >= 0; bit-- {
 		cand := ans | (1 << uint(bit))
@@ -49,73 +40,514 @@ func solveCase(a, b []int) string {
 			ans = cand
 		}
 	}
-	return fmt.Sprintf("%d", ans)
+	return strconv.Itoa(ans)
 }
 
-func intsToStrs(a []int) []string {
-	res := make([]string, len(a))
-	for i, v := range a {
-		res[i] = strconv.Itoa(v)
+// Embedded copy of testcasesD.txt.
+const testcaseData = `
+4
+267 757 970 134
+26 960 531 479
+4
+963 975 813 308
+474 310 798 31
+2
+326 87
+616 63
+5
+968 793 874 808 910
+274 748 199 73 278
+8
+444 528 893 616 862 790 718 834
+475 689 58 572 334 668 213 432
+10
+546 583 254 129 987 990 181 704 136 840
+308 41 601 874 850 243 90 92 773 677
+9
+571 483 73 634 14 157 221 64 404
+835 597 539 319 86 695 642 737 283
+7
+771 942 790 210 555 883 486
+616 895 528 620 694 23 850
+10
+644 41 771 272 123 680 954 722 722 571
+1002 45 124 43 756 514 934 611 655 363
+6
+379 640 756 540 615 772
+214 55 269 634 455 551
+4
+671 383 891 198
+208 659 683 459
+8
+346 163 689 446 923 554 460 247
+69 390 645 375 570 696 175 707
+10
+265 862 597 555 951 709 853 594 859 838
+72 846 319 408 9 977 889 454 66 935
+9
+591 698 465 139 587 245 500 92 71
+406 880 101 26 985 247 351 614 489
+1
+847
+109
+10
+232 699 256 517 977 125 720 452 404 250
+244 350 490 560 263 15 998 819 102 555
+4
+550 866 104 968
+661 3 112 259
+1
+255
+102
+2
+988 67
+176 1003
+6
+321 644 146 719 790 797
+622 738 542 391 673 877
+2
+261 7
+778 163
+10
+365 87 764 943 778 88 883 108 762 1016
+645 861 856 943 36 501 447 553 146 870
+4
+872 266 57 666
+766 536 248 950
+2
+770 222
+652 211
+10
+10 969 293 483 796 90 188 203 769 366
+48 699 248 52 235 986 582 613 181 74
+10
+488 218 204 125 664 369 158 495 368 511
+930 806 517 752 812 717 856 170 768 481
+7
+328 850 990 319 821 305 332
+196 1019 990 907 381 279 547
+4
+300 644 475 605
+846 547 445 629
+1
+549
+981
+7
+410 352 738 489 659 988 294
+856 982 421 958 56 985 148
+7
+93 957 470 480 141 445 520
+495 388 529 281 383 75 522
+3
+92 641 375
+866 186 175
+2
+189 541
+597 73
+6
+926 689 14 60 685 678
+893 777 995 159 430 1003
+7
+256 652 244 562 156 885 230
+897 513 198 766 754 922 605
+5
+219 693 232 1011 721
+121 602 372 306 366
+6
+930 252 221 289 678 860
+615 382 937 987 639 361
+2
+219 371
+802 735
+2
+544 554
+785 109
+3
+86 980 555
+506 725 681
+7
+917 141 722 1019 229 310 553
+204 230 229 378 387 853 801
+3
+299 815 396
+348 366 413
+5
+756 600 61 911 834
+784 647 634 1019 613
+8
+61 390 4 220 478 1007 354 943
+407 396 433 75 909 228 580 312
+3
+956 181 103
+52 737 478
+9
+159 1021 38 695 661 672 704 275 164
+69 163 703 420 129 409 895 452 993
+6
+223 87 836 159 410 329
+801 1018 969 139 864 426
+8
+623 47 951 937 822 897 369 932
+76 525 751 759 916 740 822 458
+1
+428
+529
+6
+293 942 399 325 428 45
+349 826 344 56 285 225
+10
+344 906 1004 378 122 45 825 917 650 835
+67 104 489 825 80 812 1010 54 448 494
+2
+796 971
+390 337
+6
+237 709 253 106 595 563
+953 615 1000 511 544 61
+6
+706 649 191 116 891 183
+7 214 62 185 39 348
+9
+74 986 110 387 678 411 976 696 980
+719 70 782 624 807 179 600 377 845
+2
+798 684
+824 357
+7
+735 376 743 849 897 469 910
+984 706 551 347 792 997 87
+3
+351 47 956
+188 198 655
+4
+115 98 921 955
+683 757 3 147
+4
+817 215 693 637
+225 922 165 430
+4
+99 312 293 23
+229 470 588 427
+4
+859 653 385 957
+363 162 84 230
+10
+49 207 408 522 175 223 952 817 456 222
+994 708 825 912 227 597 908 777 421 239
+9
+15 950 612 158 699 708 393 992 146
+746 866 137 438 511 717 127 686 483
+7
+899 172 513 446 661 338 423
+447 949 857 753 391 838 991
+7
+961 71 598 37 378 196 57
+308 602 125 966 83 398 424
+5
+1007 885 77 706 958
+402 588 292 211 909
+5
+841 908 158 421 313
+998 582 768 763 330
+7
+638 948 970 455 736 590 584
+60 948 764 735 609 496 20
+1
+269
+305
+9
+42 339 102 3 417 953 726 743 71
+1003 378 488 27 566 885 692 104 192
+8
+638 536 506 1021 856 533 695 90
+60 879 76 339 506 277 844 691
+9
+273 572 34 345 92 34 994 123 942
+957 848 759 349 601 374 151 285 208
+7
+720 909 931 570 523 926 579
+318 644 286 77 843 994 472
+8
+559 62 648 237 998 256 573 548
+209 891 155 760 68 997 917 399
+5
+708 370 785 812 647
+100 554 438 77 648
+6
+803 577 72 269 854 512
+846 162 1014 470 409 162
+9
+235 253 10 577 142 883 548 988 945
+548 592 96 357 483 996 344 295 306
+3
+957 814 17
+291 802 111
+3
+360 636 388
+267 300 99
+9
+311 438 783 219 887 798 372 53 575
+213 268 235 297 604 259 785 721 157
+4
+15 759 291 979
+503 131 725 993
+2
+641 968
+43 707
+9
+906 834 950 625 905 305 934 786 410
+605 367 615 343 649 544 414 267 108
+10
+116 838 364 234 28 323 250 826 766 563
+189 949 903 667 299 447 661 934 764 651
+10
+734 704 699 587 609 552 373 252 453 698
+509 578 890 546 927 265 978 685 360 904
+10
+105 141 854 871 596 121 484 781 786 432
+153 750 439 113 1011 240 882 797 740 24
+5
+761 759 817 899 762
+213 1013 299 662 450
+1
+759
+131
+10
+0 285 167 428 656 891 579 403 60 58
+642 910 745 436 903 694 247 774 460 973
+3
+628 587 388
+240 355 173
+7
+57 719 783 15 1003 376 968
+561 286 796 417 885 610 893
+5
+198 171 131 904 657
+135 19 664 982 864
+2
+679 857
+462 660
+4
+802 181 106 54
+490 174 368 475
+8
+811 582 704 933 464 414 611 701
+272 746 726 644 416 915 122 886
+5
+397 1010 442 376 212
+935 245 813 434 645
+3
+77 669 1021
+505 787 116
+4
+821 751 797 457
+363 583 513 707
+5
+108 696 227 425 451
+622 905 354 344 502
+`
+
+var expectedOutputs = []string{
+	"768",
+	"512",
+	"57",
+	"64",
+	"256",
+	"16",
+	"64",
+	"256",
+	"0",
+	"80",
+	"512",
+	"16",
+	"16",
+	"128",
+	"802",
+	"128",
+	"576",
+	"153",
+	"808",
+	"128",
+	"260",
+	"1",
+	"130",
+	"592",
+	"2",
+	"0",
+	"512",
+	"320",
+	"496",
+	"544",
+	"128",
+	"193",
+	"576",
+	"256",
+	"64",
+	"138",
+	"144",
+	"936",
+	"9",
+	"46",
+	"256",
+	"34",
+	"33",
+	"0",
+	"65",
+	"0",
+	"0",
+	"2",
+	"957",
+	"0",
+	"0",
+	"666",
+	"128",
+	"136",
+	"256",
+	"16",
+	"4",
+	"33",
+	"512",
+	"512",
+	"320",
+	"352",
+	"768",
+	"512",
+	"0",
+	"16",
+	"9",
+	"130",
+	"8",
+	"60",
+	"1",
+	"256",
+	"256",
+	"128",
+	"0",
+	"32",
+	"512",
+	"256",
+	"512",
+	"68",
+	"8",
+	"768",
+	"66",
+	"9",
+	"1",
+	"0",
+	"768",
+	"256",
+	"628",
+	"768",
+	"132",
+	"80",
+	"512",
+	"329",
+	"384",
+	"320",
+	"1",
+	"768",
+	"260",
+	"2",
+}
+
+func loadTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcaseData), "\n")
+	tests := make([]testCase, 0, len(lines)/3)
+	for i := 0; i < len(lines); {
+		n, err := strconv.Atoi(strings.TrimSpace(lines[i]))
+		if err != nil {
+			return nil, fmt.Errorf("line %d: bad n: %v", i+1, err)
+		}
+		i++
+		if i+1 >= len(lines) {
+			return nil, fmt.Errorf("incomplete testcase starting at line %d", i)
+		}
+		aStr := strings.Fields(lines[i])
+		bStr := strings.Fields(lines[i+1])
+		i += 2
+		if len(aStr) != n || len(bStr) != n {
+			return nil, fmt.Errorf("line %d: expected %d values", i, n)
+		}
+		a := make([]int, n)
+		b := make([]int, n)
+		for idx, val := range aStr {
+			v, err := strconv.Atoi(val)
+			if err != nil {
+				return nil, fmt.Errorf("line %d: bad a value: %v", i-1, err)
+			}
+			a[idx] = v
+		}
+		for idx, val := range bStr {
+			v, err := strconv.Atoi(val)
+			if err != nil {
+				return nil, fmt.Errorf("line %d: bad b value: %v", i, err)
+			}
+			b[idx] = v
+		}
+		tests = append(tests, testCase{n: n, a: a, b: b})
 	}
-	return res
+	return tests, nil
+}
+
+func runCase(bin string, tc testCase, expected string) error {
+	var input strings.Builder
+	input.WriteString("1\n")
+	input.WriteString(strconv.Itoa(tc.n))
+	input.WriteByte('\n')
+	for i, v := range tc.a {
+		if i > 0 {
+			input.WriteByte(' ')
+		}
+		input.WriteString(strconv.Itoa(v))
+	}
+	input.WriteByte('\n')
+	for i, v := range tc.b {
+		if i > 0 {
+			input.WriteByte(' ')
+		}
+		input.WriteString(strconv.Itoa(v))
+	}
+	input.WriteByte('\n')
+
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input.String())
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	got := strings.TrimSpace(out.String())
+	if got != strings.TrimSpace(expected) {
+		return fmt.Errorf("expected %s got %s", expected, got)
+	}
+	return nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierD.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: go run verifierD.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	data, err := os.ReadFile("testcasesD.txt")
+
+	tests, err := loadTestcases()
 	if err != nil {
-		fmt.Println("could not read testcasesD.txt:", err)
+		fmt.Fprintln(os.Stderr, "failed to load testcases:", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
+	if len(tests) != len(expectedOutputs) {
+		fmt.Fprintf(os.Stderr, "testcase/expected mismatch: %d vs %d\n", len(tests), len(expectedOutputs))
 		os.Exit(1)
 	}
-	var t int
-	fmt.Sscan(scan.Text(), &t)
-	for caseNum := 1; caseNum <= t; caseNum++ {
-		if !scan.Scan() {
-			fmt.Println("bad test file")
-			os.Exit(1)
-		}
-		var n int
-		fmt.Sscan(scan.Text(), &n)
-		a := make([]int, n)
-		bArr := make([]int, n)
-		for i := 0; i < n; i++ {
-			if !scan.Scan() {
-				fmt.Println("bad test file")
-				os.Exit(1)
-			}
-			fmt.Sscan(scan.Text(), &a[i])
-		}
-		for i := 0; i < n; i++ {
-			if !scan.Scan() {
-				fmt.Println("bad test file")
-				os.Exit(1)
-			}
-			fmt.Sscan(scan.Text(), &bArr[i])
-		}
-		exp := solveCase(a, bArr)
-		var input strings.Builder
-		fmt.Fprintf(&input, "1\n%d\n", n)
-		fmt.Fprintln(&input, strings.Join(intsToStrs(a), " "))
-		fmt.Fprintln(&input, strings.Join(intsToStrs(bArr), " "))
-		got, err := runExe(bin, input.String())
-		if err != nil {
-			fmt.Printf("case %d: %v\n", caseNum, err)
-			os.Exit(1)
-		}
-		if strings.TrimSpace(got) != exp {
-			fmt.Printf("case %d failed: expected %s got %s\n", caseNum, exp, got)
+
+	for i, tc := range tests {
+		exp := solve(tc)
+		if err := runCase(bin, tc, exp); err != nil {
+			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

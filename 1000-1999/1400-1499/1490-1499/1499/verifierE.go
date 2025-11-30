@@ -1,104 +1,378 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
-const mod = 998244353
+// Embedded copy of testcasesE.txt so the verifier is self-contained.
+const testcasesRaw = `100
+ba
+baaa
+b
+aab
+aab
+ab
+aab
+bab
+aaab
+aba
+bab
+bbba
+bb
+a
+b
+bba
+ab
+bb
+bb
+aba
+a
+aab
+bb
+a
+abb
+b
+bab
+b
+bb
+bb
+ba
+aba
+bba
+abaa
+a
+a
+ab
+ba
+b
+abaa
+bbaa
+baba
+aaab
+aaa
+baba
+aba
+baba
+bb
+bbab
+bba
+aab
+ba
+bb
+baaa
+ab
+b
+aaaa
+bba
+a
+b
+aab
+a
+baa
+babb
+bb
+a
+b
+bbaa
+bba
+ba
+ab
+bbaa
+b
+a
+baab
+baa
+a
+bbb
+babb
+aba
+ab
+aba
+b
+bb
+aba
+a
+aaa
+aaab
+bb
+ba
+bab
+bbbb
+baba
+bbba
+ab
+bab
+abaa
+ab
+aa
+baaa
+a
+b
+a
+aba
+ba
+b
+a
+aabb
+b
+ab
+bbba
+abab
+b
+aa
+a
+aa
+abbb
+aa
+bbba
+bb
+baab
+a
+bba
+ab
+aa
+b
+ba
+a
+ba
+a
+aaba
+bbb
+a
+babb
+bb
+aa
+bbbb
+babb
+a
+bbab
+a
+a
+aba
+aba
+aa
+a
+baa
+aa
+ba
+bba
+aa
+a
+b
+aaab
+bbbb
+aaaa
+aba
+abb
+aaa
+aaa
+a
+bb
+abba
+bb
+bab
+ba
+aabb
+a
+aaaa
+aab
+aaaa
+ba
+bbab
+bba
+ba
+baaa
+aa
+b
+a
+ab
+b
+babb
+a
+baa
+baa
+abab
+aa
+aa
+a
+baa
+aaa
+a
+ba
+b
+baa
+a
+ab
+bbab
+abab
+a
+`
 
-func countChaotic(x, y string) int {
-	memo := make(map[[3]int]int)
-	var dfs func(i, j int, last byte) int
-	dfs = func(i, j int, last byte) int {
-		if i == len(x) && j == len(y) {
-			return 1
-		}
-		key := [3]int{i, j, int(last)}
-		if v, ok := memo[key]; ok {
-			return v
-		}
-		res := 0
-		if i < len(x) && (last == 0 || last != x[i]) {
-			res += dfs(i+1, j, x[i])
-		}
-		if j < len(y) && (last == 0 || last != y[j]) {
-			res += dfs(i, j+1, y[j])
-		}
-		memo[key] = res % mod
-		return memo[key]
-	}
-	return dfs(0, 0, 0)
+const mod int = 998244353
+
+type testCase struct {
+	x string
+	y string
 }
 
-func solve(x, y string) int {
-	ans := 0
-	for l1 := 0; l1 < len(x); l1++ {
-		for r1 := l1 + 1; r1 <= len(x); r1++ {
-			xs := x[l1:r1]
-			for l2 := 0; l2 < len(y); l2++ {
-				for r2 := l2 + 1; r2 <= len(y); r2++ {
-					ys := y[l2:r2]
-					ans = (ans + countChaotic(xs, ys)) % mod
-				}
-			}
+func solveCase(x, y string) int {
+	n := len(x)
+	m := len(y)
+
+	dp0Only := make([][]int, n+1)
+	dp1Only := make([][]int, n+1)
+	dp0Both := make([][]int, n+1)
+	dp1Both := make([][]int, n+1)
+	for i := 0; i <= n; i++ {
+		dp0Only[i] = make([]int, m+1)
+		dp1Only[i] = make([]int, m+1)
+		dp0Both[i] = make([]int, m+1)
+		dp1Both[i] = make([]int, m+1)
+	}
+
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			dp0Only[i+1][j] = (dp0Only[i+1][j] + 1) % mod
+			dp1Only[i][j+1] = (dp1Only[i][j+1] + 1) % mod
 		}
 	}
-	return ans
+
+	ans := 0
+	for i := 0; i <= n; i++ {
+		for j := 0; j <= m; j++ {
+			if i > 0 {
+				last := x[i-1]
+				if val := dp0Only[i][j]; val != 0 {
+					if i < n && x[i] != last {
+						dp0Only[i+1][j] = (dp0Only[i+1][j] + val) % mod
+					}
+					if j < m && y[j] != last {
+						dp1Both[i][j+1] = (dp1Both[i][j+1] + val) % mod
+					}
+				}
+				if val := dp0Both[i][j]; val != 0 {
+					if i < n && x[i] != last {
+						dp0Both[i+1][j] = (dp0Both[i+1][j] + val) % mod
+					}
+					if j < m && y[j] != last {
+						dp1Both[i][j+1] = (dp1Both[i][j+1] + val) % mod
+					}
+				}
+			}
+			if j > 0 {
+				last := y[j-1]
+				if val := dp1Only[i][j]; val != 0 {
+					if j < m && y[j] != last {
+						dp1Only[i][j+1] = (dp1Only[i][j+1] + val) % mod
+					}
+					if i < n && x[i] != last {
+						dp0Both[i+1][j] = (dp0Both[i+1][j] + val) % mod
+					}
+				}
+				if val := dp1Both[i][j]; val != 0 {
+					if j < m && y[j] != last {
+						dp1Both[i][j+1] = (dp1Both[i][j+1] + val) % mod
+					}
+					if i < n && x[i] != last {
+						dp0Both[i+1][j] = (dp0Both[i+1][j] + val) % mod
+					}
+				}
+			}
+			ans += dp0Both[i][j] + dp1Both[i][j]
+			ans %= mod
+		}
+	}
+	return ans % mod
+}
+
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(testcasesRaw, "\n")
+	if len(lines) == 0 {
+		return nil, fmt.Errorf("no embedded testcases")
+	}
+	t, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+	if err != nil {
+		return nil, fmt.Errorf("invalid t: %v", err)
+	}
+	if len(lines) < 1+2*t {
+		return nil, fmt.Errorf("not enough lines for %d cases", t)
+	}
+	res := make([]testCase, 0, t)
+	idx := 1
+	for i := 0; i < t; i++ {
+		x := strings.TrimSpace(lines[idx])
+		y := strings.TrimSpace(lines[idx+1])
+		idx += 2
+		res = append(res, testCase{x: x, y: y})
+	}
+	return res, nil
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierE.go /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesE.txt")
+
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Println("could not read testcasesE.txt:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	expected := make([]string, t)
-	for i := 0; i < t; i++ {
-		scan.Scan()
-		x := scan.Text()
-		scan.Scan()
-		y := scan.Text()
-		expected[i] = fmt.Sprintf("%d", solve(x, y))
-	}
-	cmd := exec.Command(os.Args[1])
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.Output()
+
+	bin, cleanup, err := buildIfGo(os.Args[1])
 	if err != nil {
-		fmt.Println("execution failed:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
-	for i := 0; i < t; i++ {
-		if !outScan.Scan() {
-			fmt.Printf("missing output for test %d\n", i+1)
+	defer cleanup()
+
+	for i, tc := range cases {
+		input := tc.x + "\n" + tc.y + "\n"
+		expected := strconv.Itoa(solveCase(tc.x, tc.y))
+		got, err := runCandidate(bin, input)
+		if err != nil {
+			fmt.Printf("test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		got := outScan.Text()
-		if got != expected[i] {
-			fmt.Printf("test %d failed: expected %s got %s\n", i+1, expected[i], got)
+		if strings.TrimSpace(got) != expected {
+			fmt.Printf("test %d failed\nexpected: %s\ngot: %s\n", i+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
-		os.Exit(1)
-	}
-	fmt.Println("All tests passed!")
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

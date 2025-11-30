@@ -1,36 +1,223 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	src := filepath.Join(dir, "1830A.go")
-	exe := filepath.Join(dir, "oracleA.bin")
-	cmd := exec.Command("go", "build", "-o", exe, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle: %v\n%s", err, out)
-	}
-	return exe, nil
+const testcaseData = `100
+8 1 2 2 3 1 4 3 5 5 6 4 7 4 8
+8 1 2 2 3 2 4 2 5 5 6 2 7 3 8
+3 1 2 2 3
+6 1 2 2 3 1 4 1 5 3 6
+5 1 2 2 3 2 4 3 5
+3 1 2 2 3
+3 1 2 1 3
+6 1 2 1 3 1 4 1 5 1 6
+3 1 2 1 3
+4 1 2 2 3 2 4
+6 1 2 1 3 3 4 3 5 3 6
+8 1 2 1 3 3 4 3 5 4 6 5 7 5 8
+6 1 2 2 3 3 4 4 5 5 6
+5 1 2 1 3 3 4 3 5
+4 1 2 2 3 3 4
+3 1 2 2 3
+3 1 2 2 3
+4 1 2 1 3 1 4
+6 1 2 2 3 2 4 3 5 3 6
+5 1 2 2 3 3 4 4 5
+4 1 2 2 3 3 4
+4 1 2 2 3 2 4
+4 1 2 1 3 1 4
+4 1 2 2 3 2 4
+3 1 2 1 3
+6 1 2 1 3 2 4 4 5 2 6
+6 1 2 2 3 3 4 1 5 4 6
+6 1 2 1 3 2 4 2 5 2 6
+6 1 2 1 3 1 4 4 5 4 6
+6 1 2 1 3 1 4 1 5 1 6
+6 1 2 1 3 1 4 2 5 5 6
+6 1 2 1 3 3 4 1 5 1 6
+6 1 2 1 3 1 4 1 5 1 6
+6 1 2 1 3 1 4 2 5 2 6
+6 1 2 1 3 1 4 1 5 5 6
+6 1 2 1 3 1 4 4 5 4 6
+6 1 2 1 3 1 4 4 5 4 6
+5 1 2 1 3 1 4 1 5
+5 1 2 2 3 3 4 3 5
+5 1 2 2 3 2 4 2 5
+5 1 2 2 3 3 4 3 5
+6 1 2 1 3 2 4 1 5 5 6
+6 1 2 1 3 1 4 2 5 3 6
+6 1 2 2 3 3 4 4 5 5 6
+5 1 2 2 3 3 4 4 5
+5 1 2 1 3 3 4 3 5
+5 1 2 1 3 1 4 4 5
+5 1 2 1 3 1 4 3 5
+5 1 2 2 3 2 4 2 5
+5 1 2 2 3 2 4 2 5
+5 1 2 1 3 1 4 1 5
+5 1 2 2 3 2 4 2 5
+6 1 2 2 3 1 4 3 5 5 6
+6 1 2 1 3 1 4 1 5 1 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 6 5 5 6
+6 1 2 1 3 1 4 6 5 1 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6
+6 1 2 1 3 1 4 1 5 6 6`
+
+type Edge struct {
+	to  int
+	idx int
 }
 
-func run(exe string, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(exe, ".go") {
-		cmd = exec.Command("go", "run", exe)
-	} else {
-		cmd = exec.Command(exe)
+type Node struct {
+	id    int
+	idx   int
+	level int
+}
+
+type testCase struct {
+	input    string
+	expected string
+}
+
+func solve(n int, edges [][2]int) int {
+	adj := make([][]Edge, n+1)
+	for i, e := range edges {
+		u, v := e[0], e[1]
+		adj[u] = append(adj[u], Edge{v, i + 1})
+		adj[v] = append(adj[v], Edge{u, i + 1})
 	}
+	visited := make([]bool, n+1)
+	queue := []Node{{1, 0, 1}}
+	visited[1] = true
+	ans := 1
+	for head := 0; head < len(queue); head++ {
+		cur := queue[head]
+		for _, e := range adj[cur.id] {
+			if visited[e.to] {
+				continue
+			}
+			lvl := cur.level
+			if e.idx < cur.idx {
+				lvl++
+			}
+			if lvl > ans {
+				ans = lvl
+			}
+			visited[e.to] = true
+			queue = append(queue, Node{e.to, e.idx, lvl})
+		}
+	}
+	return ans
+}
+
+func loadCases() ([]testCase, error) {
+	fields := strings.Fields(testcaseData)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no testcases")
+	}
+	pos := 0
+	t, err := strconv.Atoi(fields[pos])
+	if err != nil {
+		return nil, fmt.Errorf("bad test count: %w", err)
+	}
+	pos++
+	cases := make([]testCase, 0, t)
+	for caseIdx := 0; caseIdx < t; caseIdx++ {
+		if pos >= len(fields) {
+			return nil, fmt.Errorf("case %d: missing n", caseIdx+1)
+		}
+		n, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return nil, fmt.Errorf("case %d: bad n: %w", caseIdx+1, err)
+		}
+		pos++
+		edges := make([][2]int, n-1)
+		for i := 0; i < n-1; i++ {
+			if pos+1 >= len(fields) {
+				return nil, fmt.Errorf("case %d: missing edge", caseIdx+1)
+			}
+			u, err := strconv.Atoi(fields[pos])
+			if err != nil {
+				return nil, fmt.Errorf("case %d: bad edge u: %w", caseIdx+1, err)
+			}
+			v, err := strconv.Atoi(fields[pos+1])
+			if err != nil {
+				return nil, fmt.Errorf("case %d: bad edge v: %w", caseIdx+1, err)
+			}
+			edges[i] = [2]int{u, v}
+			pos += 2
+		}
+		var sb strings.Builder
+		sb.WriteString("1\n")
+		sb.WriteString(strconv.Itoa(n))
+		sb.WriteByte('\n')
+		for _, e := range edges {
+			fmt.Fprintf(&sb, "%d %d\n", e[0], e[1])
+		}
+		cases = append(cases, testCase{
+			input:    sb.String(),
+			expected: strconv.Itoa(solve(n, edges)),
+		})
+	}
+	return cases, nil
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
@@ -44,73 +231,24 @@ func run(exe string, input string) (string, error) {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierA.go /path/to/binary")
+		fmt.Println("usage: verifierA /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	oracle, err := buildOracle()
+	cases, err := loadCases()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "failed to load testcases: %v\n", err)
 		os.Exit(1)
 	}
-	defer os.Remove(oracle)
-
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to open testcasesA.txt:", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		tokens := strings.Fields(line)
-		if len(tokens) < 1 {
-			fmt.Fprintf(os.Stderr, "bad test case on line %d\n", idx)
-			os.Exit(1)
-		}
-		n, err := strconv.Atoi(tokens[0])
+	for idx, tc := range cases {
+		got, err := run(os.Args[1], tc.input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "invalid n on line %d\n", idx)
+			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		need := 1 + 2*(n-1)
-		if len(tokens) != need {
-			fmt.Fprintf(os.Stderr, "line %d: expected %d numbers got %d\n", idx, need, len(tokens))
-			os.Exit(1)
-		}
-		var sb strings.Builder
-		fmt.Fprintf(&sb, "1\n%d\n", n)
-		for i := 0; i < n-1; i++ {
-			sb.WriteString(tokens[1+2*i])
-			sb.WriteByte(' ')
-			sb.WriteString(tokens[1+2*i+1])
-			sb.WriteByte('\n')
-		}
-		input := sb.String()
-		exp, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle failure on case %d: %v\n", idx, err)
-			os.Exit(1)
-		}
-		got, err := run(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d: %v\ninput:\n%s", idx, err, input)
-			os.Exit(1)
-		}
-		if got != exp {
-			fmt.Fprintf(os.Stderr, "case %d mismatch\nexpected:%s\ngot:%s\ninput:%s", idx, exp, got, line)
+		if got != tc.expected {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, tc.expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "scanner error:", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

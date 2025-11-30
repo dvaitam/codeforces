@@ -1,86 +1,232 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+// solve mirrors 148A.go.
+func solve(k, l, m, n, d int) int {
+	count := 0
+	for i := 1; i <= d; i++ {
+		if i%k == 0 || i%l == 0 || i%m == 0 || i%n == 0 {
+			count++
+		}
 	}
-	oracle := filepath.Join(dir, "oracleA")
-	cmd := exec.Command("go", "build", "-o", oracle, "148A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	return count
+}
+
+type testCase struct {
+	k, l, m, n, d int
+}
+
+// Embedded testcases from testcasesA.txt.
+const testcaseData = `
+7 7 1 5 989
+9 8 7 5 992
+8 6 10 4 517
+3 5 3 2 634
+5 9 10 3 318
+2 2 6 8 574
+2 6 7 6 626
+4 9 8 8 887
+9 5 1 9 938
+1 2 7 1 627
+8 6 4 6 721
+2 4 10 4 245
+3 9 8 2 83
+6 9 8 2 309
+9 5 2 9 341
+9 4 10 9 602
+5 8 2 10 818
+7 6 10 4 298
+3 4 3 1 628
+5 8 2 2 696
+3 3 1 2 920
+9 7 9 5 535
+4 4 10 7 594
+5 8 8 6 85
+6 10 2 8 602
+6 4 4 1 750
+5 2 4 6 814
+3 6 7 1 104
+3 4 1 10 650
+9 10 2 1 128
+4 10 10 2 401
+2 6 2 1 621
+1 4 3 2 491
+4 1 1 9 436
+10 2 5 2 227
+2 5 6 7 185
+1 9 8 1 611
+2 7 4 5 368
+8 10 3 4 990
+1 3 3 6 543
+5 2 10 8 682
+3 1 8 7 922
+10 9 5 6 398
+5 3 9 1 469
+2 6 1 9 288
+3 4 8 6 625
+5 6 10 10 136
+5 7 7 2 2
+10 4 6 3 246
+4 8 7 10 896
+7 1 7 10 429
+1 3 8 2 266
+3 8 9 8 930
+9 10 1 1 507
+6 5 8 1 829
+7 4 9 2 858
+3 1 7 7 324
+1 4 1 1 843
+9 10 2 4 122
+10 4 5 5 706
+3 2 8 7 643
+2 1 5 8 820
+2 5 3 9 837
+6 2 3 5 872
+1 1 1 4 698
+5 9 6 6 961
+10 1 10 8 730
+8 7 6 9 183
+4 7 10 5 10
+3 3 5 6 346
+6 2 6 10 37
+1 5 3 3 598
+5 6 7 9 133
+5 2 8 4 957
+1 5 3 9 747
+2 5 7 6 307
+7 2 2 9 931
+8 8 6 6 128
+8 2 8 7 39
+5 6 3 3 642
+10 7 2 2 828
+2 4 4 1 395
+1 2 7 9 532
+5 8 8 10 732
+4 7 2 6 226
+5 10 3 7 197
+6 2 2 1 925
+9 8 4 2 510
+7 5 4 1 971
+4 10 3 2 203
+8 7 6 9 847
+3 2 10 8 152
+10 7 7 9 508
+6 8 8 4 556
+10 4 1 6 723
+6 6 1 9 152
+5 10 3 7 597
+5 8 2 2 529
+1 2 4 3 42
+5 1 8 6 883
+3 3 8 6 518
+7 9 9 1 588
+2 9 10 2 765
+7 4 5 9 923
+10 7 8 7 623
+10 4 1 1 759
+3 5 9 10 261
+6 2 8 5 966
+5 7 7 7 64
+3 3 4 5 747
+6 1 1 8 428
+3 8 10 2 690
+3 6 7 1 627
+8 7 8 1 104
+8 3 1 1 613
+10 3 6 2 717
+9 6 4 7 803
+8 2 1 10 718
+8 10 6 2 993
+10 5 3 7 819
+`
+
+func parseTestcases() ([]testCase, error) {
+	fields := strings.Fields(testcaseData)
+	if len(fields)%5 != 0 {
+		return nil, fmt.Errorf("malformed test data")
 	}
-	return oracle, nil
+	res := make([]testCase, 0, len(fields)/5)
+	for i := 0; i < len(fields); i += 5 {
+		k, err := strconv.Atoi(fields[i])
+		if err != nil {
+			return nil, fmt.Errorf("bad k at case %d: %v", i/5+1, err)
+		}
+		l, err := strconv.Atoi(fields[i+1])
+		if err != nil {
+			return nil, fmt.Errorf("bad l at case %d: %v", i/5+1, err)
+		}
+		m, err := strconv.Atoi(fields[i+2])
+		if err != nil {
+			return nil, fmt.Errorf("bad m at case %d: %v", i/5+1, err)
+		}
+		n, err := strconv.Atoi(fields[i+3])
+		if err != nil {
+			return nil, fmt.Errorf("bad n at case %d: %v", i/5+1, err)
+		}
+		d, err := strconv.Atoi(fields[i+4])
+		if err != nil {
+			return nil, fmt.Errorf("bad d at case %d: %v", i/5+1, err)
+		}
+		res = append(res, testCase{k: k, l: l, m: m, n: n, d: d})
+	}
+	return res, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errb bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
-	if len(os.Args) != 2 {
+	args := os.Args[1:]
+	if len(args) == 2 && args[0] == "--" {
+		args = args[1:]
+	}
+	if len(args) != 1 {
 		fmt.Println("usage: go run verifierA.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	oracle, err := buildOracle()
+	bin := args[0]
+
+	tests, err := parseTestcases()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.Remove(oracle)
 
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		input := line + "\n"
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(input)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error: %v\n", err)
-			os.Exit(1)
-		}
-		expected := strings.TrimSpace(outO.String())
-
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var errBuf bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &errBuf
-		err := cmd.Run()
+	for idx, tc := range tests {
+		input := fmt.Sprintf("%d %d %d %d %d\n", tc.k, tc.l, tc.m, tc.n, tc.d)
+		expected := strconv.Itoa(solve(tc.k, tc.l, tc.m, tc.n, tc.d))
+		got, err := runCandidate(bin, input)
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, errBuf.String())
+			fmt.Printf("test %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
-		if got != expected {
-			fmt.Printf("test %d failed\nexpected: %s\n got: %s\n", idx, expected, got)
+		if strings.TrimSpace(got) != expected {
+			fmt.Printf("test %d failed\ninput: %sexpected: %s\ngot: %s\n", idx+1, input, expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

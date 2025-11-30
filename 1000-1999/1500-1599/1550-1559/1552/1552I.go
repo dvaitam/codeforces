@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math/bits"
 	"os"
 )
 
@@ -24,7 +25,7 @@ func newSet(nums []int) *Set {
 			s.bits[1] |= 1 << uint(v-64)
 		}
 	}
-	s.size = len(nums)
+	s.size = bits.OnesCount64(s.bits[0]) + bits.OnesCount64(s.bits[1])
 	return s
 }
 
@@ -54,6 +55,9 @@ func calc(node *Set) int64 {
 		sum += ch.size
 	}
 	blocks := len(node.children) + node.size - sum
+	if blocks < 0 {
+		return 0
+	}
 	res = res * fac[blocks] % MOD
 	return res
 }

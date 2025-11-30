@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,10 +9,123 @@ import (
 	"strings"
 )
 
-func expected(n int, s string) string {
+// Embedded test cases from testcasesA.txt (first line count omitted).
+const testcasesRaw = `50 QAQAAAAAAQQAQQAQAQQAAQAAAQAAAQQQAQAAQAQQQQQAQQAAQA
+71 QAQAQAAQAAQAQQQQAAQQQQQQAAQQAAAAAQAQAAQQQAQQAQAAQQQQQQQQQQAQAQQQQQQAQQQ
+70 QAQAQQQAAAQQAQQAQAAAQQQQQAAQAQQAAAAAAQQAQAQAQQAAAAQAAAQQQAQQQAAAQAAQQA
+9 QAQAAQQAA
+52 QAQQAQQAQAQAQQQAAAAAQAAAQQAAAQQQQQQAAQAQQAAAAQQAQAQAA
+54 QQAAQQQAAAAQAQAAQQQQAQAQQQAAQAAQAQAQAAQQQQQQQAQQAQ
+6 QAQAQQ
+50 AAQQQAAAQQQQQAQQQAAAQAQQAQQAQAQAQAAAAQQQQQAAQAQAAA
+77 QQQQAQQAQAQQQQAQAAQQAQQAAAAQQAAAAQAQQAQQAAAQAQAQQQAAAQAQQQAQQQAQQQAAAQ
+96 AQAAQQQQQQQAAAQQAQAQAQAQQAQQQAQAAAQQAAQAQQQQQQQQQQQAQQQAQQQAQQAAQAQAQAAAQQQAAAQQQQQQQQQAAA
+53 QAQQQAAAAAQAAAAQQQQQQQAQQQQAAQAQAQQQAAAAQQQQQAAQQQQ
+73 QQAAAQAQAQQQQAQAQQQQQAAQAAQAAQAAAAAQQQAAAQAQAQAAAAQAQQQAQAQQAQAQQQAAQ
+59 AQAQQQQAAAQAAQQAQAAAQQQQAAQAQAQAAAAAQQQQAQQQQQQQAQQQQA
+69 AAAAQQAAQAQAAAAQAQQQAQAAQAQAAAAQAQQQQAQAQQAQQAQAAAQQAQAAAAAQAQQAA
+46 QQAAQQAQAAQQAQQAQAQAQAAAAAQQQQQAAQQAQAQAQQAAA
+96 QAQAQAQQQQAAQAAAQQAQQQAQQAAAQQAQAAAQQQQAQAQAQAAAQQAQAQAAAQAQQQQQAAAQQQQQAQAAAQQQAQQQAQAQA
+4 AQQQ
+63 AAAAQQAAQQAQQAAAQQAAQQQQQAQAAQAQQQAQQQAQQQAQAQAAAQQAAAQAQAQ
+3 QAQ
+54 QAAAQAAAQQAAAQAQQAQQQQQQAQAQAQAQAQAQAQAAAQAAAQQQAQAAQQ
+74 AQAQAQAQAAQAAQQAQQAQQQAAAQAQQQAAQAQQQQQAQQAAAAQAQQAQQQAQQAAQAQQAQQQA
+12 QQAAQAQQAQAQ
+46 QAQQAQQAAQQQQQAQAQQAAQQAQAQQQQQAQAAQAQQQQ
+55 QAQQAQQAQAQAQQQAAAAAQAAAQQAAAQQQQQQAAQAQQAAAAQQAQAQAA
+52 QAQQQAAAAAQAAAAQQQQQQQAQQQQAAQAQAQQQAAAAQQQQQAAQQQQ
+43 QQAAQQAQAAQQAQQAQAQAQAAAAAQQQQQAAQQAQAQAQQAAA
+67 QAQAQAQQQQAAQAAAQQAQQQAQQAAAQQAQAAAQQQQAQAQAQAAAQQAQAQAAAQAQQQQQAAAQQQQQAQAAA
+61 AQAQAAQQAQQQQAAQQAQQQQAAAQQQQQQQAAQQQAAQQAQAQQAQAQAQAQAAAAQQQAQAQA
+50 QAQQAQQAAQQQQQAQAQQAAQQAQAQQQQQAQAAQAQQQQ
+44 AQAAAQAQQQQAQQAQAAQQAAAAAQAQAAAQQAAQQAAQA
+44 QAQQQAAAAAQAAAAQQQQQQQAQQQQAAQAQAQQQAAAAQ
+54 AQQQAAAQQAQQAQQQQAQQAAAQQAQAQAQQQQAAAQAAQAQAAQQ
+54 QAQQQAAAAAQAAAAQQQQQQQAQQQQAAQAQAQQQAAAAQQQQQAAQQQQ
+63 QQAAAQAQAQQQQAQAQQQQQAAQAAQAAQAAAAAQQQAAAQAQAQAAAAQAQQQAQAQQAQAQQQAAQ
+25 QQQAQQQAAAAQQQQQAAQQQQQQQ
+46 QAAAQAAAQQAAAQAQQAQQQQQQAQAQAQAQAQAQAQAAAQAAAQQQAQAAQQ
+5 QQAAQ
+81 QAQAAQAQAQAAQAQAAAQQAQQQAQAQQQQQQQAAQAAQQQQAQQAQAQQQAQAQQQQQAAAQAAQAAQAQAAQ
+57 QAQQQAQQQAQQQQQAAAQQAQAAQAAAQAQQQAAAAQQAQQQQQQQQQQAQAQ
+3 QQQ
+67 QAQQQAQAQQQAQAQQQAAQQQQQAQQAAQAQQQQQQQAAQAAAAAAQAAAQAQAQQQAAAA
+53 AQAAAQAQQQQAQQAQAAQQAAAAAQAQAAAQQAAQQAAQA
+60 QAQAAAQQQAQAQAQQQQQQAAAAQAAQAQAAAQQQAAQAQAAQQAAAQQQAQ
+31 QAQAAQAAAQQQAQAQQQQQQAAAAQAAQAQAA
+66 QAQAAQAQAQAAQAQAAAQQAQQQAQAQQQQQQQAAQAAQQQQAQQAQAQQQAQAQQQQQAAAQAA
+52 QAQQQQAAAQAAQQAQAAAQQQQAAQAQAQAAAAAQQQQAQQQQQQQAQQQQA
+24 QAQAQAQQQQAQQQAQAQQQQQAQ
+34 QQQAAAQQAQAQAQQAAAQQQAAAQQQAQAAQQ
+63 QAAAQAAAQQAAAQAQQAQQQQQQAQAQAQAQAQAQAQAAAQAAAQQQAQAAQQ
+29 AQAAQQQQQQQAAAQQAQAQAQAQQAA
+83 QAQAQAQQQQAAQAAAQQAQQQAQQAAAQQAQAAAQQQQAQAQAQAAAQQAQAQAAAQAQQQQQAAAQQQQQAQAAAQQQAQQQAQAQA
+53 QAQAQAQQQQAAQAAAQQAQQQAQQAAAQQAQAAAQQQQAQAQAQAAAQQAQAQAAAQAQQQQQAAAQQQQQ
+26 QAQQAQQAAQQQQQAQAQQAAQQAQA
+58 QAQAQQQAAAQQAQQAQAAAQQQQQAAQAQQAAAAAAQQAQAQAQQAAAAQAAAQQQAQQQAAAQAAQQA
+59 AQAAAQAQQQQAQQAQAAQQAAAAAQAQAAAQQAAQQAAQA`
+
+type testCase struct {
+	n int
+	s string
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		if out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput(); err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errb bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
+	cases := make([]testCase, 0, len(lines))
+	for idx, line := range lines {
+		fields := strings.Fields(strings.TrimSpace(line))
+		if len(fields) != 2 {
+			return nil, fmt.Errorf("line %d expected 2 fields got %d", idx+1, len(fields))
+		}
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, fmt.Errorf("line %d parse n: %v", idx+1, err)
+		}
+		cases = append(cases, testCase{n: n, s: fields[1]})
+	}
+	return cases, nil
+}
+
+// Embedded solver logic from 1754A.go.
+func expected(tc testCase) string {
+	n := tc.n
+	if n > len(tc.s) || n == 0 {
+		n = len(tc.s)
+	}
 	pending := 0
 	for i := 0; i < n; i++ {
-		if s[i] == 'Q' {
+		if tc.s[i] == 'Q' {
 			pending++
 		} else {
 			if pending > 0 {
@@ -29,67 +141,38 @@ func expected(n int, s string) string {
 	return "No"
 }
 
-func runCase(bin string, n int, s string) error {
-	input := fmt.Sprintf("1\n%d\n%s\n", n, s)
-	cmd := exec.Command(bin)
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
-	}
-	got := strings.TrimSpace(out.String())
-	exp := expected(n, s)
-	if got != exp {
-		return fmt.Errorf("expected %q got %q", exp, got)
-	}
-	return nil
-}
-
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("Usage: go run verifierA.go /path/to/binary")
+		fmt.Println("usage: go run verifierA.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	f, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Println("could not open testcasesA.txt:", err)
-		os.Exit(1)
-	}
-	defer f.Close()
 
-	scanner := bufio.NewScanner(f)
-	scanner.Split(bufio.ScanWords)
-	if !scanner.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, err := strconv.Atoi(scanner.Text())
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Println("invalid test count")
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	for i := 0; i < t; i++ {
-		if !scanner.Scan() {
-			fmt.Println("invalid test file")
+
+	bin, cleanup, err := buildIfGo(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	for idx, tc := range cases {
+		want := expected(tc)
+		nActual := len(tc.s)
+		input := fmt.Sprintf("1\n%d\n%s\n", nActual, tc.s)
+		got, err := runCandidate(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		n, _ := strconv.Atoi(scanner.Text())
-		if !scanner.Scan() {
-			fmt.Println("invalid test file")
-			os.Exit(1)
-		}
-		s := scanner.Text()
-		if err := runCase(bin, n, s); err != nil {
-			fmt.Printf("case %d failed: %v\n", i+1, err)
+		if strings.TrimSpace(got) != want {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, want, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

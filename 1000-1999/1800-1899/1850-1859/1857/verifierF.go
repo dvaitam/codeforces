@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"math"
 	"os"
@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 )
+
+const testcasesB64 = "MTAwCjMKMyAzIDAKMgoxIDIKNiAtMwozCi0zIDMgMwoxCi02IC0xCjQKLTMgMSAwIC0yCjEKLTIgMwo0CjMgLTMgLTMgMwozCi0zIDAKNiAwCi0zIDIKMQotMgoyCjUgMwotNSAxCjYKLTIgMCAwIDIgLTEgLTEKMQo0IDIKMQoyCjMKMiAtMwotMiAwCjQgLTEKMgotMSAtMwozCi0zIC0zCi0zIDIKMCAtMQoxCi0yCjIKMyAtMwowIDMKMgotMyAtMwozCjYgMgoxIDIKMyAtMgozCjMgLTMgLTIKMQoxIC0zCjYKMSAtMSAzIDIgLTMgLTMKMgo0IC0yCjUgMQoxCi0yCjIKLTMgLTEKMiAzCjYKMyAtMSAzIDAgMiAtMgoxCjUgMAozCjIgLTIgLTEKMQoxIDIKNAoxIC0xIDEgMgoyCi0zIDEKLTQgMQozCi0xIDIgMAoyCjMgMwoyIC0yCjEKMQoxCjEgLTEKMwoxIC0xIDAKMQo2IDIKNQowIDIgLTIgLTMgMQoyCjYgMQotMyAtMQo2Ci0zIDIgMSAzIDAgLTIKMwo0IDAKNiAxCi00IDEKMwotMSAwIDIKMgotNSAtMwoyIDIKMQotMwoxCi00IDMKMQotMgoxCjEgLTIKMQotMwozCjQgMwowIDIKMSAxCjUKMiAxIC0xIC0zIC0xCjEKMyAyCjEKLTMKMQo0IDAKMQowCjMKLTYgLTEKMiAyCjAgMwozCjMgMiAtMwozCi0yIDEKLTYgMgotNSAzCjMKLTMgLTIgMQoxCi01IDIKMgoxIDAKMQotMyAxCjYKLTIgMSAyIC0yIDEgMgozCjAgMgotNSAzCjQgMQozCjIgMCAyCjMKMCAtMwotNCAzCi00IDEKNAoxIC0xIDIgLTIKMwozIDAKLTEgLTEKMiAtMQozCjAgMyAyCjIKNSAtMQozIC0yCjUKMSAtMiAwIDMgMQozCi0yIC0xCjEgMAowIC0zCjYKLTMgLTEgMSAtMyAxIC0yCjIKLTYgLTEKLTMgLTIKMwotMyAzIDMKMwotMiAxCjIgMQozIDEKMgotMyAtMwoyCi0xIC0yCi00IC0xCjMKMSAtMiAtMgoyCjYgLTEKLTUgMQo0CjEgLTIgMiAtMwozCi0xIDMKMSAtMgoxIDMKNgoyIDEgMyAtMyAxIDIKMgotNiAyCjYgMQo0Ci0zIDMgLTMgMwoyCi0xIDMKMCAwCjEKMwoxCjUgMgo1Ci0zIDIgMyAyIDAKMQotMiAxCjEKLTEKMwozIC0yCi0xIDEKNSAtMgoyCi0zIDIKMwowIDAKNiAxCjMgMQoxCi0yCjIKLTIgMwowIC0yCjIKLTEgLTMKMgozIDIKLTYgMQo0Ci0xIC0zIDAgMQoyCjYgMgotNCAzCjIKMCAxCjEKMSAwCjYKMSAtMiAxIDEgMiAxCjEKLTMgLTMKMwozIDAgLTEKMwozIC0zCi01IDIKMCAwCjMKLTEgLTIgLTEKMgozIDIKLTYgMwozCi0yIC0xIDEKMgozIC0yCjEgLTMKMgotMiAyCjIKLTQgMwo1IDMKMQotMwozCi02IC0yCjMgLTIKLTIgLTMKMwoyIDMgLTMKMgoxIDAKLTYgLTEKMgoyIDEKMQotMyAxCjUKMyAtMSAxIDAgMQozCi00IDIKNSAyCi02IDAKNQoyIDEgLTMgLTEgLTIKMQotMiAtMgo2CjEgLTEgLTMgMCAyIC0zCjEKMCAyCjMKMiAzIDIKMgotNSAtMwotMiAzCjYKMCAtMiAwIDEgMiAtMwoyCjEgMwozIDEKMQotMgoxCjIgMAo1CjIgLTMgLTMgLTIgMQoyCi0xIDAKMCAyCjIKLTMgLTEKMwotMSAtMQo0IC0xCi0zIDEKMwozIC0zIDIKMgowIDMKLTYgMQozCi0yIC0yIC0xCjIKNCAtMgotNSAyCjQKMSAyIDEgMwozCjQgLTIKMCAtMgozIC0yCjQKLTEgMSAtMSAwCjMKLTQgLTIKNCAtMgozIDEKNgozIC0yIDMgLTIgLTEgMgozCjIgLTIKMCAzCi00IDIKNQotMiAtMSAtMyAxIDEKMwotNSAtMgotMSAzCi00IDIKMQozCjIKMCAwCi0yIDAKNgozIDIgMiAtMSAtMiAzCjEKLTUgLTIKMgotMyAzCjMKMyAtMQozIDEKMyAtMgo1Ci0yIC0yIDIgLTMgLTEKMQo1IDMKNAotMiAxIDMgMQoyCjUgMgotMSAtMgo0CjAgMCAtMiAtMgoxCi0zIC0zCjQKMyAtMyAtMSAwCjEKNSAyCjIKMyAtMgoxCi00IDAKNQowIDIgLTEgMyAwCjEKMCAwCjEKMQozCjAgMgotMSAwCjMgMgo1CjEgMSAxIDIgMgoxCjIgLTMKNAowIDMgLTMgLTIKMwoyIDAKNSAtMwoyIDAKNQozIDIgLTMgLTIgLTEKMgowIC0xCjYgMwozCjAgLTIgMAoyCjMgLTMKNSAxCjIKMCAzCjMKMSAtMwo1IDEKLTUgLTIKNQoyIDEgLTIgMCAwCjIKMSAtMwotNCAwCjUKMiAtMiAwIC0zIC0xCjIKNSAyCjUgMwoyCjIgMgoxCi01IC0zCjYKMCAyIC0xIC0zIDEgMgoyCjUgMwoyIDEKMgowIDEKMgotNiAzCi00IC0xCjUKMyAyIDMgLTIgLTIKMQotNCAzCjYKLTMgMCAtMSAtMSAyIDMKMgotMiAyCi00IC0zCjIKLTIgLTMKMwo2IC0xCi02IDAKMSAzCjQKMSAzIC0zIDEKMgotMyAtMgozIDIKNAowIDAgMCAtMwozCjMgLTMKLTMgMQotMiAxCjYKMSAzIDMgLTIgLTMgLTIKMQotNiAyCjMKLTMgLTIgMwoxCjQgMQo="
 
 func isqrt(x int64) int64 {
 	if x < 0 {
@@ -82,71 +84,99 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	data, err := os.ReadFile("testcasesF.txt")
-	if err != nil {
-		fmt.Println("failed to read testcasesF.txt:", err)
-		os.Exit(1)
-	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	if !scan.Scan() {
-		fmt.Println("empty test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(strings.TrimSpace(scan.Text()))
-	for caseNum := 1; caseNum <= t; caseNum++ {
-		if !scan.Scan() {
-			fmt.Printf("case %d missing n\n", caseNum)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(strings.TrimSpace(scan.Text()))
-		if !scan.Scan() {
-			fmt.Printf("case %d missing array\n", caseNum)
-			os.Exit(1)
-		}
-		fields := strings.Fields(scan.Text())
-		if len(fields) != n {
-			fmt.Printf("case %d wrong array length\n", caseNum)
-			os.Exit(1)
-		}
-		a := make([]int64, n)
-		for i, f := range fields {
-			a[i], _ = strconv.ParseInt(f, 10, 64)
-		}
-		if !scan.Scan() {
-			fmt.Printf("case %d missing q\n", caseNum)
-			os.Exit(1)
-		}
-		q, _ := strconv.Atoi(strings.TrimSpace(scan.Text()))
-		queries := make([][2]int64, q)
-		for i := 0; i < q; i++ {
-			if !scan.Scan() {
-				fmt.Printf("case %d missing query %d\n", caseNum, i)
-				os.Exit(1)
-			}
-			parts := strings.Fields(scan.Text())
-			if len(parts) != 2 {
-				fmt.Printf("case %d malformed query\n", caseNum)
-				os.Exit(1)
-			}
-			x, _ := strconv.ParseInt(parts[0], 10, 64)
-			y, _ := strconv.ParseInt(parts[1], 10, 64)
-			queries[i] = [2]int64{x, y}
-		}
-		inputLines := []string{"1", fmt.Sprintf("%d", n), strings.Join(fields, " "), fmt.Sprintf("%d", q)}
-		for _, qv := range queries {
-			inputLines = append(inputLines, fmt.Sprintf("%d %d", qv[0], qv[1]))
-		}
-		input := strings.Join(inputLines, "\n") + "\n"
-		want := expected(a, queries)
+
+	inputs, exps := loadCases()
+	for idx, input := range inputs {
 		got, err := runCase(bin, input)
 		if err != nil {
-			fmt.Printf("case %d runtime error: %v\n", caseNum, err)
+			fmt.Printf("case %d runtime error: %v\n%s", idx+1, err, got)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != want {
-			fmt.Printf("case %d failed: expected %s got %s\n", caseNum, want, got)
+		if strings.TrimSpace(got) != exps[idx] {
+			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, exps[idx], got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", len(inputs))
+}
+
+func loadCases() ([]string, []string) {
+	data, err := base64.StdEncoding.DecodeString(testcasesB64)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to decode embedded testcases: %v\n", err)
+		os.Exit(1)
+	}
+	tokens := strings.Fields(string(data))
+	if len(tokens) == 0 {
+		fmt.Fprintln(os.Stderr, "no testcases found")
+		os.Exit(1)
+	}
+	t, err := strconv.Atoi(tokens[0])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "invalid test count header\n")
+		os.Exit(1)
+	}
+	pos := 1
+	var inputs []string
+	var exps []string
+	for caseNum := 1; caseNum <= t; caseNum++ {
+		if pos >= len(tokens) {
+			fmt.Fprintf(os.Stderr, "case %d missing n\n", caseNum)
+			os.Exit(1)
+		}
+		n, errN := strconv.Atoi(tokens[pos])
+		if errN != nil {
+			fmt.Fprintf(os.Stderr, "invalid n on case %d\n", caseNum)
+			os.Exit(1)
+		}
+		pos++
+		if pos+n > len(tokens) {
+			fmt.Fprintf(os.Stderr, "case %d missing array\n", caseNum)
+			os.Exit(1)
+		}
+		arrVals := tokens[pos : pos+n]
+		pos += n
+		a := make([]int64, n)
+		for i, s := range arrVals {
+			val, err := strconv.ParseInt(s, 10, 64)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "invalid array value on case %d\n", caseNum)
+				os.Exit(1)
+			}
+			a[i] = val
+		}
+		if pos >= len(tokens) {
+			fmt.Fprintf(os.Stderr, "case %d missing q\n", caseNum)
+			os.Exit(1)
+		}
+		q, errQ := strconv.Atoi(tokens[pos])
+		if errQ != nil {
+			fmt.Fprintf(os.Stderr, "invalid q on case %d\n", caseNum)
+			os.Exit(1)
+		}
+		pos++
+		if pos+2*q > len(tokens) {
+			fmt.Fprintf(os.Stderr, "case %d missing queries\n", caseNum)
+			os.Exit(1)
+		}
+		queries := make([][2]int64, q)
+		for i := 0; i < q; i++ {
+			x, errX := strconv.ParseInt(tokens[pos+2*i], 10, 64)
+			y, errY := strconv.ParseInt(tokens[pos+2*i+1], 10, 64)
+			if errX != nil || errY != nil {
+				fmt.Fprintf(os.Stderr, "invalid query on case %d\n", caseNum)
+				os.Exit(1)
+			}
+			queries[i] = [2]int64{x, y}
+		}
+		pos += 2 * q
+		want := expected(a, queries)
+		lines := []string{"1", fmt.Sprintf("%d", n), strings.Join(arrVals, " "), fmt.Sprintf("%d", q)}
+		for _, qv := range queries {
+			lines = append(lines, fmt.Sprintf("%d %d", qv[0], qv[1]))
+		}
+		inputs = append(inputs, strings.Join(lines, "\n")+"\n")
+		exps = append(exps, want)
+	}
+	return inputs, exps
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,28 +8,126 @@ import (
 	"strings"
 )
 
-type testCaseC struct{ s string }
+const testcasesRaw = `kqidto
+apvnsq
+ulmvierwao
+kxb
+iehypltjvlsutewjmx
+ucatgwkfhhuomw
+nbmwsnyvwbfociwfoqp
+tyabpkjobzzngrucxe
+m
+kagawyavqtdgdt
+jiwfdpm
+aio
+ieuq
+deiabbgvirkl
+bxwtupwuounlrfgmsja
+eikkz
+wckytbbifesj
+mrejdpxhbjfq
+jmk
+nddrppkzzk
+pdwp
+bjkxvefusmzucc
+gxh
+ma
+mrqj
+pzswvgnclhisyfn
+ldcwaqo
+dpmigub
+tedgoml
+edtpesmuvnqpvkppuv
+rthakwx
+kbqeitzemsj
+czcqbchebjayokfz
+uolqm
+qbscvzzqytcxnygjr
+npzmtshzavaxfjqsikcp
+jynmzmbfu
+hjxkb
+pn
+ptwcv
+qgzgruykannokk
+mslxqvp
+uodw
+lsptm
+mpqhkncggu
+gpmqqqjowynicbj
+kzgh
+xhuj
+awi
+gxdyodmw
+zuyrdhsewvlxt
+liej
+osyyjuezq
+gabwz
+jprklfevh
+wz
+opqekywsgzffmdbkihys
+jgeymahutunc
+oeifrqkybqtjpqvpon
+owrdr
+ityowmszduambni
+qmnwwgytpi
+ysapg
+ezswjkkll
+zq
+ndsoiijctqqclkzy
+vseja
+xfz
+vvkoqjnhjgfypmro
+km
+xnrrndfwtbkok
+ouvsbrwifhldslczt
+cm
+iyvnmjskk
+uoarsrqrsosqkp
+jxkoyjpzkhmcg
+gsqp
+knjoxxpisrhi
+wobdettpxsidprajepnd
+aiypbdtsmwvwkjh
+azbswus
+qnxmt
+gkxgjmsjwziyxftlyng
+nsznkjsbfhvzjzolz
+od
+qrflwgmfszsyghplreqc
+zldvepyldfddtmx
+frkrjqlvfued
+viezmzdabbd
+oorjkmhbvdwdgcgu
+roftbjrzcf
+kccbfzwfypyqgmkp
+gqlmfhjrxulyzrg
+hsalcxrdezlkzcteo
+eesuljboejqvwedshyhk
+ejxd
+jshjfsbuljutlobmdvd
+nocjdplamlfzvxlxztb
+brhsscdtobrcbtbqbkkr
+srqpbgcwwtyqqenpasc
+ptackudefidengicrqyn
+rnlqknsgutbszibvlga
+vjns
+xxvdxcxwmzprebqapqi`
 
-func parse(path string) ([]testCaseC, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
+func reverse(s string) string {
+	r := []rune(s)
+	for i, j := 0, len(r)-1; i < j; i, j = i+1, j-1 {
+		r[i], r[j] = r[j], r[i]
 	}
-	defer f.Close()
-	var cases []testCaseC
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		cases = append(cases, testCaseC{line})
-	}
-	return cases, scanner.Err()
+	return string(r)
 }
 
 func run(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = strings.NewReader(input)
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
@@ -41,12 +138,13 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func reverse(s string) string {
-	r := []rune(s)
-	for i, j := 0, len(r)-1; i < j; i, j = i+1, j-1 {
-		r[i], r[j] = r[j], r[i]
+func loadCases() []string {
+	lines := strings.Fields(testcasesRaw)
+	if len(lines) == 0 {
+		fmt.Println("no embedded testcases")
+		os.Exit(1)
 	}
-	return string(r)
+	return lines
 }
 
 func main() {
@@ -55,14 +153,10 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	cases, err := parse("testcasesC.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to parse: %v\n", err)
-		os.Exit(1)
-	}
-	for i, tc := range cases {
-		input := fmt.Sprintf("1\n%s\n", tc.s)
-		expected := reverse(tc.s)
+	cases := loadCases()
+	for i, s := range cases {
+		input := fmt.Sprintf("1\n%s\n", s)
+		expected := reverse(s)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Printf("case %d failed: %v\n", i+1, err)

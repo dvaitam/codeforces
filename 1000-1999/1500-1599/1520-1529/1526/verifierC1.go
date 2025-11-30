@@ -3,41 +3,298 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"container/heap"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleC1")
-	cmd := exec.Command("go", "build", "-o", oracle, "1526C1.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
+// Embedded copy of testcasesC1.txt so the verifier is self-contained.
+const testcasesRaw = `100
+15
+-245 196 426 -481 365 -4 663 588 -532 889 -675 150 129 694 832
+3
+598 753 40
+30
+814 -656 -948 694 317 739 -659 799 59 -163 245 353 -574 -103 450 400 -171 -460 -957 203 -726 883 -205 -650 812 -97 157 -891 876 -232
+30
+643 -823 319 204 -171 -315 -523 37 788 -68 -920 -18 269 -792 -450 706 39 4 128 320 -193 -32 -457 -630 -530 107 -254 -674 -381 745
+20
+703 877 -706 -65 -860 971 -860 -21 -195 159 951 -161 138 -812 -457 -13 -530 668 -773 -393
+5
+-264 662 -808 -717 348
+28
+-884 685 363 -720 201 144 -594 -986 -933 765 -172 143 433 546 232 4 462 413 -781 907 -32 145 -289 791 597 -298 787 -801
+22
+-990 -506 -536 19 717 -363 -438 -540 -982 15 -274 939 955 42 897 -302 -813 -842 -376 174 -136 -537
+24
+-248 973 -220 762 552 -703 -526 -411 916 -592 520 589 -15 351 803 600 -265 -421 -213 254 -736 702 594 -756
+13
+-273 24 778 -36 -532 343 452 -235 294 875 -266 -116 -432
+12
+992 -180 571 569 463 -421 774 -785 -18 850 -404 -753
+15
+-685 -296 910 -502 522 -618 903 957 -308 22 -532 -775 394 -214 997
+13
+-49 51 -55 916 1000 158 696 265 -549 383 -183 28 -363
+16
+-524 -356 60 400 -997 -812 -34 -351 -193 824 945 -535 680 981 -117 -901
+19
+579 -918 -168 -809 -461 -590 485 -331 -635 -769 -630 632 430 -255 -943 -522 951 -911 -984
+13
+94 -991 -735 -762 682 238 240 914 868 -592 -833 517 -46
+7
+736 -997 65 836 272 732 -150
+3
+99 -638 896
+8
+-536 901 -150 -218 -28 653 -1000 -108
+7
+-220 998 567 -916 261 954 -449
+1
+193
+12
+441 -248 693 -310 386 -71 312 -725 220 58 -812 -485
+4
+463 -789 -442 -951
+23
+-710 271 581 349 -722 -224 -576 173 998 351 -346 -588 -138 40 24 -754 146 -784 419 865 -28 -745 42
+29
+-84 -38 -635 -69 121 -305 -737 -148 -479 -228 -840 157 35 -313 679 683 767 -522 -71 -492 -282 -16 587 915 -160 -952 -85 481 818
+1
+131
+13
+963 565 587 -87 -542 -121 -507 -482 -23 -28 -712 -533 -98
+10
+-263 337 -5 227 908 903 -696 984 703 69
+22
+-821 -616 -386 910 60 292 378 -749 937 -880 -683 -298 -925 -316 781 273 648 -672 568 843 -41 -201
+22
+-616 -158 16 -607 -657 -200 -904 611 941 642 581 968 -306 817 556 396 699 66 -616 482 -329 -625
+17
+890 111 459 743 217 193 -112 -689 297 410 265 10 840 358 168 902 -564
+20
+-97 -933 -503 -2 853 236 727 -350 138 497 -598 -999 -911 -873 -726 -503 -93 790 380 249
+8
+353 401 -777 765 977 550 56 -129
+30
+322 298 -414 813 398 -308 10 403 -607 -666 -237 141 726 -270 469 -103 -200 -102 358 -350 732 -41 -863 -700 -550 544 -768 539 -681 953
+30
+-193 947 -50 449 107 -570 827 -247 442 -905 -957 -169 -576 -821 748 -156 199 166 789 619 -158 107 -569 297 -992 967 369 -721 87 316
+30
+2 -368 -222 113 100 -865 -840 238 986 496 9 540 -969 -583 -142 263 550 -263 -361 -829 525 -953 571 655 -511 257 982 772 -943 204
+28
+962 49 -248 -686 -47 -471 -775 215 -85 -430 798 717 -551 -217 -214 527 37 899 -305 -533 687 208 -460 916 -818 -910 -683 -354
+21
+196 154 -7 -871 956 79 -19 -110 -346 -211 493 786 -951 -762 -111 243 360 916 970 -727 559
+5
+812 -937 -757 444 -120
+8
+-935 288 -443 -459 -213 -764 -296 -403
+12
+261 644 304 -612 525 688 109 109 -878 -307 55 130
+1
+-670
+30
+14 678 -956 304 767 -472 -321 -719 -296 -797 256 149 -145 956 619 552 -862 -485 168 -787 66 -847 763 200 -738 -7 -930 65 721 601
+8
+-289 -802 142 712 448 -556 -638 420
+22
+969 -529 -183 -588 246 430 526 -101 -287 -677 -449 476 992 832 -287 994 120 745 -589 -558 -47 696
+11
+-737 -434 149 360 589 576 -1000 -830 352 677 -329
+10
+786 446 601 945 -338 -929 -827 252 -972 -402
+26
+-766 -660 457 -437 -588 50 135 -291 771 -81 -818 -151 29 89 702 -163 -749 -836 215 -52 -337 -644 -393 -507 286 -106
+22
+431 -413 -936 -954 711 -984 307 731 -449 -844 783 998 354 -359 -351 121 338 -412 -901 604 450 -491
+28
+819 417 58 -714 -469 222 -886 609 -205 -143 -425 192 -539 -481 947 -360 864 655 91 2 821 -81 450 -749 -133 -234 -653 66
+2
+-527 446
+26
+-23 -215 -938 -512 -834 -369 -799 688 -626 851 -737 966 -104 -969 829 543 -259 76 -153 -745 79 -496 23 -424 -451 -173
+14
+-36 428 918 898 -881 -664 452 816 749 73 -269 -586 -490 -691
+8
+636 -384 615 -703 -619 129 -488 114
+1
+-629
+8
+769 680 478 -146 894 809 444 932
+6
+-502 552 146 -737 804 706
+19
+395 -656 525 -493 73 585 -387 635 777 752 628 451 519 -957 478 -57 617 853 735
+7
+-873 -157 -657 -220 35 -206 -565
+13
+92 77 10 -789 -741 752 -824 91 -977 841 689 830 -833
+1
+969
+24
+-503 527 -190 -78 380 -436 -156 992 -293 355 -189 -472 487 -844 827 560 -677 200 -504 517 -571 757 -908 559
+28
+-891 47 657 -863 419 -87 -491 -78 454 593 837 559 354 -725 228 283 802 43 -408 -973 225 -698 -281 365 -267 -249 699 973
+10
+27 314 409 -481 -727 -954 -19 652 503 915
+27
+751 -592 246 -188 -305 -31 -383 -99 -715 -27 676 -394 920 656 435 869 -321 -286 747 306 235 -221 -190 185 -179 424 833
+17
+-390 381 668 550 156 727 -519 -614 -117 -557 -457 53 -658 43 -713 654 223
+17
+549 843 88 592 866 36 712 692 326 -26 878 -301 -470 -113 -383 -66 856
+21
+78 -894 616 494 -603 982 -474 -61 415 -860 -963 -588 223 -789 752 -475 625 931 -998 690 789
+7
+924 834 -622 265 -645 857 977
+22
+-262 248 662 -452 -982 381 344 -967 -958 244 876 901 -658 702 782 -365 970 683 -517 -196 685 23
+24
+-257 757 -274 -821 192 -116 601 -764 432 -950 573 -648 -971 216 88 -442 -278 512 -573 782 885 -214 -597 -347
+6
+629 -634 16 347 -691 252
+19
+35 -166 201 285 926 864 763 -536 855 -995 -890 -107 837 237 -936 323 326 327 906
+5
+29 -826 -142 -365 -321
+21
+876 282 896 692 267 -613 463 -875 -306 989 -718 -353 345 529 -439 -5 -15 247 869 -323 -448
+29
+322 -841 -61 646 545 -674 839 -780 49 -470 144 463 -172 245 -83 -138 374 -675 244 891 -142 569 -742 405 345 664 921 585 612
+4
+197 583 -772 717
+6
+529 973 -13 -398 405 492
+4
+402 565 -129 -463
+9
+607 -774 301 -272 42 690 97 642 -847
+1
+-917
+20
+-970 994 588 952 -717 819 -749 -165 -212 605 -15 814 -945 -359 294 678 -713 -826 439 -198
+21
+186 534 -539 -901 -572 -156 873 883 848 -944 -904 226 601 -183 -729 147 497 440 -392 -168 -172
+29
+957 706 118 -888 521 713 -88 798 110 -703 148 928 847 -740 319 -576 205 956 -656 701 -818 180 -39 -411 -452 -483 -567 -175 402
+1
+771
+21
+765 -895 72 584 593 -857 794 -979 309 -418 -684 582 -712 705 559 38 -725 921 -766 952 -320
+1
+516
+27
+-338 715 -703 -324 184 538 -872 -824 -237 -576 -481 -77 -321 397 -7 -37 97 78 -828 -835 -354 -102 -215 590 -175 110 -17
+18
+-128 62 -849 856 -551 -706 319 -182 697 790 47 -359 -697 800 -856 -707 -681 -930
+13
+320 157 -763 360 -861 73 -452 157 -381 -279 921 363 780
+24
+-24 -177 211 668 -347 523 371 852 274 -45 49 -293 -525 591 28 -924 485 -214 600 -251 -300 623 49 -986
+8
+176 -843 -27 -773 -247 -109 569 267
+8
+117 -951 62 39 -772 995 -918 167
+12
+-919 930 -251 -632 -302 -449 -5 -11 548 872 806 939
+14
+-998 661 326 576 -517 340 340 -23 521 485 816 -295 399 644
+28
+691 606 486 -671 888 -911 558 513 -17 77 348 901 -663 706 -211 424 -411 402 799 188 -10 -564 871 -945 448 -70 276 228
+27
+999 373 -645 252 -96 -355 184 -329 -120 163 575 772 771 287 -705 49 -121 -199 -515 -246 -220 -396 -508 -568 -478 971 -505
+18
+202 773 900 812 -239 929 -68 -513 227 -309 277 296 -701 -341 -502 -706 728 556
+9
+127 -646 98 443 455 221 -766 830 888
+15
+-18 -581 416 -629 229 -267 239 -490 453 642 -819 107 17 852 -570`
+
+type intHeap []int
+
+func (h intHeap) Len() int            { return len(h) }
+func (h intHeap) Less(i, j int) bool  { return h[i] < h[j] }
+func (h intHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *intHeap) Push(x interface{}) { *h = append(*h, x.(int)) }
+func (h *intHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[:n-1]
+	return x
 }
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+type testCase struct {
+	n   int
+	arr []int
+}
+
+func solveCase(tc testCase) int {
+	h := &intHeap{}
+	var sum int64
+	for _, x := range tc.arr {
+		sum += int64(x)
+		heap.Push(h, x)
+		if sum < 0 {
+			removed := heap.Pop(h).(int)
+			sum -= int64(removed)
+		}
 	}
+	return h.Len()
+}
+
+func parseTestcases() ([]testCase, error) {
+	reader := bufio.NewReader(strings.NewReader(testcasesRaw))
+	var t int
+	if _, err := fmt.Fscan(reader, &t); err != nil {
+		return nil, fmt.Errorf("parse t: %v", err)
+	}
+	res := make([]testCase, 0, t)
+	for caseIdx := 0; caseIdx < t; caseIdx++ {
+		var n int
+		if _, err := fmt.Fscan(reader, &n); err != nil {
+			return nil, fmt.Errorf("case %d: parse n: %v", caseIdx+1, err)
+		}
+		arr := make([]int, n)
+		for i := 0; i < n; i++ {
+			if _, err := fmt.Fscan(reader, &arr[i]); err != nil {
+				return nil, fmt.Errorf("case %d: parse value %d: %v", caseIdx+1, i+1, err)
+			}
+		}
+		res = append(res, testCase{n: n, arr: arr})
+	}
+	return res, nil
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	var stderr bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &stderr
+	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
 	return strings.TrimSpace(out.String()), nil
 }
@@ -47,53 +304,42 @@ func main() {
 		fmt.Println("usage: go run verifierC1.go /path/to/binary")
 		os.Exit(1)
 	}
-	candidate := os.Args[1]
-	oracle, err := buildOracle()
+
+	cases, err := parseTestcases()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.Remove(oracle)
 
-	f, err := os.Open("testcasesC1.txt")
+	bin, cleanup, err := buildIfGo(os.Args[1])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	if !scanner.Scan() {
-		fmt.Println("empty test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(strings.TrimSpace(scanner.Text()))
-	for caseNum := 1; caseNum <= t; caseNum++ {
-		if !scanner.Scan() {
-			fmt.Printf("unexpected EOF on case %d\n", caseNum)
-			os.Exit(1)
+	defer cleanup()
+
+	for i, tc := range cases {
+		expected := strconv.Itoa(solveCase(tc))
+		var sb strings.Builder
+		sb.WriteString(strconv.Itoa(tc.n))
+		sb.WriteByte('\n')
+		for idx, v := range tc.arr {
+			if idx > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.Itoa(v))
 		}
-		nLine := strings.TrimSpace(scanner.Text())
-		n, _ := strconv.Atoi(nLine)
-		if !scanner.Scan() {
-			fmt.Printf("unexpected EOF on case %d\n", caseNum)
-			os.Exit(1)
-		}
-		arrLine := strings.TrimSpace(scanner.Text())
-		input := fmt.Sprintf("%d\n%s\n", n, arrLine)
-		exp, err := run(oracle, input)
+		sb.WriteByte('\n')
+
+		got, err := runCandidate(bin, sb.String())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", caseNum, err)
+			fmt.Printf("case %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		out, err := run(candidate, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", caseNum, err)
-			os.Exit(1)
-		}
-		if out != exp {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", caseNum, exp, out)
+		if strings.TrimSpace(got) != expected {
+			fmt.Printf("case %d failed\nexpected: %s\ngot: %s\n", i+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

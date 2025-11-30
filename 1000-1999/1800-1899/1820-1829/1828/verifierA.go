@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,82 +11,113 @@ import (
 	"strings"
 )
 
+// Base64-encoded contents of testcasesA.txt.
+const testcasesA = "MTAwCjk5CjE5NQoxMDgKMTEKNjcKMTMxCjEyNQoxMDQKNzgKMTIzCjkyCjE1MAo1NgoxMzAKMzYKNzMKMzYKMTk0CjI1CjE1OQo2NQoxMzcKMTgxCjE1NQozOAo4MAoyNgoxODcKMTkKMTc2Cjg1CjEyMQoxNDQKMjYKOTEKMTEyCjgxCjE1NwoxNjQKNTMKMTQyCjEyMwoxMTQKMTM0CjY3CjE2CjE0MQo0CjI0CjE4NQoxMDMKMTgyCjE3MgoxNjEKMQoxNTcKMTI3Cjg2CjYzCjE4Nwo4NAoxODEKMTcKNDkKMTQ2CjU3CjYyCjM3CjE0MAoxMTUKMjQKMjEKODIKMTMxCjEyNgoyOAo3OAoxNDIKNzUKMTgxCjMyCjE0MQo4NgoxMzkKNTMKMTU1CjE0MQoxNTEKNzQKMTE0CjI0CjE1Mwo5OQo4MgoxNDgKNjIKNzUKNDgKNDkKNDgK"
+
+type testCase struct {
+	n int
+}
+
+// Embedded solver logic from 1828A.go.
+func solve(tc testCase) string {
+	var sb strings.Builder
+	for i := 1; i <= tc.n; i++ {
+		if i > 1 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(2 * i))
+	}
+	return sb.String()
+}
+
+func parseTestcases() ([]testCase, error) {
+	raw, err := base64.StdEncoding.DecodeString(testcasesA)
+	if err != nil {
+		return nil, err
+	}
+	sc := bufio.NewScanner(bytes.NewReader(raw))
+	sc.Split(bufio.ScanWords)
+	if !sc.Scan() {
+		return nil, fmt.Errorf("invalid test data")
+	}
+	t, err := strconv.Atoi(sc.Text())
+	if err != nil {
+		return nil, fmt.Errorf("parse t: %v", err)
+	}
+	cases := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		if !sc.Scan() {
+			return nil, fmt.Errorf("case %d missing n", i+1)
+		}
+		n, err := strconv.Atoi(sc.Text())
+		if err != nil {
+			return nil, fmt.Errorf("case %d n: %v", i+1, err)
+		}
+		cases = append(cases, testCase{n: n})
+	}
+	return cases, nil
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "bin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		if out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput(); err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierA.go /path/to/binary")
+		fmt.Println("Usage: go run verifierA.go /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesA.txt")
+
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Println("could not read testcasesA.txt:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	// parse test cases
-	in := bufio.NewScanner(bytes.NewReader(data))
-	if !in.Scan() {
-		fmt.Println("empty test file")
-		os.Exit(1)
-	}
-	t, err := strconv.Atoi(strings.TrimSpace(in.Text()))
+
+	bin, cleanup, err := buildIfGo(os.Args[1])
 	if err != nil {
-		fmt.Println("invalid test count:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	cases := make([]int, 0, t)
-	for in.Scan() {
-		n, err := strconv.Atoi(strings.TrimSpace(in.Text()))
+	defer cleanup()
+
+	for idx, tc := range cases {
+		input := fmt.Sprintf("1\n%d\n", tc.n)
+		want := solve(tc)
+		got, err := runCandidate(bin, input)
 		if err != nil {
-			fmt.Println("invalid n value:", err)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		cases = append(cases, n)
-	}
-	if len(cases) != t {
-		fmt.Println("number of tests does not match")
-		os.Exit(1)
-	}
-
-	bin := os.Args[1]
-	cmd := exec.Command(bin)
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("execution failed: %v\n%s", err, string(out))
-		os.Exit(1)
-	}
-
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
-	for idx, n := range cases {
-		sum := 0
-		for i := 1; i <= n; i++ {
-			if !outScan.Scan() {
-				fmt.Printf("missing output for test %d\n", idx+1)
-				os.Exit(1)
-			}
-			v, err := strconv.Atoi(outScan.Text())
-			if err != nil {
-				fmt.Printf("invalid integer for test %d: %v\n", idx+1, err)
-				os.Exit(1)
-			}
-			if v < 1 || v > 1000 {
-				fmt.Printf("value out of range in test %d: %d\n", idx+1, v)
-				os.Exit(1)
-			}
-			if v%i != 0 {
-				fmt.Printf("value %d not divisible by index %d in test %d\n", v, i, idx+1)
-				os.Exit(1)
-			}
-			sum += v
-		}
-		if sum%n != 0 {
-			fmt.Printf("sum not divisible by n in test %d\n", idx+1)
+		if got != want {
+			fmt.Printf("case %d failed\ninput:\n%sexpected: %s\ngot: %s\n", idx+1, input, want, got)
 			os.Exit(1)
 		}
 	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
-		os.Exit(1)
-	}
-	fmt.Println("All tests passed!")
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

@@ -1,35 +1,93 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleD")
-	cmd := exec.Command("go", "build", "-o", oracle, "1624D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
+// Embedded gzipped+base64 testcases from testcasesD.txt.
+const encodedTestcases = `
+H4sIAEsEK2kC/zVTWXbkIAz89yl0hPSSTnIcDNhsBsxmw+lHlt/89HNrqSqVxOMLHtD7Evca9JKnH/hA5NF5a6cnpqyffuEb2tbTHLidvuEFom87m/7gF/y87q70WLHoAatO0oQjUmMt0xueYBJLCPoAJYKoMiLANxzax4jpNyS5rdPjC/7glFz34e3YseQB5jQ5I+oLQorOpn6hvMGuh8qbIkR7xmNs2/RCmlnuF8wHkGUP7JS+YvwBcejpczFulduGmn/A1qPHNBeOAl6gTu5Jb1iId7ZjNtjyAi/V7jOhLLwgI7qgYpYqYOEbdGMj0DQLDy5T7NDBrFj5A1GoLVP0Baxtml3qHlDOaPpQZTgyp+jWkQAdrXV6YH6Qj9mhGcaeiPSEVY7k9suUJ+g4zIniUC2XXTWiwjQfGyMpIrh20tdWnWhkMSvJXuxvqLyGw1QvJJEZJHuCULgDbCNv8nk5J+I17gvmw60hKCJsLlU3U3gVgbe13hPNwyo58so7Arwhr8p2OQojvTLpsZC7kiHKE7Jli55pZL8LzDwhdFpQFmFXhXQF+o207ybiETinEsmlLvW+lsNuZTdhL/fy0L6L3Qflbdj8Scj+vlbZIgJcVV6QiDTnlCyVuNvCczbFOHFDr9ighEv4/zJSDZ86zfoFrSZW2qHZQsjWsUVeqR/g8qyMn/u63We6OHPa/218lksvc+MaHcfbKMHrte+3yJsl7s3MtK4ys5XM67JrQ96zeHokui7wUHtqeD1X6znTM8BXmX3eaDViY3YZBWk+wL1QGL9p6GyeYPvC90pmdIeRD1SphNT3Ncre79T1nH+h555Dy/V+WNXKwGOoZpDg2e3cTP8A/vqMQj4EAAA=
+`
+
+type testCase struct {
+	n int
+	k int
+	s string
 }
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+func solve(tc testCase) string {
+	freq := make([]int, 26)
+	for i := 0; i < tc.n; i++ {
+		freq[tc.s[i]-'a']++
 	}
+	pairs := 0
+	singles := 0
+	for _, v := range freq {
+		pairs += v / 2
+		singles += v % 2
+	}
+	m := pairs / tc.k
+	ans := 2 * m
+	if singles+2*(pairs%tc.k) >= tc.k {
+		ans++
+	}
+	return fmt.Sprint(ans)
+}
+
+func decodeTestcases() ([]string, error) {
+	data, err := base64.StdEncoding.DecodeString(encodedTestcases)
+	if err != nil {
+		return nil, err
+	}
+	r, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	var out bytes.Buffer
+	if _, err := out.ReadFrom(r); err != nil {
+		return nil, err
+	}
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	var res []string
+	for _, l := range lines {
+		l = strings.TrimSpace(l)
+		if l != "" {
+			res = append(res, l)
+		}
+	}
+	return res, nil
+}
+
+func parseCase(line string) (testCase, error) {
+	fields := strings.Fields(line)
+	if len(fields) != 3 {
+		return testCase{}, fmt.Errorf("invalid case: %q", line)
+	}
+	n, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return testCase{}, err
+	}
+	k, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return testCase{}, err
+	}
+	s := fields[2]
+	if len(s) != n {
+		return testCase{}, fmt.Errorf("length mismatch: n=%d len(s)=%d", n, len(s))
+	}
+	return testCase{n: n, k: k, s: s}, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
@@ -43,50 +101,34 @@ func run(bin, input string) (string, error) {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierD.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: go run verifierD.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
+
+	lines, err := decodeTestcases()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.Remove(oracle)
 
-	f, err := os.Open("testcasesD.txt")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to open testcases:", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		input := "1 " + line + "\n"
-		exp, err := run(oracle, input)
+	for idx, line := range lines {
+		tc, err := parseCase(line)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "case %d parse error: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got, err := run(bin, input)
+		expect := solve(tc)
+		input := fmt.Sprintf("1 %d %d %s\n", tc.n, tc.k, tc.s)
+		got, err := runCandidate(bin, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if got != exp {
-			fmt.Printf("case %d failed\nexpected: %s\n got: %s\n", idx, exp, got)
+		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, expect, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "scanner error:", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(lines))
 }

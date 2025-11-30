@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -12,39 +11,318 @@ import (
 
 const MOD int64 = 998244353
 
-type testCaseD struct {
-	n    int
-	a, b string
+type testCase struct {
+	input    string
+	expected string
 }
 
-func parseCasesD(path string) ([]testCaseD, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	in := bufio.NewReader(f)
-	var t int
-	if _, err := fmt.Fscan(in, &t); err != nil {
-		return nil, err
-	}
-	cases := make([]testCaseD, t)
-	for i := 0; i < t; i++ {
-		var n int
-		var s1, s2 string
-		if _, err := fmt.Fscan(in, &n); err != nil {
-			return nil, err
-		}
-		if _, err := fmt.Fscan(in, &s1); err != nil {
-			return nil, err
-		}
-		if _, err := fmt.Fscan(in, &s2); err != nil {
-			return nil, err
-		}
-		cases[i] = testCaseD{n: n, a: s1, b: s2}
-	}
-	return cases, nil
-}
+const testcaseData = `100
+7
+1011111
+1001001
+3
+100
+110
+6
+110111
+000101
+6
+010000
+010011
+2
+11
+01
+4
+1101
+1010
+4
+1010
+1010
+6
+000100
+000010
+3
+010
+110
+3
+000
+001
+6
+010000
+100101
+5
+00010
+11110
+6
+100001
+001101
+7
+1100011
+0000010
+1
+0
+0
+1
+1
+1
+8
+10110101
+00000100
+7
+1110010
+1100010
+7
+1101000
+1010010
+8
+10110100
+10111110
+4
+1001
+1001
+5
+01100
+10001
+8
+10101011
+00011011
+2
+01
+01
+3
+000
+100
+5
+10000
+01001
+8
+00000111
+10011111
+3
+111
+101
+5
+10110
+01000
+4
+1111
+0111
+4
+1001
+1110
+4
+0010
+0010
+1
+1
+0
+4
+1001
+0111
+2
+01
+11
+5
+10011
+11111
+5
+10010
+10001
+4
+1000
+0101
+3
+100
+010
+3
+110
+100
+4
+0101
+1000
+8
+10011000
+00101100
+6
+110101
+101101
+2
+10
+11
+4
+1010
+1000
+8
+00100000
+10100001
+2
+01
+10
+3
+000
+011
+5
+01110
+10000
+4
+0001
+1001
+4
+1111
+1011
+7
+1111111
+1111110
+6
+111001
+010100
+3
+101
+101
+5
+10101
+01000
+5
+00100
+01000
+1
+0
+0
+4
+1000
+1000
+8
+11011111
+11111101
+7
+1111010
+1100011
+3
+100
+100
+4
+1010
+0011
+7
+0110101
+1100010
+6
+101111
+100001
+7
+0100001
+1001001
+3
+110
+110
+7
+1010100
+1111011
+8
+10100010
+10101010
+8
+00111001
+00000111
+6
+111111
+000000
+7
+1111101
+1010011
+3
+011
+001
+3
+010
+101
+7
+1000101
+0011110
+7
+1001101
+0000011
+5
+11101
+11110
+3
+100
+101
+7
+1001111
+1110101
+7
+1010011
+1000011
+3
+101
+110
+2
+11
+10
+2
+10
+11
+1
+1
+1
+4
+0110
+1101
+5
+00010
+01010
+7
+0111001
+0100001
+2
+10
+10
+3
+000
+101
+1
+1
+0
+5
+00011
+01000
+2
+01
+00
+7
+0101000
+1011011
+7
+0011111
+0011110
+6
+010001
+011111
+4
+0110
+0000
+5
+10001
+10101
+2
+11
+11
+7
+0111110
+0101100
+8
+00100111
+11011100
+1
+0
+1
+4
+0001
+1101
+4
+0001
+0001`
 
 func modPow(a, b int64) int64 {
 	res := int64(1)
@@ -99,23 +377,63 @@ func expectedMoves(n, d int) int64 {
 	return res
 }
 
-func solveD(tc testCaseD) int64 {
+func solve(a, b string) int64 {
 	d := 0
-	for i := 0; i < tc.n; i++ {
-		if tc.a[i] != tc.b[i] {
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
 			d++
 		}
 	}
-	return expectedMoves(tc.n, d)
+	return expectedMoves(len(a), d)
+}
+
+func parseTestcases() ([]testCase, error) {
+	fields := strings.Fields(testcaseData)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no testcases")
+	}
+	pos := 0
+	t, err := strconv.Atoi(fields[pos])
+	if err != nil {
+		return nil, fmt.Errorf("bad test count: %w", err)
+	}
+	pos++
+	cases := make([]testCase, 0, t)
+	for caseNum := 0; caseNum < t; caseNum++ {
+		if pos >= len(fields) {
+			return nil, fmt.Errorf("case %d: missing n", caseNum+1)
+		}
+		n, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return nil, fmt.Errorf("case %d: bad n: %w", caseNum+1, err)
+		}
+		pos++
+		if pos+1 >= len(fields) {
+			return nil, fmt.Errorf("case %d: missing strings", caseNum+1)
+		}
+		a := fields[pos]
+		b := fields[pos+1]
+		pos += 2
+
+		var sb strings.Builder
+		sb.WriteString("1\n")
+		sb.WriteString(strconv.Itoa(n))
+		sb.WriteByte('\n')
+		sb.WriteString(a)
+		sb.WriteByte('\n')
+		sb.WriteString(b)
+		sb.WriteByte('\n')
+
+		cases = append(cases, testCase{
+			input:    sb.String(),
+			expected: strconv.FormatInt(solve(a, b), 10),
+		})
+	}
+	return cases, nil
 }
 
 func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
@@ -129,32 +447,23 @@ func run(bin, input string) (string, error) {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierD.go /path/to/binary")
+		fmt.Println("usage: verifierD /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	cases, err := parseCasesD("testcasesD.txt")
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to load testcases: %v\n", err)
 		os.Exit(1)
 	}
 	for idx, tc := range cases {
-		sb := strings.Builder{}
-		fmt.Fprintf(&sb, "1\n%d\n%s\n%s\n", tc.n, tc.a, tc.b)
-		input := sb.String()
-		expected := solveD(tc)
-		gotStr, err := run(bin, input)
+		got, err := run(bin, tc.input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got, err := strconv.ParseInt(strings.TrimSpace(gotStr), 10, 64)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d: cannot parse output: %v\n", idx+1, err)
-			os.Exit(1)
-		}
-		if got != expected {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %d got %d\n", idx+1, expected, got)
+		if got != tc.expected {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, tc.expected, got)
 			os.Exit(1)
 		}
 	}

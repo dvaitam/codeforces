@@ -1,59 +1,551 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
-
-type testCaseF struct {
-	n int
-	a []int
-	b []int
-}
-
-func parseTests(path string) ([]testCaseF, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	in := bufio.NewReader(f)
-	var t int
-	if _, err := fmt.Fscan(in, &t); err != nil {
-		return nil, err
-	}
-	cases := make([]testCaseF, t)
-	for i := 0; i < t; i++ {
-		var n int
-		fmt.Fscan(in, &n)
-		a := make([]int, 2*n)
-		b := make([]int, 2*n)
-		for j := 0; j < 2*n; j++ {
-			fmt.Fscan(in, &a[j], &b[j])
-		}
-		cases[i] = testCaseF{n: n, a: a, b: b}
-	}
-	return cases, nil
-}
 
 type pair struct {
 	first  int
 	second bool
 }
 
-func solve(tc testCaseF) ([]string, bool) {
+type testCase struct {
+	n int
+	a []int
+	b []int
+}
+
+// Embedded testcases from testcasesF.txt.
+const testcaseData = `
+100
+3
+-1 3
+2 -3
+3 -2
+-3 2
+1 -1
+-2 1
+1
+1 1
+-1 -1
+3
+3 2
+-3 -1
+1 -3
+-1 1
+-2 3
+2 -2
+1
+-1 -1
+1 1
+3
+1 -3
+-3 -1
+-2 2
+3 1
+-1 -2
+2 3
+1
+-1 -1
+1 1
+2
+-2 -1
+-1 -2
+1 2
+2 1
+1
+-1 1
+1 -1
+1
+-1 -1
+1 1
+2
+-2 2
+2 -1
+1 1
+-1 -2
+3
+-1 2
+-3 -2
+1 3
+-2 1
+3 -1
+2 -3
+2
+2 -2
+-1 2
+1 1
+-2 -1
+1
+1 1
+-1 -1
+2
+1 1
+-1 -2
+-2 2
+2 -1
+1
+1 1
+-1 -1
+3
+1 -1
+-1 -3
+2 2
+-2 3
+3 -2
+-3 1
+1
+-1 1
+1 -1
+2
+-1 -1
+1 2
+2 -2
+-2 1
+3
+2 1
+-3 2
+1 -2
+3 -3
+-1 3
+-2 -1
+3
+-3 3
+3 1
+-2 -1
+2 -3
+-1 -2
+1 2
+1
+1 1
+-1 -1
+1
+1 1
+-1 -1
+2
+-1 1
+1 -1
+2 2
+-2 -2
+2
+-1 -1
+2 2
+1 -2
+-2 1
+1
+-1 1
+1 -1
+3
+2 -1
+-1 -2
+1 1
+-2 3
+-3 2
+3 -3
+3
+-1 -1
+1 -2
+2 1
+3 2
+-3 3
+-2 -3
+2
+2 -1
+1 2
+-1 -2
+-2 1
+2
+-1 2
+1 -1
+-2 1
+2 -2
+2
+1 -1
+-2 1
+-1 2
+2 -2
+3
+-1 1
+1 3
+-2 2
+-3 -1
+2 -2
+3 -3
+1
+1 -1
+-1 1
+3
+-3 1
+2 -3
+-1 2
+1 3
+-2 -1
+3 -2
+2
+1 2
+2 -1
+-2 1
+-1 -2
+1
+-1 -1
+1 1
+3
+2 2
+3 -1
+1 -2
+-1 1
+-3 -3
+-2 3
+1
+1 -1
+-1 1
+1
+1 1
+-1 -1
+3
+-1 3
+3 1
+1 -1
+-2 -3
+-3 -2
+2 2
+3
+-1 -1
+1 -2
+-3 3
+-2 1
+2 2
+3 -3
+3
+-2 2
+1 -2
+-3 -3
+3 -1
+-1 3
+2 1
+1
+1 1
+-1 -1
+1
+-1 1
+1 -1
+1
+1 1
+-1 -1
+1
+-1 1
+1 -1
+2
+1 -2
+-1 1
+-2 2
+2 -1
+2
+-1 -2
+-2 2
+2 -1
+1 1
+1
+-1 -1
+1 1
+1
+1 -1
+-1 1
+1
+1 1
+-1 -1
+3
+-3 3
+1 1
+2 2
+3 -1
+-1 -2
+-2 -3
+1
+-1 1
+1 -1
+1
+1 1
+-1 -1
+3
+-1 2
+2 -3
+1 3
+-3 -1
+-2 1
+3 -2
+2
+1 2
+2 -1
+-1 -2
+-2 1
+1
+-1 1
+1 -1
+2
+1 -2
+-1 1
+-2 2
+2 -1
+2
+1 1
+-2 -2
+-1 -1
+2 2
+2
+-1 2
+1 1
+2 -2
+-2 -1
+3
+-2 2
+-3 1
+3 3
+-1 -1
+2 -2
+1 -3
+3
+1 2
+-3 1
+-2 -1
+2 -3
+-1 3
+3 -2
+1
+-1 1
+1 -1
+1
+-1 -1
+1 1
+3
+2 -2
+-3 3
+3 -1
+1 -3
+-1 1
+-2 2
+1
+1 1
+-1 -1
+2
+1 -1
+-1 -2
+2 2
+-2 1
+2
+-1 2
+-2 -2
+1 1
+2 -1
+1
+-1 1
+1 -1
+3
+-2 -1
+-1 3
+-3 -3
+1 1
+3 -2
+2 2
+3
+2 -2
+1 -1
+-2 3
+3 2
+-1 -3
+-3 1
+3
+-1 -1
+-2 3
+-3 2
+2 -3
+3 -2
+1 1
+1
+-1 1
+1 -1
+3
+-1 2
+-2 1
+3 3
+-3 -3
+1 -2
+2 -1
+1
+1 -1
+-1 1
+2
+1 -1
+-1 1
+-2 -2
+2 2
+1
+-1 1
+1 -1
+2
+-2 2
+1 -2
+2 1
+-1 -1
+2
+-2 1
+-1 -1
+2 2
+1 -2
+1
+-1 -1
+1 1
+3
+1 2
+-1 3
+-3 1
+2 -2
+-2 -3
+3 -1
+1
+-1 1
+1 -1
+2
+-1 1
+-2 2
+1 -2
+2 -1
+1
+1 1
+-1 -1
+1
+-1 -1
+1 1
+1
+-1 -1
+1 1
+1
+-1 -1
+1 1
+1
+1 1
+-1 -1
+3
+-1 3
+-3 2
+2 -3
+-2 -2
+3 -1
+1 1
+2
+1 1
+-1 -2
+2 2
+-2 -1
+2
+1 -1
+2 -2
+-1 1
+-2 2
+2
+-1 1
+1 -2
+-2 2
+2 -1
+3
+-2 -1
+-1 -3
+2 1
+1 -2
+3 3
+-3 2
+1
+-1 1
+1 -1
+1
+-1 -1
+1 1
+1
+-1 -1
+1 1
+2
+1 1
+-2 -2
+2 2
+-1 -1
+2
+2 1
+-1 -2
+-2 -1
+1 2
+2
+2 -2
+-1 -1
+-2 1
+1 2
+2
+-1 1
+2 -2
+-2 -1
+1 2
+1
+-1 -1
+1 1
+`
+
+func parseTestcases() ([]testCase, error) {
+	fields := strings.Fields(testcaseData)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no test data")
+	}
+	pos := 0
+	nextInt := func() (int, error) {
+		if pos >= len(fields) {
+			return 0, fmt.Errorf("unexpected end of data")
+		}
+		v, err := strconv.Atoi(fields[pos])
+		pos++
+		return v, err
+	}
+	t, err := nextInt()
+	if err != nil {
+		return nil, fmt.Errorf("bad t: %v", err)
+	}
+	res := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		n, err := nextInt()
+		if err != nil {
+			return nil, fmt.Errorf("case %d bad n: %v", i+1, err)
+		}
+		m := 2 * n
+		a := make([]int, m+1)
+		b := make([]int, m+1)
+		for j := 1; j <= m; j++ {
+			ai, err := nextInt()
+			if err != nil {
+				return nil, fmt.Errorf("case %d bad a[%d]: %v", i+1, j, err)
+			}
+			bi, err := nextInt()
+			if err != nil {
+				return nil, fmt.Errorf("case %d bad b[%d]: %v", i+1, j, err)
+			}
+			a[j] = ai
+			b[j] = bi
+		}
+		res = append(res, testCase{n: n, a: a, b: b})
+	}
+	if pos != len(fields) {
+		return nil, fmt.Errorf("extra tokens at end of data")
+	}
+	return res, nil
+}
+
+// solve mirrors 1503F.go and returns expected output string.
+func solve(tc testCase) string {
 	n := tc.n
 	m := 2 * n
-	a := make([]int, m+1)
-	b := make([]int, m+1)
-	for i := 0; i < m; i++ {
-		a[i+1] = tc.a[i]
-		b[i+1] = tc.b[i]
-	}
+	a := tc.a
+	b := tc.b
 	ap := make([]int, 2*n+1)
 	bp := make([]int, 2*n+1)
 	vis := make([]bool, m+1)
@@ -62,7 +554,12 @@ func solve(tc testCaseF) ([]string, bool) {
 	R := make([]pair, m+1)
 	lson := make([][]int, m+1)
 	rson := make([][]int, m+1)
-	ans := make([]int, 0)
+	ans := make([]int, 0, m)
+
+	for i := 1; i <= m; i++ {
+		ap[n+a[i]] = i
+		bp[n+b[i]] = i
+	}
 
 	var dfs func(int)
 	dfs = func(id int) {
@@ -135,10 +632,6 @@ func solve(tc testCaseF) ([]string, bool) {
 	}
 
 	for i := 1; i <= m; i++ {
-		ap[n+a[i]] = i
-		bp[n+b[i]] = i
-	}
-	for i := 1; i <= m; i++ {
 		if !vis[i] {
 			j := i
 			for !vis[j] {
@@ -156,28 +649,34 @@ func solve(tc testCaseF) ([]string, bool) {
 				}
 			}
 			if !calc(i) {
-				return nil, false
+				return "NO"
 			}
 		}
 	}
-	if len(ans) == 0 {
-		return nil, false
-	}
-	output := []string{"Yes"}
+	var sb strings.Builder
+	sb.WriteString("Yes\n")
 	for _, id := range ans {
-		output = append(output, fmt.Sprintf("%d %d", a[id], b[id]))
+		fmt.Fprintf(&sb, "%d %d\n", a[id], b[id])
 	}
-	return output, true
+	return strings.TrimRight(sb.String(), "\n")
 }
 
-func runBinary(bin, input string) (string, error) {
+func runCandidate(bin string, tc testCase) (string, error) {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d\n", tc.n))
+	for i := 1; i <= 2*tc.n; i++ {
+		sb.WriteString(fmt.Sprintf("%d %d\n", tc.a[i], tc.b[i]))
+	}
 	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(input)
+	cmd.Stdin = strings.NewReader(sb.String())
 	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return out.String(), err
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return out.String(), fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
@@ -186,40 +685,23 @@ func main() {
 		return
 	}
 	bin := os.Args[1]
-	cases, err := parseTests("testcasesF.txt")
+
+	cases, err := parseTestcases()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
+
 	for idx, tc := range cases {
-		expect, ok := solve(tc)
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d\n", tc.n))
-		for i := 0; i < 2*tc.n; i++ {
-			sb.WriteString(fmt.Sprintf("%d %d\n", tc.a[i], tc.b[i]))
-		}
-		out, err := runBinary(bin, sb.String())
+		expect := solve(tc)
+		got, err := runCandidate(bin, tc)
 		if err != nil {
-			fmt.Printf("case %d: runtime error: %v\n%s", idx+1, err, out)
+			fmt.Printf("case %d: %v", idx+1, err)
 			os.Exit(1)
 		}
-		lines := strings.Split(strings.TrimSpace(out), "\n")
-		if !ok {
-			if len(lines) == 0 || strings.ToUpper(strings.TrimSpace(lines[0])) != "NO" {
-				fmt.Printf("case %d expected NO\n", idx+1)
-				os.Exit(1)
-			}
-			continue
-		}
-		if len(lines) != len(expect) {
-			fmt.Printf("case %d line count mismatch expected %d got %d\n", idx+1, len(expect), len(lines))
+		if got != expect {
+			fmt.Printf("case %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx+1, expect, got)
 			os.Exit(1)
-		}
-		for i := range lines {
-			if strings.TrimSpace(lines[i]) != expect[i] {
-				fmt.Printf("case %d mismatch on line %d\nexpected: %s\n got: %s\n", idx+1, i+1, expect[i], lines[i])
-				os.Exit(1)
-			}
 		}
 	}
 	fmt.Printf("All %d tests passed\n", len(cases))

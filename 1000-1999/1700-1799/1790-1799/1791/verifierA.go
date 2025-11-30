@@ -1,76 +1,182 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strconv"
+	"strings"
 )
 
-func caseCount(data []byte) int {
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if scan.Scan() {
-		n, _ := strconv.Atoi(scan.Text())
-		return n
-	}
-	return 0
+const testcaseData = `100
+m
+y
+n
+b
+i
+q
+p
+m
+z
+j
+p
+l
+s
+g
+q
+e
+j
+e
+y
+d
+t
+z
+i
+r
+w
+z
+t
+e
+j
+d
+x
+c
+v
+k
+p
+r
+d
+l
+n
+k
+t
+u
+g
+r
+p
+o
+q
+i
+b
+z
+r
+a
+c
+x
+m
+w
+z
+v
+u
+a
+t
+p
+k
+h
+x
+k
+w
+c
+g
+s
+h
+h
+z
+e
+z
+r
+o
+c
+c
+k
+q
+p
+d
+j
+r
+j
+w
+d
+r
+k
+r
+g
+z
+t
+r
+s
+j
+o
+c
+t`
+
+type testCase struct {
+	input    string
+	expected string
 }
 
-func run(bin string, data []byte) ([]byte, error) {
+func solve(s string) string {
+	if strings.ContainsRune("codeforces", rune(s[0])) {
+		return "YES"
+	}
+	return "NO"
+}
+
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcaseData), "\n")
+	if len(lines) == 0 {
+		return nil, fmt.Errorf("no testcases")
+	}
+	cases := make([]testCase, 0, len(lines)-1)
+	for i, line := range lines[1:] {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			return nil, fmt.Errorf("case %d: empty line", i+1)
+		}
+		input := fmt.Sprintf("1\n%s\n", line)
+		cases = append(cases, testCase{
+			input:    input,
+			expected: solve(line),
+		})
+	}
+	return cases, nil
+}
+
+func run(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
-	cmd.Stdin = bytes.NewReader(data)
+	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return out.Bytes(), err
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierA.go /path/to/binary")
+		fmt.Println("usage: verifierA /path/to/binary")
 		os.Exit(1)
 	}
-	candidate := os.Args[1]
-	dir, _ := os.Getwd()
-	oracle := filepath.Join(dir, "oracleA")
-	if out, err := exec.Command("go", "build", "-o", oracle, "1791A.go").CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "build oracle failed: %v\n%s", err, out)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
-	data, err := os.ReadFile("testcasesA.txt")
+	bin := os.Args[1]
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not read testcases: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to load testcases: %v\n", err)
 		os.Exit(1)
 	}
 
-	candOut, err := run(candidate, data)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "candidate runtime error: %v\n%s", err, candOut)
-		os.Exit(1)
-	}
-	refOut, err := run("./"+filepath.Base(oracle), data)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "oracle runtime error: %v\n%s", err, refOut)
-		os.Exit(1)
-	}
-	cLines := bytes.Split(bytes.TrimSpace(candOut), []byte{'\n'})
-	rLines := bytes.Split(bytes.TrimSpace(refOut), []byte{'\n'})
-	if len(cLines) != len(rLines) {
-		fmt.Printf("output length mismatch\n")
-		os.Exit(1)
-	}
-	for i := range cLines {
-		if !bytes.Equal(bytes.TrimSpace(cLines[i]), bytes.TrimSpace(rLines[i])) {
-			fmt.Printf("case %d failed: expected %s got %s\n", i+1, rLines[i], cLines[i])
+	for idx, tc := range cases {
+		got, err := run(bin, tc.input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
+			os.Exit(1)
+		}
+		if got != tc.expected {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, tc.expected, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", caseCount(data))
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

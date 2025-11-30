@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +12,7 @@ import (
 )
 
 const mod int64 = 998244353
+const testcasesB64 = "MTAwCjQgNgoyIDEgMQozIDEgNAo0IDEgMgo0IDEwCjIgMSA4CjMgMiAxCjQgMSA1CjQgNgoyIDEgMQozIDIgNQo0IDEgMwo1IDMKMiAxIDMKMyAyIDIKNCAzIDIKNSAyIDMKMyAxMAoyIDEgMgozIDEgOAo0IDcKMiAxIDMKMyAyIDIKNCAzIDUKNSA5CjIgMSA4CjMgMSA0CjQgMyA1CjUgMiAxCjIgMQoyIDEgMQozIDEwCjIgMSA3CjMgMSA2CjQgOQoyIDEgMQozIDEgNQo0IDIgMgo0IDUKMiAxIDEKMyAxIDMKNCAyIDQKMiAzCjIgMSAyCjQgOAoyIDEgMQozIDEgOAo0IDEgOAo0IDgKMiAxIDEKMyAyIDYKNCAzIDEKMyAxMAoyIDEgNgozIDEgMwo0IDEKMiAxIDEKMyAxIDEKNCAxIDEKNCA2CjIgMSAzCjMgMiAxCjQgMiAyCjQgOAoyIDEgNAozIDIgMwo0IDEgNgoyIDQKMiAxIDQKMiA4CjIgMSA0CjQgOAoyIDEgNgozIDEgMgo0IDMgMwozIDEKMiAxIDEKMyAxIDEKNCAxCjIgMSAxCjMgMiAxCjQgMSAxCjIgMTAKMiAxIDQKNCA0CjIgMSAzCjMgMiAzCjQgMiAxCjQgMwoyIDEgMgozIDEgMQo0IDMgMwoyIDQKMiAxIDMKNCAzCjIgMSAzCjMgMSAxCjQgMSAyCjQgOQoyIDEgMQozIDEgMQo0IDIgMQoyIDcKMiAxIDEKNSA3CjIgMSA2CjMgMiA1CjQgMiAzCjUgMyA3CjMgOQoyIDEgOAozIDEgMgo1IDIKMiAxIDIKMyAyIDIKNCAxIDEKNSAyIDIKNCA3CjIgMSA2CjMgMiA3CjQgMiA0CjUgMQoyIDEgMQozIDEgMQo0IDIgMQo1IDIgMQo0IDEwCjIgMSA5CjMgMSA3CjQgMyAyCjQgOQoyIDEgNQozIDIgNwo0IDMgNwozIDEwCjIgMSA5CjMgMSA4CjUgMgoyIDEgMQozIDIgMgo0IDMgMgo1IDIgMQoyIDEwCjIgMSAyCjUgNgoyIDEgNAozIDEgMwo0IDIgMQo1IDEgNgo1IDYKMiAxIDYKMyAxIDEKNCAxIDIKNSAxIDIKMyA4CjIgMSA3CjMgMiA0CjMgNgoyIDEgNQozIDIgNAo0IDIKMiAxIDIKMyAxIDIKNCAxIDIKMiAxCjIgMSAxCjQgMQoyIDEgMQozIDIgMQo0IDMgMQo1IDcKMiAxIDUKMyAxIDYKNCAxIDQKNSAyIDIKNSA2CjIgMSAyCjMgMiA2CjQgMSAyCjUgMSAxCjIgMwoyIDEgMwo1IDMKMiAxIDEKMyAyIDIKNCAzIDMKNSA0IDMKMyA4CjIgMSA4CjMgMiA2CjMgMwoyIDEgMwozIDEgMwo1IDQKMiAxIDQKMyAyIDEKNCAxIDQKNSAzIDEKNSAyCjIgMSAyCjMgMiAxCjQgMyAxCjUgMiAyCjIgOQoyIDEgMQo0IDkKMiAxIDgKMyAyIDkKNCAyIDYKNSA2CjIgMSAzCjMgMSAxCjQgMyA1CjUgMyA2CjQgMQoyIDEgMQozIDEgMQo0IDMgMQo0IDgKMiAxIDMKMyAxIDUKNCAyIDMKNCA1CjIgMSAxCjMgMSA1CjQgMSA1CjMgOAoyIDEgMwozIDIgNAo1IDMKMiAxIDIKMyAxIDEKNCAzIDEKNSA0IDIKNSA0CjIgMSAyCjMgMSAzCjQgMSAzCjUgMSAxCjMgOAoyIDEgOAozIDIgOAozIDcKMiAxIDQKMyAyIDIKNSAxCjIgMSAxCjMgMiAxCjQgMyAxCjUgMSAxCjUgMTAKMiAxIDYKMyAyIDUKNCAxIDUKNSA0IDgKMyAxMAoyIDEgOQozIDIgMwo0IDkKMiAxIDEKMyAxIDEKNCAyIDIKMiA4CjIgMSA0CjQgNQoyIDEgMQozIDEgNQo0IDEgMQozIDEwCjIgMSAyCjMgMSAxMAozIDcKMiAxIDEKMyAxIDMKNCA4CjIgMSA4CjMgMiA3CjQgMyA2CjQgMwoyIDEgMgozIDEgMgo0IDIgMgoyIDUKMiAxIDIKNSAyCjIgMSAxCjMgMiAxCjQgMyAyCjUgMSAxCjUgNAoyIDEgNAozIDIgMQo0IDEgMQo1IDEgMwo1IDEKMiAxIDEKMyAxIDEKNCAzIDEKNSAzIDEKNCA3CjIgMSA1CjMgMiA0CjQgMiA0CjIgOQoyIDEgMQo1IDgKMiAxIDYKMyAyIDUKNCAyIDEKNSAxIDYKNCAyCjIgMSAyCjMgMSAxCjQgMyAxCjUgNAoyIDEgNAozIDEgMwo0IDIgMQo1IDQgMgozIDEKMiAxIDEKMyAxIDEKNSAyCjIgMSAyCjMgMiAxCjQgMSAyCjUgMSAyCjIgNwoyIDEgMgo1IDkKMiAxIDQKMyAxIDEKNCAzIDMKNSA0IDEKNSAxMAoyIDEgNAozIDEgMQo0IDEgMQo1IDMgMgo1IDEwCjIgMSAxMAozIDEgMgo0IDEgOAo1IDIgMgozIDcKMiAxIDcKMyAyIDMKMiAxMAoyIDEgNgozIDEKMiAxIDEKMyAxIDEKNCAzCjIgMSAxCjMgMiAzCjQgMSAyCjMgMTAKMiAxIDMKMyAxIDEwCjUgMwoyIDEgMgozIDEgMQo0IDEgMQo1IDEgMwo0IDcKMiAxIDYKMyAxIDIKNCAxIDYKNCA5CjIgMSA3CjMgMSAzCjQgMyAxCjMgOAoyIDEgNQozIDIgNwo="
 
 type DSU struct {
 	parent []int
@@ -120,60 +121,76 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	data, err := os.ReadFile("testcasesG.txt")
-	if err != nil {
-		fmt.Println("failed to read testcasesG.txt:", err)
-		os.Exit(1)
-	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	if !scan.Scan() {
-		fmt.Println("empty test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(strings.TrimSpace(scan.Text()))
-	for caseNum := 1; caseNum <= t; caseNum++ {
-		if !scan.Scan() {
-			fmt.Printf("case %d missing nS\n", caseNum)
-			os.Exit(1)
-		}
-		header := strings.Fields(scan.Text())
-		if len(header) != 2 {
-			fmt.Printf("case %d malformed header\n", caseNum)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(header[0])
-		S, _ := strconv.ParseInt(header[1], 10, 64)
-		edges := make([][3]int64, n-1)
-		for i := 0; i < n-1; i++ {
-			if !scan.Scan() {
-				fmt.Printf("case %d missing edge %d\n", caseNum, i)
-				os.Exit(1)
-			}
-			parts := strings.Fields(scan.Text())
-			if len(parts) != 3 {
-				fmt.Printf("case %d malformed edge\n", caseNum)
-				os.Exit(1)
-			}
-			u, _ := strconv.ParseInt(parts[0], 10, 64)
-			v, _ := strconv.ParseInt(parts[1], 10, 64)
-			w, _ := strconv.ParseInt(parts[2], 10, 64)
-			edges[i] = [3]int64{u, v, w}
-		}
-		inputLines := []string{"1", fmt.Sprintf("%d %d", n, S)}
-		for _, e := range edges {
-			inputLines = append(inputLines, fmt.Sprintf("%d %d %d", e[0], e[1], e[2]))
-		}
-		input := strings.Join(inputLines, "\n") + "\n"
-		want := expected(n, S, edges)
+
+	inputs, exps := loadCases()
+	for idx, input := range inputs {
 		got, err := runCase(bin, input)
 		if err != nil {
-			fmt.Printf("case %d runtime error: %v\n", caseNum, err)
+			fmt.Printf("case %d runtime error: %v\n%s", idx+1, err, got)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != want {
-			fmt.Printf("case %d failed: expected %s got %s\n", caseNum, want, got)
+		if strings.TrimSpace(got) != exps[idx] {
+			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, exps[idx], got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", len(inputs))
+}
+
+func loadCases() ([]string, []string) {
+	data, err := base64.StdEncoding.DecodeString(testcasesB64)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to decode embedded testcases: %v\n", err)
+		os.Exit(1)
+	}
+	tokens := strings.Fields(string(bytes.TrimSpace(data)))
+	if len(tokens) == 0 {
+		fmt.Fprintln(os.Stderr, "no testcases found")
+		os.Exit(1)
+	}
+	t, err := strconv.Atoi(tokens[0])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "invalid test count header\n")
+		os.Exit(1)
+	}
+	pos := 1
+	var inputs []string
+	var exps []string
+	for caseNum := 1; caseNum <= t; caseNum++ {
+		if pos+1 >= len(tokens) {
+			fmt.Fprintf(os.Stderr, "case %d missing header\n", caseNum)
+			os.Exit(1)
+		}
+		n, errN := strconv.Atoi(tokens[pos])
+		S, errS := strconv.ParseInt(tokens[pos+1], 10, 64)
+		if errN != nil || errS != nil {
+			fmt.Fprintf(os.Stderr, "invalid header on case %d\n", caseNum)
+			os.Exit(1)
+		}
+		pos += 2
+		edges := make([][3]int64, n-1)
+		if pos+3*(n-1) > len(tokens) {
+			fmt.Fprintf(os.Stderr, "case %d missing edges\n", caseNum)
+			os.Exit(1)
+		}
+		for i := 0; i < n-1; i++ {
+			u, errU := strconv.ParseInt(tokens[pos+3*i], 10, 64)
+			v, errV := strconv.ParseInt(tokens[pos+3*i+1], 10, 64)
+			w, errW := strconv.ParseInt(tokens[pos+3*i+2], 10, 64)
+			if errU != nil || errV != nil || errW != nil {
+				fmt.Fprintf(os.Stderr, "invalid edge on case %d\n", caseNum)
+				os.Exit(1)
+			}
+			edges[i] = [3]int64{u, v, w}
+		}
+		pos += 3 * (n - 1)
+		want := expected(n, S, edges)
+		lines := []string{"1", fmt.Sprintf("%d %d", n, S)}
+		for _, e := range edges {
+			lines = append(lines, fmt.Sprintf("%d %d %d", e[0], e[1], e[2]))
+		}
+		inputs = append(inputs, strings.Join(lines, "\n")+"\n")
+		exps = append(exps, want)
+	}
+	return inputs, exps
 }

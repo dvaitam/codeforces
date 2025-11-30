@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -56,63 +55,179 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesC1.txt")
+
+	tests, err := loadTestcases()
 	if err != nil {
-		fmt.Println("failed to open testcasesC1.txt:", err)
+		fmt.Println("failed to load embedded testcases:", err)
 		os.Exit(1)
 	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	caseNum := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		caseNum++
-		fields := strings.Fields(line)
-		if len(fields) != 2 {
-			fmt.Printf("case %d invalid format\n", caseNum)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(fields[0])
-		k, _ := strconv.Atoi(fields[1])
-		if k != 3 {
-			fmt.Printf("case %d invalid k\n", caseNum)
-			os.Exit(1)
-		}
+
+	for i, tc := range tests {
 		var input strings.Builder
 		input.WriteString("1\n")
-		input.WriteString(fmt.Sprintf("%d %d\n", n, k))
+		input.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.k))
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(input.String())
 		var out bytes.Buffer
 		var errBuf bytes.Buffer
 		cmd.Stdout = &out
 		cmd.Stderr = &errBuf
-		err = cmd.Run()
-		if err != nil {
-			fmt.Printf("case %d: runtime error: %v\nstderr: %s\n", caseNum, err, errBuf.String())
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("case %d: runtime error: %v\nstderr: %s\n", i+1, err, errBuf.String())
 			os.Exit(1)
 		}
 		outFields := strings.Fields(strings.TrimSpace(out.String()))
 		if len(outFields) != 3 {
-			fmt.Printf("case %d: expected 3 numbers got %d\n", caseNum, len(outFields))
+			fmt.Printf("case %d: expected 3 numbers got %d\n", i+1, len(outFields))
 			os.Exit(1)
 		}
 		parts := make([]int64, 3)
-		for i, s := range outFields {
+		for j, s := range outFields {
 			v, err := strconv.ParseInt(s, 10, 64)
 			if err != nil {
-				fmt.Printf("case %d: invalid integer %q\n", caseNum, s)
+				fmt.Printf("case %d: invalid integer %q\n", i+1, s)
 				os.Exit(1)
 			}
-			parts[i] = v
+			parts[j] = v
 		}
-		if !checkSolution(n, parts) {
-			fmt.Printf("case %d failed validation\n", caseNum)
+		if !checkSolution(tc.n, parts) {
+			fmt.Printf("case %d failed validation\n", i+1)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", caseNum)
+	fmt.Printf("All %d tests passed\n", len(tests))
+}
+
+type testCase struct {
+	n int
+	k int
+}
+
+// Embedded copy of testcasesC1.txt (one "n k" pair per line).
+const testcaseData = `
+17 3
+26 3
+24 3
+95 3
+46 3
+191 3
+174 3
+81 3
+67 3
+158 3
+57 3
+158 3
+12 3
+151 3
+177 3
+43 3
+113 3
+166 3
+103 3
+188 3
+133 3
+98 3
+142 3
+116 3
+131 3
+71 3
+12 3
+10 3
+96 3
+122 3
+84 3
+100 3
+111 3
+137 3
+45 3
+146 3
+48 3
+63 3
+62 3
+9 3
+48 3
+86 3
+47 3
+37 3
+133 3
+133 3
+95 3
+134 3
+175 3
+146 3
+49 3
+117 3
+109 3
+191 3
+137 3
+198 3
+96 3
+154 3
+93 3
+95 3
+117 3
+44 3
+196 3
+105 3
+186 3
+192 3
+121 3
+170 3
+138 3
+66 3
+128 3
+74 3
+130 3
+131 3
+134 3
+93 3
+172 3
+119 3
+121 3
+92 3
+148 3
+188 3
+145 3
+188 3
+119 3
+127 3
+171 3
+59 3
+86 3
+182 3
+45 3
+160 3
+71 3
+200 3
+125 3
+82 3
+80 3
+183 3
+132 3
+146 3
+`
+
+func loadTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcaseData), "\n")
+	tests := make([]testCase, 0, len(lines))
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			return nil, fmt.Errorf("line %d: expected 2 fields got %d", i+1, len(fields))
+		}
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: bad n: %v", i+1, err)
+		}
+		k, err := strconv.Atoi(fields[1])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: bad k: %v", i+1, err)
+		}
+		tests = append(tests, testCase{n: n, k: k})
+	}
+	return tests, nil
 }

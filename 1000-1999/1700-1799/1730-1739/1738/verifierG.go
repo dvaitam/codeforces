@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,6 +8,113 @@ import (
 	"strconv"
 	"strings"
 )
+
+type testCase struct {
+	input      string
+	expectYes  bool
+	expectGrid [][]int
+}
+
+const testcaseData = `1 1 1
+1 1 0
+4 3 1 0 1 1 0 1 0 0 1 0 1 1 0 1 1 1
+4 1 0 1 0 0 0 1 1 0 0 1 0 1 1 1 0 0
+2 1 1 1 0 1
+4 2 0 0 0 0 0 0 1 1 1 1 1 1 0 1 0 0
+4 4 0 1 0 0 1 1 1 0 1 1 1 1 0 0 1 1
+4 2 0 0 0 1 1 0 1 1 1 1 1 1 1 1 1 1
+4 2 1 1 1 1 1 1 0 1 1 1 1 1 0 1 0 1
+1 1 0
+1 1 1
+4 1 0 0 1 0 1 1 0 1 0 0 1 1 0 0 1 0
+1 1 0
+1 1 1
+1 1 0
+1 1 1
+4 4 0 0 0 1 1 1 1 1 1 0 1 1 1 1 0 0
+3 2 1 1 1 1 1 0 0 0 0
+1 1 1
+3 1 0 0 1 1 0 0 0 1 0
+4 4 0 0 0 1 0 0 0 0 1 0 1 0 0 0 1 0
+3 1 0 1 0 1 1 1 0 1 0
+2 2 1 0 0 0
+2 2 0 0 0 0
+4 1 0 0 1 0 0 0 1 0 1 0 1 0 0 0 1 0
+1 1 0
+1 1 1
+3 2 0 0 0 1 0 1 1 0 0
+3 2 0 0 0 1 1 1 0 1 0
+1 1 1
+1 1 0
+4 3 0 1 0 0 0 1 0 0 1 1 1 1 1 0 1 0
+2 2 0 0 0 0
+2 1 0 1 1 1
+4 2 1 0 1 0 1 1 1 1 0 1 1 1 0 0 1 0
+1 1 0
+1 1 1
+4 2 0 0 1 1 1 1 1 0 1 0 0 0 0 0 0 0
+1 1 1
+3 1 0 0 0 0 0 1 1 0 0
+4 2 1 0 1 1 0 1 0 0 0 1 1 1 0 0 1 0
+4 3 0 1 0 0 1 1 1 0 0 0 1 1 0 0 1 1
+1 1 0
+4 2 0 1 1 1 1 1 1 1 0 0 0 1 1 0 0 1
+1 1 1
+2 1 1 0 1 1
+3 1 0 0 0 1 0 1 0 1 0
+4 4 1 0 0 1 0 0 1 1 0 0 1 1 1 1 1 1
+3 1 1 0 1 0 1 0 0 0 0
+4 4 0 0 1 1 0 0 1 1 1 1 1 0 0 1 1 1
+3 2 0 0 0 1 0 0 1 0 0
+3 1 0 0 1 1 1 0 0 1 0
+2 1 0 0 0 1
+4 4 1 1 1 1 0 0 0 0 0 1 0 1 1 1 0 0
+1 1 0
+4 1 0 1 1 1 1 1 1 1 1 1 0 1 0 1 1 1
+2 1 1 0 1 1
+4 3 0 1 1 1 0 0 0 1 1 0 0 1 1 0 0 1
+1 1 0
+1 1 0
+3 3 1 1 1 0 1 1 1 0 1
+3 1 0 0 0 0 0 1 0 1 1
+3 2 0 0 1 0 0 0 0 0 1
+4 2 1 1 1 0 1 1 0 0 0 0 1 0 1 0 0 0
+1 1 0
+4 3 0 1 0 0 0 1 0 1 0 0 0 1 0 1 0 0
+4 4 0 1 0 0 0 1 1 1 1 0 1 0 0 1 0 1
+3 1 1 1 1 1 1 1 1 1 0
+3 3 0 1 0 0 0 0 0 1 1
+1 1 1
+1 1 1
+4 1 1 1 0 1 0 1 0 1 1 0 1 0 0 0 1 0
+2 1 1 0 1 1
+2 2 1 0 0 0
+2 1 1 0 1 0
+3 2 1 0 0 0 0 1 0 0 0
+1 1 1
+4 4 1 0 1 1 1 1 1 0 0 0 1 1 0 1 1 0
+1 1 0
+2 1 1 0 0 1
+2 1 0 1 0 1
+4 1 0 1 0 0 0 1 1 0 0 1 1 1 0 1 0 0
+4 4 0 0 1 1 0 1 0 1 1 1 1 1 1 1 1 1
+2 1 1 1 0 0
+3 3 0 0 0 0 0 1 0 1 0
+2 1 0 0 1 0
+2 1 0 0 0 1
+4 1 0 1 0 1 0 1 1 0 1 1 1 0 1 1 0 0
+2 2 0 0 0 1
+3 1 0 1 1 1 0 0 1 0 1
+4 1 1 1 0 0 1 1 0 0 0 0 0 0 1 0 1 0
+2 2 1 1 0 0
+2 2 1 0 0 0
+2 2 0 1 1 1
+3 1 0 0 1 0 0 0 1 0 1
+3 3 1 0 1 0 0 1 0 0 0
+2 1 0 1 0 1
+1 1 1
+1 1 1
+1 1 1`
 
 func solveG(n, k int, grid [][]int) (bool, [][]int) {
 	f := make([][]int, n+2)
@@ -87,95 +193,125 @@ func solveG(n, k int, grid [][]int) (bool, [][]int) {
 	return true, res
 }
 
-func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierG.go /path/to/binary")
-		os.Exit(1)
+func parseTestcase(line string) (testCase, error) {
+	fields := strings.Fields(line)
+	if len(fields) < 2 {
+		return testCase{}, fmt.Errorf("invalid testcase")
 	}
-	bin := os.Args[1]
-	file, err := os.Open("testcasesG.txt")
+	n, err := strconv.Atoi(fields[0])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
+		return testCase{}, fmt.Errorf("bad n: %w", err)
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	k, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return testCase{}, fmt.Errorf("bad k: %w", err)
+	}
+	if len(fields) != 2+n*n {
+		return testCase{}, fmt.Errorf("expected %d cells, got %d", n*n, len(fields)-2)
+	}
+	grid := make([][]int, n)
+	idx := 2
+	for i := 0; i < n; i++ {
+		grid[i] = make([]int, n)
+		for j := 0; j < n; j++ {
+			val, err := strconv.Atoi(fields[idx])
+			if err != nil {
+				return testCase{}, fmt.Errorf("bad cell %d,%d: %w", i, j, err)
+			}
+			grid[i][j] = val
+			idx++
+		}
+	}
+
+	ok, expectedGrid := solveG(n, k, grid)
+	var input strings.Builder
+	input.WriteString("1\n")
+	input.WriteString(fmt.Sprintf("%d %d\n", n, k))
+	for i := 0; i < n; i++ {
+		for j := 0; j < n; j++ {
+			input.WriteByte(byte('0' + grid[i][j]))
+		}
+		input.WriteByte('\n')
+	}
+
+	return testCase{input: input.String(), expectYes: ok, expectGrid: expectedGrid}, nil
+}
+
+func loadTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcaseData), "\n")
+	cases := make([]testCase, 0, len(lines))
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		idx++
-		parts := strings.Fields(line)
-		if len(parts) < 2 {
-			fmt.Printf("test %d: invalid line\n", idx)
-			os.Exit(1)
+		tc, err := parseTestcase(line)
+		if err != nil {
+			return nil, fmt.Errorf("case %d: %w", idx+1, err)
 		}
-		n, _ := strconv.Atoi(parts[0])
-		k, _ := strconv.Atoi(parts[1])
-		if len(parts) != 2+n*n {
-			fmt.Printf("test %d: wrong number of values\n", idx)
-			os.Exit(1)
-		}
-		grid := make([][]int, n)
-		idxp := 2
-		for i := 0; i < n; i++ {
-			grid[i] = make([]int, n)
-			for j := 0; j < n; j++ {
-				v, _ := strconv.Atoi(parts[idxp])
-				grid[i][j] = v
-				idxp++
-			}
-		}
-		ok, expectGrid := solveG(n, k, grid)
-		var input strings.Builder
-		input.WriteString(fmt.Sprintf("%d %d\n", n, k))
-		for i := 0; i < n; i++ {
-			for j := 0; j < n; j++ {
-				input.WriteByte(byte('0' + grid[i][j]))
-			}
-			input.WriteByte('\n')
-		}
+		cases = append(cases, tc)
+	}
+	return cases, nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: verifierG /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
+
+	cases, err := loadTestcases()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load testcases: %v\n", err)
+		os.Exit(1)
+	}
+
+	for idx, tc := range cases {
 		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input.String())
+		cmd.Stdin = strings.NewReader(tc.input)
 		var out bytes.Buffer
 		var stderr bytes.Buffer
 		cmd.Stdout = &out
 		cmd.Stderr = &stderr
 		err := cmd.Run()
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
+			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr.String())
 			os.Exit(1)
 		}
-		gotLines := strings.Split(strings.TrimSpace(out.String()), "\n")
-		if !ok {
-			if strings.TrimSpace(gotLines[0]) != "NO" {
-				fmt.Printf("test %d failed: expected NO got %s\n", idx, gotLines[0])
+		lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+		if len(lines) == 0 || strings.TrimSpace(lines[0]) == "" {
+			fmt.Printf("test %d: empty output\n", idx+1)
+			os.Exit(1)
+		}
+		first := strings.ToUpper(strings.TrimSpace(lines[0]))
+		if !tc.expectYes {
+			if first != "NO" {
+				fmt.Printf("test %d failed: expected NO got %s\n", idx+1, lines[0])
 				os.Exit(1)
 			}
 			continue
 		}
-		if strings.TrimSpace(gotLines[0]) != "YES" || len(gotLines)-1 != n {
-			fmt.Printf("test %d failed: malformed output\n", idx)
+		if first != "YES" {
+			fmt.Printf("test %d failed: expected YES got %s\n", idx+1, lines[0])
 			os.Exit(1)
 		}
-		for i := 0; i < n; i++ {
-			if len(gotLines[i+1]) != n {
-				fmt.Printf("test %d line %d length mismatch\n", idx, i+1)
+		if len(lines)-1 != len(tc.expectGrid) {
+			fmt.Printf("test %d failed: expected %d grid lines got %d\n", idx+1, len(tc.expectGrid), len(lines)-1)
+			os.Exit(1)
+		}
+		for i := 0; i < len(tc.expectGrid); i++ {
+			if len(lines[i+1]) != len(tc.expectGrid[i]) {
+				fmt.Printf("test %d line %d length mismatch\n", idx+1, i+1)
 				os.Exit(1)
 			}
-			for j := 0; j < n; j++ {
-				if int(gotLines[i+1][j]-'0') != expectGrid[i][j] {
-					fmt.Printf("test %d grid mismatch\n", idx)
+			for j := 0; j < len(tc.expectGrid[i]); j++ {
+				if int(lines[i+1][j]-'0') != tc.expectGrid[i][j] {
+					fmt.Printf("test %d grid mismatch\n", idx+1)
 					os.Exit(1)
 				}
 			}
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

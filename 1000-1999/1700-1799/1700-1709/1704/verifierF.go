@@ -1,54 +1,113 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
-	"time"
 )
 
-func compileRef() (string, error) {
-	out := filepath.Join(os.TempDir(), fmt.Sprintf("refF_%d", time.Now().UnixNano()))
-	cmd := exec.Command("go", "build", "-o", out, "1704F.go")
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return "", err
-	}
-	return out, nil
+type testCase struct {
+	n int
+	s string
 }
 
-func runBinary(path, input string) (string, error) {
-	cmd := exec.Command(path)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = io.Discard
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v", err)
+// Embedded logic from 1704F.go.
+func solve(tc testCase) string {
+	n := tc.n
+	s := tc.s
+	r, b := 0, 0
+	for _, ch := range s {
+		if ch == 'R' {
+			r++
+		} else if ch == 'B' {
+			b++
+		}
 	}
-	return strings.TrimSpace(out.String()), nil
+	if r > b {
+		return "Alice"
+	}
+	if b > r {
+		return "Bob"
+	}
+	isPal := true
+	for i := 0; i < n/2; i++ {
+		if s[i] != s[n-1-i] {
+			isPal = false
+			break
+		}
+	}
+	if isPal {
+		return "Bob"
+	}
+	return "Alice"
 }
 
-func runCandidate(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+// Embedded copy of testcasesF.txt (each line: n string).
+const testcaseData = `
+8 BBRRBBBB
+7 BBBRRBB
+4 RRBR
+3 BRR
+3 BRR
+5 BBRRR
+5 BBBRR
+5 BRRRR
+5 RBRBB
+3 BBR
+6 BRRRBR
+5 BRBBB
+1 R
+4 BRRR
+1 B
+5 RRRRR
+3 RBR
+3 BBR
+8 BBRRRRBB
+4 BRBR
+`
+
+func loadTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcaseData), "\n")
+	tests := make([]testCase, 0, len(lines))
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			return nil, fmt.Errorf("line %d: expected 2 fields got %d", i+1, len(fields))
+		}
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: bad n: %v", i+1, err)
+		}
+		tests = append(tests, testCase{n: n, s: fields[1]})
 	}
-	cmd.Stdin = strings.NewReader(input)
+	return tests, nil
+}
+
+func runCase(bin string, tc testCase, expected string) error {
+	var input strings.Builder
+	input.WriteString("1\n")
+	fmt.Fprintf(&input, "%d\n%s\n", tc.n, tc.s)
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input.String())
 	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
-	return strings.TrimSpace(out.String()), nil
+	got := strings.TrimSpace(out.String())
+	if got != expected {
+		return fmt.Errorf("expected %s got %s", expected, got)
+	}
+	return nil
 }
 
 func main() {
@@ -56,55 +115,20 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierF.go /path/to/binary")
 		os.Exit(1)
 	}
-	candidate := os.Args[1]
-	ref, err := compileRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
+	bin := os.Args[1]
 
-	file, err := os.Open("testcasesF.txt")
+	tests, err := loadTestcases()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to open testcasesF.txt:", err)
+		fmt.Fprintln(os.Stderr, "failed to load testcases:", err)
 		os.Exit(1)
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		parts := strings.Fields(line)
-		if len(parts) != 2 {
-			fmt.Fprintf(os.Stderr, "bad testcase on line %d\n", idx+1)
+	for i, tc := range tests {
+		exp := solve(tc)
+		if err := runCase(bin, tc, exp); err != nil {
+			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		n := parts[0]
-		s := parts[1]
-		input := fmt.Sprintf("1\n%s\n%s\n", n, s)
-		expect, err := runBinary(ref, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\n", idx+1, err)
-			os.Exit(1)
-		}
-		got, err := runCandidate(candidate, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", idx+1, err, input)
-			os.Exit(1)
-		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
-			fmt.Fprintf(os.Stderr, "case %d failed:\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", idx+1, input, expect, got)
-			os.Exit(1)
-		}
-		idx++
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "scanner error:", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

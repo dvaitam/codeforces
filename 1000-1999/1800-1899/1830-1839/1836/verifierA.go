@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,57 +11,27 @@ import (
 	"strings"
 )
 
-type testCaseA struct {
+// Base64-encoded contents of testcasesA.txt.
+const testcasesA = "MyA5IDEgNAoyIDcgNwo4IDYgMyAxIDcgMCA2IDYgOQoxIDcKNSAzIDkgMSA1IDAKMSAwCjkgMCA2IDMgNiAwIDggMyA3IDcKOSAzIDUgMyAzIDcgNCAwIDYgOAoyIDIgNAoyIDUgOAo3IDggMyA0IDQgOSA3IDgKNyA5IDAgNyAzIDYgNiAyCjYgOCA1IDEgNyA4IDEKMyA4IDYgNQo4IDAgNyAwIDQgOSA5IDkgNgozIDIgOCAzCjEgMwo5IDggMyA2IDggNSA5IDUgNyA0CjkgOSAwIDYgOCAyIDggOCAzIDYKMSA3CjYgOSA4IDMgOCA2IDcKNiA2IDUgMCA4IDggOQoxMCA1IDcgOSAwIDMgMiA4IDkgMiAxCjkgNCAwIDEgMSAwIDcgMCA0IDMKNSAxIDkgMiA1IDQKMiAyIDIKNSA4IDIgNCA0IDcKNiA3IDcgMSAwIDQgNgo2IDYgMyA0IDEgNCA4CjQgOSA2IDAgMwoxIDYKMyAwIDIgNwo5IDYgOCAzIDggNyAzIDggMCA2CjEwIDUgNiAwIDQgMiAzIDAgNCAxIDEKNSA0IDIgNiA5IDQKMyAwIDggMAoxMCAzIDkgNyAyIDkgOCAwIDYgMyA1CjIgMyA5CjcgOSAzIDcgMSA2IDQgOAo4IDAgNSA5IDYgNCAwIDIgMwo2IDkgMiA1IDYgMyA0CjIgNiA4CjYgOCA3IDggMyAxIDAKMiAyIDIKMyA4IDMgNAo2IDkgOCA0IDUgNSA1CjIgNCAzCjEwIDcgMiA5IDggMSA1IDAgNiAxIDYKMyAyIDUgMQoxMCA5IDYgMSA5IDggMyA5IDEgNCA1CjUgOSA4IDEgNyA0CjIgMCA0CjEgOQoxIDEKNyAxIDAgMyAzIDkgNiAyCjIgNyAyCjQgMiAxIDYgNgo5IDQgOCA0IDcgNSAxIDMgNSAwCjEgMAo1IDkgNSA3IDYgNQo3IDEgMSA1IDkgNyAxIDQKNCA5IDggNyA1CjUgMiA4IDMgNCAzCjQgNSAxIDQgMQo4IDEgOSA1IDMgNiA0IDAgNQozIDUgOSA0CjQgNSAxIDggOQoxMCA5IDEgMyAzIDAgMyA2IDEgNCA4CjIgMSAwCjEgNAo2IDcgNyAyIDEgOCA1CjIgOCAyCjMgMiAyIDUKNSAxIDggOSA0IDIKNCAyIDggMCA1CjEwIDggMyAyIDQgNiA4IDIgMCAzIDQKMiA3IDYKOSA0IDggNyA4IDcgMCA2IDUgMgo1IDcgMCA2IDkgMAoxIDUKMTAgMiA5IDIgMiA0IDQgNiA5IDYgMgoxMCAxIDMgNyAwIDIgOCA1IDggNyAzCjQgNSA3IDcgMwo3IDUgOCA5IDQgMyAwIDEKOSA1IDIgOCAzIDQgNCA0IDggNQozIDcgOSAxCjIgOSA4CjEwIDYgMiAyIDQgNiAzIDkgMCA3IDYKNiA2IDggMiA4IDAgOAoyIDQgMQo1IDEgMiA5IDEgNwo0IDYgNiA2IDIKNiA3IDIgOSA3IDMgMQo3IDkgOCA2IDEgNCA0IDMKNyA4IDAgMyA4IDcgOSAwCjEgOQo0IDQgMyAyIDQKMyA4IDMgNAo1IDkgNCA3IDIgOAo2IDcgNiAxIDMgOSA2Cg=="
+
+type testCase struct {
 	arr []int
 }
 
-func parseTestsA() ([]testCaseA, error) {
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	var tests []testCaseA
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		fields := strings.Fields(line)
-		n, err := strconv.Atoi(fields[0])
-		if err != nil {
-			return nil, fmt.Errorf("invalid n: %v", err)
-		}
-		if len(fields)-1 < n {
-			return nil, fmt.Errorf("expected %d numbers, got %d", n, len(fields)-1)
-		}
-		arr := make([]int, n)
-		for i := 0; i < n; i++ {
-			v, err := strconv.Atoi(fields[1+i])
-			if err != nil {
-				return nil, fmt.Errorf("invalid number %q", fields[1+i])
-			}
-			arr[i] = v
-		}
-		tests = append(tests, testCaseA{arr})
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return tests, nil
-}
-
-func expectedA(arr []int) string {
+// Embedded solver logic from 1836A.go.
+func solve(tc testCase) string {
+	freq := make([]int, 101)
 	maxVal := 0
-	for _, v := range arr {
-		if v > maxVal {
-			maxVal = v
+	for _, x := range tc.arr {
+		if x > maxVal {
+			maxVal = x
 		}
-	}
-	freq := make([]int, maxVal+1)
-	for _, v := range arr {
-		freq[v]++
+		if x >= len(freq) {
+			tmp := make([]int, x+1)
+			copy(tmp, freq)
+			freq = tmp
+		}
+		freq[x]++
 	}
 	for i := 1; i <= maxVal; i++ {
 		if freq[i] > freq[i-1] {
@@ -70,55 +41,105 @@ func expectedA(arr []int) string {
 	return "YES"
 }
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+func parseTestcases() ([]testCase, error) {
+	raw, err := base64.StdEncoding.DecodeString(testcasesA)
+	if err != nil {
+		return nil, err
 	}
+	sc := bufio.NewScanner(bytes.NewReader(raw))
+	sc.Split(bufio.ScanWords)
+	cases := []testCase{}
+	for sc.Scan() {
+		n, err := strconv.Atoi(sc.Text())
+		if err != nil {
+			return nil, fmt.Errorf("parse n: %v", err)
+		}
+		arr := make([]int, n)
+		for i := 0; i < n; i++ {
+			if !sc.Scan() {
+				return nil, fmt.Errorf("case %d missing value %d", len(cases)+1, i)
+			}
+			arr[i], err = strconv.Atoi(sc.Text())
+			if err != nil {
+				return nil, fmt.Errorf("case %d value %d: %v", len(cases)+1, i, err)
+			}
+		}
+		cases = append(cases, testCase{arr: arr})
+	}
+	if err := sc.Err(); err != nil {
+		return nil, err
+	}
+	return cases, nil
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "bin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		if out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput(); err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
 	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierA.go /path/to/binary")
+		fmt.Println("Usage: go run verifierA.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	tests, err := parseTestsA()
+
+	cases, err := parseTestcases()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	for i, tc := range tests {
+
+	bin, cleanup, err := buildIfGo(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	for idx, tc := range cases {
 		var input strings.Builder
-		input.WriteString("1\n")
-		input.WriteString(fmt.Sprintf("%d\n", len(tc.arr)))
-		for j, v := range tc.arr {
-			if j > 0 {
+		fmt.Fprintf(&input, "1\n%d\n", len(tc.arr))
+		for i, v := range tc.arr {
+			if i > 0 {
 				input.WriteByte(' ')
 			}
 			input.WriteString(strconv.Itoa(v))
 		}
 		input.WriteByte('\n')
-		expect := expectedA(tc.arr)
-		out, err := run(bin, input.String())
+		want := solve(tc)
+		got, err := runCandidate(bin, input.String())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d: %v\n", i+1, err)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if strings.ToUpper(strings.TrimSpace(out)) != expect {
-			fmt.Printf("test %d failed: expected %s got %s\n", i+1, expect, out)
+		if strings.ToUpper(strings.TrimSpace(got)) != want {
+			fmt.Printf("case %d failed\ninput:\n%sexpected: %s\ngot: %s\n", idx+1, input.String(), want, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(tests))
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

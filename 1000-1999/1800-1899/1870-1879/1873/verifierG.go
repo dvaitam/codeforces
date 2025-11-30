@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,6 +8,108 @@ import (
 	"strconv"
 	"strings"
 )
+
+const testcasesRaw = `100
+ABBAAABBBABBABAABAB
+ABBBBAABAAA
+BAABABBBAAAA
+BBABBAAAAAAABBBBBBAB
+AB
+BABAABBBABBBBAABBBAA
+A
+BABBBBBBB
+BBBABBBBB
+ABBBBBABABAA
+A
+BBAAABABBABA
+BBAA
+BAAAAABBAAAAABBBAAAB
+BBBBABBBBAABBBBB
+BAAAAAABBAAABBA
+ABABBA
+ABAAA
+BABAAA
+ABAABABBBABAAB
+AAAABAAAA
+AAABAAABABABAAAB
+AAAA
+BBBAAABABBAABB
+AABB
+ABAAABABABBABA
+ABAAB
+BBBBABAABAAAAAAABBBB
+BABABBB
+ABBBAABAABA
+ABB
+AABBB
+BBABAAAAAAAAABBAAAA
+ABBAABAB
+BBABA
+AB
+BAABABBABAABBBA
+AABBAABBABABAABBBB
+BBAAABBAAB
+A
+BAABABBBAAAABABABAB
+BAABAABBAABBB
+BBBABABABAAA
+BB
+AABBAABBBBBAABBBBB
+AABAABAA
+AAABBBAAB
+AAAAAB
+BBBBBAAAAABABB
+BAAABABAABBBBBBBBBA
+ABBBAABABBBBAB
+BAAABBAABBAABA
+AABABBBBABBBA
+BAAAAAABABBBBAAB
+AAAAB
+ABBBABBAAAABAB
+A
+AAA
+BBABAAABABAAABABA
+BBABAAA
+BBBABAABAB
+ABBBBBBBBABA
+BAAAAABBAABAABBABBAB
+ABABBABAAABAAABABB
+BBAAAAA
+ABABBBAAAA
+BAAAABBBBBABBBBBAAA
+BABBAAAAAABAAB
+AABABB
+AABAAABBAABBBABAABBA
+BBABABB
+BBBBBBAABB
+ABA
+AAA
+BABAAAAABAAAAAABB
+ABA
+ABBABBBABBAAABA
+ABBAA
+BBAABABBABBA
+B
+AAAAAABAB
+AB
+BAAABBAAA
+BABBBBAA
+BAAAB
+B
+BABAABAAAAAA
+ABABBAABABBBAABB
+B
+ABAAA
+AAA
+ABAAABA
+BABA
+ABBABA
+BABAAAB
+ABAB
+ABBAAAAAAABBBABABA
+BBABBBABB
+BBAABB
+ABBABAABAA`
 
 func solve(s string) int {
 	bpos := []int{}
@@ -54,6 +155,31 @@ func expected(s string) string {
 	return fmt.Sprintf("%d\n", solve(s))
 }
 
+func loadCases() ([]string, []string) {
+	lines := strings.Fields(testcasesRaw)
+	if len(lines) == 0 {
+		fmt.Println("no embedded testcases")
+		os.Exit(1)
+	}
+	t, err := strconv.Atoi(lines[0])
+	if err != nil {
+		fmt.Println("invalid testcase count")
+		os.Exit(1)
+	}
+	if len(lines)-1 < t {
+		fmt.Println("insufficient testcases embedded")
+		os.Exit(1)
+	}
+	var inputs []string
+	var expects []string
+	for i := 0; i < t; i++ {
+		s := lines[i+1]
+		inputs = append(inputs, fmt.Sprintf("1\n%s\n", s))
+		expects = append(expects, expected(s))
+	}
+	return inputs, expects
+}
+
 func runCase(exe, input, expect string) error {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(exe, ".go") {
@@ -82,29 +208,12 @@ func main() {
 		os.Exit(1)
 	}
 	exe := os.Args[1]
-	data, err := os.ReadFile("testcasesG.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesG.txt:", err)
-		os.Exit(1)
-	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(strings.TrimSpace(scan.Text()))
-	for caseIdx := 0; caseIdx < t; caseIdx++ {
-		if !scan.Scan() {
-			fmt.Println("bad file")
-			os.Exit(1)
-		}
-		s := scan.Text()
-		input := fmt.Sprintf("1\n%s\n", s)
-		exp := expected(s)
-		if err := runCase(exe, input, exp); err != nil {
-			fmt.Printf("case %d failed: %v\ninput:\n%s", caseIdx+1, err, input)
+	inputs, expects := loadCases()
+	for idx, input := range inputs {
+		if err := runCase(exe, input, expects[idx]); err != nil {
+			fmt.Printf("case %d failed: %v\ninput:\n%s", idx+1, err, input)
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(inputs))
 }

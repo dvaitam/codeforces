@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	"bytes"
 	"fmt"
 	"math"
 	"os"
@@ -10,75 +10,232 @@ import (
 	"strings"
 )
 
+// Embedded copy of testcasesA.txt so the verifier is self-contained.
+const testcasesRaw = `7 6891 664 4243 8377 7962 6635 4970
+8 5867 9559 3579 8269 2282 4618 2290 1554
+10 4105 8726 9862 2408 5082 1619 1209 5410 7736 9172
+2 5797 7114
+6 3351 9053 7816 7254 8542 4268
+1 8990
+1 1529
+7 19 8087 5459 3997 5329 1032 3131
+10 3633 3910 2335 8897 7340 1495 1319 5244 8323 8017
+2 4939 9032
+5 2045 8970 5452 8853 3330
+10 8966 9628 4713 7291 1502 9770 6307 5195 9432 3967
+5 3013 3103 3060 541 4261
+8 1132 1472 2134 2451 634 1315 8858 6411
+9 4516 8550 3859 3526 9664 6872 9498 4510 7383
+8 5856 1350 5314 1890 7970 9619 5494 3120
+4 266 4441 1920 3613
+6 2794 5449 6982 1019 1649 2398
+4 742 9403 8753 9866
+2 438 2039
+4 9935 9437 1962 6410
+2 6065 1902
+1 9921
+1 3189
+3 2030 7852 3451
+1 374
+9 6974 1663 4259 1147 3619 1180 4933 5740 7145
+3 1001 8252 7654
+1 9773
+2 6411 3267
+5 5875 7705 9336 2776 3333
+1 2593
+3 5609 8675 4108
+2 9778 7247
+3 217 7728 6716
+10 8333 5103 5852 6368 4112 2514 9185 204 7504 1296
+6 749 8919 4602 2210 3935 7895
+6 9997 4717 5886 9672 2169 5084
+7 6790 1323 25 9742 3151 5479 2623
+4 3656 7343 6204 9309
+7 517 6591 9298 6853 767 2715 7297
+2 4248 2584
+8 8644 7984 9199 9896 2 638 8104 5341
+5 7650 817 6802 3081 8988
+2 2139 242
+7 6841 5181 56 3499 235 39 8657
+10 1603 3121 1949 9968 3253 4955 4588 2986 1642 7793
+7 1333 358 4501 7422 1897 4203 2186
+9 5687 1886 2531 4562 305 694 667 3371 4255
+9 5157 6012 9298 689 9955 8102 7515 7135 6103
+9 2922 3406 6154 9620 4769 146 2269 2475 4447
+6 5530 6017 1536 5542 585 676
+5 2685 2449 9560 4744 5914
+7 8987 2125 4808 1883 7833 3928 791
+5 2943 8570 1162 4959 6606
+6 4903 6795 1781 1629 9189 7884
+8 5523 5631 2037 7850 1901 8155 6989 620
+5 5490 2551 2729 9249 6154
+2 1079 1388
+4 3622 1002 6305 129
+2 6453 9118
+9 4749 7349 8006 9583 3560 6932 1371 6035 3607
+5 9589 2730 7066 3145 5874
+2 1047 453
+9 7400 3305 1949 8145 6521 4203 3396 690 3538
+10 2398 1715 3244 7511 6194 5926 8953 2480 1717 9769
+8 2432 9240 6651 6935 8540 8117 5284 8167
+8 3310 8894 9991 3585 160 5575 5215 5273
+1 8604
+3 4209 9873 2555
+7 9552 4824 7708 1088 1387 8463 646
+2 3688 2139
+1 4923
+1 7350
+6 2633 2439 7549 6084 8274 6263
+9 8232 551 9403 1486 8487 9833 1252 6986 3377
+5 8773 9808 6846 7901 6367
+10 9608 3827 336 4 2982 4956 8305 9344 4170 5451
+2 8086 4293
+5 6686 6295 6287 1021 2684
+3 3915 4704 5473
+1 589
+8 6847 2309 8059 9863 1338 2481 5780 6737
+1 7640
+7 7519 771 1663 7716 2481 332 532
+10 2175 5307 1726 8998 5680 3195 6282 8034 1819 986
+10 7655 5536 2037 4856 2083 6352 4814 1992 8504 3099
+1 6423
+8 6088 3121 7463 5842 1235 732 656 7966
+5 437 8521 9327 9369 3539
+4 1532 8232 8581 6884
+9 5003 1859 2387 6980 9274 6915 1377 1717 6810
+2 1626 6803
+3 504 7320 7063
+7 494 8137 5317 4139 1287 5776 1153
+2 5887 482
+6 5700 2915 164 3777 5994 1156
+10 2348 3408 53 3356 2019 118 4805 6048 404 9910
+4 2325 3064 7440 1842
+8 5644 4231 2133 458 3410 5935 5489 7756`
+
+type testCase struct {
+	arr []int
+}
+
 func isPerfectSquare(x int) bool {
 	r := int(math.Sqrt(float64(x)))
 	return r*r == x
 }
 
-func solveCase(line string) string {
-	fields := strings.Fields(line)
-	if len(fields) == 0 {
-		return ""
-	}
-	idx := 0
-	n, _ := strconv.Atoi(fields[idx])
-	idx++
-	ans := "NO"
-	for i := 0; i < n && idx < len(fields); i++ {
-		v, _ := strconv.Atoi(fields[idx])
-		idx++
+func solveCase(tc testCase) string {
+	for _, v := range tc.arr {
 		if !isPerfectSquare(v) {
-			ans = "YES"
+			return "YES"
 		}
 	}
-	return ans
+	return "NO"
 }
 
-func run(bin, input string) (string, error) {
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
+	res := make([]testCase, 0, len(lines))
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 1 {
+			continue
+		}
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, fmt.Errorf("case %d: parse n: %v", idx+1, err)
+		}
+		if len(fields)-1 != n {
+			return nil, fmt.Errorf("case %d: expected %d numbers got %d", idx+1, n, len(fields)-1)
+		}
+		arr := make([]int, n)
+		for i := 0; i < n; i++ {
+			val, err := strconv.Atoi(fields[1+i])
+			if err != nil {
+				return nil, fmt.Errorf("case %d: parse value %d: %v", idx+1, i+1, err)
+			}
+			arr[i] = val
+		}
+		res = append(res, testCase{arr: arr})
+	}
+	if len(res) == 0 {
+		return nil, fmt.Errorf("no embedded testcases")
+	}
+	return res, nil
+}
+
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solbin*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
+		if err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("runtime error: %v", err)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	return strings.TrimSpace(string(out)), nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierA.go /path/to/binary")
+		fmt.Println("usage: go run verifierA.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	file, err := os.Open("testcasesA.txt")
+
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
+
+	bin, cleanup, err := buildIfGo(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	for i, tc := range cases {
+		expected := solveCase(tc)
+		var sb strings.Builder
+		sb.WriteString("1\n")
+		sb.WriteString(strconv.Itoa(len(tc.arr)))
+		sb.WriteByte('\n')
+		for idx, v := range tc.arr {
+			if idx > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.Itoa(v))
 		}
-		idx++
-		expected := solveCase(line)
-		input := "1\n" + line + "\n"
-		got, err := run(bin, input)
+		sb.WriteByte('\n')
+
+		got, err := runCandidate(bin, sb.String())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
+			fmt.Printf("case %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if got != expected {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx, expected, got)
+		if strings.TrimSpace(got) != expected {
+			fmt.Printf("case %d failed\nexpected: %s\ngot: %s\n", i+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

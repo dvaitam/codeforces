@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
@@ -12,12 +11,7 @@ import (
 )
 
 func runBinary(bin string, input []byte) ([]byte, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = bytes.NewReader(input)
 	var out bytes.Buffer
 	var errb bytes.Buffer
@@ -75,44 +69,32 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	data, err := ioutil.ReadFile("testcasesA.txt")
+	tests, err := loadTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to read testcasesA.txt: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to load embedded testcases: %v\n", err)
 		os.Exit(1)
 	}
 
-	outBytes, err := runBinary(bin, data)
+	// Build input for all cases at once.
+	var inBuf bytes.Buffer
+	fmt.Fprintln(&inBuf, len(tests))
+	for _, tc := range tests {
+		fmt.Fprintf(&inBuf, "%d %d\n", tc.a, tc.b)
+	}
+
+	outBytes, err := runBinary(bin, inBuf.Bytes())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "binary execution failed: %v\n%s", err, outBytes)
 		os.Exit(1)
 	}
 	outBuf := bytes.NewBuffer(outBytes)
 
-	inScanner := bufio.NewScanner(bytes.NewReader(data))
-	if !inScanner.Scan() {
-		fmt.Fprintln(os.Stderr, "testcase file empty")
-		os.Exit(1)
-	}
-	t, err := strconv.Atoi(strings.TrimSpace(inScanner.Text()))
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "bad test count")
-		os.Exit(1)
-	}
-
+	t := len(tests)
 	outScanner := bufio.NewScanner(outBuf)
 	outScanner.Split(bufio.ScanWords)
 	for caseIdx := 1; caseIdx <= t; caseIdx++ {
-		if !inScanner.Scan() {
-			fmt.Fprintf(os.Stderr, "not enough cases in file at case %d\n", caseIdx)
-			os.Exit(1)
-		}
-		parts := strings.Fields(inScanner.Text())
-		if len(parts) != 2 {
-			fmt.Fprintf(os.Stderr, "bad line in testcase %d\n", caseIdx)
-			os.Exit(1)
-		}
-		a, _ := strconv.Atoi(parts[0])
-		b, _ := strconv.Atoi(parts[1])
+		a := tests[caseIdx-1].a
+		b := tests[caseIdx-1].b
 
 		if !outScanner.Scan() {
 			fmt.Fprintf(os.Stderr, "not enough output for case %d\n", caseIdx)
@@ -145,4 +127,155 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("All tests passed")
+}
+
+type testCase struct {
+	a int
+	b int
+}
+
+// Embedded copy of testcasesA.txt (t followed by a b pairs).
+const testcaseData = `
+100
+50 98
+54 6
+34 66
+63 52
+39 62
+46 75
+28 65
+18 37
+18 97
+13 80
+33 69
+91 78
+19 40
+13 94
+10 88
+43 61
+72 13
+46 56
+41 79
+82 27
+71 62
+57 67
+34 8
+71 2
+12 93
+52 91
+86 81
+1 79
+64 43
+32 94
+42 91
+9 25
+73 29
+31 19
+70 58
+12 11
+41 66
+63 14
+39 71
+38 91
+16 71
+43 70
+27 78
+71 76
+37 57
+12 77
+50 41
+74 31
+38 24
+25 24
+17 24
+49 45
+80 76
+13 94
+70 12
+33 76
+28 90
+32 30
+83 90
+56 43
+64 74
+39 47
+88 81
+21 50
+87 58
+5 68
+6 45
+71 53
+44 29
+32 25
+45 73
+53 58
+44 52
+64 26
+95 65
+65 20
+53 96
+71 21
+93 33
+49 60
+20 7
+58 22
+87 37
+72 35
+90 68
+84 55
+68 68
+47 27
+81 55
+70 21
+98 24
+57 50
+77 42
+30 95
+5 27
+60 74
+12 55
+62 16
+33 14
+36 35
+16 69
+18 17
+63 92
+61 64
+70 57
+2 10
+95 13
+3 72
+`
+
+func loadTestcases() ([]testCase, error) {
+	fields := strings.Fields(testcaseData)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no testcases")
+	}
+	pos := 0
+	nextInt := func() (int, error) {
+		if pos >= len(fields) {
+			return 0, fmt.Errorf("unexpected end of data")
+		}
+		v, err := strconv.Atoi(fields[pos])
+		pos++
+		return v, err
+	}
+	t, err := nextInt()
+	if err != nil {
+		return nil, fmt.Errorf("bad count: %v", err)
+	}
+	tests := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		a, err := nextInt()
+		if err != nil {
+			return nil, fmt.Errorf("case %d missing a: %v", i+1, err)
+		}
+		b, err := nextInt()
+		if err != nil {
+			return nil, fmt.Errorf("case %d missing b: %v", i+1, err)
+		}
+		tests = append(tests, testCase{a: a, b: b})
+	}
+	return tests, nil
 }

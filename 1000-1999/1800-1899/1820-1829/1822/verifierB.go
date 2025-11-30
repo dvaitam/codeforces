@@ -1,30 +1,220 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 )
 
-func runExe(path, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	} else {
-		cmd = exec.Command(path)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("%v\n%s", err, out.String())
-	}
-	return strings.TrimSpace(out.String()), nil
+const testcaseData = `100
+4
+165 735 643 564
+3
+-478 -759 14
+9
+-33 334 -223 615 -571 -808 -1 -942 829
+8
+-114 244 561 571 -996 425 -88 -455
+5
+210 935 -791 846 -350
+2
+-955 -948
+10
+-982 923 804 -220 405 -557 984 -136 486 -941
+10
+-546 564 -104 923 15 132 -523 -293 -528 386
+5
+558 -59 950 -407 897
+2
+-148 715
+10
+888 315 -796 -620 288 482 761 -393 -753 521
+7
+834 477 993 456 25 917 980
+8
+39 699 864 372 -612 -379 -419 203
+9
+733 926 34 -195 206 747 -930 -17 -503
+8
+-152 361 -646 -249 123 807 439 588
+7
+-823 -102 359 41 -779 594 -665
+10
+720 -195 -242 2 500 -940 -39 -911 -369 440
+8
+325 -652 -655 28 -536 -975 578 -592
+10
+884 761 122 -525 -172 52 -296 950 735 183
+7
+-60 863 -449 350 122 247 960
+2
+-215 604
+10
+657 -736 62 592 149 -580 -128 945 -886 -15
+7
+167 135 -591 927 33 -154 -7
+7
+-152 -292 -997 102 106 276 610
+7
+-62 228 -943 647 -530 301 -638
+10
+196 -630 763 -813 635 128 632 743 672 906
+6
+-934 723 932 378 -856 -830
+2
+-73 -971
+6
+-489 -450 -776 632 279 -622
+7
+-406 -858 -658 -674 -478 80 949
+4
+344 -442 327 457
+6
+-69 438 -341 16 -30 -767
+2
+-362 -209
+7
+-138 630 -615 -471 -778 -481 842
+10
+1000 -572 977 240 -116 673 997 -958 -539 -964
+8
+-701 -928 472 965 -672 -88 443 36
+8
+115 704 -549 1000 998 291 633 423
+10
+-77 -543 72 328 -938 -192 382 179 645 -343
+8
+-880 510 -389 -743 982 -566 793 -903
+6
+-856 758 -844 -365 878 923
+6
+523 -676 -148 156 -484 -733
+2
+148 799
+2
+209 678
+5
+970 844 167 -57 -649
+10
+-924 -226 -590 -290 -798 -579 174 380 836 -114
+5
+8 -787 920 363 -202
+6
+32 23 -965 -334 253 785
+8
+842 -424 -963 -679 -589 756 -329 661
+4
+-306 -121 -564 -455
+3
+715 -224 909
+10
+-296 872 807 715 407 94 -8 572 90 -520
+3
+485 -918 -827
+4
+-653 -659 865 102
+5
+-452 554 -320 229 36
+6
+-247 -307 -304 -767 -404 -519
+9
+-723 187 128 577 -787 -344 -920 -168 -851
+8
+773 614 -699 696 -744 -302 -766 259
+8
+-844 168 126 -542 159 -833 950 -454
+7
+824 -395 155 94 894 -766 -63
+6
+-780 611 -907 695 -395 -975
+2
+-813 -154
+3
+691 812 617
+2
+-616 -510
+8
+-669 -764 -77 -658 394 -506 -675 523
+3
+-109 865 975
+8
+651 987 111 862 675 -398 126 -482
+9
+-356 -795 -575 335 -350 -919 -945 -979 611
+6
+487 221 -345 -79 -199 -359
+8
+-872 -869 870 -351 986 231 986 -67
+3
+-488 -560 607
+10
+776 409 -40 355 -272 -470 -625 109 -575 -371
+5
+-496 -262 -834 679 -425
+3
+542 -83 -815
+7
+926 -535 -201 979 -372 -916 -330
+4
+-352 623 734 185
+6
+-497 -316 -794 114 252 185
+3
+-499 -550 -959
+5
+-178 -852 -452 128 776
+3
+493 -847 -956
+2
+-405 537
+7
+10 -40 766 759 -685 -794 26
+7
+-843 42 944 362 -646 -633 589
+4
+-711 682 772 -346
+6
+-782 452 53 709 882 232
+6
+-742 830 -577 -710 117 864
+2
+596 -353
+10
+721 932 528 412 -580 -636 -388 -114 100 -677
+2
+463 765
+5
+-483 592 -869 396 973
+9
+655 -120 124 -488 108 -101 743 101 -72
+2
+-190 712
+7
+-649 -472 -6 -951 624 323 910
+8
+999 168 -962 -873 416 -274 187 -717
+4
+-717 -470 697 -433
+8
+155 -179 -648 254 -818 -522 -5 -985
+4
+82 -351 25 828
+9
+904 405 308 497 -538 -512 -360 13 406
+9
+958 -540 459 -156 -310 147 251 857 491
+6
+991 323 -551 -902 887 -854
+10
+321 796 -245 -674 47 568 622 808 -583 -362`
+
+type testCase struct {
+	input    string
+	expected string
 }
 
 func solveCase(arr []int64) string {
@@ -37,60 +227,89 @@ func solveCase(arr []int64) string {
 	return fmt.Sprintf("%d", p2)
 }
 
-func join64(arr []int64) string {
-	var sb strings.Builder
-	for i, v := range arr {
-		if i > 0 {
-			sb.WriteByte(' ')
-		}
-		fmt.Fprintf(&sb, "%d", v)
+func loadCases() ([]testCase, error) {
+	fields := strings.Fields(testcaseData)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no testcases")
 	}
-	return sb.String()
+	pos := 0
+	t, err := strconv.Atoi(fields[pos])
+	if err != nil {
+		return nil, fmt.Errorf("bad test count: %w", err)
+	}
+	pos++
+	cases := make([]testCase, 0, t)
+	for caseNum := 0; caseNum < t; caseNum++ {
+		if pos >= len(fields) {
+			return nil, fmt.Errorf("case %d: missing n", caseNum+1)
+		}
+		n, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return nil, fmt.Errorf("case %d: bad n: %w", caseNum+1, err)
+		}
+		pos++
+		arr := make([]int64, n)
+		for i := 0; i < n; i++ {
+			if pos >= len(fields) {
+				return nil, fmt.Errorf("case %d: missing value", caseNum+1)
+			}
+			v, err := strconv.ParseInt(fields[pos], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("case %d: bad value: %w", caseNum+1, err)
+			}
+			arr[i] = v
+			pos++
+		}
+		input := fmt.Sprintf("1\n%d\n", n)
+		var sb strings.Builder
+		for i, v := range arr {
+			if i > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.FormatInt(v, 10))
+		}
+		sb.WriteByte('\n')
+		input += sb.String()
+		cases = append(cases, testCase{
+			input:    input,
+			expected: solveCase(arr),
+		})
+	}
+	return cases, nil
+}
+
+func runExe(path, input string) (string, error) {
+	cmd := exec.Command(path)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("%v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
-	if len(os.Args) != 2 && !(len(os.Args) == 3 && os.Args[1] == "--") {
-		fmt.Println("usage: go run verifierB.go /path/to/binary")
+	if len(os.Args) != 2 {
+		fmt.Println("usage: verifierB /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[len(os.Args)-1]
-	data, err := os.ReadFile("testcasesB.txt")
+	bin := os.Args[1]
+	cases, err := loadCases()
 	if err != nil {
-		fmt.Println("could not read testcasesB.txt:", err)
+		fmt.Fprintf(os.Stderr, "failed to load testcases: %v\n", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	var tcase int
-	fmt.Sscan(scan.Text(), &tcase)
-	for idx := 0; idx < tcase; idx++ {
-		if !scan.Scan() {
-			fmt.Println("bad test file")
-			os.Exit(1)
-		}
-		var n int
-		fmt.Sscan(scan.Text(), &n)
-		arr := make([]int64, n)
-		for i := 0; i < n; i++ {
-			if !scan.Scan() {
-				fmt.Println("bad test file")
-				os.Exit(1)
-			}
-			fmt.Sscan(scan.Text(), &arr[i])
-		}
-		input := fmt.Sprintf("1\n%d\n%s\n", n, join64(arr))
-		exp := solveCase(arr)
-		got, err := runExe(bin, input)
+	for idx, tc := range cases {
+		got, err := runExe(bin, tc.input)
 		if err != nil {
-			fmt.Printf("case %d: %v\n", idx+1, err)
+			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != exp {
-			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, exp, got)
+		if strings.TrimSpace(got) != tc.expected {
+			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, tc.expected, got)
 			os.Exit(1)
 		}
 	}

@@ -1,86 +1,245 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+// solve mirrors 148B.go.
+func solve(vp, vd, t, f, c int) int {
+	if vd <= vp {
+		return 0
 	}
-	oracle := filepath.Join(dir, "oracleB")
-	cmd := exec.Command("go", "build", "-o", oracle, "148B.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	cur := float64(vp * t)
+	vpF := float64(vp)
+	vdF := float64(vd)
+	fF := float64(f)
+	cF := float64(c)
+	count := 0
+	for {
+		tCatch := cur / (vdF - vpF)
+		catchDist := cur + vpF*tCatch
+		if catchDist >= cF {
+			break
+		}
+		count++
+		downtime := catchDist/vdF + fF
+		cur = catchDist + vpF*downtime
 	}
-	return oracle, nil
+	return count
+}
+
+type testCase struct {
+	vp, vd, t, f, c int
+}
+
+// Embedded testcases from testcasesB.txt.
+const testcaseData = `
+18 73 2 5 121
+64 98 8 8 668
+49 27 2 8 30
+50 56 10 1 713
+58 35 4 10 968
+14 41 1 1 27
+84 70 1 7 703
+28 55 1 9 228
+98 57 8 9 239
+45 30 4 8 976
+38 3 7 9 945
+83 13 3 5 124
+96 43 9 7 520
+86 25 5 5 602
+64 65 7 10 874
+5 62 4 7 425
+86 23 6 9 904
+90 100 6 2 450
+85 66 2 3 534
+51 48 8 1 481
+6 40 10 10 593
+51 83 3 3 515
+30 2 4 9 943
+71 30 7 9 353
+74 46 8 5 676
+71 78 1 7 803
+95 66 3 9 797
+72 27 7 1 493
+47 73 9 4 964
+65 53 8 6 425
+45 1 9 9 639
+79 43 8 10 29
+30 82 3 9 599
+24 12 9 5 34
+87 10 2 1 464
+2 97 5 4 276
+15 80 3 6 298
+9 22 3 5 541
+22 85 5 5 466
+90 42 8 8 117
+4 40 7 6 432
+25 34 2 5 922
+94 66 4 10 443
+3 29 1 7 150
+5 93 3 8 722
+65 87 7 9 853
+29 81 9 8 229
+68 84 1 7 692
+74 42 7 1 756
+39 17 4 1 314
+10 10 5 5 762
+21 54 10 5 134
+2 72 1 10 840
+28 73 8 3 848
+100 91 10 9 39
+49 26 6 2 211
+74 87 7 10 199
+64 14 7 5 517
+64 3 6 10 893
+52 37 1 3 206
+42 73 3 6 440
+28 35 2 7 955
+71 45 9 8 787
+69 31 2 1 87
+18 22 3 9 219
+35 98 6 10 519
+33 48 6 6 117
+38 31 10 8 139
+75 71 2 6 41
+53 10 7 3 849
+17 44 2 10 602
+49 10 10 9 230
+73 11 5 6 913
+38 73 9 2 469
+36 14 1 5 13
+79 86 1 2 424
+15 6 4 4 805
+76 54 3 2 462
+22 88 4 3 762
+14 56 7 9 932
+38 71 5 8 323
+13 27 6 1 28
+2 38 10 6 461
+51 41 7 2 66
+41 77 8 2 257
+28 80 9 8 678
+46 34 3 9 213
+40 26 4 6 84
+36 12 8 2 668
+74 83 6 4 400
+40 6 6 3 325
+75 39 4 6 104
+70 79 10 10 95
+32 29 1 4 412
+10 35 9 2 747
+10 3 1 5 769
+46 64 8 3 104
+65 100 6 2 522
+86 23 3 3 145
+41 40 2 9 855
+78 38 3 4 146
+70 93 1 6 841
+80 87 9 4 183
+39 56 9 3 50
+92 86 4 5 797
+9 88 8 7 563
+33 70 8 9 465
+2 51 6 3 265
+63 4 7 10 20
+8 89 6 10 142
+76 17 3 5 849
+36 51 10 7 177
+79 12 4 8 8
+23 68 6 9 915
+84 57 4 4 321
+64 88 8 4 730
+53 44 9 10 929
+94 84 5 4 50
+10 98 9 6 164
+66 99 4 5 306
+`
+
+func parseTestcases() ([]testCase, error) {
+	fields := strings.Fields(testcaseData)
+	if len(fields)%5 != 0 {
+		return nil, fmt.Errorf("malformed test data")
+	}
+	res := make([]testCase, 0, len(fields)/5)
+	for i := 0; i < len(fields); i += 5 {
+		vp, err := strconv.Atoi(fields[i])
+		if err != nil {
+			return nil, fmt.Errorf("bad vp at case %d: %v", i/5+1, err)
+		}
+		vd, err := strconv.Atoi(fields[i+1])
+		if err != nil {
+			return nil, fmt.Errorf("bad vd at case %d: %v", i/5+1, err)
+		}
+		t, err := strconv.Atoi(fields[i+2])
+		if err != nil {
+			return nil, fmt.Errorf("bad t at case %d: %v", i/5+1, err)
+		}
+		f, err := strconv.Atoi(fields[i+3])
+		if err != nil {
+			return nil, fmt.Errorf("bad f at case %d: %v", i/5+1, err)
+		}
+		c, err := strconv.Atoi(fields[i+4])
+		if err != nil {
+			return nil, fmt.Errorf("bad c at case %d: %v", i/5+1, err)
+		}
+		res = append(res, testCase{vp: vp, vd: vd, t: t, f: f, c: c})
+	}
+	return res, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errb bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
-	if len(os.Args) != 2 {
+	args := os.Args[1:]
+	if len(args) == 2 && args[0] == "--" {
+		args = args[1:]
+	}
+	if len(args) != 1 {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	oracle, err := buildOracle()
+	bin := args[0]
+
+	tests, err := parseTestcases()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.Remove(oracle)
 
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		input := line + "\n"
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(input)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error: %v\n", err)
-			os.Exit(1)
-		}
-		expected := strings.TrimSpace(outO.String())
-
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var errBuf bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &errBuf
-		err := cmd.Run()
+	for idx, tc := range tests {
+		input := fmt.Sprintf("%d %d %d %d %d\n", tc.vp, tc.vd, tc.t, tc.f, tc.c)
+		expected := strconv.Itoa(solve(tc.vp, tc.vd, tc.t, tc.f, tc.c))
+		got, err := runCandidate(bin, input)
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, errBuf.String())
+			fmt.Printf("test %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
-		if got != expected {
-			fmt.Printf("test %d failed\nexpected: %s\n got: %s\n", idx, expected, got)
+		if strings.TrimSpace(got) != expected {
+			fmt.Printf("test %d failed\ninput: %sexpected: %s\ngot: %s\n", idx+1, input, expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }
