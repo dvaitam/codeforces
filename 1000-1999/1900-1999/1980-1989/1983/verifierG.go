@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -12,85 +11,903 @@ import (
 
 type Edge struct{ u, v int }
 
-func buildTree(n int, edges []Edge) (adj [][]int) {
-	adj = make([][]int, n+1)
-	for _, e := range edges {
-		adj[e.u] = append(adj[e.u], e.v)
-		adj[e.v] = append(adj[e.v], e.u)
-	}
-	return
+type testCase struct {
+	n       int
+	edges   []Edge
+	vals    []int
+	queries [][2]int
 }
 
-func dfs(u, p int, adj [][]int, parent, depth []int) {
-	parent[u] = p
-	for _, v := range adj[u] {
-		if v == p {
-			continue
-		}
-		depth[v] = depth[u] + 1
-		dfs(v, u, adj, parent, depth)
-	}
-}
+const testcasesRaw = `
+100
+2
+1 2
+6 3
+2
+1 1
+1 1
+3
+1 2
+1 3
+7 6 8
+2
+2 2
+3 2
+5
+1 2
+1 3
+3 4
+4 5
+3 0 1 2 9
+2
+3 4
+2 4
+3
+1 2
+1 3
+10 6 8
+2
+2 2
+1 2
+2
+1 2
+7 0
+3
+2 1
+2 2
+2 2
+5
+1 2
+1 3
+2 4
+2 5
+2 6 8 3 7
+1
+4 4
+2
+1 2
+2 0
+2
+1 2
+1 2
+3
+1 2
+1 3
+1 4 4
+1
+2 1
+4
+1 2
+2 3
+1 4
+1 4 6 6
+2
+1 2
+1 4
+2
+1 2
+7 0
+2
+1 2
+1 1
+2
+1 2
+2 0
+2
+2 1
+1 2
+4
+1 2
+1 3
+2 4
+8 3 8 6
+2
+2 2
+3 3
+5
+1 2
+1 3
+1 4
+2 5
+8 6 5 7 10
+3
+5 4
+2 2
+2 3
+1
+9
+3
+1 1
+1 1
+1 1
+5
+1 2
+1 3
+3 4
+2 5
+6 4 9 9 9
+1
+4 3
+5
+1 2
+2 3
+1 4
+3 5
+8 1 5 3 8
+3
+3 2
+2 5
+1 2
+2
+1 2
+3 3
+1
+2 1
+5
+1 2
+1 3
+3 4
+3 5
+4 8 0 5 6
+1
+1 4
+2
+1 2
+9 8
+1
+2 1
+4
+1 2
+1 3
+3 4
+1 5 9 3
+1
+3 2
+1
+8
+1
+1 1
+5
+1 2
+1 3
+1 4
+1 5
+1 0 4 7 7
+2
+2 4
+2 3
+4
+1 2
+1 3
+1 4
+1 7 6 9
+2
+2 2
+3 2
+5
+1 2
+2 3
+2 4
+4 5
+8 6 2 2 10
+2
+4 4
+4 3
+1
+6
+1
+1 1
+1
+0
+2
+1 1
+1 1
+2
+1 2
+5 0
+3
+2 2
+1 2
+1 1
+4
+1 2
+1 3
+3 4
+6 1 10 5
+3
+4 4
+4 3
+1 1
+1
+0
+3
+1 1
+1 1
+1 1
+4
+1 2
+1 3
+2 4
+8 8 4 4
+1
+1 4
+1
+6
+1
+1 1
+1
+8
+1
+1 1
+3
+1 2
+2 3
+4 5 2
+3
+3 2
+3 3
+1 3
+2
+1 2
+6 6
+2
+1 1
+2 1
+2
+1 2
+7 8
+2
+1 1
+1 1
+4
+1 2
+1 3
+1 4
+2 4 4 2
+1
+4 2
+4
+1 2
+2 3
+2 4
+7 10 7 5
+3
+4 4
+1 1
+4 2
+1
+6
+3
+1 1
+1 1
+1 1
+4
+1 2
+2 3
+2 4
+5 5 6 3
+2
+4 1
+2 3
+1
+0
+1
+1 1
+5
+1 2
+2 3
+3 4
+3 5
+7 6 1 3 3
+3
+2 4
+2 4
+1 2
+2
+1 2
+9 7
+3
+2 2
+1 1
+1 2
+2
+1 2
+2 9
+2
+2 2
+1 1
+1
+9
+1
+1 1
+4
+1 2
+1 3
+1 4
+5 2 3 0
+3
+2 4
+1 4
+2 3
+2
+1 2
+0 8
+1
+1 1
+5
+1 2
+1 3
+1 4
+3 5
+4 10 4 3 0
+1
+5 1
+1
+6
+1
+1 1
+3
+1 2
+2 3
+7 0 2
+3
+2 2
+1 3
+1 1
+3
+1 2
+2 3
+5 6 3
+2
+1 2
+3 1
+4
+1 2
+2 3
+2 4
+2 0 0 6
+3
+3 1
+4 1
+1 2
+5
+1 2
+1 3
+1 4
+2 5
+0 2 2 2 10
+2
+2 4
+2 5
+1
+8
+2
+1 1
+1 1
+2
+1 2
+10 2
+3
+2 2
+1 1
+2 2
+2
+1 2
+9 1
+1
+1 1
+5
+1 2
+1 3
+2 4
+3 5
+4 5 7 4 10
+2
+4 3
+2 4
+1
+10
+2
+1 1
+1 1
+5
+1 2
+1 3
+1 4
+1 5
+5 1 5 1 8
+2
+2 5
+5 3
+5
+1 2
+1 3
+3 4
+1 5
+6 1 8 10 10
+1
+5 1
+5
+1 2
+1 3
+2 4
+3 5
+3 5 5 5 1
+2
+2 4
+4 1
+1
+8
+1
+1 1
+3
+1 2
+1 3
+5 2 7
+1
+3 3
+1
+1
+3
+1 1
+1 1
+1 1
+3
+1 2
+1 3
+0 1 1
+3
+2 2
+1 1
+3 3
+3
+1 2
+2 3
+10 5 4
+3
+3 2
+3 1
+3 3
+5
+1 2
+1 3
+1 4
+2 5
+7 4 1 2 1
+1
+1 2
+4
+1 2
+2 3
+1 4
+6 7 1 0
+2
+4 1
+3 3
+4
+1 2
+1 3
+3 4
+8 1 5 10
+1
+3 3
+3
+1 2
+2 3
+8 4 2
+1
+1 2
+1
+9
+2
+1 1
+1 1
+4
+1 2
+1 3
+3 4
+6 8 9 8
+2
+4 3
+2 2
+2
+1 2
+6 1
+3
+1 2
+2 1
+1 2
+5
+1 2
+1 3
+3 4
+1 5
+0 5 6 0 5
+3
+3 3
+3 5
+3 4
+4
+1 2
+2 3
+2 4
+10 6 2 1
+1
+2 3
+5
+1 2
+1 3
+2 4
+1 5
+1 10 8 10 8
+3
+2 4
+4 2
+2 1
+2
+1 2
+6 3
+3
+2 2
+2 2
+1 1
+4
+1 2
+2 3
+2 4
+5 1 7 3
+3
+2 1
+3 3
+1 2
+3
+1 2
+1 3
+9 1 3
+3
+3 3
+1 1
+1 1
+4
+1 2
+2 3
+3 4
+10 7 6 1
+2
+3 3
+4 2
+1
+5
+1
+1 1
+3
+1 2
+1 3
+3 1 1
+3
+3 1
+3 1
+3 3
+5
+1 2
+1 3
+1 4
+4 5
+3 4 1 5 10
+2
+1 2
+5 1
+1
+10
+1
+1 1
+3
+1 2
+2 3
+2 0 0
+2
+2 2
+1 2
+5
+1 2
+2 3
+1 4
+1 5
+6 8 2 1 0
+3
+2 3
+4 2
+4 2
+4
+1 2
+2 3
+3 4
+6 7 6 1
+3
+3 1
+3 4
+1 1
+2
+1 2
+6 6
+1
+1 1
+5
+1 2
+1 3
+3 4
+2 5
+9 5 8 7 8
+1
+2 1
+4
+1 2
+1 3
+1 4
+7 4 1 5
+3
+3 2
+4 1
+1 3
+3
+1 2
+1 3
+1 1 2
+1
+2 3
+5
+1 2
+1 3
+3 4
+4 5
+1 10 4 5 5
+2
+1 5
+1 3
+5
+1 2
+1 3
+3 4
+2 5
+9 3 6 0 9
+2
+1 2
+1 4
+5
+1 2
+1 3
+3 4
+2 5
+1 6 10 10 0
+3
+3 3
+5 1
+4 5
+5
+1 2
+1 3
+3 4
+4 5
+3 1 5 10 4
+3
+4 2
+3 5
+2 2
+3
+1 2
+2 3
+8 3 5
+3
+3 2
+1 2
+2 2
+2
+1 2
+8 6
+3
+1 1
+2 1
+1 1
+3
+1 2
+1 3
+2 4 0
+2
+2 3
+3 2
+3
+1 2
+2 3
+5 10 2
+2
+1 1
+1 2
+3
+1 2
+2 3
+3 3 10
+3
+2 2
+3 3
+3 2
+3
+1 2
+1 3
+10 4 6
+2
+3 1
+3 2
+`
 
-func lca(a, b int, parent, depth []int) int {
-	for depth[a] > depth[b] {
-		a = parent[a]
+func parseTests(raw string) ([]testCase, error) {
+	tokens := strings.Fields(raw)
+	if len(tokens) == 0 {
+		return nil, fmt.Errorf("empty testcases")
 	}
-	for depth[b] > depth[a] {
-		b = parent[b]
-	}
-	for a != b {
-		a = parent[a]
-		b = parent[b]
-	}
-	return a
-}
-
-func pathSum(x, y int, parent, depth, val []int) int64 {
-	l := lca(x, y, parent, depth)
 	idx := 0
-	ans := int64(0)
-	u := x
-	for u != l {
-		ans += int64(val[u] ^ idx)
-		idx++
-		u = parent[u]
+	t, err := strconv.Atoi(tokens[idx])
+	if err != nil {
+		return nil, fmt.Errorf("bad t: %v", err)
 	}
-	ans += int64(val[l] ^ idx)
 	idx++
-	var stack []int
-	v := y
-	for v != l {
-		stack = append(stack, v)
-		v = parent[v]
-	}
-	for i := len(stack) - 1; i >= 0; i-- {
-		ans += int64(val[stack[i]] ^ idx)
+	cases := make([]testCase, 0, t)
+	for c := 0; c < t; c++ {
+		if idx >= len(tokens) {
+			return nil, fmt.Errorf("truncated before case %d", c+1)
+		}
+		n, err := strconv.Atoi(tokens[idx])
+		if err != nil {
+			return nil, fmt.Errorf("bad n in case %d", c+1)
+		}
 		idx++
+		edges := make([]Edge, n-1)
+		for i := 0; i < n-1; i++ {
+			if idx+1 >= len(tokens) {
+				return nil, fmt.Errorf("missing edges in case %d", c+1)
+			}
+			u, _ := strconv.Atoi(tokens[idx])
+			v, _ := strconv.Atoi(tokens[idx+1])
+			idx += 2
+			edges[i] = Edge{u: u, v: v}
+		}
+		vals := make([]int, n+1)
+		for i := 1; i <= n; i++ {
+			if idx >= len(tokens) {
+				return nil, fmt.Errorf("missing vals in case %d", c+1)
+			}
+			v, _ := strconv.Atoi(tokens[idx])
+			vals[i] = v
+			idx++
+		}
+		if idx >= len(tokens) {
+			return nil, fmt.Errorf("missing q in case %d", c+1)
+		}
+		q, err := strconv.Atoi(tokens[idx])
+		if err != nil {
+			return nil, fmt.Errorf("bad q in case %d", c+1)
+		}
+		idx++
+		queries := make([][2]int, q)
+		for i := 0; i < q; i++ {
+			if idx+1 >= len(tokens) {
+				return nil, fmt.Errorf("missing queries in case %d", c+1)
+			}
+			x, _ := strconv.Atoi(tokens[idx])
+			y, _ := strconv.Atoi(tokens[idx+1])
+			idx += 2
+			queries[i] = [2]int{x, y}
+		}
+		cases = append(cases, testCase{n: n, edges: edges, vals: vals, queries: queries})
 	}
-	return ans
+	return cases, nil
 }
 
-func expected(n int, edges []Edge, vals []int, queries [][2]int) string {
-	adj := buildTree(n, edges)
-	parent := make([]int, n+1)
+func solve(tc testCase) string {
+	n := tc.n
+	g := make([][]int, n+1)
+	for _, e := range tc.edges {
+		g[e.u] = append(g[e.u], e.v)
+		g[e.v] = append(g[e.v], e.u)
+	}
+	const LOG = 20
+	up := make([][]int, n+1)
 	depth := make([]int, n+1)
-	dfs(1, 1, adj, parent, depth)
-	res := make([]string, len(queries))
-	for i, q := range queries {
-		ans := pathSum(q[0], q[1], parent, depth, vals)
-		res[i] = fmt.Sprintf("%d", ans)
+	for i := 0; i <= n; i++ {
+		up[i] = make([]int, LOG)
+	}
+	var dfs func(int, int)
+	dfs = func(u, p int) {
+		up[u][0] = p
+		for i := 1; i < LOG; i++ {
+			up[u][i] = up[up[u][i-1]][i-1]
+		}
+		for _, v := range g[u] {
+			if v == p {
+				continue
+			}
+			depth[v] = depth[u] + 1
+			dfs(v, u)
+		}
+	}
+	dfs(1, 1)
+	lca := func(a, b int) int {
+		if depth[a] < depth[b] {
+			a, b = b, a
+		}
+		diff := depth[a] - depth[b]
+		for i := LOG - 1; i >= 0; i-- {
+			if diff&(1<<i) != 0 {
+				a = up[a][i]
+			}
+		}
+		if a == b {
+			return a
+		}
+		for i := LOG - 1; i >= 0; i-- {
+			if up[a][i] != up[b][i] {
+				a = up[a][i]
+				b = up[b][i]
+			}
+		}
+		return up[a][0]
+	}
+	vals := tc.vals
+	pathSum := func(x, y int) int64 {
+		l := lca(x, y)
+		idx := 0
+		ans := int64(0)
+		u := x
+		for u != l {
+			ans += int64(vals[u] ^ idx)
+			idx++
+			u = up[u][0]
+		}
+		ans += int64(vals[l] ^ idx)
+		idx++
+		var stack []int
+		v := y
+		for v != l {
+			stack = append(stack, v)
+			v = up[v][0]
+		}
+		for i := len(stack) - 1; i >= 0; i-- {
+			ans += int64(vals[stack[i]] ^ idx)
+			idx++
+		}
+		return ans
+	}
+	res := make([]string, len(tc.queries))
+	for i, q := range tc.queries {
+		res[i] = strconv.FormatInt(pathSum(q[0], q[1]), 10)
 	}
 	return strings.Join(res, "\n")
 }
 
-func runCandidate(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+func buildInput(tc testCase) string {
+	var sb strings.Builder
+	sb.WriteString("1\n")
+	sb.WriteString(strconv.Itoa(tc.n))
+	sb.WriteByte('\n')
+	for _, e := range tc.edges {
+		sb.WriteString(fmt.Sprintf("%d %d\n", e.u, e.v))
 	}
+	for i := 1; i <= tc.n; i++ {
+		if i > 1 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(tc.vals[i]))
+	}
+	sb.WriteByte('\n')
+	sb.WriteString(strconv.Itoa(len(tc.queries)))
+	sb.WriteByte('\n')
+	for _, q := range tc.queries {
+		sb.WriteString(fmt.Sprintf("%d %d\n", q[0], q[1]))
+	}
+	return sb.String()
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
@@ -108,67 +925,25 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesG.txt")
+
+	tests, err := parseTests(testcasesRaw)
 	if err != nil {
-		fmt.Println("failed to open testcasesG.txt:", err)
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
 		os.Exit(1)
 	}
-	defer f.Close()
-	in := bufio.NewReader(f)
-	var t int
-	if _, err := fmt.Fscan(in, &t); err != nil {
-		fmt.Println("invalid test count")
-		os.Exit(1)
-	}
-	for caseNum := 1; caseNum <= t; caseNum++ {
-		var n int
-		if _, err := fmt.Fscan(in, &n); err != nil {
-			fmt.Println("invalid test file")
-			os.Exit(1)
-		}
-		edges := make([]Edge, 0, n-1)
-		for i := 0; i < n-1; i++ {
-			var u, v int
-			fmt.Fscan(in, &u, &v)
-			edges = append(edges, Edge{u, v})
-		}
-		vals := make([]int, n+1)
-		for i := 1; i <= n; i++ {
-			fmt.Fscan(in, &vals[i])
-		}
-		var q int
-		fmt.Fscan(in, &q)
-		queries := make([][2]int, q)
-		for i := 0; i < q; i++ {
-			fmt.Fscan(in, &queries[i][0], &queries[i][1])
-		}
-		expect := expected(n, edges, vals, queries)
-		var sb strings.Builder
-		sb.WriteString("1\n")
-		sb.WriteString(fmt.Sprintf("%d\n", n))
-		for _, e := range edges {
-			sb.WriteString(fmt.Sprintf("%d %d\n", e.u, e.v))
-		}
-		for i := 1; i <= n; i++ {
-			if i > 1 {
-				sb.WriteByte(' ')
-			}
-			sb.WriteString(strconv.Itoa(vals[i]))
-		}
-		sb.WriteByte('\n')
-		sb.WriteString(fmt.Sprintf("%d\n", q))
-		for _, qu := range queries {
-			sb.WriteString(fmt.Sprintf("%d %d\n", qu[0], qu[1]))
-		}
-		got, err := runCandidate(bin, sb.String())
+
+	for idx, tc := range tests {
+		input := buildInput(tc)
+		want := solve(tc)
+		got, err := runCandidate(bin, input)
 		if err != nil {
-			fmt.Printf("case %d failed: %v\n", caseNum, err)
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if got != expect {
-			fmt.Printf("case %d failed:\nexpected:\n%s\n got:\n%s\n", caseNum, expect, got)
+		if strings.TrimSpace(got) != want {
+			fmt.Printf("case %d failed:\nexpected:\n%s\ngot:\n%s\n", idx+1, want, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

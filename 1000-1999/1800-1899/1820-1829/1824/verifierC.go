@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,7 +10,8 @@ import (
 	"strings"
 )
 
-const testcaseData = `100
+const testcasesRaw = `
+100
 4
 6 11 -4 -15
 1 2
@@ -514,108 +516,119 @@ const testcaseData = `100
 1 2
 2 3
 1 4
-4 5`
+4 5
+`
 
 type testCase struct {
-	input    string
-	expected string
+	n      int
+	values []int
+	edges  [][2]int
 }
 
-func expected(n int, edges [][2]int) string {
-	degree := make([]int, n+1)
-	for _, e := range edges {
-		u, v := e[0], e[1]
-		degree[u]++
-		degree[v]++
-	}
-	leaves := 0
-	for i := 2; i <= n; i++ {
-		if degree[i] == 1 {
-			leaves++
-		}
-	}
-	return fmt.Sprintf("%d", leaves)
-}
+func parseTestcases(raw string) ([]testCase, error) {
+	sc := bufio.NewScanner(strings.NewReader(raw))
+	sc.Split(bufio.ScanWords)
 
-func loadCases() ([]testCase, error) {
-	fields := strings.Fields(testcaseData)
-	if len(fields) == 0 {
-		return nil, fmt.Errorf("no testcases")
-	}
-	pos := 0
-	t, err := strconv.Atoi(fields[pos])
-	if err != nil {
-		return nil, fmt.Errorf("bad test count: %w", err)
-	}
-	pos++
-	cases := make([]testCase, 0, t)
-	for caseIdx := 0; caseIdx < t; caseIdx++ {
-		if pos >= len(fields) {
-			return nil, fmt.Errorf("case %d: missing n", caseIdx+1)
+	scanInt := func() (int, error) {
+		if !sc.Scan() {
+			return 0, fmt.Errorf("unexpected EOF")
 		}
-		n, err := strconv.Atoi(fields[pos])
+		v, err := strconv.Atoi(sc.Text())
 		if err != nil {
-			return nil, fmt.Errorf("case %d: bad n: %w", caseIdx+1, err)
+			return 0, err
 		}
-		pos++
-		values := make([]int, n+1)
-		for i := 1; i <= n; i++ {
-			if pos >= len(fields) {
-				return nil, fmt.Errorf("case %d: missing value", caseIdx+1)
-			}
-			v, err := strconv.Atoi(fields[pos])
+		return v, nil
+	}
+
+	t, err := scanInt()
+	if err != nil {
+		return nil, fmt.Errorf("invalid test count: %w", err)
+	}
+
+	cases := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		n, err := scanInt()
+		if err != nil {
+			return nil, fmt.Errorf("case %d: n: %w", i+1, err)
+		}
+		vals := make([]int, n)
+		for j := 0; j < n; j++ {
+			v, err := scanInt()
 			if err != nil {
-				return nil, fmt.Errorf("case %d: bad value: %w", caseIdx+1, err)
+				return nil, fmt.Errorf("case %d: value %d: %w", i+1, j+1, err)
 			}
-			values[i] = v
-			pos++
+			vals[j] = v
 		}
 		edges := make([][2]int, n-1)
-		for i := 0; i < n-1; i++ {
-			if pos+1 >= len(fields) {
-				return nil, fmt.Errorf("case %d: missing edge", caseIdx+1)
-			}
-			u, err := strconv.Atoi(fields[pos])
+		for j := 0; j < n-1; j++ {
+			u, err := scanInt()
 			if err != nil {
-				return nil, fmt.Errorf("case %d: bad edge u: %w", caseIdx+1, err)
+				return nil, fmt.Errorf("case %d: edge %d u: %w", i+1, j+1, err)
 			}
-			v, err := strconv.Atoi(fields[pos+1])
+			v, err := scanInt()
 			if err != nil {
-				return nil, fmt.Errorf("case %d: bad edge v: %w", caseIdx+1, err)
+				return nil, fmt.Errorf("case %d: edge %d v: %w", i+1, j+1, err)
 			}
-			edges[i] = [2]int{u, v}
-			pos += 2
+			edges[j] = [2]int{u, v}
 		}
-		var sb strings.Builder
-		sb.WriteString(strconv.Itoa(n))
-		sb.WriteByte('\n')
-		for i := 1; i <= n; i++ {
-			if i > 1 {
-				sb.WriteByte(' ')
-			}
-			sb.WriteString(strconv.Itoa(values[i]))
-		}
-		sb.WriteByte('\n')
-		for _, e := range edges {
-			fmt.Fprintf(&sb, "%d %d\n", e[0], e[1])
-		}
-		cases = append(cases, testCase{
-			input:    sb.String(),
-			expected: expected(n, edges),
-		})
+		cases = append(cases, testCase{n: n, values: vals, edges: edges})
+	}
+
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("scan error: %w", err)
 	}
 	return cases, nil
 }
 
-func runExe(path, input string) (string, error) {
-	cmd := exec.Command(path)
+func solve(tc testCase) int {
+	degree := make([]int, tc.n+1)
+	for _, e := range tc.edges {
+		degree[e[0]]++
+		degree[e[1]]++
+	}
+	leaves := 0
+	for i := 2; i <= tc.n; i++ {
+		if degree[i] == 1 {
+			leaves++
+		}
+	}
+	return leaves
+}
+
+func buildInput(tc testCase) string {
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(tc.n))
+	sb.WriteByte('\n')
+	for i, v := range tc.values {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(v))
+	}
+	sb.WriteByte('\n')
+	for _, e := range tc.edges {
+		sb.WriteString(strconv.Itoa(e[0]))
+		sb.WriteByte(' ')
+		sb.WriteString(strconv.Itoa(e[1]))
+		sb.WriteByte('\n')
+	}
+	return sb.String()
+}
+
+func run(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("%v\n%s", err, errBuf.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
 	return strings.TrimSpace(out.String()), nil
 }
@@ -625,19 +638,23 @@ func main() {
 		fmt.Println("usage: verifierC /path/to/binary")
 		os.Exit(1)
 	}
-	cases, err := loadCases()
+
+	cases, err := parseTestcases(testcasesRaw)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to load testcases: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
 		os.Exit(1)
 	}
+
 	for idx, tc := range cases {
-		got, err := runExe(os.Args[1], tc.input)
+		input := buildInput(tc)
+		expected := solve(tc)
+		got, err := run(os.Args[1], input)
 		if err != nil {
 			fmt.Printf("case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != tc.expected {
-			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, tc.expected, got)
+		if strings.TrimSpace(got) != strconv.Itoa(expected) {
+			fmt.Printf("case %d failed: expected %d got %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}

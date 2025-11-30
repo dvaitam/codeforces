@@ -1,91 +1,432 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
+
+const testcasesF = `100
+2
+3 5
+1
+2
+5 4
+1
+2
+5 4
+1
+2
+5 2
+1
+2
+2 5
+1
+2
+5 5
+1
+2
+3 2
+1
+2
+2 4
+1
+2
+4 5
+1
+2
+5 5
+1
+2
+5 1
+1
+2
+2 5
+1
+2
+5 3
+1
+2
+4 5
+1
+2
+2 3
+1
+2
+5 3
+1
+2
+1 3
+1
+2
+4 4
+1
+2
+3 1
+1
+2
+2 2
+1
+2
+2 1
+1
+2
+1 5
+1
+2
+4 3
+1
+2
+1 4
+1
+2
+2 2
+1
+2
+4 2
+1
+2
+4 2
+1
+2
+1 1
+1
+2
+2 4
+1
+2
+4 2
+1
+2
+4 1
+1
+2
+2 1
+1
+2
+4 3
+1
+2
+3 1
+1
+2
+3 4
+1
+2
+3 4
+1
+2
+3 4
+1
+2
+1 4
+1
+2
+2 3
+1
+2
+5 2
+1
+2
+4 3
+1
+2
+5 3
+1
+2
+4 2
+1
+2
+5 1
+1
+2
+3 5
+1
+2
+3 3
+1
+2
+1 5
+1
+2
+1 3
+1
+2
+1 3
+1
+2
+4 5
+1
+2
+5 2
+1
+2
+3 2
+1
+2
+5 1
+1
+2
+3 2
+1
+2
+5 5
+1
+2
+4 3
+1
+2
+3 4
+1
+2
+2 1
+1
+2
+2 1
+1
+2
+1 5
+1
+2
+1 3
+1
+2
+4 1
+1
+2
+1 5
+1
+2
+4 5
+1
+2
+3 5
+1
+2
+1 2
+1
+2
+5 4
+1
+2
+2 2
+1
+2
+1 3
+1
+2
+1 2
+1
+2
+1 4
+1
+2
+5 5
+1
+2
+4 1
+1
+2
+1 1
+1
+2
+4 3
+1
+2
+1 1
+1
+2
+5 3
+1
+2
+5 3
+1
+2
+4 1
+1
+2
+5 2
+1
+2
+3 2
+1
+2
+2 4
+1
+2
+4 1
+1
+2
+1 1
+1
+2
+4 1
+1
+2
+2 3
+1
+2
+1 5
+1
+2
+1 5
+1
+2
+3 4
+1
+2
+2 3
+1
+2
+3 4
+1
+2
+2 1
+1
+2
+1 5
+1
+2
+5 2
+1
+2
+2 4
+1
+2
+4 2
+1
+2
+4 2
+1
+2
+3 5
+1
+2
+3 1
+1
+2
+3 1
+1`
+
+type testCase struct {
+	n  int
+	a1 int
+	a2 int
+}
 
 func mex(a, b int) int {
 	used := map[int]bool{a: true, b: true}
-	for x := 1; ; x++ {
-		if !used[x] {
-			return x
+	for i := 1; ; i++ {
+		if !used[i] {
+			return i
 		}
 	}
 }
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run verifierF.go /path/to/binary")
-		os.Exit(1)
+func parseTests() ([]testCase, error) {
+	fields := strings.Fields(testcasesF)
+	pos := 0
+	readInt := func() (int, error) {
+		if pos >= len(fields) {
+			return 0, fmt.Errorf("unexpected EOF")
+		}
+		v, err := strconv.Atoi(fields[pos])
+		pos++
+		return v, err
 	}
-	data, err := os.ReadFile("testcasesF.txt")
+	t, err := readInt()
 	if err != nil {
-		fmt.Println("could not read testcasesF.txt:", err)
-		os.Exit(1)
+		return nil, err
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	answers := make([]int, t)
+	tests := make([]testCase, t)
 	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Println("bad file")
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(scan.Text())
-		if n != 2 {
-			fmt.Println("test file assumes n=2")
-			os.Exit(1)
-		}
-		scan.Scan()
-		a1, _ := strconv.Atoi(scan.Text())
-		scan.Scan()
-		a2, _ := strconv.Atoi(scan.Text())
-		answers[i] = mex(a1, a2)
-		// parent line
-		scan.Scan()
-		p2, _ := strconv.Atoi(scan.Text())
-		if p2 != 1 {
-			fmt.Println("test file bad parent")
-			os.Exit(1)
-		}
-	}
-	cmd := exec.Command(os.Args[1])
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println("execution failed:", err)
-		os.Exit(1)
-	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
-	for i := 0; i < t; i++ {
-		if !outScan.Scan() {
-			fmt.Printf("missing output for test %d\n", i+1)
-			os.Exit(1)
-		}
-		got, err := strconv.Atoi(outScan.Text())
+		n, err := readInt()
 		if err != nil {
-			fmt.Printf("bad output for test %d\n", i+1)
-			os.Exit(1)
+			return nil, err
 		}
-		if got != answers[i] {
-			fmt.Printf("test %d failed: expected %d got %d\n", i+1, answers[i], got)
-			os.Exit(1)
+		a1, err := readInt()
+		if err != nil {
+			return nil, err
+		}
+		a2, err := readInt()
+		if err != nil {
+			return nil, err
+		}
+		// parent line
+		if _, err := readInt(); err != nil {
+			return nil, err
+		}
+		tests[i] = testCase{n: n, a1: a1, a2: a2}
+	}
+	return tests, nil
+}
+
+func buildAllInput(tests []testCase) string {
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(len(tests)))
+	sb.WriteByte('\n')
+	for _, tc := range tests {
+		sb.WriteString(strconv.Itoa(tc.n))
+		sb.WriteByte('\n')
+		sb.WriteString(strconv.Itoa(tc.a1))
+		sb.WriteByte(' ')
+		sb.WriteString(strconv.Itoa(tc.a2))
+		sb.WriteByte('\n')
+		// parent line
+		if tc.n >= 2 {
+			sb.WriteString("1\n")
+		} else {
+			sb.WriteString("\n")
 		}
 	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
+	return sb.String()
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	out, err := cmd.CombinedOutput()
+	return strings.TrimSpace(string(out)), err
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: verifierF /path/to/binary")
 		os.Exit(1)
 	}
-	fmt.Println("All tests passed!")
+	bin := os.Args[1]
+
+	tests, err := parseTests()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "parse error:", err)
+		os.Exit(1)
+	}
+
+	allInput := buildAllInput(tests)
+	allOutput, err := runCandidate(bin, allInput)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "runtime error:", err)
+		os.Exit(1)
+	}
+
+	outFields := strings.Fields(allOutput)
+	if len(outFields) != len(tests) {
+		fmt.Fprintf(os.Stderr, "expected %d outputs, got %d\n", len(tests), len(outFields))
+		os.Exit(1)
+	}
+	for i, tc := range tests {
+		want := mex(tc.a1, tc.a2)
+		got, err := strconv.Atoi(outFields[i])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: non-integer output %q\n", i+1, outFields[i])
+			os.Exit(1)
+		}
+		if got != want {
+			fmt.Fprintf(os.Stderr, "case %d failed\nexpected: %d\ngot: %d\n", i+1, want, got)
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

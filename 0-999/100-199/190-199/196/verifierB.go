@@ -2,11 +2,370 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 )
+
+const testcasesB = `100
+2 1
+#
+S
+4 4
+.#.#
+#.##
+..#.
+.S..
+4 2
+.#
+#.
+#.
+S.
+4 3
+.S.
+#.#
+#.#
+###
+1 4
+#.#S
+3 1
+.
+S
+#
+3 4
+#.##
+....
+S..#
+3 3
+.#.
+.S#
+.##
+2 4
+##.#
+#.S.
+2 2
+.S
+..
+1 4
+.#S.
+2 3
+..#
+S.#
+3 4
+##..
+####
+.#S.
+3 2
+..
+.#
+.S
+1 2
+.S
+4 2
+#S
+#.
+#.
+..
+3 1
+S
+#
+.
+4 3
+..#
+S..
+#.#
+..#
+2 4
+##.S
+###.
+2 2
+##
+S.
+3 1
+#
+S
+.
+1 1
+S
+2 2
+#S
+##
+3 3
+.S#
+..#
+.#.
+4 2
+.#
+.S
+..
+##
+3 1
+.
+S
+.
+3 1
+.
+#
+S
+1 1
+S
+4 2
+.S
+..
+.#
+##
+3 4
+.#..
+S.##
+####
+1 1
+S
+1 3
+##S
+3 2
+#.
+.#
+S.
+3 1
+#
+S
+.
+4 3
+.S#
+#.#
+...
+...
+4 1
+.
+.
+S
+.
+3 3
+..#
+.S.
+...
+3 3
+#.S
+...
+#..
+3 4
+..#.
+####
+#S.#
+3 2
+.#
+.S
+.#
+2 2
+#S
+##
+2 1
+S
+.
+2 3
+..#
+##S
+2 4
+...#
+..S#
+3 3
+.#.
+.#.
+.S#
+4 2
+#S
+##
+..
+.#
+1 3
+S.#
+2 4
+.##.
+#..S
+4 4
+#.S#
+..#.
+..#.
+.#..
+3 3
+#.#
+##.
+.S#
+2 3
+S..
+#..
+3 3
+##.
+.#S
+###
+4 3
+##.
+.#.
+###
+S.#
+2 3
+##S
+##.
+4 2
+#.
+##
+S.
+..
+3 3
+#.#
+##.
+#S.
+3 1
+.
+#
+S
+1 4
+.S.#
+3 3
+..S
+##.
+.##
+1 2
+#S
+2 4
+###.
+#S..
+4 3
+#..
+.#.
+##.
+S..
+4 3
+...
+#..
+.S#
+##.
+2 1
+S
+.
+1 4
+#.S.
+1 2
+S#
+4 4
+.###
+.S##
+##..
+....
+4 3
+#.#
+...
+.#.
+.#S
+3 2
+#S
+..
+..
+1 3
+.S.
+1 4
+.#S#
+3 3
+...
+.#S
+#.#
+4 2
+#.
+#.
+..
+S.
+2 4
+S.##
+.#..
+1 4
+#.#S
+1 3
+S#.
+4 1
+.
+#
+S
+#
+1 3
+.S.
+3 3
+#..
+#.#
+.S.
+3 4
+.##.
+..##
+##S#
+3 3
+...
+##S
+#.#
+3 4
+#...
+.#S#
+.###
+4 3
+#..
+.#.
+...
+#.S
+1 3
+S#.
+1 1
+S
+4 1
+#
+.
+S
+.
+4 2
+#.
+#.
+##
+.S
+1 4
+S##.
+3 4
+#S..
+####
+####
+2 4
+#S.#
+.###
+3 1
+S
+.
+#
+3 4
+####
+.#S#
+.#..
+2 3
+###
+S##
+3 4
+.###
+...S
+....
+1 3
+.S#
+2 1
+S
+.
+2 4
+.#.#
+S#.#
+1 2
+.S
+4 3
+.#.
+.#.
+.##
+#S#
+2 3
+.##
+S.#`
 
 func solveCase(n, m int, grid []string) string {
 	NM := n * m
@@ -65,67 +424,78 @@ func solveCase(n, m int, grid []string) string {
 	return "No"
 }
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run verifierB.go /path/to/binary")
-		os.Exit(1)
-	}
-	data, err := os.ReadFile("testcasesB.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesB.txt:", err)
-		os.Exit(1)
-	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanLines)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
+type testCase struct {
+	n, m int
+	grid []string
+}
+
+func parseTests() ([]testCase, error) {
+	reader := bufio.NewReader(strings.NewReader(testcasesB))
 	var t int
-	fmt.Sscanf(scan.Text(), "%d", &t)
-	cases := make([]struct {
-		n, m int
-		grid []string
-	}, t)
+	if _, err := fmt.Fscan(reader, &t); err != nil {
+		return nil, err
+	}
+	tests := make([]testCase, t)
 	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Println("bad test file")
-			os.Exit(1)
+		var n, m int
+		if _, err := fmt.Fscan(reader, &n, &m); err != nil {
+			return nil, err
 		}
-		fmt.Sscanf(scan.Text(), "%d %d", &cases[i].n, &cases[i].m)
-		cases[i].grid = make([]string, cases[i].n)
-		for r := 0; r < cases[i].n; r++ {
-			if !scan.Scan() {
-				fmt.Println("bad test file")
-				os.Exit(1)
+		grid := make([]string, n)
+		for r := 0; r < n; r++ {
+			if _, err := fmt.Fscan(reader, &grid[r]); err != nil {
+				return nil, err
 			}
-			cases[i].grid[r] = scan.Text()
 		}
+		tests[i] = testCase{n: n, m: m, grid: grid}
 	}
-	cmd := exec.Command(os.Args[1])
-	cmd.Stdin = bytes.NewReader(data)
+	return tests, nil
+}
+
+func buildInput(tc testCase) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d %d\n", tc.n, tc.m)
+	for i, row := range tc.grid {
+		if i > 0 {
+			sb.WriteByte('\n')
+		}
+		sb.WriteString(row)
+	}
+	sb.WriteByte('\n')
+	return sb.String()
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
 	out, err := cmd.CombinedOutput()
+	return strings.TrimSpace(string(out)), err
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: verifierB /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
+
+	tests, err := parseTests()
 	if err != nil {
-		fmt.Println("execution failed:", err)
+		fmt.Fprintln(os.Stderr, "parse tests error:", err)
 		os.Exit(1)
 	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
-	for i, c := range cases {
-		if !outScan.Scan() {
-			fmt.Printf("missing output for test %d\n", i+1)
+	for i, tc := range tests {
+		input := buildInput(tc)
+		want := solveCase(tc.n, tc.m, tc.grid)
+		got, err := runCandidate(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d runtime error: %v\n%s\n", i+1, err, got)
 			os.Exit(1)
 		}
-		got := outScan.Text()
-		expected := solveCase(c.n, c.m, c.grid)
-		if got != expected {
-			fmt.Printf("test %d failed: expected %s got %s\n", i+1, expected, got)
+		if strings.TrimSpace(got) != want {
+			fmt.Fprintf(os.Stderr, "case %d failed\ninput:\n%s\nexpected: %s\ngot: %s\n", i+1, input, want, got)
 			os.Exit(1)
 		}
 	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
-		os.Exit(1)
-	}
-	fmt.Println("All tests passed!")
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

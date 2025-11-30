@@ -10,43 +10,192 @@ import (
 	"strings"
 )
 
-type testCaseE struct{ arr []int }
+const testcasesRaw = `
+1 261
+5 -942 193 -290 441 -248
+6 386 -71 312 -725 220 58
+2 -485 935
+2 463 -789
+5 -951 417 -710 271 581
+3 -224 -576 173
+6 -588 -138 40 24 -754 146
+2 419 865
+8 -745 42 829 -84 -38 -635 -69 121
+6 -737 -148 -479 -228 -840 157
+9 -313 679 683 767 -522 -71 -492 -282 -16
+7 -952 -85 481 818 -988 131 -171
+8 -542 -121 -507 -482 -23 -28 -712 -533
+8 -420 -263 337 -5 227 908 903 -696
+9 401 -821 -616 -386 910 60 292 378 -749
+1 -683
+6 -925 -316 781 273 648 -672
+8 -201 388 -616 -158 16 -607 -657 -200
+1 611
+6 817 556 396 699 66 -616
+6 -625 63 890 111 459 743
+10 193 -112 -689 297 410 265 10 840 358 168
+4 224 -97 -933 -503
+8 853 236 727 -350 138 497 -598 -999
+1 -873
+3 -503 -93 790
+10 -542 353 401 -777 765 977 550 56 -129 893
+5 813 398 -308 10 403
+4 -666 -237 141 726
+6 469 -103 -200 -102 358 -350
+8 -863 -700 -550 544 -768 539 -681 953
+7 947 -50 449 107 -570 827 -247
+1 -957
+7 -576 -821 748 -156 199 166 789
+7 107 -569 297 -992 967 369 -721
+9 316 856 2 -368 -222 113 100 -865 -840
+10 986 496 9 540 -969 -583 -142 263 550 -263
+5 -829 525 -953 571 655
+4 257 982 772 -943
+10 768 962 49 -248 -686 -47 -471 -775 215 -85
+5 798 717 -551 -217 -214
+9 899 -305 -533 687 208 -460 916 -818 -910
+3 -354 283 196
+10 -7 -871 956 79 -19 -110 -346 -211 493 786
+1 -762
+7 243 360 916 970 -727 559 -710
+1 -757
+7 -493 -935 288 -443 -459 -213 -764
+6 -403 -235 261 644 304 -612
+9 109 -878 -307 55 130 -972 -670 859 14
+1 304
+5 -321 -719 -296 -797 256
+9 -145 956 619 552 -862 -485 168 -787 66
+2 763 200
+3 -7 -930 65
+4 -289 -802 142 712
+4 -638 420 358 969
+4 -183 -588 246 430
+8 -287 -677 -449 476 992 832 -287 994
+9 745 -589 -558 -47 696 -358 -737 -434 149
+1 -830
+6 -369 786 446 601 945 -338
+1 -827
+10 -972 -402 645 -766 -660 457 -437 -588 50 135
+6 771 -81 -818 -151 29 89
+7 -749 -836 215 -52 -337 -644 -393
+4 286 -106 379 431
+5 -936 -954 711 -984 307
+5 -844 783 998 354 -359
+6 121 338 -412 -901 604 450
+4 739 819 417 58
+3 -469 222 -886
+7 -143 -425 192 -539 -481 947 -360
+9 2 821 -81 450 -749 -133 -234 -653 66
+1 -527
+8 -215 -938 -512 -834 -369 -799 688 -626
+3 966 -104 -969
+6 76 -153 -745 79 -496 23
+5 -451 -173 -117 -36 428
+1 -664
+9 -269 -586 -490 -691 -547 636 -384 615 -703
+3 129 -488 114
+1 -629
+4 769 680 478 -146
+3 -502 552 146
+3 804 706 190
+3 525 -493 73
+5 635 777 752 628 451
+1 478
+8 617 853 735 -591 -873 -157 -657 -220
+9 -206 -565 -212 92 77 10 -789 -741 752
+2 91 -977
+2 -979 969
+4 527 -190 -78 380
+5 -156 992 -293 355 -189
+5 487 -844 827 560 -677
+10 -504 517 -571 757 -908 559 749 -891 47 657
+2 419 -87
+4 -78 454 593 837
+`
 
-func parse(path string) ([]testCaseE, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	var cases []testCaseE
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+type testCase struct {
+	arr []int
+}
+
+func parseTestcases(raw string) ([]testCase, error) {
+	sc := bufio.NewScanner(strings.NewReader(raw))
+	sc.Buffer(make([]byte, 1024), 1<<20)
+	cases := make([]testCase, 0)
+	lineNo := 0
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
 		if line == "" {
 			continue
 		}
+		lineNo++
 		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
 		n, err := strconv.Atoi(fields[0])
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("line %d: invalid n", lineNo)
 		}
-		if len(fields)-1 != n {
-			return nil, fmt.Errorf("bad line: %s", line)
+		if len(fields) != n+1 {
+			return nil, fmt.Errorf("line %d: expected %d values got %d", lineNo, n+1, len(fields))
 		}
 		arr := make([]int, n)
 		for i := 0; i < n; i++ {
-			v, _ := strconv.Atoi(fields[i+1])
+			v, err := strconv.Atoi(fields[i+1])
+			if err != nil {
+				return nil, fmt.Errorf("line %d: invalid value", lineNo)
+			}
 			arr[i] = v
 		}
-		cases = append(cases, testCaseE{arr})
+		cases = append(cases, testCase{arr: arr})
 	}
-	return cases, scanner.Err()
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("scan error: %w", err)
+	}
+	if len(cases) == 0 {
+		return nil, fmt.Errorf("no testcases parsed")
+	}
+	return cases, nil
+}
+
+func solve(arr []int) int {
+	if len(arr) == 0 {
+		return 0
+	}
+	best := arr[0]
+	for _, v := range arr {
+		if v > best {
+			best = v
+		}
+	}
+	return best
+}
+
+func buildInput(arr []int) string {
+	var sb strings.Builder
+	sb.WriteString("1\n")
+	sb.WriteString(strconv.Itoa(len(arr)))
+	sb.WriteByte('\n')
+	for i, v := range arr {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(v))
+	}
+	sb.WriteByte('\n')
+	return sb.String()
 }
 
 func run(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = strings.NewReader(input)
-	var out, errBuf bytes.Buffer
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
@@ -61,36 +210,23 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	cases, err := parse("testcasesE.txt")
+
+	cases, err := parseTestcases(testcasesRaw)
 	if err != nil {
-		fmt.Println("parse error", err)
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
 		os.Exit(1)
 	}
-	for i, tc := range cases {
-		var sb strings.Builder
-		sb.WriteString("1\n")
-		sb.WriteString(strconv.Itoa(len(tc.arr)))
-		sb.WriteByte('\n')
-		for j, v := range tc.arr {
-			if j > 0 {
-				sb.WriteByte(' ')
-			}
-			sb.WriteString(strconv.Itoa(v))
-		}
-		sb.WriteByte('\n')
-		expected := tc.arr[0]
-		for _, v := range tc.arr {
-			if v > expected {
-				expected = v
-			}
-		}
-		got, err := run(bin, sb.String())
+
+	for idx, tc := range cases {
+		input := buildInput(tc.arr)
+		expected := solve(tc.arr)
+		got, err := run(bin, input)
 		if err != nil {
-			fmt.Printf("case %d failed: %v\n", i+1, err)
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if got != strconv.Itoa(expected) {
-			fmt.Printf("case %d failed: expected %d got %s\n", i+1, expected, got)
+		if strings.TrimSpace(got) != strconv.Itoa(expected) {
+			fmt.Printf("case %d failed: expected %d got %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}

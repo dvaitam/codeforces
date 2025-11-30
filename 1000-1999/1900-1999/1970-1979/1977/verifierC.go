@@ -1,128 +1,253 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
-	"math/bits"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 )
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
-	}
-	return strings.TrimSpace(out.String()), nil
-}
+const (
+	limit  int64 = 1_000_000_000
+	infLCM int64 = limit + 1
+)
 
 func gcd(a, b int64) int64 {
 	for b != 0 {
 		a, b = b, a%b
 	}
+	if a < 0 {
+		return -a
+	}
 	return a
 }
 
-func lcm(a, b int64) int64 {
-	return a / gcd(a, b) * b
+func lcmCap(a, b int64) int64 {
+	if a == infLCM || b == infLCM {
+		return infLCM
+	}
+	g := gcd(a, b)
+	a /= g
+	res := a * b
+	if res > infLCM {
+		return infLCM
+	}
+	return res
 }
 
-func expected(arr []int64) int {
-	n := len(arr)
-	best := 0
-	for mask := 1; mask < 1<<n; mask++ {
-		l := int64(1)
+func solve(arr []int64) int {
+	present := make(map[int64]bool)
+	for _, v := range arr {
+		present[v] = true
+	}
+
+	dp := make(map[int64]int)
+	for _, x := range arr {
+		next := make(map[int64]int)
+		if next[x] < 1 {
+			next[x] = 1
+		}
+		for l, lLen := range dp {
+			nl := lcmCap(l, x)
+			if lLen+1 > next[nl] {
+				next[nl] = lLen + 1
+			}
+		}
+		for l, lLen := range next {
+			if lLen > dp[l] {
+				dp[l] = lLen
+			}
+		}
+	}
+
+	ans := 0
+	for l, lLen := range dp {
+		if l > limit || !present[l] {
+			if lLen > ans {
+				ans = lLen
+			}
+		}
+	}
+	return ans
+}
+
+const testcasesC = `1 3
+1 12
+2 10 9
+5 7 20 2 19 6
+4 13 17 12 18
+4 17 9 2 1
+3 15 11 13
+4 17 6 18 6
+2 8 1
+2 11 6
+2 17 17
+3 17 18 6
+4 14 17 12 19
+3 12 15 6
+4 15 17 8 16
+3 16 17 17
+3 15 15 12
+5 18 15 16 8 11
+6 6 20 9 16 10 10
+6 17 18 17 17 20 19
+4 10 7 16 17
+3 20 3 11
+6 1 7 4 2 19 2
+3 19 8 4
+5 5 9 8 7 2
+4 2 2 12 12
+2 8 1
+1 4
+1 1
+1 1
+3 9 5 6
+6 6 17 1 13 19 2
+2 5 2
+1 12
+5 4 10 11 16 1
+3 15 18 20
+6 2 9 13 20 5 16
+2 3 11
+1 1
+4 5 17 19 13
+4 17 11 5 11
+3 9 20 14
+6 1 18 5 2 9 2
+2 6 6
+1 15
+6 8 17 2 8 8 15
+1 9
+1 19
+2 20 20
+6 12 9 14 9 17 1
+2 2 13
+4 6 4 17 3
+2 4 4
+1 6
+2 4 7
+1 17
+6 15 15 10 18 13 7
+6 7 14 14 17 1 19
+5 2 14 17 19 6
+1 16
+3 1 17 4
+5 12 10 12 10 1
+6 14 4 4 10 7 1
+4 2 14 16 15
+2 19 20
+1 1
+3 1 12 10
+6 3 8 16 7 4 19
+3 13 15 5
+3 13 4 9
+1 4
+1 20
+3 13 7 4
+1 20
+6 16 2 16 10 12 15
+2 12 9
+4 17 16 14 16
+6 10 13 8 6 16 20
+3 18 14 3
+5 19 4 3 12 6
+5 5 14 3 3 2
+2 10 13
+2 11 15
+2 17 10
+1 5
+5 14 4 11 17 8
+6 17 9 6 6 15 8
+4 12 19 5 15
+4 1 20 13 6
+4 17 2 16 9
+4 9 14 16 12
+5 11 3 8 18 20
+2 13 13
+6 1 11 15 17 15 6
+1 1
+4 7 19 20 13
+2 4 13
+5 7 9 19 19 7
+4 20 5 1 20
+6 14 16 9 17 19 6`
+
+type testCase struct {
+	arr []int64
+}
+
+func parseTests() ([]testCase, error) {
+	lines := strings.Split(testcasesC, "\n")
+	var tests []testCase
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: %w", idx+1, err)
+		}
+		if len(fields) != n+1 {
+			return nil, fmt.Errorf("line %d: expected %d numbers, got %d", idx+1, n+1, len(fields))
+		}
+		arr := make([]int64, n)
 		for i := 0; i < n; i++ {
-			if mask>>i&1 == 1 {
-				l = lcm(l, arr[i])
+			v, err := strconv.ParseInt(fields[i+1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("line %d: %w", idx+1, err)
 			}
+			arr[i] = v
 		}
-		found := false
-		for _, v := range arr {
-			if int64(v) == l {
-				found = true
-				break
-			}
-		}
-		if !found {
-			if c := bits.OnesCount(uint(mask)); c > best {
-				best = c
-			}
-		}
+		tests = append(tests, testCase{arr: arr})
 	}
-	// empty subsequence gives length 0 which is always allowed
-	return best
+	return tests, nil
 }
 
-func parseCase(line string) []int64 {
-	fields := strings.Fields(line)
-	if len(fields) == 0 {
-		return nil
+func buildInput(tc testCase) string {
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(len(tc.arr)))
+	for _, v := range tc.arr {
+		sb.WriteByte(' ')
+		sb.WriteString(strconv.FormatInt(v, 10))
 	}
-	n, _ := strconv.Atoi(fields[0])
-	arr := make([]int64, n)
-	for i := 0; i < n; i++ {
-		v, _ := strconv.Atoi(fields[i+1])
-		arr[i] = int64(v)
-	}
-	return arr
+	sb.WriteByte('\n')
+	return sb.String()
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	out, err := cmd.CombinedOutput()
+	return strings.TrimSpace(string(out)), err
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierC.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: verifierC /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
 
-	file, err := os.Open("testcasesC.txt")
+	tests, err := parseTests()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+		fmt.Fprintln(os.Stderr, "parse error:", err)
 		os.Exit(1)
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		arr := parseCase(line)
-		if arr == nil {
-			fmt.Fprintf(os.Stderr, "bad test line %d\n", idx)
-			os.Exit(1)
-		}
-		input := line + "\n"
-		want := expected(arr)
-		gotStr, err := run(bin, input)
+	for i, tc := range tests {
+		want := solve(tc.arr)
+		input := buildInput(tc)
+		got, err := runCandidate(bin, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "case %d runtime error: %v\n%s\n", i+1, err, got)
 			os.Exit(1)
 		}
-		got, _ := strconv.Atoi(strings.TrimSpace(gotStr))
-		if got != want {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %d got %d\n", idx, want, got)
+		if strings.TrimSpace(got) != strconv.Itoa(want) {
+			fmt.Fprintf(os.Stderr, "case %d failed\ninput:\n%s\nexpected: %d\ngot: %s\n", i+1, input, want, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

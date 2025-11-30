@@ -1,49 +1,13 @@
 package main
 
 import (
-	"bufio"
+	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 )
-
-// solution logic from 1927G.go
-func solveCase(a []int) string {
-	n := len(a)
-	type interval struct{ l, r int }
-	intervals := make([]interval, 0, 2*n)
-	for i := 1; i <= n; i++ {
-		l1 := i - a[i-1] + 1
-		if l1 < 1 {
-			l1 = 1
-		}
-		intervals = append(intervals, interval{l1, i})
-		r2 := i + a[i-1] - 1
-		if r2 > n {
-			r2 = n
-		}
-		intervals = append(intervals, interval{i, r2})
-	}
-	const INF = int(1e9)
-	dp := make([]int, n+2)
-	for i := 0; i <= n; i++ {
-		dp[i] = INF
-	}
-	dp[n+1] = 0
-	for i := n; i >= 1; i-- {
-		best := INF
-		for _, seg := range intervals {
-			if seg.l <= i && seg.r >= i {
-				if val := dp[seg.r+1] + 1; val < best {
-					best = val
-				}
-			}
-		}
-		dp[i] = best
-	}
-	return fmt.Sprintf("%d", dp[1])
-}
 
 const testcasesData = `
 13 10 2 8 13 5 1 1 3 11 10 8 13 12
@@ -148,8 +112,138 @@ const testcasesData = `
 4 1 2 3 4
 `
 
+type dsu struct {
+	parent, size []int
+}
+
+func newDSU(n int) *dsu {
+	p := make([]int, n+1)
+	sz := make([]int, n+1)
+	for i := 0; i <= n; i++ {
+		p[i] = i
+		sz[i] = 1
+	}
+	return &dsu{parent: p, size: sz}
+}
+
+func (d *dsu) find(x int) int {
+	if d.parent[x] != x {
+		d.parent[x] = d.find(d.parent[x])
+	}
+	return d.parent[x]
+}
+
+func (d *dsu) union(a, b int) {
+	ra, rb := d.find(a), d.find(b)
+	if ra == rb {
+		return
+	}
+	if d.size[ra] < d.size[rb] {
+		ra, rb = rb, ra
+	}
+	d.parent[rb] = ra
+	d.size[ra] += d.size[rb]
+}
+
+type edge struct {
+	u, v, w int
+}
+
+type testCase struct {
+	n    int
+	nums []int
+}
+
+func parseCases(raw string) ([]testCase, error) {
+	lines := strings.Split(raw, "\n")
+	res := make([]testCase, 0)
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		n, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: bad n", idx+1)
+		}
+		if len(parts) != n+1 {
+			return nil, fmt.Errorf("line %d: expected %d numbers got %d", idx+1, n+1, len(parts))
+		}
+		nums := make([]int, n)
+		for i := 0; i < n; i++ {
+			v, err := strconv.Atoi(parts[i+1])
+			if err != nil {
+				return nil, fmt.Errorf("line %d: bad value", idx+1)
+			}
+			nums[i] = v
+		}
+		res = append(res, testCase{n: n, nums: nums})
+	}
+	return res, nil
+}
+
+func solveCase(a []int) (int, []int) {
+	n := len(a)
+	type interval struct{ l, r int }
+	intervals := make([]interval, 0, 2*n)
+	for i := 1; i <= n; i++ {
+		l1 := i - a[i-1] + 1
+		if l1 < 1 {
+			l1 = 1
+		}
+		intervals = append(intervals, interval{l1, i})
+		r2 := i + a[i-1] - 1
+		if r2 > n {
+			r2 = n
+		}
+		intervals = append(intervals, interval{i, r2})
+	}
+	const INF = int(1e9)
+	dp := make([]int, n+2)
+	for i := 0; i <= n+1; i++ {
+		dp[i] = INF
+	}
+	dp[n+1] = 0
+	for i := n; i >= 1; i-- {
+		best := INF
+		for _, seg := range intervals {
+			if seg.l <= i && seg.r >= i {
+				if val := dp[seg.r+1] + 1; val < best {
+					best = val
+				}
+			}
+		}
+		dp[i] = best
+	}
+	path := []int{}
+	cur := 1
+	for cur <= n {
+		path = append(path, cur)
+		best := dp[cur]
+		next := n + 1
+		for _, seg := range intervals {
+			if seg.l <= cur && seg.r >= cur {
+				if dp[seg.r+1]+1 == best && seg.r+1 < next {
+					next = seg.r + 1
+				}
+			}
+		}
+		if next == n+1 {
+			break
+		}
+		cur = next
+	}
+	return dp[1], path
+}
+
 func runProg(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errb bytes.Buffer
@@ -167,51 +261,36 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	scanner := bufio.NewScanner(strings.NewReader(testcasesData))
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		fields := strings.Fields(line)
-		if len(fields) < 1 {
-			fmt.Printf("test %d invalid\n", idx)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(fields[0])
-		if len(fields) != 1+n {
-			fmt.Printf("test %d wrong count\n", idx)
-			os.Exit(1)
-		}
-		nums := make([]int, n)
+
+	cases, err := parseCases(testcasesData)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
+		os.Exit(1)
+	}
+
+	for idx, tc := range cases {
 		var sb strings.Builder
 		sb.WriteString("1\n")
-		sb.WriteString(fmt.Sprintf("%d\n", n))
-		for i := 0; i < n; i++ {
+		sb.WriteString(fmt.Sprintf("%d\n", tc.n))
+		for i, v := range tc.nums {
 			if i > 0 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(fields[1+i])
-			nums[i], _ = strconv.Atoi(fields[1+i])
+			sb.WriteString(strconv.Itoa(v))
 		}
 		sb.WriteByte('\n')
-		input := sb.String()
-		expect := solveCase(nums)
-		got, err := runProg(bin, input)
+
+		expected, _ := solveCase(tc.nums)
+
+		got, err := runProg(bin, sb.String())
 		if err != nil {
-			fmt.Printf("test %d: %v\n", idx, err)
+			fmt.Printf("case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if got != expect {
-			fmt.Printf("test %d failed\nexpected: %s\ngot: %s\n", idx, expect, got)
+		if strings.TrimSpace(got) != strconv.Itoa(expected) {
+			fmt.Printf("case %d failed: expected %d got %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

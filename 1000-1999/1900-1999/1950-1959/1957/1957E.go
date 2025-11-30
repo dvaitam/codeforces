@@ -82,7 +82,7 @@ func main() {
 
 	var t int
 	fmt.Fscan(reader, &t)
-	for ; t > 0; t++ {
+	for ; t > 0; t-- {
 		var n int
 		fmt.Fscan(reader, &n)
 		fmt.Fprintln(writer, prefix[n]%MOD)

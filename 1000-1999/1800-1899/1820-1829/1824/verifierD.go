@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const testcaseData = `100
+const testcasesD = `100
 1 4
 1
 1 1 1 1
@@ -516,24 +516,32 @@ const testcaseData = `100
 1 2 3 2
 1 1 1 1
 1 3 3 4
-2 3 3 3`
+2 3 3 3
+`
+
+type query struct {
+	l int
+	r int
+	x int
+	y int
+}
 
 type testCase struct {
 	input    string
 	expected string
 }
 
-func g(arr []int, i, j int) int {
+func g(a []int, i, j int) int {
 	if i > j {
 		return 0
 	}
 	required := make(map[int]struct{})
 	for p := i; p <= j; p++ {
-		required[arr[p-1]] = struct{}{}
+		required[a[p-1]] = struct{}{}
 	}
 	for x := j; x >= 1; x-- {
-		if _, ok := required[arr[x-1]]; ok {
-			delete(required, arr[x-1])
+		if _, ok := required[a[x-1]]; ok {
+			delete(required, a[x-1])
 			if len(required) == 0 {
 				return x
 			}
@@ -542,81 +550,85 @@ func g(arr []int, i, j int) int {
 	return 0
 }
 
-func solveCase(n, q int, arr []int, queries [][4]int) string {
-	var sb strings.Builder
-	for qi, qu := range queries {
-		l, r, x, y := qu[0], qu[1], qu[2], qu[3]
+func solveQueries(n int, arr []int, qs []query) []int {
+	results := make([]int, len(qs))
+	for idx, q := range qs {
 		ans := 0
-		for i := l; i <= r; i++ {
-			for j := x; j <= y; j++ {
+		for i := q.l; i <= q.r; i++ {
+			for j := q.x; j <= q.y; j++ {
 				if i <= j {
 					ans += g(arr, i, j)
 				}
 			}
 		}
-		sb.WriteString(strconv.Itoa(ans))
-		if qi+1 < len(queries) {
-			sb.WriteByte('\n')
-		}
+		results[idx] = ans
 	}
-	return sb.String()
+	return results
 }
 
 func loadCases() ([]testCase, error) {
-	fields := strings.Fields(testcaseData)
+	fields := strings.Fields(testcasesD)
 	if len(fields) == 0 {
 		return nil, fmt.Errorf("no testcases")
 	}
-	pos := 0
-	t, err := strconv.Atoi(fields[pos])
+	idx := 0
+	nextInt := func() (int, error) {
+		if idx >= len(fields) {
+			return 0, fmt.Errorf("unexpected end of data")
+		}
+		v, err := strconv.Atoi(fields[idx])
+		idx++
+		return v, err
+	}
+
+	t, err := nextInt()
 	if err != nil {
 		return nil, fmt.Errorf("bad test count: %w", err)
 	}
-	pos++
+
 	cases := make([]testCase, 0, t)
-	for caseIdx := 0; caseIdx < t; caseIdx++ {
-		if pos+1 >= len(fields) {
-			return nil, fmt.Errorf("case %d: missing n/q", caseIdx+1)
-		}
-		n, err := strconv.Atoi(fields[pos])
+	for caseNum := 0; caseNum < t; caseNum++ {
+		n, err := nextInt()
 		if err != nil {
-			return nil, fmt.Errorf("case %d: bad n: %w", caseIdx+1, err)
+			return nil, fmt.Errorf("case %d: bad n: %w", caseNum+1, err)
 		}
-		pos++
-		q, err := strconv.Atoi(fields[pos])
+		qCount, err := nextInt()
 		if err != nil {
-			return nil, fmt.Errorf("case %d: bad q: %w", caseIdx+1, err)
+			return nil, fmt.Errorf("case %d: bad q: %w", caseNum+1, err)
 		}
-		pos++
+
 		arr := make([]int, n)
 		for i := 0; i < n; i++ {
-			if pos >= len(fields) {
-				return nil, fmt.Errorf("case %d: missing array value", caseIdx+1)
-			}
-			v, err := strconv.Atoi(fields[pos])
+			v, err := nextInt()
 			if err != nil {
-				return nil, fmt.Errorf("case %d: bad array value: %w", caseIdx+1, err)
+				return nil, fmt.Errorf("case %d: bad array value: %w", caseNum+1, err)
 			}
 			arr[i] = v
-			pos++
 		}
-		queries := make([][4]int, q)
-		for i := 0; i < q; i++ {
-			if pos+3 >= len(fields) {
-				return nil, fmt.Errorf("case %d: missing query", caseIdx+1)
+
+		qs := make([]query, qCount)
+		for i := 0; i < qCount; i++ {
+			l, err := nextInt()
+			if err != nil {
+				return nil, fmt.Errorf("case %d: bad query l: %w", caseNum+1, err)
 			}
-			l, _ := strconv.Atoi(fields[pos])
-			r, _ := strconv.Atoi(fields[pos+1])
-			x, _ := strconv.Atoi(fields[pos+2])
-			y, _ := strconv.Atoi(fields[pos+3])
-			pos += 4
-			queries[i] = [4]int{l, r, x, y}
+			r, err := nextInt()
+			if err != nil {
+				return nil, fmt.Errorf("case %d: bad query r: %w", caseNum+1, err)
+			}
+			x, err := nextInt()
+			if err != nil {
+				return nil, fmt.Errorf("case %d: bad query x: %w", caseNum+1, err)
+			}
+			y, err := nextInt()
+			if err != nil {
+				return nil, fmt.Errorf("case %d: bad query y: %w", caseNum+1, err)
+			}
+			qs[i] = query{l: l, r: r, x: x, y: y}
 		}
+
 		var sb strings.Builder
-		sb.WriteString(strconv.Itoa(n))
-		sb.WriteByte(' ')
-		sb.WriteString(strconv.Itoa(q))
-		sb.WriteByte('\n')
+		fmt.Fprintf(&sb, "%d %d\n", n, qCount)
 		for i, v := range arr {
 			if i > 0 {
 				sb.WriteByte(' ')
@@ -624,26 +636,36 @@ func loadCases() ([]testCase, error) {
 			sb.WriteString(strconv.Itoa(v))
 		}
 		sb.WriteByte('\n')
-		for _, qu := range queries {
-			fmt.Fprintf(&sb, "%d %d %d %d\n", qu[0], qu[1], qu[2], qu[3])
+		for _, qu := range qs {
+			fmt.Fprintf(&sb, "%d %d %d %d\n", qu.l, qu.r, qu.x, qu.y)
 		}
+
+		results := solveQueries(n, arr, qs)
+		var expSb strings.Builder
+		for i, v := range results {
+			if i > 0 {
+				expSb.WriteByte('\n')
+			}
+			expSb.WriteString(strconv.Itoa(v))
+		}
+
 		cases = append(cases, testCase{
 			input:    sb.String(),
-			expected: solveCase(n, q, arr, queries),
+			expected: expSb.String(),
 		})
 	}
 	return cases, nil
 }
 
-func runExe(path, input string) (string, error) {
-	cmd := exec.Command(path)
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("%v\n%s", err, errBuf.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
 	return strings.TrimSpace(out.String()), nil
 }
@@ -659,12 +681,12 @@ func main() {
 		os.Exit(1)
 	}
 	for idx, tc := range cases {
-		got, err := runExe(os.Args[1], tc.input)
+		got, err := runCandidate(os.Args[1], tc.input)
 		if err != nil {
 			fmt.Printf("case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != tc.expected {
+		if got != tc.expected {
 			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, tc.expected, got)
 			os.Exit(1)
 		}

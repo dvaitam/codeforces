@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,7 +9,143 @@ import (
 	"strings"
 )
 
+const testcasesE = `7 12 13 1 8 16 15 12
+7 9 15 11 18 6 16 4
+3 4 3 19
+7 8 17 19 4 9 3 2
+7 10 15 17 3 11 13 10
+5 20 6 17 15 14
+7 16 8 1 17 0 2 12
+6 20 0 19 15 10 7
+6 10 2 6 18 7 7
+7 4 17 14 2 2 10 16
+4 3 9 17 9
+6 3 17 10 17 6 19
+5 18 9 14 2 19
+7 12 10 18 7 9 5 6
+7 5 1 19 8 15 2 2
+6 4 4 1 2 17 12
+7 16 8 16 7 6 18 13
+5 8 14 15 20 11
+1 10
+5 3 15 18 20 10
+7 6 7 0 8 3 7 11
+7 5 10 13 1 3 4 7
+1 18
+6 17 19 2 0 3 20
+2 19 18
+1 12
+1 11
+7 3 1 19 0 6 5 3
+4 6 1 0 17
+4 19 3 8 2
+2 2 20
+3 11 13 5
+1 16
+4 1 19 3 12
+2 8 11
+6 15 18 5 6 1 5
+7 5 10 16 8 3 19 14
+6 5 0 15 13 18 16
+3 20 11 12
+7 8 4 17 0 14 2 10
+6 1 17 8 4 7 15
+3 19 9 11
+5 20 19 4 9 12
+6 13 20 2 0 19 6
+6 10 5 7 7 20 14
+4 18 13 1 12
+7 18 13 1 5 14 2 8
+6 5 14 16 15 17 19
+7 0 1 15 10 9 14 1
+7 13 6 17 20 2 4 0
+4 13 10 0 6
+1 0
+7 16 19 3 6 3 19 20
+2 9 8
+6 5 3 15 12 20 2
+1 8
+4 3 8 4 20
+5 20 20 11 3 4
+3 0 1 1
+2 8 17
+3 11 18 1
+7 19 20 15 20 14 20 13
+3 17 5 6
+4 18 9 0 4
+2 8 10
+3 11 2 10
+7 19 1 1 8 5 4 18
+3 11 12 17
+2 9 3
+4 7 1 9 5
+7 16 2 9 12 10 9 13
+1 3
+5 15 15 10 10 3
+4 3 15 13 1
+3 10 4 5
+6 18 12 20 2 2 2
+2 7 1
+4 0 3 12 17
+5 9 14 15 18 6
+4 2 11 7 8
+5 5 13 6 11 3
+1 0
+5 14 6 3 15 12
+3 6 20 1
+7 6 19 4 3 6 14 12
+3 17 4 3
+5 15 4 18 12 20
+6 13 16 15 10 15 15
+6 6 17 19 7 0 10
+6 10 10 1 16 4 8
+5 4 12 18 9 15
+1 2
+5 1 2 7 4 1
+3 0 14 10
+7 5 4 20 14 11 16 12
+5 16 1 18 2 16
+7 19 2 13 6 9 17 19
+4 15 12 19 18
+2 0 0
+6 5 9 16 18 8 10`
+
 type state struct{ l, r, last int }
+
+// solveGame mirrors the logic in 1600E.go for a single game.
+func solveGame(nums []int) string {
+	memo := make(map[state]bool)
+	var dfs func(int, int, int) bool
+	dfs = func(l, r, last int) bool {
+		s := state{l, r, last}
+		if v, ok := memo[s]; ok {
+			return v
+		}
+		lastVal := -int(1 << 60)
+		if last != -1 {
+			lastVal = nums[last]
+		}
+		win := false
+		if l <= r {
+			if nums[l] > lastVal {
+				if !dfs(l+1, r, l) {
+					win = true
+				}
+			}
+			if !win && nums[r] > lastVal {
+				if !dfs(l, r-1, r) {
+					win = true
+				}
+			}
+		}
+		memo[s] = win
+		return win
+	}
+	if dfs(0, len(nums)-1, -1) {
+		return "Alice"
+	}
+	return "Bob"
+}
 
 func runCandidate(bin string, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -30,38 +165,27 @@ func runCandidate(bin string, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func expected(nums []int) string {
-	memo := make(map[state]bool)
-	var solve func(int, int, int) bool
-	solve = func(l, r, last int) bool {
-		s := state{l, r, last}
-		if v, ok := memo[s]; ok {
-			return v
-		}
-		lastVal := -1 << 60
-		if last != -1 {
-			lastVal = nums[last]
-		}
-		win := false
-		if l <= r {
-			if nums[l] > lastVal {
-				if !solve(l+1, r, l) {
-					win = true
-				}
-			}
-			if !win && nums[r] > lastVal {
-				if !solve(l, r-1, r) {
-					win = true
-				}
-			}
-		}
-		memo[s] = win
-		return win
+func parseLine(line string) ([]int, error) {
+	fields := strings.Fields(line)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("empty line")
 	}
-	if solve(0, len(nums)-1, -1) {
-		return "Alice"
+	n, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return nil, fmt.Errorf("bad n: %w", err)
 	}
-	return "Bob"
+	if len(fields)-1 != n {
+		return nil, fmt.Errorf("expected %d numbers, got %d", n, len(fields)-1)
+	}
+	nums := make([]int, n)
+	for i := 0; i < n; i++ {
+		v, err := strconv.Atoi(fields[i+1])
+		if err != nil {
+			return nil, fmt.Errorf("bad value at %d: %w", i, err)
+		}
+		nums[i] = v
+	}
+	return nums, nil
 }
 
 func main() {
@@ -74,33 +198,22 @@ func main() {
 		os.Exit(1)
 	}
 	bin := args[0]
-	file, err := os.Open("testcasesE.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
+
+	lines := strings.Split(testcasesE, "\n")
 	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	for _, raw := range lines {
+		line := strings.TrimSpace(raw)
 		if line == "" {
 			continue
 		}
 		idx++
-		fields := strings.Fields(line)
-		n, err := strconv.Atoi(fields[0])
-		if err != nil || n != len(fields)-1 {
-			fmt.Fprintf(os.Stderr, "bad test line %d\n", idx)
+		nums, err := parseLine(line)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d parse error: %v\ninput:\n%s\n", idx, err, line)
 			os.Exit(1)
 		}
-		nums := make([]int, n)
-		for i := 0; i < n; i++ {
-			v, _ := strconv.Atoi(fields[i+1])
-			nums[i] = v
-		}
-		want := expected(nums)
-		input := fmt.Sprintf("%d\n%s\n", n, strings.Join(fields[1:], " "))
+		want := solveGame(nums)
+		input := fmt.Sprintf("%d\n%s\n", len(nums), strings.Join(strings.Fields(line)[1:], " "))
 		got, err := runCandidate(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
@@ -110,10 +223,6 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx, want, got)
 			os.Exit(1)
 		}
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
 	}
 	fmt.Printf("All %d tests passed\n", idx)
 }

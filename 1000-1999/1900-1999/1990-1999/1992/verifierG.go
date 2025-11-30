@@ -1,13 +1,115 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
+
+const testcasesG = `100
+19
+3
+16
+9
+2
+1
+5
+19
+16
+12
+11
+1
+9
+16
+7
+14
+18
+18
+4
+7
+19
+18
+9
+20
+3
+14
+11
+3
+12
+9
+4
+6
+3
+15
+2
+8
+5
+4
+12
+20
+15
+1
+11
+1
+5
+18
+14
+16
+2
+19
+1
+8
+1
+11
+1
+9
+8
+10
+11
+7
+11
+16
+5
+1
+8
+20
+12
+13
+20
+13
+14
+13
+12
+17
+14
+9
+1
+16
+9
+5
+17
+10
+12
+13
+7
+6
+2
+15
+4
+7
+5
+14
+9
+14
+10
+7
+14
+13
+4
+12
+12`
 
 const mod int64 = 1e9 + 7
 
@@ -62,56 +164,65 @@ func solve(n int, fact, inv []int64) int64 {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run verifierG.go /path/to/binary")
+	if len(os.Args) != 2 {
+		fmt.Println("usage: verifierG /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesG.txt")
+	fields := strings.Fields(testcasesG)
+	if len(fields) == 0 {
+		fmt.Println("no testcases")
+		os.Exit(1)
+	}
+	t, err := strconv.Atoi(fields[0])
 	if err != nil {
-		fmt.Println("could not read testcasesG.txt:", err)
+		fmt.Println("parse error:", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
+	if len(fields) < t+1 {
+		fmt.Printf("expected %d cases, found %d\n", t, len(fields)-1)
 		os.Exit(1)
 	}
-	t, _ := strconv.Atoi(scan.Text())
 	maxN := 5000
 	fact, inv := prepareFact(maxN)
 	expected := make([]int64, t)
 	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Println("bad test file")
+		n, err := strconv.Atoi(fields[i+1])
+		if err != nil {
+			fmt.Println("parse error:", err)
 			os.Exit(1)
 		}
-		n, _ := strconv.Atoi(scan.Text())
+		if n > maxN {
+			fmt.Printf("n too large: %d\n", n)
+			os.Exit(1)
+		}
 		expected[i] = solve(n, fact, inv)
 	}
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(t))
+	sb.WriteByte('\n')
+	for i := 0; i < t; i++ {
+		sb.WriteString(fields[i+1])
+		sb.WriteByte('\n')
+	}
+	input := sb.String()
 	cmd := exec.Command(os.Args[1])
-	cmd.Stdin = bytes.NewReader(data)
+	cmd.Stdin = strings.NewReader(input)
 	out, err := cmd.Output()
 	if err != nil {
 		fmt.Println("execution failed:", err)
 		os.Exit(1)
 	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
+	outFields := strings.Fields(string(out))
+	if len(outFields) != t {
+		fmt.Printf("expected %d outputs, got %d\n", t, len(outFields))
+		os.Exit(1)
+	}
 	for i := 0; i < t; i++ {
-		if !outScan.Scan() {
-			fmt.Printf("missing output for test %d\n", i+1)
-			os.Exit(1)
-		}
-		got, _ := strconv.ParseInt(outScan.Text(), 10, 64)
+		got, _ := strconv.ParseInt(outFields[i], 10, 64)
 		if got != expected[i] {
 			fmt.Printf("test %d failed: expected %d got %d\n", i+1, expected[i], got)
 			os.Exit(1)
 		}
-	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
-		os.Exit(1)
 	}
 	fmt.Println("All tests passed!")
 }

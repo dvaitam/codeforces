@@ -1,15 +1,116 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
-func expectedAnswer(n int, s, t string) string {
+const testcasesB = `3 010 111
+7 0010110 1100100
+1 0 1
+4 1001 1010
+4 1101 0010
+6 101111 010110
+6 101001 110101
+10 1000000111 1101001011
+10 0111110110 0000100001
+1 1 0
+5 00110 00101
+5 11110 01111
+4 1010 1000
+7 0001101 0011101
+3 001 001
+5 01100 00100
+7 0100101 0111011
+5 00010 11010
+7 1100000 0001111
+6 101010 010101
+3 010 100
+10 0111011001 0001000010
+2 10 00
+2 11 11
+8 10010001 11111001
+10 1010111001 0010101010
+7 1010110 1000000
+7 0100001 1110010
+9 000011010 000100110
+1 0 1
+2 11 11
+9 101101101 001000111
+10 1000100110 0111011100
+2 10 01
+5 11010 01001
+7 0011110 0010100
+10 0101110110 1001101101
+9 001000100 100111101
+8 10010100 00100111
+9 110011111 110110010
+8 11010101 11101010
+7 0110001 1110111
+3 101 010
+6 010000 111000
+6 100110 011101
+9 101110100 111010001
+10 0110001111 0001000111
+2 00 00
+4 0111 1000
+4 1011 1000
+5 11011 11000
+1 0 0
+8 11101000 01001100
+8 10000010 10001010
+8 11110000 11011010
+5 01000 00100
+2 11 01
+1 0 0
+8 01101011 01010110
+5 10101 00111
+10 1001010011 1011000111
+5 11110 00111
+10 0111111000 0110111111
+10 1000100001 0010010000
+3 101 110
+4 1011 1010
+5 10011 01101
+8 00100111 11111010
+9 010101111 000011111
+8 11101101 00011011
+5 11111 10111
+2 00 00
+4 0010 1010
+1 0 1
+10 0011001011 0100010111
+7 0100100 1111011
+2 01 10
+9 110011010 010100111
+8 11101110 10010010
+4 1111 0001
+4 0000 0011
+6 001000 111100
+6 100100 100011
+4 1010 0011
+4 0110 1010
+10 1101111010 0000011011
+9 110101010 110000011
+6 100111 001100
+3 101 011
+5 11110 01000
+2 01 11
+8 00010001 11101111
+5 11000 10011
+2 01 01
+3 100 011
+4 1111 0111
+9 011000110 000111000
+5 01101 00100
+6 000010 010000
+4 1100 1001
+`
+
+func expected(n int, s, t string) string {
 	f1 := strings.IndexByte(s, '1')
 	if f1 == -1 {
 		f1 = n
@@ -24,54 +125,72 @@ func expectedAnswer(n int, s, t string) string {
 	return "NO"
 }
 
+type testCase struct {
+	n    int
+	s, t string
+}
+
+func parseTests() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesB), "\n")
+	tests := make([]testCase, len(lines))
+	for i, line := range lines {
+		parts := strings.Fields(line)
+		if len(parts) != 3 {
+			return nil, fmt.Errorf("bad test line %d", i+1)
+		}
+		n, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return nil, err
+		}
+		tests[i] = testCase{n: n, s: parts[1], t: parts[2]}
+	}
+	return tests, nil
+}
+
+func buildInput(tests []testCase) string {
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(len(tests)))
+	sb.WriteByte('\n')
+	for _, tc := range tests {
+		fmt.Fprintf(&sb, "%d %s %s\n", tc.n, tc.s, tc.t)
+	}
+	return sb.String()
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierB.go /path/to/binary")
+		fmt.Println("usage: verifierB /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	file, err := os.Open("testcasesB.txt")
+	tests, err := parseTests()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+		fmt.Println("parse error:", err)
 		os.Exit(1)
 	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		var n int
-		var s, t string
-		fmt.Sscan(line, &n, &s, &t)
-		expect := expectedAnswer(n, s, t)
-		input := fmt.Sprintf("1\n%d\n%s\n%s\n", n, s, t)
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		err := cmd.Run()
-		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
-			os.Exit(1)
-		}
-		got := strings.TrimSpace(out.String())
-		got = strings.ToUpper(got)
-		expect = strings.ToUpper(expect)
-		if got != expect {
-			fmt.Printf("test %d failed: expected %s got %s\n", idx, expect, got)
+	input := buildInput(tests)
+	output, err := runCandidate(os.Args[1], input)
+	if err != nil {
+		fmt.Println("runtime error:", err)
+		os.Exit(1)
+	}
+	outFields := strings.Fields(output)
+	if len(outFields) != len(tests) {
+		fmt.Printf("expected %d outputs, got %d\n", len(tests), len(outFields))
+		os.Exit(1)
+	}
+	for i, tc := range tests {
+		want := expected(tc.n, tc.s, tc.t)
+		if outFields[i] != want {
+			fmt.Printf("case %d failed\nexpected: %s\ngot: %s\n", i+1, want, outFields[i])
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

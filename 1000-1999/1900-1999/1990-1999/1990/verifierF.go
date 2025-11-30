@@ -1,81 +1,985 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleF")
-	cmd := exec.Command("go", "build", "-o", oracle, "1990F.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
+const testcasesF = `100
+4 3
+47 77 60 80
+1 1 4
+2 2 24
+2 4 50
+3 4
+81 19 66
+2 3 1
+1 1 3
+1 2 2
+2 2 76
+7 7
+50 93 73 56 17 46 12
+1 2 5
+1 3 6
+2 4 64
+2 5 44
+2 5 29
+2 6 3
+2 5 85
+3 6
+69 73 72
+1 3 3
+2 2 15
+1 2 3
+1 2 2
+2 1 2
+2 2 98
+7 2
+5 77 78 97 5 48 91
+2 5 35
+1 1 3
+1 2
+13
+1 1 1
+2 1 19
+1 6
+40
+2 1 48
+2 1 66
+2 1 79
+2 1 81
+1 1 1
+2 1 70
+6 1
+100 53 74 40 2 48
+1 1 6
+6 8
+45 86 45 77 90 35
+2 1 75
+1 6 6
+2 3 80
+2 3 75
+2 2 46
+1 3 5
+2 3 100
+2 1 98
+1 3
+39
+1 1 1
+2 1 86
+2 1 13
+6 6
+86 28 56 21 10 43
+1 5 6
+2 2 100
+1 1 5
+1 3 4
+2 3 82
+1 5 6
+3 7
+37 66 34
+2 2 81
+2 2 53
+2 1 52
+1 1 1
+2 3 65
+2 3 91
+1 1 3
+8 5
+69 43 29 8 75 36 15 31
+1 1 4
+2 1 1
+2 2 21
+2 4 84
+1 7 7
+2 6
+16 32
+2 1 45
+1 1 1
+1 1 1
+2 1 0
+2 2 6
+2 1 34
+7 1
+60 41 99 0 7 99 16
+1 1 1
+2 8
+4 91
+1 2 2
+1 2 2
+2 2 82
+2 2 46
+2 1 42
+2 1 16
+1 2 2
+1 1 2
+8 7
+81 5 79 55 6 47 80 63
+2 7 88
+2 8 2
+1 4 8
+2 2 54
+1 7 7
+1 6 7
+2 2 59
+2 7
+85 13
+2 1 75
+1 2 2
+1 2 2
+1 1 2
+1 1 2
+1 1 1
+2 2 74
+5 2
+4 98 72 65 67
+1 1 5
+1 5 5
+6 3
+9 30 23 82 31 58
+2 3 47
+2 3 71
+2 1 48
+4 7
+95 20 53 88
+2 2 82
+2 2 20
+1 4 4
+2 2 17
+2 2 18
+2 2 88
+2 4 76
+5 4
+39 2 34 61 48
+1 2 4
+1 3 4
+1 4 5
+1 4 4
+8 2
+51 100 93 5 59 29 30 82
+1 4 6
+1 4 6
+3 3
+79 90 86
+1 2 2
+1 2 2
+2 1 93
+2 2
+11 33
+2 1 45
+2 2 0
+1 6
+42
+2 1 62
+1 1 1
+2 1 69
+2 1 35
+1 1 1
+2 1 12
+6 6
+96 57 37 84 86 85
+2 1 96
+2 6 72
+1 6 6
+2 1 91
+2 6 93
+1 6 6
+3 6
+83 58 15
+1 3 3
+2 3 92
+2 3 38
+1 2 3
+2 1 90
+1 1 3
+3 7
+45 12 34
+2 2 6
+1 1 2
+2 1 89
+2 2 51
+2 3 98
+1 2 3
+1 1 2
+2 2
+72 99
+1 1 1
+2 2 95
+3 3
+50 24 69
+1 3 3
+1 2 3
+2 1 56
+7 7
+40 70 74 39 81 63 67
+2 7 85
+2 1 76
+1 6 6
+1 7 7
+2 2 67
+2 2 24
+1 1 7
+8 2
+72 36 84 19 17 59 11 79
+1 1 6
+1 2 5
+1 6
+41
+2 1 88
+1 1 1
+1 1 1
+1 1 1
+1 1 1
+1 1 1
+2 4
+90 20
+2 2 60
+1 2 2
+2 2 2
+2 2 96
+7 8
+23 58 4 92 32 46 47
+2 5 46
+2 2 0
+1 3 5
+1 7 7
+1 2 3
+1 2 6
+2 5 21
+1 2 2
+3 8
+62 23 7
+1 2 3
+2 2 4
+1 1 2
+1 2 3
+1 1 1
+1 2 3
+1 1 2
+1 2 2
+1 5
+35
+2 1 62
+1 1 1
+2 1 40
+1 1 1
+1 1 1
+1 2
+2
+1 1 1
+1 1 1
+4 8
+43 61 44 84
+1 4 4
+2 1 37
+1 4 4
+2 3 68
+2 2 94
+2 3 23
+2 4 56
+1 4 4
+6 5
+21 64 92 96 77 90
+2 4 5
+1 2 2
+2 1 97
+1 3 4
+1 5 5
+8 8
+93 82 42 47 0 9 24 51
+1 6 8
+2 2 57
+1 4 5
+1 3 8
+1 1 2
+1 5 6
+1 7 8
+1 8 8
+2 1
+14 76
+1 1 1
+5 2
+13 59 51 28 87
+1 4 5
+2 5 84
+8 2
+37 76 56 48 26 14 69 0
+2 5 93
+1 6 7
+4 8
+96 9 70 87
+2 4 100
+1 2 2
+2 1 42
+1 4 4
+1 3 3
+2 2 95
+1 2 4
+2 4 47
+4 7
+61 99 52 60
+1 3 3
+1 1 1
+1 3 3
+2 1 24
+1 3 4
+2 1 44
+2 2 95
+5 3
+13 56 38 52 56
+1 2 3
+2 3 48
+2 2 55
+5 8
+60 67 69 28 46
+2 3 3
+2 3 45
+2 2 66
+1 1 2
+1 5 5
+1 1 1
+1 4 5
+2 5 4
+8 3
+30 1 35 55 43 6 77 69
+1 8 8
+2 4 86
+2 7 92
+5 6
+5 3 54 4 80
+1 5 5
+1 4 5
+1 3 3
+1 1 1
+2 1 58
+2 5 85
+7 6
+66 80 21 37 23 9 87
+1 7 7
+2 7 45
+2 4 35
+2 4 36
+1 5 6
+1 5 5
+7 8
+29 58 74 78 34 3 40
+1 4 5
+2 7 90
+2 1 55
+1 3 3
+2 7 82
+2 2 39
+2 2 83
+2 7 50
+6 1
+34 27 4 40 40 78
+2 5 36
+1 3
+53
+2 1 10
+2 1 25
+1 1 1
+1 5
+88
+1 1 1
+2 1 34
+2 1 22
+1 1 1
+1 1 1
+8 7
+82 1 18 50 6 23 97 80
+1 5 6
+1 3 3
+1 4 7
+1 7 8
+1 1 5
+1 3 3
+1 5 6
+7 6
+77 9 24 0 47 18 61
+1 1 3
+2 1 90
+2 4 2
+2 5 95
+2 5 52
+2 5 68
+5 8
+19 68 58 49 25
+2 2 38
+1 3 4
+1 2 2
+1 4 4
+1 5 5
+1 1 4
+2 5 89
+2 1 59
+8 6
+18 75 76 27 41 58 64 72
+2 6 75
+2 6 88
+2 5 38
+2 3 15
+1 6 8
+1 5 8
+5 8
+16 61 42 68 100
+1 5 5
+1 1 4
+2 5 78
+2 1 30
+2 4 27
+1 3 5
+1 1 5
+2 1 55
+7 6
+1 38 47 64 47 51 56
+2 6 87
+1 5 6
+1 3 4
+1 3 3
+1 2 2
+1 3 6
+5 4
+3 3 68 93 40
+2 3 92
+1 4 5
+1 5 5
+1 4 4
+5 5
+70 24 15 22 76
+1 4 4
+2 4 0
+2 2 60
+2 2 49
+1 5 5
+5 7
+36 12 81 95 88
+1 1 4
+2 1 1
+2 4 54
+1 3 5
+2 5 28
+2 2 82
+2 1 6
+1 4
+73
+1 1 1
+2 1 36
+2 1 84
+1 1 1
+6 3
+74 68 46 79 66 45
+2 5 92
+1 4 4
+2 3 80
+4 8
+27 23 13 58
+1 4 4
+2 2 96
+1 3 4
+1 4 4
+1 4 4
+2 2 22
+2 3 44
+2 1 88
+6 2
+26 28 38 56 22 72
+1 2 5
+1 2 4
+4 3
+87 96 67 50
+2 2 80
+2 4 47
+1 1 4
+8 1
+74 22 34 66 53 87 63 28
+2 8 44
+7 8
+97 22 14 91 53 43 93
+1 5 6
+1 3 7
+1 7 7
+2 6 69
+1 7 7
+2 4 5
+2 7 81
+1 5 5
+5 5
+69 41 52 95 83
+2 1 54
+2 4 61
+2 5 23
+1 3 5
+1 5 5
+2 6
+70 20
+2 2 22
+2 2 25
+2 2 13
+1 2 2
+1 1 1
+1 1 2
+6 7
+35 8 61 35 87 40
+1 3 3
+1 1 4
+2 4 18
+2 3 87
+1 3 4
+1 2 4
+2 6 43
+2 2
+90 17
+1 1 2
+2 1 41
+3 3
+5 85 62
+2 3 17
+2 2 95
+2 3 72
+7 7
+32 37 69 34 74 49 19
+1 1 2
+2 6 0
+1 7 7
+1 7 7
+2 1 80
+2 2 15
+1 2 7
+2 8
+54 94
+2 1 14
+2 1 33
+1 1 1
+1 1 1
+1 2 2
+2 2 22
+1 1 2
+2 1 0
+1 6
+66
+2 1 13
+1 1 1
+1 1 1
+1 1 1
+1 1 1
+1 1 1
+7 7
+12 50 40 73 14 69 85
+1 3 3
+1 4 4
+2 2 25
+2 5 65
+2 6 97
+2 6 94
+1 5 7
+7 5
+8 22 57 64 67 12 36
+1 4 5
+2 5 21
+1 3 7
+2 1 9
+2 1 61
+4 7
+2 1 2 60
+1 1 4
+1 1 3
+2 3 60
+2 3 99
+2 2 39
+1 4 4
+1 2 2
+2 3
+95 50
+1 1 1
+2 1 63
+1 2 2
+2 7
+85 91
+2 2 55
+2 2 77
+1 2 2
+2 2 100
+2 2 26
+2 1 83
+2 2 53
+8 4
+92 43 76 7 84 30 74 6
+2 4 49
+1 6 6
+1 8 8
+2 7 72
+6 7
+55 5 46 93 96 50
+2 6 50
+2 5 28
+1 2 3
+1 6 6
+1 5 6
+2 4 48
+2 5 25
+8 7
+7 82 71 91 20 2 24 72
+1 3 6
+1 2 2
+1 5 6
+2 7 18
+1 4 7
+2 6 80
+2 1 32
+1 6
+40
+2 1 15
+2 1 10
+1 1 1
+1 1 1
+1 1 1
+1 1 1
+1 5
+30
+1 1 1
+2 1 26
+2 1 44
+1 1 1
+2 1 32
+1 7
+33
+2 1 57
+1 1 1
+1 1 1
+2 1 83
+1 1 1
+1 1 1
+2 1 76
+3 4
+41 6 14
+2 3 69
+1 2 3
+2 1 62
+2 3 56
+3 8
+0 15 100
+1 2 3
+2 2 66
+1 2 3
+2 2 89
+2 3 1
+2 2 72
+2 3 57
+1 2 2
+5 3
+29 68 14 84 22
+1 3 4
+1 3 5
+1 2 4
+1 1
+48
+1 1 1
+6 8
+1 58 86 55 83 70
+1 1 1
+1 2 2
+2 1 84
+2 1 26
+1 6 6
+1 1 5
+1 3 6
+2 3 89
+1 4
+89
+1 1 1
+1 1 1
+2 1 17
+2 1 9
+4 3
+69 42 56 49
+1 3 4
+2 3 98
+1 3 4
+2 3
+49 93
+2 2 51
+2 1 12
+2 1 76
+6 8
+7 83 82 58 67 84
+2 5 63
+2 6 24
+2 1 88
+1 4 5
+2 6 21
+1 3 4
+2 1 22
+1 6 6
+`
+
+type segmentTree struct {
+	n   int
+	ty  int // 0: max index by arr value, 1: sum, 2: max
+	arr *[]int64
+	t   []int64
 }
 
-func run(bin string, input []byte) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
+func newSeg(n int, ty int, arr *[]int64) *segmentTree {
+	neut := int64(0)
+	if ty != 1 {
+		neut = -1
+	}
+	t := make([]int64, 2*n+5)
+	for i := range t {
+		t[i] = neut
+	}
+	return &segmentTree{n: n, ty: ty, arr: arr, t: t}
+}
+
+func (st *segmentTree) oper(i, j int64) int64 {
+	if st.ty == 1 {
+		return i + j
+	}
+	if st.ty == 0 {
+		if i == -1 {
+			return j
+		}
+		if j == -1 {
+			return i
+		}
+		if (*st.arr)[i] >= (*st.arr)[j] {
+			return i
+		}
+		return j
+	}
+	if i > j {
+		return i
+	}
+	return j
+}
+
+func (st *segmentTree) upd(p int, v int64) {
+	p += st.n
+	st.t[p] = v
+	for p > 1 {
+		p >>= 1
+		st.t[p] = st.oper(st.t[p<<1], st.t[p<<1|1])
+	}
+}
+
+func (st *segmentTree) query(l, r int) int64 {
+	var res int64
+	if st.ty == 1 {
+		res = 0
 	} else {
-		cmd = exec.Command(bin)
+		res = -1
 	}
-	cmd.Stdin = bytes.NewReader(input)
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	l += st.n
+	r += st.n
+	for l < r {
+		if l&1 == 1 {
+			res = st.oper(res, st.t[l])
+			l++
+		}
+		if r&1 == 1 {
+			r--
+			res = st.oper(res, st.t[r])
+		}
+		l >>= 1
+		r >>= 1
 	}
-	return strings.TrimSpace(out.String()), nil
+	return res
+}
+
+type pair struct {
+	first  int64
+	second int64
+}
+
+type testCase struct {
+	n       int
+	q       int
+	arr     []int64
+	queries []query
+}
+
+type query struct {
+	ty int
+	l  int
+	r  int
+}
+
+func solveCase(tc testCase) []int64 {
+	a := make([]int64, len(tc.arr))
+	copy(a, tc.arr)
+	stm := newSeg(tc.n, 0, &a)
+	sts := newSeg(tc.n, 1, &a)
+	tim := newSeg(tc.n, 2, nil)
+	for i, v := range a {
+		sts.upd(i, v)
+		stm.upd(i, int64(i))
+	}
+	cnt := int64(0)
+	dp := make([]map[int]pair, tc.n)
+	for i := 0; i < tc.n; i++ {
+		dp[i] = make(map[int]pair)
+	}
+	var f func(int, int) int64
+	f = func(l, r int) int64 {
+		if r-l <= 0 {
+			return -1
+		}
+		res, ok := dp[l][r]
+		if ok && tim.query(l, r) <= res.second {
+			return res.first
+		}
+		res.second = cnt
+		p := int(stm.query(l, r))
+		s := sts.query(l, r)
+		if s-a[p] > a[p] {
+			res.first = int64(r - l)
+		} else {
+			left := f(l, p)
+			right := f(p+1, r)
+			if left > right {
+				res.first = left
+			} else {
+				res.first = right
+			}
+		}
+		dp[l][r] = res
+		return res.first
+	}
+
+	var outputs []int64
+	for _, qu := range tc.queries {
+		l := qu.l - 1
+		if qu.ty == 1 {
+			ans := f(l, qu.r)
+			outputs = append(outputs, ans)
+		} else {
+			a[l] = int64(qu.r)
+			sts.upd(l, int64(qu.r))
+			stm.upd(l, int64(l))
+			tim.upd(l, cnt)
+		}
+		cnt++
+	}
+	return outputs
+}
+
+func parseTests() ([]testCase, error) {
+	fields := strings.Fields(testcasesF)
+	pos := 0
+	readInt := func() (int, error) {
+		if pos >= len(fields) {
+			return 0, fmt.Errorf("unexpected EOF")
+		}
+		v, err := strconv.Atoi(fields[pos])
+		pos++
+		return v, err
+	}
+	t, err := readInt()
+	if err != nil {
+		return nil, err
+	}
+	tests := make([]testCase, t)
+	for i := 0; i < t; i++ {
+		n, err := readInt()
+		if err != nil {
+			return nil, err
+		}
+		q, err := readInt()
+		if err != nil {
+			return nil, err
+		}
+		arr := make([]int64, n)
+		for j := 0; j < n; j++ {
+			val, err := readInt()
+			if err != nil {
+				return nil, err
+			}
+			arr[j] = int64(val)
+		}
+		queries := make([]query, q)
+		for j := 0; j < q; j++ {
+			ty, err := readInt()
+			if err != nil {
+				return nil, err
+			}
+			l, err := readInt()
+			if err != nil {
+				return nil, err
+			}
+			r, err := readInt()
+			if err != nil {
+				return nil, err
+			}
+			queries[j] = query{ty: ty, l: l, r: r}
+		}
+		tests[i] = testCase{n: n, q: q, arr: arr, queries: queries}
+	}
+	return tests, nil
+}
+
+func buildInput(tests []testCase) string {
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(len(tests)))
+	sb.WriteByte('\n')
+	for _, tc := range tests {
+		fmt.Fprintf(&sb, "%d %d\n", tc.n, tc.q)
+		for i, v := range tc.arr {
+			if i > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.FormatInt(v, 10))
+		}
+		sb.WriteByte('\n')
+		for _, qu := range tc.queries {
+			fmt.Fprintf(&sb, "%d %d %d\n", qu.ty, qu.l, qu.r)
+		}
+	}
+	return sb.String()
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierF.go /path/to/binary")
+		fmt.Println("usage: verifierF /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	oracle, err := buildOracle()
+	tests, err := parseTests()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		fmt.Println("parse error:", err)
 		os.Exit(1)
 	}
-	defer os.Remove(oracle)
-
-	data, err := os.ReadFile("testcasesF.txt")
+	input := buildInput(tests)
+	output, err := runCandidate(os.Args[1], input)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to read testcases: %v\n", err)
+		fmt.Println("runtime error:", err)
 		os.Exit(1)
 	}
-
-	expected, err := run(oracle, data)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "oracle error: %v\n", err)
+	got := strings.Fields(output)
+	var want []string
+	for _, tc := range tests {
+		for _, v := range solveCase(tc) {
+			want = append(want, strconv.FormatInt(v, 10))
+		}
+	}
+	if len(got) != len(want) {
+		fmt.Printf("expected %d outputs, got %d\n", len(want), len(got))
 		os.Exit(1)
 	}
-	got, err := run(bin, data)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "runtime error: %v\n", err)
-		os.Exit(1)
+	for i := range want {
+		if got[i] != want[i] {
+			fmt.Printf("mismatch at answer %d expected %s got %s\n", i+1, want[i], got[i])
+			os.Exit(1)
+		}
 	}
-	if strings.TrimSpace(got) != strings.TrimSpace(expected) {
-		fmt.Println("output mismatch")
-		fmt.Println("expected:")
-		fmt.Println(expected)
-		fmt.Println("got:")
-		fmt.Println(got)
-		os.Exit(1)
-	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

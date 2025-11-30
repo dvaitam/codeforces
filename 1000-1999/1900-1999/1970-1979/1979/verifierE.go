@@ -1,107 +1,1764 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
+	"strings"
 )
 
-type Point struct{ x, y int }
+type Key struct{ X, Y int }
+type Pair struct {
+	X int
+	I int
+}
+type Point struct {
+	X int
+	Y int
+	I int
+}
 
-func solveCase(points []Point, d int) string {
-	n := len(points)
-	for i := 0; i < n; i++ {
-		for j := i + 1; j < n; j++ {
-			for k := j + 1; k < n; k++ {
-				ab := abs(points[i].x-points[j].x) + abs(points[i].y-points[j].y)
-				ac := abs(points[i].x-points[k].x) + abs(points[i].y-points[k].y)
-				bc := abs(points[j].x-points[k].x) + abs(points[j].y-points[k].y)
-				if ab == d && ac == d && bc == d {
-					return fmt.Sprintf("%d %d %d", i+1, j+1, k+1)
-				}
+const testcasesE = `100
+5 6
+3 3
+1 3
+0 4
+3 2
+5 6
+2 3
+1 0
+5 0
+0 4
+2 1
+4 6
+1 1
+4 3
+2 0
+1 2
+3 3
+3 6
+3 2
+0 0
+4 2
+5 4
+3 1
+5 5
+5 2
+3 2
+3 4
+5 6
+4 6
+1 0
+1 2
+2 3
+2 0
+4 0
+3 0
+5 4
+3 3
+5 6
+0 6
+2 2
+1 3
+5 3
+5 1
+1 5
+1 2
+4 2
+1 1
+3 4
+4 1
+5 5
+5 0
+3 0
+1 0
+1 4
+2 6
+2 4
+4 5
+0 0
+5 2
+3 5
+3 2
+1 5
+1 6
+5 2
+1 4
+4 1
+0 4
+1 2
+3 1
+2 4
+0 6
+5 2
+0 0
+0 4
+4 6
+4 6
+3 4
+1 0
+2 6
+4 1
+0 0
+3 3
+3 0
+3 2
+5 4
+4 1
+4 3
+1 6
+3 4
+1 4
+5 6
+1 0
+5 5
+0 0
+2 5
+2 1
+2 0
+2 3
+4 3
+5 2
+2 6
+3 4
+2 6
+4 0
+3 5
+4 4
+0 2
+4 5
+2 0
+5 6
+5 3
+2 3
+1 3
+3 0
+4 4
+4 6
+3 5
+2 3
+3 1
+1 2
+2 3
+4 2
+3 0
+2 6
+4 0
+4 1
+3 3
+5 2
+3 0
+1 1
+1 3
+2 4
+3 4
+2 5
+1 1
+3 0
+4 2
+4 6
+5 0
+4 2
+4 2
+3 3
+5 4
+1 4
+2 3
+4 3
+3 2
+0 4
+1 4
+3 5
+5 2
+4 1
+4 1
+2 6
+2 6
+4 3
+1 2
+5 4
+2 2
+3 6
+4 2
+0 0
+1 0
+2 5
+4 1
+3 3
+2 5
+5 2
+5 4
+2 5
+4 2
+2 2
+5 1
+1 6
+4 3
+0 6
+4 2
+2 4
+1 4
+2 2
+1 2
+1 3
+4 4
+0 2
+3 1
+4 0
+2 3
+5 2
+1 1
+1 5
+4 2
+5 2
+1 3
+2 6
+0 0
+2 1
+1 2
+1 2
+3 0
+3 6
+5 2
+1 5
+1 4
+4 2
+2 3
+2 5
+5 6
+1 3
+0 6
+1 0
+4 1
+4 5
+1 2
+1 1
+3 5
+4 2
+4 2
+2 3
+4 5
+5 4
+5 3
+5 6
+5 6
+1 6
+4 4
+1 5
+0 2
+0 2
+4 0
+4 0
+2 3
+1 0
+3 5
+3 1
+5 6
+2 2
+3 4
+4 4
+3 3
+3 4
+4 0
+1 5
+3 6
+3 3
+3 6
+3 1
+2 2
+5 6
+0 2
+1 6
+3 4
+2 4
+4 5
+2 0
+2 4
+2 0
+3 2
+2 6
+3 2
+3 5
+5 6
+1 3
+5 2
+5 3
+5 6
+1 0
+4 6
+1 4
+5 0
+4 4
+2 0
+1 3
+4 0
+3 3
+3 1
+2 0
+4 2
+5 6
+2 2
+3 0
+2 2
+3 3
+4 5
+4 6
+3 2
+4 5
+5 6
+3 6
+1 4
+5 6
+3 1
+0 4
+5 2
+4 6
+5 6
+3 4
+5 4
+4 0
+3 2
+3 6
+4 2
+1 4
+1 3
+1 0
+3 3
+4 2
+5 3
+0 6
+2 3
+0 4
+2 0
+5 3
+2 1
+4 2
+5 0
+3 2
+1 6
+3 3
+3 2
+4 2
+3 3
+4 4
+5 1
+2 4
+1 6
+2 0
+4 2
+5 6
+1 3
+3 5
+5 2
+4 3
+5 1
+1 6
+5 5
+1 5
+3 2
+3 3
+1 2
+2 6
+5 1
+1 2
+4 6
+3 1
+0 4
+1 6
+3 0
+1 1
+5 4
+3 2
+1 0
+1 5
+2 4
+1 1
+5 6
+3 0
+1 4
+1 2
+1 1
+2 6
+3 6
+2 5
+1 1
+5 6
+3 4
+2 2
+3 3
+4 2
+0 2
+0 6
+5 3
+3 3
+2 6
+2 5
+2 6
+5 2
+1 4
+4 2
+5 6
+1 1
+3 1
+4 0
+1 5
+3 6
+0 0
+5 0
+2 5
+1 4
+5 6
+4 3
+2 2
+2 1
+3 4
+5 6
+4 6
+1 6
+4 0
+5 4
+2 0
+5 6
+4 6
+3 6
+0 0
+1 5
+5 2
+2 0
+3 4
+4 0
+5 6
+5 6
+3 2
+4 0
+5 2
+5 2
+4 6
+1 3
+5 6
+5 2
+2 0
+1 0
+5 2
+0 6
+4 6
+3 0
+3 0
+1 0
+3 4
+4 5
+3 2
+1 5
+2 6
+3 5
+1 4
+4 0
+5 6
+1 5
+4 6
+5 6
+5 3
+1 5
+2 2
+4 2
+2 2
+3 3
+0 6
+1 5
+4 3
+4 0
+3 3
+5 2
+5 6
+1 6
+1 3
+0 6
+1 2
+5 6
+5 2
+4 6
+1 4
+4 2
+3 2
+1 2
+3 3
+2 1
+5 6
+2 1
+5 1
+1 2
+3 4
+5 1
+1 4
+3 1
+5 3
+5 6
+0 6
+4 6
+3 4
+5 6
+4 2
+2 2
+5 3
+5 1
+5 2
+0 6
+2 2
+4 5
+5 3
+4 2
+5 6
+3 1
+3 3
+4 6
+0 4
+4 6
+4 2
+5 2
+2 6
+5 2
+2 6
+1 6
+3 2
+5 6
+4 2
+1 3
+0 6
+3 6
+5 4
+1 1
+5 2
+5 2
+5 6
+4 5
+1 0
+1 4
+5 4
+3 3
+4 0
+5 2
+0 2
+5 3
+2 6
+1 6
+5 4
+1 0
+2 1
+4 4
+5 2
+5 2
+2 3
+1 1
+0 6
+3 3
+1 2
+5 1
+1 2
+1 3
+3 5
+2 0
+5 3
+2 0
+1 2
+0 2
+5 6
+2 0
+5 6
+4 0
+3 4
+5 6
+3 6
+5 5
+3 2
+5 6
+2 5
+4 6
+3 6
+2 6
+0 6
+4 4
+0 0
+2 6
+3 3
+4 0
+4 4
+2 6
+5 2
+5 2
+0 0
+1 2
+5 3
+5 0
+4 4
+5 6
+2 6
+2 6
+5 2
+5 1
+1 5
+5 2
+5 4
+4 0
+0 2
+4 4
+2 6
+1 2
+5 2
+2 6
+5 4
+1 2
+1 4
+0 4
+4 2
+0 6
+4 2
+5 1
+2 3
+5 6
+5 2
+2 4
+1 6
+4 6
+3 1
+2 1
+2 5
+3 2
+5 2
+3 0
+2 4
+5 6
+5 4
+3 0
+2 0
+0 6
+1 6
+4 6
+3 4
+1 2
+0 6
+3 3
+2 2
+4 2
+3 3
+2 1
+3 6
+4 0
+1 0
+3 5
+1 4
+4 2
+2 5
+2 3
+2 6
+4 4
+5 3
+3 4
+3 2
+5 4
+3 3
+1 6
+1 2
+1 2
+5 0
+0 2
+3 0
+4 0
+5 2
+5 4
+2 3
+5 6
+5 6
+1 3
+2 6
+5 3
+1 0
+2 5
+0 2
+4 6
+4 0
+3 3
+5 6
+5 0
+3 6
+2 2
+3 2
+1 2
+3 3
+2 5
+1 2
+3 4
+5 3
+4 2
+1 6
+1 4
+1 0
+3 2
+2 6
+2 0
+5 4
+3 1
+2 0
+2 1
+3 0
+3 0
+5 4
+2 6
+2 6
+5 6
+2 6
+1 6
+1 2
+0 0
+0 0
+2 4
+4 2
+5 0
+3 2
+5 6
+4 1
+5 4
+0 0
+4 5
+3 4
+5 6
+4 6
+1 0
+1 3
+2 5
+4 2
+3 6
+5 2
+2 2
+4 4
+4 2
+3 2
+0 6
+3 6
+2 3
+5 2
+2 5
+4 0
+2 0
+0 2
+1 6
+5 1
+4 2
+1 0
+3 2
+1 4
+5 4
+3 3
+3 0
+2 6
+3 6
+3 4
+3 6
+5 4
+2 2
+5 0
+1 0
+3 2
+1 4
+4 5
+1 2
+3 3
+5 6
+2 6
+3 6
+2 0
+5 0
+5 0
+2 0
+3 0
+3 4
+1 4
+3 2
+0 6
+5 2
+1 2
+1 3
+4 2
+4 6
+1 5
+1 3
+2 4
+2 6
+4 2
+4 4
+3 6
+2 3
+2 0
+5 4
+0 2
+5 6
+5 6
+1 6
+5 6
+3 2
+3 1
+0 2
+1 5
+1 0
+1 0
+1 0
+5 2
+3 3
+3 3
+2 2
+3 0
+2 2
+1 2
+1 6
+3 4
+5 6
+4 0
+4 0
+5 2
+5 2
+1 5
+2 6
+3 3
+4 6
+5 6
+4 6
+5 2
+0 6
+2 0
+3 2
+3 4
+5 2
+3 0
+0 2
+3 6
+0 6
+3 6
+1 4
+3 3
+3 2
+2 6
+1 3
+2 6
+5 6
+4 2
+1 2
+4 2
+5 6
+5 2
+3 6
+2 1
+2 0
+5 1
+2 0
+0 0
+5 4
+5 0
+4 6
+5 0
+4 6
+4 6
+4 2
+4 5
+2 6
+1 2
+4 0
+4 1
+5 1
+3 4
+5 6
+3 2
+5 4
+4 2
+5 2
+0 6
+0 6
+5 2
+1 0
+4 0
+5 1
+5 2
+5 2
+2 2
+0 4
+0 2
+2 2
+2 6
+5 4
+1 6
+5 6
+3 6
+3 3
+2 6
+2 6
+2 4
+2 1
+1 6
+3 0
+5 5
+3 3
+5 3
+5 0
+5 2
+5 6
+2 4
+1 3
+3 4
+3 3
+3 3
+5 2
+2 3
+4 0
+3 0
+2 0
+1 6
+2 0
+1 5
+4 2
+3 4
+4 5
+2 0
+1 0
+5 6
+3 0
+3 6
+5 0
+5 3
+4 2
+3 1
+2 6
+2 2
+1 2
+2 0
+4 1
+2 5
+3 2
+5 6
+4 4
+3 2
+4 4
+2 3
+4 6
+5 6
+5 1
+5 6
+4 4
+4 4
+2 2
+2 0
+4 0
+2 6
+3 5
+3 4
+5 6
+4 2
+3 6
+1 2
+1 0
+4 2
+1 2
+1 0
+3 0
+4 2
+5 6
+3 6
+4 2
+5 2
+2 1
+4 6
+4 2
+0 2
+0 4
+3 2
+1 5
+2 1
+5 2
+1 3
+2 6
+2 0
+4 4
+4 2
+4 4
+5 6
+4 6
+3 0
+5 2
+2 0
+5 2
+2 2
+5 3
+1 0
+5 6
+4 2
+2 0
+2 0
+5 4
+3 0
+5 6
+5 3
+2 1
+2 0
+5 6
+5 4
+2 3
+4 6
+1 4
+1 6
+4 4
+4 4
+4 2
+4 2
+3 6
+3 0
+4 1
+3 3
+3 6
+3 2
+5 2
+1 0
+3 5
+5 4
+1 2
+3 0
+5 2
+3 6
+4 2
+1 5
+2 2
+4 0
+5 5
+4 0
+3 0
+3 3
+5 6
+5 2
+0 6
+5 6
+5 2
+5 2
+1 2
+5 5
+5 6
+1 4
+4 6
+2 4
+0 2
+5 6
+2 5
+2 2
+2 0
+2 3
+4 2
+2 0
+5 2
+2 3
+0 6
+1 2
+3 6
+3 2
+5 2
+5 2
+1 2
+3 6
+0 6
+1 0
+1 1
+3 3
+4 2
+5 6
+5 6
+2 4
+2 2
+5 6
+2 0
+1 6
+2 4
+5 0
+2 0
+4 2
+2 3
+4 3
+5 6
+5 6
+4 6
+4 5
+4 6
+2 3
+1 5
+5 6
+2 1
+4 0
+5 6
+5 4
+4 2
+0 6
+5 3
+4 2
+5 2
+3 6
+1 2
+5 5
+5 2
+5 4
+1 2
+0 6
+5 2
+5 6
+5 2
+5 3
+4 4
+1 0
+4 0
+2 0
+4 6
+3 2
+2 6
+3 6
+0 6
+5 2
+5 2
+5 1
+4 5
+1 0
+3 6
+5 2
+0 6
+1 2
+0 0
+1 4
+4 5
+4 2
+1 2
+1 2
+5 0
+1 2
+1 6
+5 4
+0 2
+1 4
+0 4
+3 5
+3 3
+4 3
+4 2
+5 4
+5 2
+4 4
+4 4
+5 6
+5 5
+5 2
+5 3
+3 4
+1 2
+4 5
+1 6
+3 4
+5 2
+5 4
+2 1
+2 6
+5 6
+4 0
+4 6
+0 2
+3 0
+3 4
+0 6
+5 6
+5 5
+5 0
+1 4
+1 4
+2 6
+3 6
+1 2
+4 5
+3 2
+5 0
+5 5
+3 6
+0 2
+2 2
+5 4
+3 2
+5 5
+2 1
+1 3
+5 6
+4 6
+1 2
+4 2
+4 2
+3 6
+2 6
+5 2
+5 2
+1 2
+4 2
+4 2
+2 1
+5 2
+5 4
+2 3
+1 3
+5 6
+2 1
+5 3
+2 5
+2 3
+1 4
+5 2
+2 3
+2 0
+1 2
+4 2
+2 4
+2 6
+4 2
+5 2
+5 6
+5 2
+5 6
+1 6
+0 4
+5 0
+5 3
+4 6
+4 0
+0 4
+5 2
+2 0
+4 3
+1 2
+5 5
+0 0
+3 4
+2 6
+5 0
+3 0
+5 0
+4 5
+4 4
+4 5
+5 6
+1 2
+5 2
+0 6
+1 0
+1 0
+1 2
+5 2
+4 0
+5 2
+4 0
+4 6
+5 2
+3 3
+4 2
+1 0
+3 4
+4 5
+5 3
+2 6
+1 5
+5 3
+5 2
+4 6
+3 2
+1 2
+5 5
+3 2
+3 4
+5 3
+5 2
+5 5
+2 6
+2 2
+1 4
+0 2
+5 6
+3 5
+5 6
+3 0
+5 2
+1 2
+2 0
+4 2
+2 0
+4 2
+5 2
+2 6
+5 6
+3 6
+5 5
+4 6
+3 4
+4 2
+1 6
+1 0
+1 5
+1 4
+5 5
+5 2
+5 2
+5 6
+2 0
+3 6
+3 6
+3 2
+5 3
+5 2
+0 6
+4 6
+4 2
+1 4
+2 6
+3 4
+3 0
+4 6
+3 2
+4 4
+5 4
+3 0
+2 0
+0 2
+5 6
+2 2
+3 3
+2 3
+4 0
+5 2
+5 6
+4 5
+0 2
+5 6
+2 5
+5 6
+4 0
+2 0
+4 6
+2 6
+5 2
+1 4
+2 5
+5 6
+1 0
+4 2
+0 6
+0 0
+5 2
+4 2
+2 0
+5 6
+4 2
+3 2
+1 4
+5 2
+1 2
+4 4
+2 5
+5 4
+5 6
+3 5
+5 4
+5 4
+1 6
+2 6
+3 2
+1 0
+5 6
+2 0
+5 2
+2 0
+1 5
+0 0
+5 2
+4 6
+5 0
+2 0
+1 6
+5 6
+3 0
+4 4
+5 2
+5 0
+0 0
+4 6
+1 0
+1 6
+5 6
+2 4
+5 6
+2 4
+3 6
+5 6
+4 6
+0 0
+5 2
+5 2
+2 4
+5 0
+5 6
+2 1
+3 2
+0 0
+3 6
+5 4
+1 5
+1 2
+5 4
+4 2
+3 4
+5 6
+5 2
+5 6
+5 6
+5 5
+5 2
+5 2
+3 6
+4 6
+3 6
+4 2
+5 2
+0 4
+5 3
+4 2
+1 6
+4 6
+1 6
+3 6
+5 6
+5 2
+2 2
+1 3
+1 4
+1 0
+2 5
+2 6
+5 6
+1 4
+3 6
+5 2
+5 0
+0 2
+3 1
+5 6
+4 4
+3 6
+1 6
+2 0
+5 5
+0 2
+2 1
+5 2
+3 4
+1 2
+2 2
+1 5
+2 4
+5 6
+4 2
+0 0
+2 6
+5 6
+4 5
+3 2
+0 6
+3 2
+2 3
+2 3
+3 1
+4 5
+1 2
+3 1
+1 2
+3 3
+5 2
+0 2
+3 4
+1 6
+5 2
+5 6
+5 4
+5 6
+2 1
+5 6
+4 4
+5 6
+4 4
+2 3
+4 2
+4 2
+5 6
+5 6
+1 2
+3 3
+0 6
+5 3
+5 5
+5 1
+1 4
+5 0
+5 0
+5 6
+5 6
+4 2
+2 1
+1 2
+4 4
+1 4
+4 6
+5 6
+1 2
+3 6
+2 6
+5 6
+0 6
+2 6
+4 2
+5 6
+0 6
+5 2
+5 6
+3 6
+5 6
+5 6
+3 3
+3 2
+4 6
+5 6
+5 6
+5 6
+4 2
+5 6
+5 6
+2 0
+3 6
+4 0
+0 2
+1 4
+2 6
+5 2
+2 0
+1 6
+3 2
+2 0
+5 6
+0 6
+1 6
+4 4
+3 6
+2 5
+4 2
+5 2
+5 6
+4 2
+4 0
+1 0
+1 6
+4 4
+3 2
+4 6
+2 3
+4 5
+3 5
+3 3
+4 2
+5 6
+1 6
+1 5
+5 2
+5 2
+3 4
+5 6
+1 6
+2 6
+1 2
+4 2
+5 4
+5 4
+3 6
+5 6
+5 6
+2 6
+2 6
+5 6
+5 6
+3 6
+5 6
+5 6
+5 6
+5 6
+5 6
+5 6
+5 6
+5 6
+5 6
+5 6
+5 6
+5 6
+5 6
+5 6
+5 6
+5 6
+5 6`
+
+func solveCase(n, k int, points []Point) string {
+	m := k / 2
+	pointMap := make(map[Key]int, n)
+	mmp1 := make(map[int][]Pair)
+	mmp2 := make(map[int][]Pair)
+	for _, p := range points {
+		pointMap[Key{p.X, p.Y}] = p.I
+		sum := p.X + p.Y
+		mmp1[sum] = append(mmp1[sum], Pair{X: p.X, I: p.I})
+		diff := p.X - p.Y
+		mmp2[diff] = append(mmp2[diff], Pair{X: p.X, I: p.I})
+	}
+	for k, v := range mmp1 {
+		sort.Slice(v, func(i, j int) bool { return v[i].X < v[j].X })
+		mmp1[k] = v
+	}
+	for k, v := range mmp2 {
+		sort.Slice(v, func(i, j int) bool { return v[i].X < v[j].X })
+		mmp2[k] = v
+	}
+	for _, p := range points {
+		x, y, idx := p.X, p.Y, p.I
+		if id2, ok := pointMap[Key{x + m, y + m}]; ok {
+			key := (x + m) - (y - m)
+			tmp := mmp2[key]
+			i := sort.Search(len(tmp), func(i int) bool { return tmp[i].X >= x+m })
+			if i < len(tmp) && tmp[i].X <= x+m+m {
+				return fmt.Sprintf("%d %d %d", idx, id2, tmp[i].I)
+			}
+		}
+		if id2, ok := pointMap[Key{x + m, y + m}]; ok {
+			key := (x - m) - (y + m)
+			tmp := mmp2[key]
+			i := sort.Search(len(tmp), func(i int) bool { return tmp[i].X >= x-m })
+			if i < len(tmp) && tmp[i].X <= x {
+				return fmt.Sprintf("%d %d %d", idx, id2, tmp[i].I)
+			}
+		}
+		if id2, ok := pointMap[Key{x + m, y - m}]; ok {
+			key := (x + m) + (y + m)
+			tmp := mmp1[key]
+			i := sort.Search(len(tmp), func(i int) bool { return tmp[i].X >= x+m })
+			if i < len(tmp) && tmp[i].X <= x+m+m {
+				return fmt.Sprintf("%d %d %d", idx, id2, tmp[i].I)
+			}
+		}
+		if id2, ok := pointMap[Key{x + m, y - m}]; ok {
+			key := (x - m) + (y - m)
+			tmp := mmp1[key]
+			i := sort.Search(len(tmp), func(i int) bool { return tmp[i].X >= x-m })
+			if i < len(tmp) && tmp[i].X <= x {
+				return fmt.Sprintf("%d %d %d", idx, id2, tmp[i].I)
 			}
 		}
 	}
 	return "0 0 0"
 }
 
-func abs(x int) int {
-	if x < 0 {
-		return -x
+type testData struct {
+	n, k   int
+	points []Point
+}
+
+func parseTests() ([]testData, error) {
+	fields := strings.Fields(testcasesE)
+	pos := 0
+	readInt := func() (int, error) {
+		if pos >= len(fields) {
+			return 0, fmt.Errorf("unexpected EOF")
+		}
+		v, err := strconv.Atoi(fields[pos])
+		pos++
+		return v, err
 	}
-	return x
+	t, err := readInt()
+	if err != nil {
+		return nil, err
+	}
+	tests := make([]testData, t)
+	for i := 0; i < t; i++ {
+		n, err := readInt()
+		if err != nil {
+			return nil, err
+		}
+		k, err := readInt()
+		if err != nil {
+			return nil, err
+		}
+		points := make([]Point, n)
+		for j := 0; j < n; j++ {
+			x, err := readInt()
+			if err != nil {
+				return nil, err
+			}
+			y, err := readInt()
+			if err != nil {
+				return nil, err
+			}
+			points[j] = Point{X: x, Y: y, I: j + 1}
+		}
+		tests[i] = testData{n: n, k: k, points: points}
+	}
+	return tests, nil
+}
+
+func buildAllInput(tests []testData) string {
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(len(tests)))
+	sb.WriteByte('\n')
+	for _, tc := range tests {
+		fmt.Fprintf(&sb, "%d %d\n", tc.n, tc.k)
+		for _, p := range tc.points {
+			fmt.Fprintf(&sb, "%d %d\n", p.X, p.Y)
+		}
+	}
+	return sb.String()
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	out, err := cmd.CombinedOutput()
+	return strings.TrimSpace(string(out)), err
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("usage: go run verifierE.go /path/to/binary")
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: verifierE /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesE.txt")
+	bin := os.Args[1]
+
+	tests, err := parseTests()
 	if err != nil {
-		fmt.Println("could not read testcasesE.txt:", err)
+		fmt.Fprintln(os.Stderr, "parse error:", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	expected := make([]string, t)
-	for i := 0; i < t; i++ {
-		scan.Scan()
-		n, _ := strconv.Atoi(scan.Text())
-		scan.Scan()
-		d, _ := strconv.Atoi(scan.Text())
-		pts := make([]Point, n)
-		for j := 0; j < n; j++ {
-			scan.Scan()
-			x, _ := strconv.Atoi(scan.Text())
-			scan.Scan()
-			y, _ := strconv.Atoi(scan.Text())
-			pts[j] = Point{x, y}
-		}
-		expected[i] = solveCase(pts, d)
-	}
-	cmd := exec.Command(os.Args[1])
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.CombinedOutput()
+	allInput := buildAllInput(tests)
+	allOutput, err := runCandidate(bin, allInput)
 	if err != nil {
-		fmt.Println("execution failed:", err)
+		fmt.Fprintln(os.Stderr, "runtime error:", err)
 		os.Exit(1)
 	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
-	for i := 0; i < t; i++ {
-		if !outScan.Scan() {
-			fmt.Printf("missing output for test %d\n", i+1)
-			os.Exit(1)
-		}
-		a := outScan.Text()
-		if !outScan.Scan() {
-			fmt.Printf("missing output for test %d\n", i+1)
-			os.Exit(1)
-		}
-		b := outScan.Text()
-		if !outScan.Scan() {
-			fmt.Printf("missing output for test %d\n", i+1)
-			os.Exit(1)
-		}
-		c := outScan.Text()
-		got := fmt.Sprintf("%s %s %s", a, b, c)
-		if got != expected[i] {
-			fmt.Printf("test %d failed: expected %s got %s\n", i+1, expected[i], got)
-			os.Exit(1)
-		}
-	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
+	outLines := strings.Split(strings.TrimSpace(allOutput), "\n")
+	if len(outLines) != len(tests) {
+		fmt.Fprintf(os.Stderr, "expected %d outputs, got %d\n", len(tests), len(outLines))
 		os.Exit(1)
 	}
-	fmt.Println("All tests passed!")
+	for i, tc := range tests {
+		want := solveCase(tc.n, tc.k, tc.points)
+		if strings.TrimSpace(outLines[i]) != want {
+			fmt.Fprintf(os.Stderr, "case %d failed\nexpected: %s\ngot: %s\n", i+1, want, outLines[i])
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

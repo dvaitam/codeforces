@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const testcaseData = `100
+const testcasesC = `100
 980
 885
 972
@@ -116,13 +116,14 @@ type testCase struct {
 	expected string
 }
 
+// solveCase mirrors the logic in 1822C.go.
 func solveCase(n int64) string {
 	ans := n*(n+2) + 2
 	return fmt.Sprintf("%d", ans)
 }
 
 func loadCases() ([]testCase, error) {
-	fields := strings.Fields(testcaseData)
+	fields := strings.Fields(testcasesC)
 	if len(fields) == 0 {
 		return nil, fmt.Errorf("no testcases")
 	}

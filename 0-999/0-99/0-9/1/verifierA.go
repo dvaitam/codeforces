@@ -5,117 +5,191 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("usage: go run verifierA.go /path/to/source-or-binary")
-		os.Exit(1)
-	}
+const testcasesRaw = `
+906691060 413654000 813847340
+955892129 451585302 43469774
+278009743 548977049 521760890
+434794719 985946605 841597327
+891047769 325679555 511742082
+384452588 626401696 957413343
+975078789 234551095 541903390
+149544007 302621085 150050892
+811538591 101823754 663968656
+858351977 268979134 976832603
+571835845 757172937 869964136
+646287426 968693315 157798603
+333018423 106046332 783650879
+79180333 965120264 913189318
+734422155 354546568 506959382
+601095368 108127102 379880546
+466188457 339513622 655934895
+687649392 980338160 219556307
+593267778 512185346 475338373
+929119464 559799207 279701489
+499138222 571626029 86181735
+917850130 911451810 40399514
+373395759 100742987 28868844
+254692203 89030263 892258309
+17402155 984070356 403476660
+150393470 72488965 161782206
+148141762 967337180 953365054
+316582301 875399640 263048209
+165075503 295723747 24803450
+718827302 586602981 874327653
+62160644 269157695 880193001
+239307250 310806896 715032510
+846407295 246100341 278438464
+787106623 78336694 71372048
+919766310 26418577 362659323
+565413546 66603591 21384553
+403756906 566707526 714497964
+118479644 8169742 158621997
+595971014 728437175 179104532
+782990083 857593709 676348680
+777878159 605595959 74908913
+468713015 301599065 447795835
+415822031 221192387 120557358
+105994747 716313779 118833235
+250842309 772861940 777698837
+664757831 988547011 419759048
+94225210 613455472 801529122
+855329291 852345594 660790585
+209039444 344931640 625824896
+329630757 783701709 636492763
+307784520 220291877 772548284
+364876721 876071907 674000359
+947299821 595871652 261779056
+779122280 677798750 74139377
+293237144 221295765 772737176
+188197717 154965016 995637925
+956353379 336902611 940407805
+485005871 570435312 256572504
+710690691 878401474 346652380
+548630250 169885836 845904168
+115608409 516737010 138913279
+23057014 672735379 360384323
+915772496 314827010 698210456
+929505343 52978766 756659857
+394651339 332627438 897447498
+758680837 606606983 115534099
+998145410 279173444 782993761
+790753134 38015976 544144828
+360091862 329224535 56354520
+558179228 517555774 822125152
+910566174 788780936 706184828
+834503691 510215395 613285714
+994210125 657485761 847183359
+576521048 644432681 504707714
+822799810 516245017 479571883
+643433444 553028886 996946168
+415072910 506455630 971189186
+816416460 739325056 314322331
+414933044 703219202 621112909
+736107399 171674067 518552821
+687163872 223570530 684153596
+894528234 966851456 851384972
+635107534 617912978 861121373
+965998821 497542496 58901902
+429899556 311306400 453246462
+429279691 798530121 857189457
+80991956 793633284 683383680
+533011308 911042571 7570589
+286658875 917544454 427594348
+623562833 694109003 930082936
+317245946 9132433 202145946
+292654550 395470131 768183966
+464773227 498834430 909136806
+156795735 121751563 536374896
+220866808 75561483 33332941
+19512588 935066262 858044300
+702426006 996077456 929274614
+978955071 274414370 672145739
+216652100 397220027 805414364
+656261737 895184246 201534897
+293162873 849124977 83768681
+`
 
-	tests := buildTests()
-
-	candidate := os.Args[1]
-	binPath, cleanup, err := buildIfNeeded(candidate)
-	if err != nil {
-		fmt.Printf("build failed: %v\n", err)
-		os.Exit(1)
-	}
-	if cleanup != nil {
-		defer cleanup()
-	}
-
-	runTests(binPath, tests)
+type testCase struct {
+	n int64
+	m int64
+	a int64
 }
 
-func runTests(binary string, tests []struct{ n, m, a int64 }) {
-	for i, t := range tests {
-		fmt.Printf("running test %d/%d\n", i+1, len(tests))
-		expected := tilesNeeded(t.n, t.m, t.a)
-		cmd := exec.Command(binary)
-		cmd.Stdin = bytes.NewBufferString(fmt.Sprintf("%d %d %d\n", t.n, t.m, t.a))
-		var outBuf bytes.Buffer
-		var errBuf bytes.Buffer
-		cmd.Stdout = &outBuf
-		cmd.Stderr = &errBuf
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("Test %d: runtime error: %v\nstderr:\n%s\n", i+1, err, errBuf.String())
+func parseTests(raw string) ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(raw), "\n")
+	tests := make([]testCase, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) != 3 {
+			return nil, fmt.Errorf("bad line: %q", line)
+		}
+		n, err1 := strconv.ParseInt(fields[0], 10, 64)
+		m, err2 := strconv.ParseInt(fields[1], 10, 64)
+		a, err3 := strconv.ParseInt(fields[2], 10, 64)
+		if err1 != nil || err2 != nil || err3 != nil {
+			return nil, fmt.Errorf("bad ints in line: %q", line)
+		}
+		tests = append(tests, testCase{n: n, m: m, a: a})
+	}
+	return tests, nil
+}
+
+func solve(tc testCase) int64 {
+	rows := (tc.n + tc.a - 1) / tc.a
+	cols := (tc.m + tc.a - 1) / tc.a
+	return rows * cols
+}
+
+func buildInput(tc testCase) string {
+	return fmt.Sprintf("%d %d %d\n", tc.n, tc.m, tc.a)
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: go run verifierA.go /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
+
+	tests, err := parseTests(testcasesRaw)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
+		os.Exit(1)
+	}
+
+	for idx, tc := range tests {
+		input := buildInput(tc)
+		want := strconv.FormatInt(solve(tc), 10)
+		got, err := runCandidate(bin, input)
+		if err != nil {
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		var got int64
-		outStr := strings.TrimSpace(outBuf.String())
-		fmt.Sscan(outStr, &got)
-		if got != expected {
-			fmt.Printf("Test %d failed: expected %d got %s\n", i+1, expected, outStr)
+		if strings.TrimSpace(got) != want {
+			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, want, got)
 			os.Exit(1)
 		}
 	}
 	fmt.Printf("All %d tests passed\n", len(tests))
-}
-
-func tilesNeeded(n, m, a int64) int64 {
-	rows := (n + a - 1) / a
-	cols := (m + a - 1) / a
-	return rows * cols
-}
-
-func buildTests() []struct{ n, m, a int64 } {
-	cases := make([]struct{ n, m, a int64 }, 0, 120)
-	seed := []struct{ n, m, a int64 }{
-		{6, 6, 4}, // sample
-		{1, 1, 1}, // trivial
-		{1, 2, 3}, // a larger than side
-		{1_000_000_000, 1, 1_000_000_000},
-		{1_000_000_000, 1_000_000_000, 1_000_000_000},
-		{999_999_937, 999_999_929, 2},
-		{100, 25, 7},
-		{25, 100, 7},
-		{99999999, 1234567, 89},
-		{33, 44, 5},
-		{44, 33, 5},
-		{100000, 99999, 17},
-	}
-	cases = append(cases, seed...)
-	for i := int64(0); len(cases) < 110; i++ {
-		n := 1 + (i*37)%1_000_000_000
-		m := 1 + (i*91)%1_000_000_000
-		a := 1 + (i*53)%999_999_900
-		if a == 0 {
-			a = 1
-		}
-		cases = append(cases, struct{ n, m, a int64 }{n, m, a})
-	}
-	return cases
-}
-
-func buildIfNeeded(path string) (string, func(), error) {
-	ext := strings.ToLower(filepath.Ext(path))
-	switch ext {
-	case ".go":
-		tmp := filepath.Join(os.TempDir(), "candidateA_go.bin")
-		cmd := exec.Command("go", "build", "-o", tmp, path)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return "", nil, err
-		}
-		return tmp, func() { _ = os.Remove(tmp) }, nil
-	case ".cpp", ".cc", ".cxx", ".c++":
-		tmp := filepath.Join(os.TempDir(), "candidateA_cpp.bin")
-		cmd := exec.Command("g++", "-std=c++17", "-O2", "-pipe", "-static", "-s", path, "-o", tmp)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return "", nil, err
-		}
-		return tmp, func() { _ = os.Remove(tmp) }, nil
-	case ".py":
-		// Run with system python
-		return path, nil, nil
-	default:
-		// Assume already a runnable binary
-		return path, nil, nil
-	}
 }

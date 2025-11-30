@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,25 +9,109 @@ import (
 	"strings"
 )
 
-func runCandidate(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
-	}
-	return strings.TrimSpace(out.String()), nil
-}
+const testcasesRaw = `
+0101111001
+110
+1100100001010011010011010010110111101011011010
+111010110000
+01111101001011
+10000100000
+0
+00010111010111100010111101
+00000111101111101111
+01111000111100001011100001001001
+1001010101110111101101110011001001
+010000010110100
+0011001111
+110011111
+000011110001001
+10111110011111011011110
+000001000
+01
+110010100000010110000001101011011
+000001100000000010111
+111100101
+010111000
+110010010001011
+010011010111010001101111010100011
+0011001010011001111111011100
+100001011101110111101
+1000010011000000100
+101010
+1000001011001001001011100101
+00001111010110101101001011010010
+00110000101011010000001011100000000
+1001010101
+0011000000001001001111110111101
+0001111000010100
+0110101011111110010001100101010111
+110101000001000
+100101111
+110000
+000101000
+111100111
+0100110000000101100111011
+1100100000111100
+000111010000111101100101010000000001001100111
+00110110010101010001
+1010
+1011
+1001111010100001000001100001010100001
+11111
+100101010111000001011110011001111100011010100001
+111
+11000100111111
+00010111000111010010111010111010111001
+10101
+10000110010111000100111
+111100110110100100010111
+111000
+000101011100000110001
+011100000100100
+111110010000110000
+0011111011111111111111000000011
+10001101111000000001100111100101
+10110000001111
+011100111
+0000
+00110110
+011000011011110100011001
+0011101000001101101111010101
+1001001100000111010100101011111011
+0011000100011110010100011010001
+0010000
+101011
+11110011100111001000111100101100100011010100100001
+01100
+10000100001010010111100010010111110110100
+110111
+100101110000110000
+111111001011
+11111010100100010111100
+1010010111101111010
+001101111111010001111000010
+101111001
+11001000001010010101001010
+0101
+001111010
+001001100010101101000010101000010001101100
+100010011111011
+100
+111100001001010101000010010010100001
+00011010100101000100111110010
+010
+111001001100100100101111110000101010
+001100100101001000
+11000110110110010011100110
+0011011011111011110010010101
+0001001110010100
+1000
+011101
+10000101100000000001010010010111
+1000000111111010000011101100011
+`
 
-func expected(s string) int64 {
+func solve(s string) int64 {
 	var ones int64
 	var cost int64
 	for _, ch := range s {
@@ -41,41 +124,56 @@ func expected(s string) int64 {
 	return cost
 }
 
+func parseTests(raw string) []string {
+	lines := strings.Split(raw, "\n")
+	out := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		out = append(out, line)
+	}
+	return out
+}
+
+func buildInput(s string) string {
+	return "1\n" + s + "\n"
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Println("failed to open testcasesB.txt:", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		s := strings.TrimSpace(scanner.Text())
-		if s == "" {
-			continue
-		}
-		idx++
-		input := fmt.Sprintf("1\n%s\n", s)
-		want := strconv.FormatInt(expected(s), 10)
+
+	tests := parseTests(testcasesRaw)
+	for idx, s := range tests {
+		input := buildInput(s)
+		want := strconv.FormatInt(solve(s), 10)
 		got, err := runCandidate(bin, input)
 		if err != nil {
-			fmt.Printf("test %d failed: %v\n", idx, err)
+			fmt.Printf("test %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
 		if strings.TrimSpace(got) != want {
-			fmt.Printf("test %d failed: expected %s got %s\ninput:\n%s", idx, want, strings.TrimSpace(got), input)
+			fmt.Printf("test %d failed: expected %s got %s\ninput:\n%s", idx+1, want, strings.TrimSpace(got), input)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Println("scanner error:", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	_ "embed"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,32 +10,131 @@ import (
 	"strings"
 )
 
-//go:embed testcasesF.txt
-var testcases string
+const testcases = `6 9 3 4 3 1 4 4 1 3 8 1 5 4 1 6 3 3 6 9 2 4 9 1 6 4 2 4 2
+3 3 1 2 6 1 2 7 1 3 4
+4 3 3 4 3 1 2 5 1 3 5
+2 1 1 2 9
+8 13 3 8 1 4 6 9 2 5 5 1 8 1 5 6 8 3 6 6 2 3 5 3 4 2 5 6 3 2 6 5 4 8 6 6 7 10 1 7 2
+2 1 1 2 6
+8 10 6 7 3 1 7 5 3 8 10 3 8 6 2 3 8 5 8 7 2 3 7 3 8 8 6 8 5 2 7 3
+4 5 3 4 3 3 4 5 1 3 10 1 3 6 1 2 8
+8 14 1 7 8 3 4 3 1 5 4 3 8 10 4 6 8 2 6 3 1 8 4 1 6 6 2 5 7 2 4 4 3 7 5 1 3 3 6 7 10 4 8 9
+5 6 3 5 9 1 4 9 3 5 2 3 5 5 2 3 7 1 3 9
+5 10 3 4 3 2 5 2 4 5 4 2 4 8 2 5 7 2 4 10 1 3 7 1 3 10 2 3 10 3 4 7
+6 9 3 4 3 5 6 8 1 4 2 2 4 1 2 3 8 4 5 9 3 4 1 3 6 8 2 3 1
+8 7 5 6 9 4 8 5 1 2 3 1 5 9 3 5 5 1 8 6 3 6 1
+5 9 3 4 3 1 5 4 1 4 7 3 4 9 1 3 1 2 4 10 2 3 8 2 4 9 4 5 5
+6 5 1 3 2 4 6 2 1 6 6 4 6 8 1 6 4
+2 1 1 2 3
+2 1 1 2 5
+2 1 1 2 1
+5 4 3 5 8 2 5 9 3 4 6 1 2 5
+4 4 1 3 2 3 4 7 1 3 9 2 3 5
+6 15 1 2 7 3 6 7 3 5 6 1 5 7 2 6 6 2 6 3 2 4 7 1 5 10 2 3 5 5 6 7 2 6 2 1 6 8 1 4 2 3 5 1 1 3 9
+2 1 1 2 7
+5 6 2 5 5 1 2 6 1 2 3 1 3 3 4 5 6 2 3 1
+5 4 1 2 6 1 3 1 3 4 4 1 2 4
+7 6 2 5 2 3 6 3 2 7 4 3 4 5 1 6 8 4 5 6
+3 2 2 3 5 1 3 10
+2 1 1 2 7
+3 2 2 3 2 1 3 9
+7 7 2 6 1 3 7 7 1 7 1 1 2 3 2 7 8 3 4 1 1 4 1
+7 14 2 5 2 2 3 3 1 5 4 3 7 7 4 5 7 3 4 2 1 6 5 1 5 3 3 5 8 4 6 4 2 6 2 3 7 2 5 6 3 1 5 8
+8 13 1 2 1 5 7 2 4 5 1 4 8 1 1 2 3 3 7 6 5 6 1 1 5 3 1 8 3 3 5 8 6 7 7 4 5 6 2 5 3
+8 12 4 6 6 2 6 6 4 8 8 1 2 3 3 7 6 2 3 5 7 8 7 1 4 9 1 3 10 5 7 10 3 7 8 1 3 9
+8 13 4 6 6 2 7 5 1 2 3 4 6 8 6 7 8 4 8 7 4 6 1 2 8 4 1 7 2 7 8 6 4 5 5 1 4 1 1 4 8
+6 14 4 5 8 1 3 5 1 6 9 3 6 6 3 5 9 2 4 1 2 3 5 5 6 7 2 6 2 4 5 9 1 5 9 1 3 10 2 4 6 3 6 1
+7 15 6 7 9 3 7 10 2 3 9 2 6 10 3 4 6 2 4 8 2 3 2 2 3 5 4 6 7 1 2 2 2 6 2 2 4 9 1 7 9 4 6 3 1 6 7
+6 14 2 6 10 2 3 6 2 6 3 3 5 9 2 4 7 2 4 4 1 4 3 1 2 2 3 5 2 1 5 6 3 6 2 1 3 10 2 3 7 1 4 1
+6 6 1 3 2 5 6 2 2 6 9 4 5 6 2 4 9 2 4 2
+5 7 3 4 3 1 3 2 1 3 8 3 5 3 1 4 7 3 4 2 3 4 4
+6 6 1 2 7 3 4 6 4 5 7 1 5 7 2 3 2 2 5 7
+8 10 2 8 6 4 8 1 1 8 1 2 8 5 3 7 9 1 5 9 2 3 1 7 8 9 3 6 1 1 2 4
+5 10 2 3 3 1 5 4 1 4 7 1 2 6 1 4 6 2 4 7 3 4 5 1 4 1 2 3 4 2 4 2
+5 5 2 4 4 3 5 8 1 3 10 1 2 8 2 4 2
+4 4 3 4 9 3 4 5 2 4 10 1 3 5
+3 3 1 2 1 1 3 1 2 3 3
+2 1 1 2 4
+6 14 4 6 6 3 6 10 2 4 8 4 5 7 3 5 6 3 5 9 1 6 2 2 5 1 1 4 9 1 6 8 2 3 1 1 6 4 2 3 10 1 5 5
+4 3 1 4 10 2 4 1 1 3 3
+4 5 3 4 3 1 2 6 1 4 10 1 3 7 2 4 2
+5 9 2 5 2 1 3 6 3 4 9 4 5 10 3 4 5 4 5 2 1 5 2 1 4 5 1 5 5
+6 15 1 2 7 2 6 7 1 2 6 2 5 8 3 5 6 2 4 4 3 5 2 4 5 9 3 5 8 2 5 4 4 5 6 2 4 9 2 3 7 4 6 3 1 6 7
+4 5 1 3 2 1 2 9 1 3 10 1 4 2 2 4 6
+7 10 6 7 9 1 4 4 1 3 2 1 4 10 3 6 6 4 7 7 1 4 6 3 5 2 1 3 3 1 4 8
+7 14 1 7 8 2 3 9 5 7 9 1 4 7 1 3 5 4 5 7 3 4 9 1 2 9 4 7 10 1 5 9 1 2 5 2 4 3 2 6 5 1 2 4
+2 1 1 2 2
+5 5 3 5 8 3 5 5 1 2 8 1 3 9 2 4 2
+7 14 1 2 1 3 4 3 3 6 4 3 6 7 3 7 7 3 5 6 5 6 8 4 6 8 3 6 9 1 4 3 1 3 3 6 7 1 4 5 5 3 5 10
+6 10 4 5 8 4 5 1 1 3 4 2 5 7 1 5 3 4 6 4 1 6 4 1 5 8 3 6 1 1 6 7
+3 2 2 3 4 1 3 9
+7 7 1 4 4 2 7 2 2 4 1 5 7 8 6 7 1 3 5 1 3 5 10
+3 3 1 3 1 2 3 9 2 3 10
+3 2 1 3 6 2 3 4
+2 1 1 2 1
+2 1 1 2 4
+7 12 6 7 9 3 4 9 2 7 5 1 7 4 2 4 1 4 7 7 1 2 9 6 7 8 4 6 4 3 5 5 2 6 4 2 4 2
+8 9 6 7 3 2 8 3 2 6 10 6 8 5 6 8 10 3 7 2 1 8 6 3 5 1 1 6 1
+6 11 1 6 10 2 4 5 1 3 2 4 5 4 3 6 7 2 4 8 4 5 1 2 3 6 2 4 7 1 4 9 1 5 2
+4 4 1 4 9 3 4 10 1 3 7 2 3 2
+4 6 1 2 6 2 3 2 1 4 10 1 4 6 3 4 2 3 4 1
+3 3 2 3 7 2 3 9 1 3 10
+2 1 1 2 6
+2 1 1 2 3
+7 10 5 6 9 2 3 6 4 7 1 4 7 10 5 7 1 5 7 7 3 6 5 1 5 2 3 4 4 1 4 8
+3 3 1 3 7 1 3 2 1 2 3
+7 14 1 4 4 5 6 9 3 5 3 1 4 7 1 7 1 5 7 5 2 4 1 2 6 8 3 4 5 4 5 9 2 7 7 1 3 6 2 5 3 1 4 5
+4 6 3 4 3 1 3 4 1 4 3 2 3 8 1 2 2 1 2 4
+3 3 1 2 8 1 2 10 1 3 5
+2 1 1 2 1
+8 7 5 8 3 1 4 4 6 7 6 4 7 10 4 5 3 5 6 4 1 5 2
+3 2 1 2 8 1 3 10
+7 10 1 7 5 2 5 5 1 6 6 3 4 8 4 5 9 2 5 10 3 6 2 1 5 3 5 7 10 4 7 9
+7 11 2 4 5 1 5 4 2 5 5 3 6 3 1 6 6 2 5 1 2 6 2 4 5 9 5 7 1 3 4 5 3 6 2
+8 13 5 6 9 3 7 4 3 6 7 1 5 4 7 8 8 5 8 2 1 3 1 1 4 9 1 7 10 3 7 8 3 8 2 3 8 8 4 6 3
+8 7 6 7 9 1 6 10 1 4 4 2 7 8 1 6 8 2 3 1 4 6 3
+6 9 4 5 8 2 3 6 4 6 2 1 4 6 1 3 9 2 3 4 2 3 7 2 6 4 1 2 4
+5 6 3 4 3 1 5 9 1 3 3 1 4 2 2 3 1 2 5 6
+4 6 1 3 5 3 4 8 1 3 7 2 4 3 1 3 9 1 4 8
+8 8 4 5 4 4 7 8 4 6 8 1 8 6 2 7 7 2 4 9 4 6 3 4 7 2
+8 14 3 6 4 3 7 4 3 4 6 1 4 7 5 8 2 5 6 5 1 6 6 3 8 3 6 8 6 5 7 1 2 5 10 1 8 3 6 8 2 2 4 9
+5 8 1 2 7 3 4 10 1 4 7 1 3 1 1 4 10 2 3 4 2 5 3 3 4 7
+2 1 1 2 6
+3 3 1 2 6 1 2 4 2 3 6
+4 3 3 4 3 2 4 7 2 3 10
+5 10 3 5 7 4 5 8 1 5 4 4 5 5 2 5 6 1 5 10 1 4 3 2 4 3 2 3 10 3 5 10
+4 5 2 4 5 1 4 10 1 4 6 2 4 7 1 3 7
+4 5 1 2 7 1 2 6 1 3 9 1 2 8 2 3 10
+2 1 1 2 4
+7 13 3 6 10 2 6 7 3 6 3 4 5 10 4 7 1 1 6 2 3 4 2 5 6 7 1 7 7 1 6 5 5 6 4 2 7 10 1 6 7
+3 3 1 2 6 2 3 7 2 3 8
+2 1 1 2 6
+4 6 1 3 5 2 4 7 1 2 2 2 3 4 1 4 2 3 4 4`
 
-type dsu struct {
+// Embedded solution logic from 1927F.go.
+type DSU struct {
 	parent, size []int
 }
 
-func newDSU(n int) *dsu {
+func NewDSU(n int) *DSU {
 	p := make([]int, n+1)
 	sz := make([]int, n+1)
 	for i := 0; i <= n; i++ {
 		p[i] = i
 		sz[i] = 1
 	}
-	return &dsu{parent: p, size: sz}
+	return &DSU{parent: p, size: sz}
 }
 
-func (d *dsu) find(x int) int {
+func (d *DSU) Find(x int) int {
 	if d.parent[x] != x {
-		d.parent[x] = d.find(d.parent[x])
+		d.parent[x] = d.Find(d.parent[x])
 	}
 	return d.parent[x]
 }
 
-func (d *dsu) union(a, b int) {
-	ra, rb := d.find(a), d.find(b)
+func (d *DSU) Union(a, b int) {
+	ra, rb := d.Find(a), d.Find(b)
 	if ra == rb {
 		return
 	}
@@ -47,26 +145,28 @@ func (d *dsu) union(a, b int) {
 	d.size[ra] += d.size[rb]
 }
 
-type edge struct {
+type Edge struct {
 	u, v, w int
 }
 
-func solveCase(n int, edges []edge) (int, []int) {
+func solveCase(n int, edges []Edge) (int, []int) {
 	sort.Slice(edges, func(i, j int) bool {
 		return edges[i].w > edges[j].w
 	})
-	d := newDSU(n)
+
+	dsu := NewDSU(n)
 	g := make([][]int, n+1)
-	st, en, cost := 0, 0, 0
+	var st, en, cost int
 	for _, e := range edges {
 		u, v, w := e.u, e.v, e.w
 		g[u] = append(g[u], v)
 		g[v] = append(g[v], u)
-		if d.find(u) == d.find(v) {
+		if dsu.Find(u) == dsu.Find(v) {
 			st, en, cost = u, v, w
 		}
-		d.union(u, v)
+		dsu.Union(u, v)
 	}
+
 	vis := make([]bool, n+1)
 	parent := make([]int, n+1)
 	q := []int{st}
@@ -87,6 +187,7 @@ func solveCase(n int, edges []edge) (int, []int) {
 			}
 		}
 	}
+
 	path := make([]int, 0)
 	cur := en
 	for {
@@ -101,11 +202,11 @@ func solveCase(n int, edges []edge) (int, []int) {
 
 type testCase struct {
 	n, m  int
-	edges []edge
+	edges []Edge
 }
 
 func parseCases(raw string) ([]testCase, error) {
-	lines := strings.Split(raw, "\n")
+	lines := strings.Split(strings.TrimSpace(raw), "\n")
 	var res []testCase
 	for idx, line := range lines {
 		line = strings.TrimSpace(line)
@@ -128,14 +229,14 @@ func parseCases(raw string) ([]testCase, error) {
 		if len(vals) < need {
 			return nil, fmt.Errorf("line %d length mismatch", idx+1)
 		}
-		es := make([]edge, m)
+		es := make([]Edge, m)
 		pos := 2
 		for i := 0; i < m; i++ {
 			u, _ := strconv.Atoi(vals[pos])
 			v, _ := strconv.Atoi(vals[pos+1])
 			w, _ := strconv.Atoi(vals[pos+2])
 			pos += 3
-			es[i] = edge{u: u, v: v, w: w}
+			es[i] = Edge{u: u, v: v, w: w}
 		}
 		res = append(res, testCase{n: n, m: m, edges: es})
 	}

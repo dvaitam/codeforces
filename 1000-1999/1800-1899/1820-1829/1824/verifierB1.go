@@ -11,7 +11,7 @@ import (
 
 const MOD int64 = 1_000_000_007
 
-const testcaseData = `100
+const testcasesB1 = `100
 1 1
 6 1
 1 2
@@ -408,7 +408,7 @@ func expected(n, k int, edges [][2]int) string {
 }
 
 func loadCases() ([]testCase, error) {
-	fields := strings.Fields(testcaseData)
+	fields := strings.Fields(testcasesB1)
 	if len(fields) == 0 {
 		return nil, fmt.Errorf("no testcases")
 	}

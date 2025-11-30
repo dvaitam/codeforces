@@ -1,22 +1,216 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
-func gcd(a, b int) int {
-	for b != 0 {
-		a, b = b, a%b
-	}
-	return a
-}
+const testcasesC = `100
+1
+4
+2
+13 7
+5
+10 8 3 20 7
+7
+14 18 13 19 16 18 10
+1
+2
+6
+16 12 14 15 18 7
+9
+7 9 9 2 7 12 7 6 18
+9
+13 18 19 7 16 15 18 13 20
+6
+13 16 7 14 16 18
+4
+17 10 17 18
+9
+13 16 16 13 20 19 16 17 9
+6
+7 10 17 11 11 18
+9
+18 18 20 15 11 8 17 18 13
+10
+4 12 2 8 5 3 20 3 10 20
+4
+5 18 6 10
+4
+8 3 15 3
+1
+13
+6
+7 9 2 4 5 4
+1
+3
+1
+13
+5
+6 7 7 18 2
+7
+20 3 9 6 3 2 13
+10
+5 11 12 17 2 11 16 19 3 10
+7
+6 17 9 4 12 5 2
+8
+6 18 20 14 17 18 12 6
+6
+10 10 15 2 19 6
+1
+10
+1
+6
+3
+7 5 16
+4
+18 3 9 9
+8
+4 10 4 20 9 13 10 15
+5
+18 2 6 3 14
+7
+7 5 18 4 9 5 5
+1
+7
+4
+5 8 2 18
+8
+16 11 19 14 8 8 15 15
+9
+2 20 20 3 15 18 20 7 5
+8
+13 2 18 5 13 11 13 11
+1
+15
+2
+5 11
+4
+2 16 3 15
+8
+16 8 20 4 2 11 2 13
+5
+4 9 17 8 5
+10
+13 14 16 6 13 14 5 10 5 5
+2
+12 14
+4
+5 2 17 3
+8
+11 13 16 6 13 10 17 18
+8
+15 17 11 14 9 7 17 10
+9
+15 4 20 20 5 4 13 7 19
+3
+15 4 4
+1
+6
+5
+14 9 12 16 7
+9
+11 5 6 19 15 5 12 18 9
+9
+10 7 7 16 9 14 13 20 6
+8
+16 2 14 7 14 18 3 17
+5
+14 10 15 17 13
+9
+12 4 9 19 8 14 14 2 12
+8
+18 16 7 5 2 14 8 20
+10
+14 8 5 14 19 8 10 20 20 8
+8
+6 2 15 17 10 18 20 7
+8
+8 4 13 2 17 19 4 20
+8
+12 16 10 18 16 2 4 13
+3
+14 10 6
+1
+7
+8
+14 16 11 6 2 11 19 16
+1
+13
+1
+19
+7
+20 16 8 11 17 6 17
+9
+11 4 10 12 11 12 11 14 18
+2
+18 8
+7
+18 6 18 4 11 3 9
+8
+19 9 18 10 3 5 5 14
+6
+8 12 13 4 12 16
+6
+7 17 16 11 16 6
+8
+8 10 12 7 5 9 17 8
+6
+7 13 6 6 9 10
+9
+14 14 12 10 18 20 12 14 11
+9
+4 13 11 14 17 7 10 13 16
+8
+4 7 12 14 6 2 5 13
+3
+13 4 15
+1
+19
+6
+9 14 19 11 17 6
+6
+12 8 17 5 6 8
+6
+10 6 15 13 10 4
+6
+8 9 9 3 12 13
+10
+3 6 7 4 15 16 10 6 12 18
+10
+5 12 14 9 3 14 17 17 12 19
+10
+4 20 18 19 17 14 16 7 15 14
+9
+16 3 5 16 20 6 5 18 7
+2
+14 11
+8
+2 10 5 13 9 7 2 6
+7
+4 12 16 3 17 9 4
+8
+6 19 2 6 18 19 3 3
+4
+19 2 18 12
+9
+9 6 13 17 2 6 19 5 9
+2
+16 8
+1
+8
+7
+12 14 18 18 7 18 5
+3
+8 7 14
+4
+11 12 15 6`
 
-func solveCase(arr []int) string {
+func solve(arr []int) string {
 	L := 1
 	for i := 2; i <= 20; i++ {
 		L = L / gcd(L, i) * i
@@ -31,70 +225,104 @@ func solveCase(arr []int) string {
 	if sum >= int64(L) {
 		return "-1"
 	}
-	buf := &bytes.Buffer{}
+	var sb strings.Builder
 	for i, v := range ans {
 		if i > 0 {
-			buf.WriteByte(' ')
+			sb.WriteByte(' ')
 		}
-		fmt.Fprint(buf, v)
+		sb.WriteString(strconv.Itoa(v))
 	}
-	return buf.String()
+	return sb.String()
+}
+
+func gcd(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return a
+}
+
+type testCase struct {
+	arr []int
+}
+
+func parseTests() ([]testCase, error) {
+	reader := strings.NewReader(testcasesC)
+	var t int
+	if _, err := fmt.Fscan(reader, &t); err != nil {
+		return nil, err
+	}
+	tests := make([]testCase, t)
+	for i := 0; i < t; i++ {
+		var n int
+		if _, err := fmt.Fscan(reader, &n); err != nil {
+			return nil, err
+		}
+		arr := make([]int, n)
+		for j := 0; j < n; j++ {
+			if _, err := fmt.Fscan(reader, &arr[j]); err != nil {
+				return nil, err
+			}
+		}
+		tests[i] = testCase{arr: arr}
+	}
+	return tests, nil
+}
+
+func buildAllInput(tests []testCase) string {
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(len(tests)))
+	sb.WriteByte('\n')
+	for _, tc := range tests {
+		sb.WriteString(strconv.Itoa(len(tc.arr)))
+		sb.WriteByte('\n')
+		for i, v := range tc.arr {
+			if i > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.Itoa(v))
+		}
+		sb.WriteByte('\n')
+	}
+	return sb.String()
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	out, err := cmd.CombinedOutput()
+	return strings.TrimSpace(string(out)), err
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("usage: go run verifierC.go /path/to/binary")
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: verifierC /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesC.txt")
+	bin := os.Args[1]
+
+	tests, err := parseTests()
 	if err != nil {
-		fmt.Println("could not read testcasesC.txt:", err)
+		fmt.Fprintln(os.Stderr, "parse error:", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	expected := make([]string, t)
-	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Println("bad file")
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(scan.Text())
-		arr := make([]int, n)
-		for j := 0; j < n; j++ {
-			scan.Scan()
-			arr[j], _ = strconv.Atoi(scan.Text())
-		}
-		expected[i] = solveCase(arr)
-	}
-	cmd := exec.Command(os.Args[1])
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.CombinedOutput()
+	allInput := buildAllInput(tests)
+	allOutput, err := runCandidate(bin, allInput)
 	if err != nil {
-		fmt.Println("execution failed:", err)
+		fmt.Fprintln(os.Stderr, "runtime error:", err)
 		os.Exit(1)
 	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanLines)
-	for i := 0; i < t; i++ {
-		if !outScan.Scan() {
-			fmt.Printf("missing output for test %d\n", i+1)
-			os.Exit(1)
-		}
-		got := outScan.Text()
-		if got != expected[i] {
-			fmt.Printf("test %d failed:\nexpected: %s\ngot: %s\n", i+1, expected[i], got)
-			os.Exit(1)
-		}
-	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
+	outLines := strings.Split(strings.TrimSpace(allOutput), "\n")
+	if len(outLines) != len(tests) {
+		fmt.Fprintf(os.Stderr, "expected %d outputs, got %d\n", len(tests), len(outLines))
 		os.Exit(1)
 	}
-	fmt.Println("All tests passed!")
+	for i, tc := range tests {
+		want := solve(tc.arr)
+		if strings.TrimSpace(outLines[i]) != want {
+			fmt.Fprintf(os.Stderr, "case %d failed\ninput: %v\nexpected: %s\ngot: %s\n", i+1, tc.arr, want, outLines[i])
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

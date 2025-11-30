@@ -99,6 +99,13 @@ func (rs *rankSet) remove(id int) {
 	}
 }
 
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
 func main() {
 	in := bufio.NewReader(os.Stdin)
 	out := bufio.NewWriter(os.Stdout)
@@ -117,7 +124,6 @@ func main() {
 			alls[i] = segs[i].a
 		}
 
-		// connectivity check by union of intervals
 		tmp := make([]segment, n)
 		copy(tmp, segs)
 		sort.Slice(tmp, func(i, j int) bool { return tmp[i].l < tmp[j].l })
@@ -137,7 +143,6 @@ func main() {
 			continue
 		}
 
-		// compress a values
 		sort.Ints(alls)
 		uniq := make([]int, 0, n)
 		for i := 0; i < n; i++ {
@@ -150,7 +155,6 @@ func main() {
 		}
 		m := len(uniq)
 
-		// build events
 		evs := make([]event, 0, 2*n)
 		for i := 0; i < n; i++ {
 			evs = append(evs, event{segs[i].l, 0, i})
@@ -163,7 +167,6 @@ func main() {
 			return evs[i].pos < evs[j].pos
 		})
 
-		// prepare structures
 		b := newBIT(m)
 		rset := make([]rankSet, m+2)
 		edges := make([]edge, 0)
@@ -195,17 +198,11 @@ func main() {
 					edges = append(edges, edge{idx, rset[r].any, 0})
 				}
 				if p := getPred(r); p != -1 {
-					w := segs[idx].a - segs[p].a
-					if w < 0 {
-						w = -w
-					}
+					w := abs(segs[idx].a - segs[p].a)
 					edges = append(edges, edge{idx, p, w})
 				}
 				if s := getSucc(r); s != -1 {
-					w := segs[idx].a - segs[s].a
-					if w < 0 {
-						w = -w
-					}
+					w := abs(segs[idx].a - segs[s].a)
 					edges = append(edges, edge{idx, s, w})
 				}
 				rset[r].insert(idx)
@@ -214,10 +211,7 @@ func main() {
 				rset[r].remove(idx)
 				b.add(r, -1)
 				if p, s := getPred(r), getSucc(r); p != -1 && s != -1 {
-					w := segs[p].a - segs[s].a
-					if w < 0 {
-						w = -w
-					}
+					w := abs(segs[p].a - segs[s].a)
 					edges = append(edges, edge{p, s, w})
 				}
 			}

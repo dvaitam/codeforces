@@ -1,21 +1,225 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	exe := "oracleD"
-	cmd := exec.Command("go", "build", "-o", exe, "1420D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle: %v\n%s", err, out)
+const testcasesD = `10 2 44 54 7 10 16 17 2 4 30 34 45 57 11 12 44 60 11 18 1 3
+10 3 41 45 40 40 7 8 18 32 37 43 3 3 29 30 22 28 25 25 42 45
+2 1 16 22 29 29
+5 4 38 42 46 55 42 54 13 14 29 49
+5 2 42 46 6 8 29 29 42 42 41 49
+10 7 30 48 48 54 11 11 7 18 17 20 31 39 26 30 32 34 45 45 22 23
+1 1 20 29
+4 3 27 27 16 27 31 33 44 50
+7 4 24 27 6 20 9 9 34 44 31 37 41 44 4 13
+3 2 18 21 36 36 10 10
+6 3 29 30 24 38 17 22 29 29 7 7 22 24
+9 2 33 34 7 16 48 48 8 11 11 14 17 20 46 46 36 36 8 10
+2 2 14 20 15 25
+10 9 36 38 28 28 38 47 15 20 33 40 41 55 48 53 18 19 15 20 42 42
+8 5 44 44 7 18 34 35 25 35 36 36 32 39 29 29 13 19
+2 2 9 11 34 46
+10 5 14 15 2 17 46 46 13 22 49 56 46 55 5 5 23 33 27 39 42 49
+5 4 26 26 41 51 19 23 26 32 46 55
+8 6 20 33 38 43 23 24 29 33 5 10 15 15 40 42 12 14
+2 1 39 39 42 42
+9 7 44 46 19 26 20 21 11 16 7 10 47 51 20 20 38 43 49 50
+1 1 15 25
+5 5 14 15 28 28 6 6 19 19 1 1
+3 3 11 13 38 38 48 52
+2 1 46 48 50 51
+2 2 28 28 31 39
+3 3 7 9 47 55 9 11
+9 1 47 54 7 12 34 42 45 62 26 29 37 37 39 51 24 29 33 33
+1 1 10 13
+3 1 8 23 43 45 17 17
+3 3 23 26 41 44 10 18
+6 2 41 42 23 35 7 13 36 36 41 44 26 27
+9 5 50 52 3 4 22 35 1 4 42 44 24 27 11 17 37 55 5 9
+1 1 1 1
+6 2 26 29 3 20 49 52 35 44 40 45 24 24
+7 3 12 19 47 67 25 25 43 47 48 61 49 51 10 16
+8 4 17 19 11 11 20 20 10 12 26 34 42 47 35 42 30 32
+10 6 17 21 25 41 2 8 28 34 47 47 27 29 18 18 32 40 23 38 34 42
+8 3 38 38 14 20 5 6 11 25 41 44 21 34 45 48 17 27
+9 4 50 51 33 39 35 54 7 9 33 34 5 8 3 3 31 33 34 34
+8 3 37 38 20 22 30 30 22 22 40 42 43 52 24 24 43 55
+7 6 14 15 18 31 43 55 10 22 14 24 50 52 5 8
+6 3 19 24 16 19 9 12 32 32 35 49 47 49
+2 2 11 16 43 43
+7 3 49 53 22 22 43 52 41 42 36 39 16 18 34 35
+1 1 48 49
+8 8 43 44 4 5 41 44 39 41 6 24 7 13 48 54 12 26
+5 3 41 46 26 28 11 11 41 52 44 57
+2 2 34 46 20 32
+1 1 23 26
+4 2 5 8 28 30 49 50 21 22
+4 3 43 53 38 53 33 37 2 21
+3 2 13 16 20 22 8 9
+9 9 36 54 35 41 21 31 15 22 10 10 48 52 1 3 2 2 4 8
+4 1 44 44 47 49 25 41 40 46
+4 4 47 47 37 37 48 48 10 10
+10 3 21 25 50 55 34 41 22 30 20 32 35 41 43 49 49 49 14 26 20 26
+3 1 31 32 40 40 18 34
+3 3 12 15 31 37 12 12
+9 1 45 47 47 48 10 16 42 47 7 10 32 34 37 43 39 46 39 40
+3 2 7 12 9 14 18 23
+3 2 46 54 7 8 1 1
+6 4 16 22 38 40 5 20 20 26 46 47 22 22
+9 5 30 30 10 20 44 57 45 46 18 22 2 2 30 31 20 24 39 42
+8 1 39 41 27 27 12 17 6 19 49 63 35 39 27 29 45 56
+10 3 6 6 8 11 46 52 2 7 17 26 17 31 34 35 29 42 15 15 34 46
+6 2 37 41 11 16 46 49 8 19 25 27 17 22
+7 1 43 43 25 26 5 12 35 35 21 29 46 49 50 51
+10 10 39 40 50 53 35 36 5 5 39 40 32 36 19 37 6 8 35 35 42 50
+4 3 1 14 23 24 18 19 20 24
+6 1 47 47 1 4 28 42 19 19 45 59 35 37
+1 1 6 9
+7 5 12 13 2 3 26 28 25 25 41 49 13 24 39 39
+7 4 33 34 13 20 47 51 13 13 13 15 49 54 47 49
+3 3 47 51 4 16 8 23
+3 2 15 27 25 29 41 55
+10 6 3 22 34 37 33 40 15 17 35 36 11 11 21 22 40 56 40 44 27 27
+6 2 3 9 46 56 40 46 50 50 38 41 22 24
+8 6 19 20 45 47 19 21 15 18 13 14 35 37 23 23 35 36
+2 2 46 50 20 20
+9 7 44 55 12 12 19 21 32 35 35 42 5 11 23 27 21 22 30 41
+9 3 5 11 50 60 40 47 10 10 27 28 38 38 49 52 15 16 28 46
+5 5 2 3 26 34 24 27 11 31 7 8
+5 3 32 39 28 32 39 41 12 12 10 12
+10 4 7 10 48 63 19 28 6 6 41 45 33 36 38 42 47 48 9 9 29 34
+5 4 2 7 41 46 47 52 46 49 2 12
+10 9 20 32 39 39 21 21 10 10 4 13 13 24 16 18 49 55 21 41 45 54
+1 1 30 36
+4 2 47 47 11 11 37 37 24 24
+4 4 17 26 24 41 21 36 40 41
+4 2 48 49 7 7 3 20 6 19
+8 8 26 26 46 52 9 18 36 42 39 40 30 48 16 20 36 37
+6 5 46 54 18 25 7 16 21 23 28 28 7 16
+2 1 37 37 2 9
+2 1 32 36 33 37
+4 4 39 53 31 36 1 10 7 8
+3 2 30 35 18 25 46 50
+8 8 17 20 6 10 4 9 22 22 25 27 19 20 35 44 21 26
+2 2 2 15 40 42
+10 5 45 52 1 3 16 19 8 9 25 37 25 44 3 3 44 44 17 22 12 13
+`
+
+const mod = 998244353
+
+func add(a, b int) int {
+	s := a + b
+	if s >= mod {
+		s -= mod
 	}
-	return exe, nil
+	return s
+}
+
+func mul(a, b int) int {
+	return int((int64(a) * int64(b)) % mod)
+}
+
+func powmod(a, e int) int {
+	res := 1
+	base := a
+	for e > 0 {
+		if e&1 == 1 {
+			res = mul(res, base)
+		}
+		base = mul(base, base)
+		e >>= 1
+	}
+	return res
+}
+
+func solveCase(tokens []int) (int, error) {
+	if len(tokens) < 2 {
+		return 0, fmt.Errorf("need at least n and k, got %d tokens", len(tokens))
+	}
+	n, k := tokens[0], tokens[1]
+	intervalTokens := tokens[2:]
+	if len(intervalTokens) != 2*n {
+		return 0, fmt.Errorf("expected %d interval values, got %d", 2*n, len(intervalTokens))
+	}
+
+	events := make([][2]int, 0, 2*n)
+	for i := 0; i < n; i++ {
+		l := intervalTokens[2*i]
+		r := intervalTokens[2*i+1]
+		events = append(events, [2]int{l, 1})
+		events = append(events, [2]int{r + 1, -1})
+	}
+	sort.Slice(events, func(i, j int) bool {
+		if events[i][0] != events[j][0] {
+			return events[i][0] < events[j][0]
+		}
+		return events[i][1] < events[j][1]
+	})
+
+	fact := make([]int, n+1)
+	ifact := make([]int, n+1)
+	fact[0] = 1
+	for i := 1; i <= n; i++ {
+		fact[i] = mul(fact[i-1], i)
+	}
+	ifact[n] = powmod(fact[n], mod-2)
+	for i := n; i > 0; i-- {
+		ifact[i-1] = mul(ifact[i], i)
+	}
+
+	comb := func(a, b int) int {
+		if b < 0 || b > a {
+			return 0
+		}
+		return mul(fact[a], mul(ifact[b], ifact[a-b]))
+	}
+
+	cur := 0
+	ans := 0
+	for _, ev := range events {
+		_, typ := ev[0], ev[1]
+		if typ == 1 {
+			if k-1 <= cur {
+				ans = add(ans, comb(cur, k-1))
+			}
+			cur++
+		} else {
+			cur--
+		}
+	}
+	return ans, nil
+}
+
+func parseLine(line string) ([]int, error) {
+	fields := strings.Fields(line)
+	nums := make([]int, len(fields))
+	for i, f := range fields {
+		v, err := strconv.Atoi(f)
+		if err != nil {
+			return nil, fmt.Errorf("invalid integer %q: %w", f, err)
+		}
+		nums[i] = v
+	}
+	return nums, nil
+}
+
+func expectedAnswer(line string) (string, error) {
+	tokens, err := parseLine(line)
+	if err != nil {
+		return "", err
+	}
+	ans, err := solveCase(tokens)
+	if err != nil {
+		return "", err
+	}
+	return strconv.Itoa(ans), nil
 }
 
 func runProg(exe string, input string) (string, error) {
@@ -41,46 +245,28 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
-	file, err := os.Open("testcasesD.txt")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to open testcasesD.txt:", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
+	lines := strings.Split(testcasesD, "\n")
 	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	for _, raw := range lines {
+		line := strings.TrimSpace(raw)
 		if line == "" {
 			continue
 		}
 		idx++
-		input := "1\n" + line + "\n"
-		exp, err := runProg("./"+oracle, input)
+		exp, err := expectedAnswer(line)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle failure on case %d: %v\ninput:%s", idx, err, input)
+			fmt.Fprintf(os.Stderr, "case %d expected answer error: %v\ninput:%s\n", idx, err, line)
 			os.Exit(1)
 		}
-		got, err := runProg(bin, input)
+		got, err := runProg(bin, line+"\n")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d: %v\ninput:%s", idx, err, input)
+			fmt.Fprintf(os.Stderr, "case %d: %v\ninput:%s", idx, err, line)
 			os.Exit(1)
 		}
 		if got != exp {
 			fmt.Fprintf(os.Stderr, "case %d mismatch\nexpected:%s\n got:%s\ninput:%s", idx, exp, got, line)
 			os.Exit(1)
 		}
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "scanner error:", err)
-		os.Exit(1)
 	}
 	fmt.Printf("All %d tests passed\n", idx)
 }

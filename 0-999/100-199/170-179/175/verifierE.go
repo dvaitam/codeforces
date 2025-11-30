@@ -1,20 +1,19 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 )
 
-// Embedded testcases from testcasesE.txt. Format: t, then for each case:
-// line with nf ne ns
-// line with rf re rs (original radii before sqrt adjustment)
-// line with df de
-const testcasesRaw = `100
+const testcasesRaw = `
+100
 0 1 0
 3.88 2.92 1.36
 1 7
@@ -315,558 +314,213 @@ const testcasesRaw = `100
 0 1 2
 3.07 2.7 1.37
 6 3
-0 2 2
-2.72 3.04 4.84
-1 4
-1 1 1
-2.44 2.19 4.96
-7 1
-0 0 0
-4.64 4.91 4.52
-6 3
-0 2 2
-4.73 2.16 2.15
-9 9
-0 2 0
-4.14 1.19 1.65
-4 5
-2 0 2
-2.49 2.44 3.51
-7 6
-2 0 2
-1.78 3.17 1.14
-7 6
-0 1 2
-1.53 4.37 4.93
-8 3
-0 2 1
-4.7 4.56 2.04
-4 9
-0 2 0
-2.82 3.34 3.46
-9 4
-0 1 2
-2.63 1.53 3.87
-1 5
-1 2 2
-3.37 4.36 1.5
-2 7
-0 1 0
-2.08 3.34 4.16
-1 3
-0 2 1
-4.4 4.86 2.3
-9 10
-1 1 2
-1.9 1.12 2.23
-1 10
-1 2 0
-3.23 4.83 3.04
-5 6
-2 0 2
-3.59 1.55 4.62
-9 8
-1 0 0
-1.7 4.18 4.96
-2 5
-1 0 2
-4.09 1.21 1.31
-8 3
-2 1 1
-2.28 1.85 4.75
-2 10
-2 0 0
-4.65 2.33 4.2
-1 9
-0 1 1
-3.58 3.66 3.62
-9 4
-1 1 2
-3.34 2.71 4.07
-10 9
-0 0 0
-3.85 4.39 1.22
-7 4
-1 0 2
-2.93 1.67 4.93
-10 10
-1 2 0
-3.7 4.87 1.69
-5 4
-2 2 0
-1.91 4.24 3.83
-10 7
-1 0 2
-3.4 3.55 3.23
-8 8
-2 2 0
-2.23 4.7 4.63
-5 6
-1 1 1
-1.24 1.8 2.57
-8 6
-2 0 1
-2.96 2.12 4.45
-5 1
-0 0 1
-4.31 3.7 1.79
-7 8
-0 1 0
-2.64 2.58 2.75
-6 5
-0 2 1
-4.98 2.97 4.86
-4 9
-1 1 0
-1.61 1.46 4.06
-6 6
-1 2 1
-1.6 3.15 3.22
-4 6
-0 0 1
-3.12 3.74 4.77
-2 3
-0 0 0
-1.86 2.97 1.07
-5 7
-0 1 2
-2.98 3.31 1.73
-8 5
-0 1 0
-4.1 1.42 4.18
-3 5
-1 0 0
-2.54 3.05 2.32
-1 1
-1 0 0
-1.47 1.36 3.87
-4 8
-0 0 2
-2.66 4.96 2.42
-6 1
-0 2 0
-4.51 2.33 2.49
-6 1
-2 2 0
-3.11 3.19 1.4
-10 3
-0 1 1
-4.67 1.38 4.41
-5 4
-2 1 1
-1.96 1.3 1.62
-10 3
-2 0 2
-1.51 2.83 3.5
-5 6
-1 1 0
-3.64 4.49 4.89
-7 2
-1 1 1
-2.14 4.52 1.28
-8 8
-1 0 2
-4.62 4.67 1.64
-6 5
-2 1 0
-3.42 4.05 2.76
-2 5
-2 1 2
-1.73 1.99 4.45
-6 1
-1 2 2
-4.98 3.55 3.96
-6 6
-1 0 1
-3.35 4.78 2.68
-5 1
-1 2 1
-1.36 3.11 3.56
-1 3
-2 0 1
-2.64 3.18 3.68
-4 5
-2 2 0
-2.01 3.52 2.09
-1 2
-2 2 2
-2.9 1.06 1.03
-4 7
-1 0 2
-1.36 4.35 3.42
-4 1
-0 2 2
-4.84 3.92 3.47
-1 3
-0 0 1
-2.41 3.33 1.84
-7 8
-2 2 2
-3.47 1.53 2.07
-10 6
-0 0 2
-2.84 2.63 1.82
-7 4
-0 2 0
-1.71 3.2 2.28
-5 7
-1 2 0
-1.51 4.35 1.05
-1 5
-2 1 1
-3.84 3.66 2.19
-7 7
-0 2 1
-3.97 1.56 4.26
-10 4
-0 0 0
-2.12 2.81 4.6
-10 8
-0 0 2
-2.86 2.06 4.81
-3 1
-2 0 0
-4.97 4.96 1.35
-2 4
-0 2 2
-2.16 4.13 2.11
-8 1
-1 1 0
-4.91 1.6 1.21
-5 3
-2 0 1
-2.22 3.83 4.51
-4 9
-0 2 2
-3.74 1.05 1.5
-5 3
-0 2 1
-1.98 4.32 2.22
-3 5
-2 2 2
-1.46 2.26 4.32
-7 10
-2 0 1
-4.64 3.93 1.63
-8 10
-2 1 2
-1.71 2.87 2.31
-4 2
-1 0 1
-2.57 4.75 1.53
-7 3
-1 0 0
-4.47 1.19 4.66
-10 2
-2 0 0
-1.2 4.33 3.0
-7 1
-0 1 2
-4.72 2.92 2.96
-8 10
-2 2 2
-4.86 2.51 4.17
-5 1
-2 1 2
-4.93 4.5 3.83
-10 4
-0 0 2
-1.1 3.82 1.27
-2 6
-0 2 1
-1.69 3.44 3.66
-7 1
-1 0 0
-3.25 3.86 1.69
-1 6
-2 0 2
-1.64 1.15 3.31
-1 9
-0 1 0
-2.96 1.3 4.69
-4 8
-0 2 0
-4.22 2.34 2.06
-2 3
-2 0 1
-4.47 1.2 2.83
-10 9
-0 0 2
-1.11 1.47 1.42
-10 3
-0 1 2
-4.37 1.86 1.02
-6 4
-1 0 0
-4.22 2.9 1.01
-9 5
-0 1 0
-1.13 3.3 2.13
-9 1
-1 2 0
-4.14 3.93 1.73
-9 5
-1 2 1
-3.22 4.14 4.6
-6 7
-1 1 1
-2.98 3.0 1.82
-6 8
-0 1 2
-3.83 3.79 3.55
-3 8
-1 2 1
-2.44 3.32 4.25
-8 6
-2 0 2
-1.53 2.39 3.15
-2 10
-2 0 1
-3.09 3.77 4.57
-1 2
-0 1 1
-4.52 4.77 3.8
-9 7
-2 0 1
-3.2 3.05 3.19
-5 3
-2 2 0
-1.6 2.37 3.86
-10 2
-1 1 1
-1.23 2.02 3.88
-9 6
-0 2 0
-2.69 3.37 2.77
-3 9
-1 1 2
-3.88 1.02 2.38
-3 8
-1 2 2
-3.77 3.5 3.83
-3 7
-0 0 1
-1.68 3.37 2.22
-8 9
-2 1 0
-3.9 1.61 1.88
-4 9
-1 0 1
-4.39 1.11 1.23
-4 10
-1 2 1
-2.53 3.3 4.53
-10 1
-2 0 0
-3.76 2.99 4.14
-10 6
-1 1 2
-4.43 1.48 2.11
-3 2
-0 1 1
-4.61 2.65 1.57
-9 5
-2 2 2
-1.37 4.71 3.1
-5 3
-2 1 2
-2.21 1.77 2.17
-9 9
-0 1 0
-2.48 3.62 4.39
-10 9
-2 2 2
-1.7 1.1 4.32
-6 7
-2 1 0
-3.56 3.47 4.38
-7 6
-0 0 2
-3.36 4.49 2.65
-7 7
-2 2 2
-3.8 2.29 2.69
-7 5
-2 2 0
-4.39 3.22 3.26
-3 10
-0 1 0
-2.01 2.58 2.0
-8 10
-1 2 0
-4.06 1.64 1.97
-6 10
-2 1 2
-4.69 1.83 3.57
-2 2
-1 1 1
-3.56 4.84 1.75
-7 9
-2 1 1
-2.57 2.68 4.73
-2 9
-0 1 1
-1.49 3.8 1.98
-2 10
-2 0 1
-3.95 1.36 3.72
-7 2
-2 2 2
-4.45 2.0 3.73
-8 1
-1 0 1
-3.94 2.11 4.66
-5 8
-0 0 0
-2.26 3.61 1.81
-7 6
-1 2 0
-1.82 1.43 2.35
-1 2
-2 1 2
-3.84 3.18 1.82
-9 2
-0 2 1
-2.23 1.12 2.77
-10 5
-1 1 0
-4.56 3.21 3.83
-9 2
-1 1 2
-2.45 4.45 1.96
-5 5
-2 2 0
-4.82 4.78 3.88
-4 10
-0 1 0
-1.06 3.38 2.11
-10 7
-2 2 1
-2.43 4.84 1.61
-10 9
-2 1 2
-4.11 3.94 4.77
-10 4
-2 0 0
-3.6 2.12 3.1
-9 1
-2 2 2
-3.73 2.34 3.58
-1 10
-1 2 0
-3.86 4.19 3.25
-4 9
-1 0 0
-1.13 4.89 3.73
-1 2
-1 0 1
-3.77 4.2 4.74
-6 3
-2 0 0
-4.9 1.32 4.73
-6 1
-0 0 1
-3.6 3.47 1.68
-6 8
-1 0 0
-2.7 4.02 4.32
-5 6
-0 2 0
-4.8 4.7 2.72
-10 1
-1 0 2
-3.64 2.06 4.87
-6 1
-1 2 1
-3.29 1.9 3.43
-8 3
-1 0 0
-1.96 3.64 3.71
-10 10
-2 2 0
-4.86 2.25 2.49
-8 9
-0 1 1
-2.85 2.94 2.72
-8 2
-1 1 2
-1.43 2.61 2.67
-5 5
-0 1 0
-3.8 4.49 1.8
-6 10
-2 1 2
-2.35 4.15 4.48
-2 3
-1 0 0
-2.21 4.92 3.8
-10 6
-1 1 2
-2.97 2.41 2.98
-2 2
-2 2 2
-4.72 1.06 3.54
-7 4
-1 1 2
-3.3 2.42 4.95
-6 9
-2 2 1
-3.58 4.18 1.64
-8 8
-0 2 1
-2.5 3.97 3.4
-6 1
-1 2 1
-2.38 1.59 2.2
-8 5
-1 2 0
-1.8 3.56 1.52
-4 4
-2 0 2
-4.52 1.08 2.62
-7 5
-0 2 0
-2.58 4.76 1.42
-3 9
-0 0 2
-1.25 1.08 4.55
-8 4
-0 1 0
-4.58 1.46 2.12
-7 4
-0 1 1
-3.51 1.48 4.66
-1 5
-0 0 1
-3.89 1.73 3.2
-3 3
-2 0 2
-4.36 3.54 2.92
-9 2
-1 2 2
-1.27 2.25 2.86
-2 7
-1 1 1
-2.86 2.57 2.54
-7 2
-1 0 2
-4.95 3.69 3.59
-1 7
-0 1 1
-3.25 1.89 1.17
-9 10
-0 1 0
-2.46 3.32 3.93
-5 10
-2 0 0
-3.56 2.64 2.52
-9 10
-1 1 2
-2.19 2.51 3.46
-8 9
-1 2 1
-2.39 1.95 3.97
-7 9
-0 2 2
-3.0 1.89 3.87
-6 3
+`
+
+type testCase struct {
+	nf, ne, ns    int
+	rfi, rei, rsi float64
+	df, de        int
+}
+
+func Len(a1, b1, c1, d1 float64) float64 {
+	lo := math.Max(a1, c1)
+	hi := math.Min(b1, d1)
+	if hi > lo {
+		return hi - lo
+	}
+	return 0
+}
+
+func parseTestcases(raw string) ([]testCase, error) {
+	sc := bufio.NewScanner(strings.NewReader(raw))
+	sc.Split(bufio.ScanWords)
+	scanInt := func() (int, error) {
+		if !sc.Scan() {
+			return 0, fmt.Errorf("unexpected EOF")
+		}
+		v, err := strconv.Atoi(sc.Text())
+		if err != nil {
+			return 0, err
+		}
+		return v, nil
+	}
+	scanFloat := func() (float64, error) {
+		if !sc.Scan() {
+			return 0, fmt.Errorf("unexpected EOF")
+		}
+		v, err := strconv.ParseFloat(sc.Text(), 64)
+		if err != nil {
+			return 0, err
+		}
+		return v, nil
+	}
+
+	t, err := scanInt()
+	if err != nil {
+		return nil, fmt.Errorf("invalid test count: %w", err)
+	}
+	tests := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		nf, err := scanInt()
+		if err != nil {
+			return nil, fmt.Errorf("case %d: nf: %w", i+1, err)
+		}
+		ne, err := scanInt()
+		if err != nil {
+			return nil, fmt.Errorf("case %d: ne: %w", i+1, err)
+		}
+		ns, err := scanInt()
+		if err != nil {
+			return nil, fmt.Errorf("case %d: ns: %w", i+1, err)
+		}
+		rfi, err := scanFloat()
+		if err != nil {
+			return nil, fmt.Errorf("case %d: rfi: %w", i+1, err)
+		}
+		rei, err := scanFloat()
+		if err != nil {
+			return nil, fmt.Errorf("case %d: rei: %w", i+1, err)
+		}
+		rsi, err := scanFloat()
+		if err != nil {
+			return nil, fmt.Errorf("case %d: rsi: %w", i+1, err)
+		}
+		df, err := scanInt()
+		if err != nil {
+			return nil, fmt.Errorf("case %d: df: %w", i+1, err)
+		}
+		de, err := scanInt()
+		if err != nil {
+			return nil, fmt.Errorf("case %d: de: %w", i+1, err)
+		}
+		tests = append(tests, testCase{nf: nf, ne: ne, ns: ns, rfi: rfi, rei: rei, rsi: rsi, df: df, de: de})
+	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("scan error: %w", err)
+	}
+	return tests, nil
+}
+
+func solve(tc testCase) float64 {
+	nf, ne, ns := tc.nf, tc.ne, tc.ns
+	rf := math.Sqrt(tc.rfi*tc.rfi - 1)
+	re := math.Sqrt(tc.rei*tc.rei - 1)
+	rs := math.Sqrt(tc.rsi*tc.rsi - 1)
+	total := nf + ne + ns
+	U := make([]bool, total)
+	a := make([]int, ns)
+	b := make([]float64, total)
+	ans := 0.0
+
+	calc := func() float64 {
+		Fc := 2*float64(nf)*rf*float64(tc.df) + 2*float64(ne)*re*float64(tc.de)
+		m := 0
+		for i := 0; i < total; i++ {
+			if !U[i] {
+				xi := float64(i) / 2.0
+				var Df, DeF float64
+				for j := 0; j < ns; j++ {
+					Df += float64(tc.df) * Len(xi-rf, xi+rf, float64(a[j])-rs, float64(a[j])+rs)
+					DeF += float64(tc.de) * Len(xi-re, xi+re, float64(a[j])-rs, float64(a[j])+rs)
+				}
+				Fc += Df
+				b[m] = DeF - Df
+				m++
+			}
+		}
+		if m > 0 {
+			sort.Slice(b[:m], func(i, j int) bool { return b[i] > b[j] })
+			limit := ne
+			if limit > m {
+				limit = m
+			}
+			for i := 0; i < limit; i++ {
+				Fc += b[i]
+			}
+		}
+		return Fc
+	}
+
+	var dfs func(x, y int)
+	dfs = func(x, y int) {
+		if nf+ne+y < x {
+			return
+		}
+		if x == total {
+			if val := calc(); val > ans {
+				ans = val
+			}
+			return
+		}
+		U[x] = false
+		dfs(x+1, y)
+		if y < ns && (x%2 == 0 || U[x-1]) {
+			U[x] = true
+			a[y] = x / 2
+			dfs(x+1, y+1)
+		}
+	}
+
+	dfs(0, 0)
+	return ans
+}
+
+func buildInput(tc testCase) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d %d %d\n", tc.nf, tc.ne, tc.ns))
+	sb.WriteString(fmt.Sprintf("%.15g %.15g %.15g\n", tc.rfi, tc.rei, tc.rsi))
+	sb.WriteString(fmt.Sprintf("%d %d\n", tc.df, tc.de))
+	return sb.String()
+}
+
+func run(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: go run verifierE.go /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
+
+	tests, err := parseTestcases(testcasesRaw)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
+		os.Exit(1)
+	}
+
+	for idx, tc := range tests {
+		input := buildInput(tc)
+		expected := solve(tc)
+		gotStr, err := run(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
+			os.Exit(1)
+		}
+		got, err := strconv.ParseFloat(strings.TrimSpace(gotStr), 64)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: invalid output %q\n", idx+1, gotStr)
+			os.Exit(1)
+		}
+		if math.Abs(got-expected) > 1e-6 {
+			fmt.Fprintf(os.Stderr, "case %d mismatch: expected %.10f got %.10f\n", idx+1, expected, got)
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", len(tests))
+}

@@ -1,28 +1,296 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
-func solve(n, x int, arr []int) int {
+const testcasesF = `100
+10 10
+6 9 1 8 4 1 3 2 6 8
+4 14
+9 2 10 4
+1 8
+7
+5 7
+7 3 2 3 10
+10 16
+3 3 1 1 4 4 3 3 5 6
+4 19
+4 3 4 7
+5 2
+6 7 3 3 5
+2 12
+5 10
+10 2
+10 6 2 5 6 5 8 6 3 8
+8 7
+1 5 1 6 7 1 9 7
+6 14
+10 1 8 1 3 10
+4 5
+4 8 6 9
+6 18
+5 8 2 10 6 5
+1 15
+2
+4 12
+9 10 6 3
+6 10
+9 2 5 6 5 3
+2 6
+5 8
+3 3
+2 10 9
+7 3
+4 10 6 5 8 7 3
+1 3
+8
+6 8
+3 10 3 7 2 3
+7 13
+3 1 7 5 3 8 10
+3 18
+8 8 6
+8 10
+5 8 7 3 2 7 9 3
+8 12
+3 2 8 5 9 9 9 6
+2 13
+10 1
+5 13
+9 5 8 5 5
+6 7
+10 1 8 9 5 6
+5 16
+5 9 6 6 5
+6 15
+6 3 8 6 6 9
+3 18
+3 4 6
+8 11
+2 7 3 10 10 9 7 5
+10 19
+5 1 4 3 10 8 10 3 4 3
+1 17
+4
+3 3
+3 2 6
+3 17
+4 9 1
+7 16
+6 7 10 2 10 4 4
+6 2
+6 7 5 7 2 9
+6 3
+9 10 5 2 5 9
+9 12
+10 5 6 3 7 7 10 9 6
+8 6
+3 10 7 10 8 4 3 10
+2 13
+1 7
+2 12
+10 10
+9 6
+6 10 7 7 7 4 8 5 8
+7 14
+3 10 10 5 5 8 5
+7 2
+6 5 8 5 3 8 1
+2 16
+4 5
+1 6
+7
+1 17
+9
+9 10
+4 8 1 4 8 5 3 5 5
+8 17
+9 10 2 1 3 5 5 9
+6 11
+9 1 8 6 6 10
+3 3
+1 5 9
+8 5
+9 4 1 7 7 10 10 8
+7 17
+7 4 5 8 2 5 1
+7 20
+5 8 5 3 3 8 9
+8 12
+9 3 7 10 9 1 2 4
+5 4
+2 1 6 7 2
+7 17
+1 2 2 4 10 2 3
+5 16
+3 3 10 3 7
+3 4
+10 4 1
+9 5
+7 2 5 1 10 10 2 7 10
+3 2
+7 2 6
+10 17
+8 6 6 1 3 5 3 10 9 5
+9 19
+10 4 5 2 9 4 5 5 9
+3 9
+6 8 7
+3 6
+1 6 2
+10 3
+2 2 9 10 8 4 7 8 8 6
+2 18
+1 9
+7 3
+3 7 4 2 2 8 4
+3 14
+6 4 5
+6 13
+7 7 3 6 5 7
+6 18
+1 10 10 4 3 7
+2 5
+1 1
+3 8
+4 1 8
+8 13
+1 7 8 5 10 7 6 8
+8 5
+4 3 3 2 6 7 8 3
+9 10
+2 5 3 5 4 1 8 1 6
+6 12
+1 1 8 8 3 2
+6 11
+8 4 3 1 4 1
+10 9
+2 10 7 6 5 3 8 6 5 2
+8 7
+4 3 4 1 10 7 5 1
+8 3
+8 7 3 1 1 9 9 10
+6 5
+2 4 8 2 8 1
+4 3
+8 7 1 1
+5 15
+8 5 1 1 4
+3 18
+7 4 9
+4 4
+6 2 2 9
+3 4
+4 10 1
+8 19
+6 8 7 10 7 9 3 1
+5 16
+4 9 2 3 5
+8 4
+5 7 6 3 3 9 2 8
+4 4
+7 10 4 5
+1 17
+4
+1 8
+5
+6 5
+2 7 6 7 9 1
+5 6
+10 1 8 3 1
+1 15
+5
+2 14
+9 3
+6 4
+5 3 3 5 8 6
+`
+
+type testCase struct {
+	n   int
+	x   int
+	arr []int
+}
+
+func parseTests() ([]testCase, error) {
+	fields := strings.Fields(testcasesF)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no test data found")
+	}
+	pos := 0
+	readInt := func() (int, error) {
+		if pos >= len(fields) {
+			return 0, fmt.Errorf("unexpected EOF")
+		}
+		v, err := strconv.Atoi(fields[pos])
+		pos++
+		return v, err
+	}
+
+	t, err := readInt()
+	if err != nil {
+		return nil, err
+	}
+	tests := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		n, err := readInt()
+		if err != nil {
+			return nil, err
+		}
+		x, err := readInt()
+		if err != nil {
+			return nil, err
+		}
+		arr := make([]int, n)
+		for j := 0; j < n; j++ {
+			v, err := readInt()
+			if err != nil {
+				return nil, err
+			}
+			arr[j] = v
+		}
+		tests = append(tests, testCase{n: n, x: x, arr: arr})
+	}
+	return tests, nil
+}
+
+func buildInput(tests []testCase) string {
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(len(tests)))
+	sb.WriteByte('\n')
+	for _, tc := range tests {
+		fmt.Fprintf(&sb, "%d %d\n", tc.n, tc.x)
+		for i, v := range tc.arr {
+			if i > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.Itoa(v))
+		}
+		sb.WriteByte('\n')
+	}
+	return sb.String()
+}
+
+func solve(tc testCase) int {
 	ans := 1
 	s := map[int]struct{}{1: {}}
-	for _, v := range arr {
-		s2 := make(map[int]struct{})
+
+	for _, v := range tc.arr {
+		next := make(map[int]struct{})
 		for val := range s {
-			if x%(val*v) == 0 {
-				s2[val*v] = struct{}{}
+			if tc.x%(val*v) == 0 {
+				next[val*v] = struct{}{}
 			}
 		}
-		for k := range s2 {
+		for k := range next {
 			s[k] = struct{}{}
 		}
-		if _, ok := s[x]; ok {
+		if _, ok := s[tc.x]; ok {
 			ans++
 			s = map[int]struct{}{1: {}, v: {}}
 		}
@@ -30,63 +298,52 @@ func solve(n, x int, arr []int) int {
 	return ans
 }
 
+func expectedOutputs(tests []testCase) []string {
+	out := make([]string, 0, len(tests))
+	for _, tc := range tests {
+		out = append(out, strconv.Itoa(solve(tc)))
+	}
+	return out
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run verifierF.go /path/to/binary")
+	if len(os.Args) != 2 {
+		fmt.Println("usage: verifierF /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesF.txt")
+
+	tests, err := parseTests()
 	if err != nil {
-		fmt.Println("could not read testcasesF.txt:", err)
+		fmt.Println("parse error:", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	expected := make([]int, t)
-	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Println("bad file")
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(scan.Text())
-		scan.Scan()
-		x, _ := strconv.Atoi(scan.Text())
-		arr := make([]int, n)
-		for j := 0; j < n; j++ {
-			scan.Scan()
-			v, _ := strconv.Atoi(scan.Text())
-			arr[j] = v
-		}
-		expected[i] = solve(n, x, arr)
-	}
-	cmd := exec.Command(os.Args[1])
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.Output()
+
+	input := buildInput(tests)
+	output, err := runCandidate(os.Args[1], input)
 	if err != nil {
-		fmt.Println("execution failed:", err)
+		fmt.Println("runtime error:", err)
 		os.Exit(1)
 	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
-	for i := 0; i < t; i++ {
-		if !outScan.Scan() {
-			fmt.Printf("missing output for test %d\n", i+1)
-			os.Exit(1)
-		}
-		got, _ := strconv.Atoi(outScan.Text())
-		if got != expected[i] {
-			fmt.Printf("test %d failed: expected %d got %d\n", i+1, expected[i], got)
-			os.Exit(1)
-		}
-	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
+
+	got := strings.Fields(output)
+	want := expectedOutputs(tests)
+
+	if len(got) != len(want) {
+		fmt.Printf("expected %d outputs, got %d\n", len(want), len(got))
 		os.Exit(1)
 	}
-	fmt.Println("All tests passed!")
+	for i := range want {
+		if got[i] != want[i] {
+			fmt.Printf("mismatch at answer %d expected %s got %s\n", i+1, want[i], got[i])
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", len(tests))
 }
