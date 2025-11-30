@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,22 +9,107 @@ import (
 	"strings"
 )
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
-	}
-	return strings.TrimSpace(out.String()), nil
+var testcases = []string{
+	"14 9 9 15",
+	"4 3 4 16",
+	"41 38 15 245",
+	"55 27 43 343",
+	"76 33 70 2817",
+	"93 20 6 152",
+	"17 13 12 15",
+	"48 22 34 1635",
+	"70 15 14 4537",
+	"25 7 11 569",
+	"52 10 3 341",
+	"5 3 2 14",
+	"73 15 53 1698",
+	"44 6 7 1913",
+	"93 18 35 3861",
+	"85 22 28 6949",
+	"50 28 13 833",
+	"2 2 2 2",
+	"66 14 47 2728",
+	"33 33 15 1022",
+	"75 28 73 420",
+	"73 14 34 3541",
+	"83 13 5 819",
+	"42 22 8 1273",
+	"37 7 16 621",
+	"74 9 13 3208",
+	"62 10 59 1330",
+	"29 5 8 142",
+	"6 6 5 4",
+	"60 31 36 2261",
+	"31 14 28 254",
+	"28 20 27 100",
+	"43 12 19 209",
+	"58 29 13 2660",
+	"61 17 51 1962",
+	"25 15 22 164",
+	"78 28 73 3310",
+	"45 28 17 800",
+	"22 5 20 278",
+	"63 8 52 961",
+	"78 45 73 2266",
+	"1 1 1 1",
+	"51 15 19 2373",
+	"41 2 24 1670",
+	"5 4 1 19",
+	"81 71 3 6138",
+	"7 1 4 40",
+	"39 29 22 1319",
+	"4 4 1 14",
+	"36 3 22 92",
+	"8 6 2 2",
+	"81 68 81 805",
+	"74 70 5 1739",
+	"76 75 53 2291",
+	"13 2 3 32",
+	"20 18 8 119",
+	"62 59 39 3744",
+	"34 26 14 105",
+	"67 63 10 1872",
+	"17 13 15 34",
+	"32 15 8 319",
+	"56 56 44 2011",
+	"54 17 39 787",
+	"71 5 71 3199",
+	"20 16 19 72",
+	"7 3 4 38",
+	"62 43 30 2443",
+	"96 54 43 8733",
+	"30 27 3 307",
+	"69 65 31 2786",
+	"93 39 31 8377",
+	"56 18 19 1559",
+	"42 21 14 1727",
+	"13 5 5 50",
+	"14 4 7 137",
+	"21 11 7 215",
+	"60 56 55 1003",
+	"36 34 24 804",
+	"9 8 8 13",
+	"22 21 4 414",
+	"68 35 34 71",
+	"50 26 13 102",
+	"78 21 8 3408",
+	"55 22 28 2956",
+	"49 3 18 1940",
+	"85 74 76 117",
+	"12 1 3 144",
+	"31 6 29 881",
+	"93 43 55 2290",
+	"65 38 63 2022",
+	"82 10 35 1205",
+	"80 25 32 1102",
+	"2 1 2 3",
+	"39 34 2 781",
+	"60 52 40 3158",
+	"84 22 5 1370",
+	"84 2 67 3273",
+	"46 6 21 107",
+	"87 60 66 1902",
+	"34 25 4 887",
 }
 
 func minInt64(a, b int64) int64 {
@@ -91,7 +175,7 @@ func countOn(t, n, x, y int64) int64 {
 	return w0 + sumRows
 }
 
-func solve(n, x, y, c int64) int64 {
+func referenceSolve(n, x, y, c int64) string {
 	var maxDist int64
 	corners := []struct{ dx, dy int64 }{{x - 1, y - 1}, {x - 1, n - y}, {n - x, y - 1}, {n - x, n - y}}
 	for _, d := range corners {
@@ -112,55 +196,66 @@ func solve(n, x, y, c int64) int64 {
 	if hi < 0 {
 		hi = 0
 	}
-	return hi
+	return strconv.FormatInt(hi, 10)
+}
+
+func runBinary(bin, input string) (string, string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	return out.String(), stderr.String(), err
+}
+
+func parseCase(line string) (int64, int64, int64, int64, error) {
+	parts := strings.Fields(line)
+	if len(parts) != 4 {
+		return 0, 0, 0, 0, fmt.Errorf("expected 4 numbers, got %d", len(parts))
+	}
+	var vals [4]int64
+	for i := 0; i < 4; i++ {
+		v, err := strconv.ParseInt(parts[i], 10, 64)
+		if err != nil {
+			return 0, 0, 0, 0, fmt.Errorf("parse value %d: %w", i+1, err)
+		}
+		vals[i] = v
+	}
+	return vals[0], vals[1], vals[2], vals[3], nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierD.go /path/to/binary")
+		fmt.Println("usage: verifierD /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesD.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
 	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	for _, tc := range testcases {
+		line := strings.TrimSpace(tc)
 		if line == "" {
 			continue
 		}
 		idx++
-		fields := strings.Fields(line)
-		if len(fields) != 4 {
-			fmt.Fprintf(os.Stderr, "bad test line %d\n", idx)
-			os.Exit(1)
-		}
-		nVal, _ := strconv.ParseInt(fields[0], 10, 64)
-		xVal, _ := strconv.ParseInt(fields[1], 10, 64)
-		yVal, _ := strconv.ParseInt(fields[2], 10, 64)
-		cVal, _ := strconv.ParseInt(fields[3], 10, 64)
-		input := fmt.Sprintf("%d %d %d %d\n", nVal, xVal, yVal, cVal)
-		want := solve(nVal, xVal, yVal, cVal)
-		got, err := run(bin, input)
+		n, x, y, c, err := parseCase(line)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx, err)
 			os.Exit(1)
 		}
-		gotVal, _ := strconv.ParseInt(strings.TrimSpace(got), 10, 64)
-		if gotVal != want {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %d got %d\n", idx, want, gotVal)
+		input := fmt.Sprintf("%d %d %d %d\n", n, x, y, c)
+		expected := referenceSolve(n, x, y, c)
+		out, stderr, err := runBinary(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr)
 			os.Exit(1)
 		}
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
+		if strings.TrimSpace(out) != expected {
+			fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %s\ngot: %s\n", idx, expected, strings.TrimSpace(out))
+			os.Exit(1)
+		}
 	}
 	fmt.Printf("All %d tests passed\n", idx)
 }

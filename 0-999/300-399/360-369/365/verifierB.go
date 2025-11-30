@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,6 +9,255 @@ import (
 	"strings"
 )
 
+// Embedded testcases (previously in testcasesB.txt) to keep the verifier self contained.
+const rawTestcasesB = `
+100
+5
+72 97 8 32 15
+16
+97 57 60 83 48 100 26 12 62 3 49 55 77 97 98 0
+15
+34 92 29 75 13 40 3 2 3 83 69 1 48 87 27
+14
+92 3 67 28 97 56 63 70 29 44 29 86 28 97
+15
+37 2 53 71 82 12 23 80 92 37 15 95 42 92 91
+17
+54 64 85 24 38 36 75 63 64 50 75 4 61 31 95 51 53
+6
+46 70 89 99 86 94
+12
+11 56 84 65 13 99 20 66 50 47 62 93
+1
+60
+2
+39 90
+20
+75 74 50 82 21 21 64 29 1 98 25 69 70 29 51 65 44 73 45 58
+9
+84 70 77 93 0 49 100 94 65
+5
+66 99 71 26 54
+2
+61 46
+19
+70 25 64 52 62 45 53 44 0 68 69 79 100 78 42 58 76 3 29
+6
+70 74 23 11 70 32
+2
+86 9
+3
+2 57 1
+9
+31 34 14 79 23 44 37 8 21
+6
+32 67 21 84 34 82
+10
+58 89 41 63 60 14 3 39 49 43
+14
+24 33 13 32 93 65 26 77 55 2 28 2 50 18
+2
+92 20
+15
+90 64 86 54 69 28 80 88 66 57 28 67 83 3 50
+19
+41 84 80 54 7 94 38 16 27 6 39 9 9 39 38 95 20 53 72
+9
+16 1 71 4 75 27 72 58 21
+20
+65 4 48 25 44 12 26 73 86 55 75 24 63 13 85 49 37 64 63 2
+11
+78 51 36 2 20 25 41 72 100 17 43
+14
+27 34 86 12 48 70 44 87 68 62 98 68 30 8
+2
+10 17
+6
+21 68 27 34 97 42
+20
+64 32 47 43 43 14 37 30 77 99 91 62 17 74 70 98 13 41 5 52
+3
+48 100 18
+5
+43 14 78 75 100
+13
+9 73 70 28 72 10 34 46 37 72 68 14 58
+9
+13 100 5 37 1 78 85 1 11
+14
+14 5 24 30 100 75 53 20 14 57 21 87 30 20
+4
+55 48 69 37
+18
+32 91 61 40 12 26 83 40 5 3 1 100 37 92 76 40 57 50
+11
+51 8 8 40 76 58 14 32 27 100 79
+18
+88 60 84 45 33 23 69 26 39 25 31 46 10 35 11 96 57 11
+19
+82 43 29 49 39 5 41 23 40 74 38 31 42 12 69 78 74 76 11
+8
+28 2 31 51 9 34 70 9
+3
+2 81 1
+10
+96 45 63 60 19 12 64 99 41 9
+17
+85 22 22 99 19 18 40 39 13 90 65 77 37 16 26 18 69
+2
+99 40
+20
+86 70 95 88 26 22 38 55 68 20 6 91 85 31 32 99 8 87 57 55
+18
+32 69 56 68 58 1 50 43 21 33 62 3 82 53 73 2 7 88
+12
+74 17 75 16 17 33 35 50 72 51 22 78
+3
+29 62 0
+6
+67 40 64 83 56 87
+8
+30 40 63 87 61 28 91 52
+11
+71 78 93 83 35 82 28 6 9 97 65
+12
+20 65 98 26 39 38 88 38 70 47 21 89
+15
+76 10 15 77 65 73 48 22 19 32 54 27 72 92 96
+2
+63 87
+13
+91 81 44 49 65 21 69 93 5 67 11 32 80
+4
+34 94 10 17
+20
+84 87 89 10 56 30 48 55 50 21 41 56 16 79 62 27 15 55 76 68
+14
+15 84 37 35 31 48 95 71 0 24 67 56 74 2
+1
+80
+20
+31 33 26 22 36 18 69 25 34 39 74 96 32 87 57 21 69 45 62 53
+4
+98 26 73 49
+7
+36 13 3 15 72 95 1
+18
+37 86 97 92 83 17 9 64 47 73 39 55 64 86 45 97 67 41
+1
+15
+15
+91 57 44 39 69 51 43 100 93 87 73 63 14 82 48
+13
+26 71 0 35 81 76 92 94 93 65 25 59 76
+17
+52 95 91 39 89 21 57 79 85 67 25 46 67 0 86 49 74
+14
+51 43 79 74 93 89 95 8 63 95 31 81 83 37
+1
+52
+5
+81 99 50 100 34
+6
+98 9 99 77 1 44
+9
+90 52 87 69 38 19 59 33 62
+6
+59 65 5 34 65 12
+19
+54 8 45 8 84 56 2 21 64 90 20 88 11 51 81 88 35 77 38
+7
+67 26 30 42 34 8 9
+17
+84 47 59 65 71 94 6 21 38 83 94 91 71 34 45 78 94
+8
+50 71 51 22 61 33 78 42
+8
+33 78 90 31 84 3 79 51
+11
+55 97 31 100 34 24 9 80 93 21 74
+15
+74 93 18 77 33 58 67 20 17 99 17 91 56 46 39
+13
+30 14 91 26 91 87 39 8 13 29 50 41 63
+4
+23 5 7 76
+1
+96
+7
+87 4 63 90 67 92 78
+15
+43 84 35 15 78 88 22 12 28 51 29 63 57 48 96
+6
+29 30 36 59 70 74
+13
+27 57 91 33 42 63 75 14 27 10 5 1 0
+16
+40 49 74 36 25 51 20 97 82 19 3 1 49 18 85 69
+2
+72 48
+9
+16 10 59 83 38 1 4 68 7
+17
+16 5 35 99 15 55 11 24 3 63 81 16 95 35 87 24 84
+15
+49 42 80 34 33 82 81 31 31 7 75 100 75 22 44
+14
+77 89 71 81 66 7 45 70 52 68 25 91 68 54
+3
+91 34 95
+20
+92 96 9 32 22 12 19 7 26 54 5 6 81 11 65 60 64 47 12 40
+2
+16 68
+2
+56 85
+`
+
+type testCase struct {
+	n   int
+	arr []int64
+}
+
+func loadTestcases() ([]testCase, error) {
+	fields := strings.Fields(rawTestcasesB)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no embedded testcases")
+	}
+	idx := 0
+	t, err := strconv.Atoi(fields[idx])
+	if err != nil {
+		return nil, fmt.Errorf("parse t: %w", err)
+	}
+	idx++
+	cases := make([]testCase, 0, t)
+	for caseNo := 0; caseNo < t; caseNo++ {
+		if idx >= len(fields) {
+			return nil, fmt.Errorf("case %d: unexpected end of data", caseNo+1)
+		}
+		n, err := strconv.Atoi(fields[idx])
+		if err != nil {
+			return nil, fmt.Errorf("case %d: parse n: %w", caseNo+1, err)
+		}
+		idx++
+		if idx+n > len(fields) {
+			return nil, fmt.Errorf("case %d: not enough numbers", caseNo+1)
+		}
+		arr := make([]int64, n)
+		for i := 0; i < n; i++ {
+			v, err := strconv.ParseInt(fields[idx+i], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("case %d: parse a[%d]: %w", caseNo+1, i, err)
+			}
+			arr[i] = v
+		}
+		idx += n
+		cases = append(cases, testCase{n: n, arr: arr})
+	}
+	return cases, nil
+}
+
+// longestGood mirrors 365B.go to compute expected answer.
 func longestGood(arr []int64) int {
 	n := len(arr)
 	if n <= 2 {
@@ -33,70 +281,52 @@ func longestGood(arr []int64) int {
 	return ans
 }
 
-func runCase(bin string, arr []int64) error {
-	var in bytes.Buffer
-	fmt.Fprintln(&in, len(arr))
-	for i, v := range arr {
-		if i > 0 {
-			in.WriteByte(' ')
-		}
-		fmt.Fprint(&in, v)
-	}
-	in.WriteByte('\n')
-	cmd := exec.Command(bin)
-	cmd.Stdin = bytes.NewReader(in.Bytes())
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
-	}
-	got := strings.TrimSpace(out.String())
-	expected := fmt.Sprintf("%d", longestGood(arr))
-	if got != expected {
-		return fmt.Errorf("expected %s got %s", expected, got)
-	}
-	return nil
-}
-
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesB.txt")
+
+	testcases, err := loadTestcases()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "could not open testcasesB.txt:", err)
+		fmt.Fprintf(os.Stderr, "failed to parse embedded testcases: %v\n", err)
 		os.Exit(1)
 	}
-	defer f.Close()
-	scan := bufio.NewScanner(f)
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Fprintln(os.Stderr, "invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Fprintf(os.Stderr, "missing n on case %d\n", i+1)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(scan.Text())
-		arr := make([]int64, n)
-		for j := 0; j < n; j++ {
-			if !scan.Scan() {
-				fmt.Fprintf(os.Stderr, "missing value on case %d pos %d\n", i+1, j+1)
-				os.Exit(1)
+
+	for idx, tc := range testcases {
+		expect := longestGood(tc.arr)
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprint(tc.n))
+		sb.WriteByte('\n')
+		for i, v := range tc.arr {
+			if i > 0 {
+				sb.WriteByte(' ')
 			}
-			v, _ := strconv.ParseInt(scan.Text(), 10, 64)
-			arr[j] = v
+			sb.WriteString(fmt.Sprint(v))
 		}
-		if err := runCase(bin, arr); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
+		sb.WriteByte('\n')
+
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(sb.String())
+		var out bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("case %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr.String())
+			os.Exit(1)
+		}
+		gotStr := strings.TrimSpace(out.String())
+		got, err := strconv.Atoi(gotStr)
+		if err != nil {
+			fmt.Printf("case %d: failed to parse output %q\n", idx+1, gotStr)
+			os.Exit(1)
+		}
+		if got != expect {
+			fmt.Printf("case %d failed: expected %d got %d\n", idx+1, expect, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

@@ -1,85 +1,782 @@
 package main
 
 import (
-    "bufio"
     "bytes"
     "fmt"
+    "math"
+    "math/bits"
     "os"
     "os/exec"
+    "strconv"
     "strings"
 )
 
-type testCaseE struct{input string}
+var rawTestcases = []string{
+    "100",
+    "2 2 1 6",
+    "2 1 1",
+    "100000",
+    "1 2 8",
+    "100000",
+    "2 1 3 8",
+    "2 1 1",
+    "52162 42729 5109",
+    "3 2 1 2",
+    "2 3 5",
+    "100000",
+    "3 2 10",
+    "100000",
+    "2 1 1 7",
+    "2 1 8",
+    "100000",
+    "2 2 3 4",
+    "1 2 6",
+    "45436 21864 32700",
+    "2 1 3",
+    "50183 42706 7111",
+    "2 1 2 10",
+    "2 1 10",
+    "74644 25356",
+    "3 1 3 10",
+    "2 1 5",
+    "24606 42161 33233",
+    "3 3 3 3",
+    "2 1 0",
+    "58310 18844 22846",
+    "3 1 1",
+    "41408 22205 36387",
+    "2 1 0",
+    "31407 61328 7265",
+    "3 3 3 5",
+    "1 2 4",
+    "28556 13573 57871",
+    "2 3 10",
+    "7863 29670 62467",
+    "1 2 4",
+    "17763 32553 49684",
+    "2 2 3 0",
+    "2 1 7",
+    "18895 40690 40415",
+    "2 1 7",
+    "24698 50524 24778",
+    "2 1 1 0",
+    "1 2 9",
+    "100000",
+    "3 1 1 8",
+    "2 3 3",
+    "100000",
+    "2 1 2 6",
+    "2 1 3",
+    "48712 51288",
+    "2 3 2 3",
+    "2 1 0",
+    "12640 87360",
+    "2 1 8",
+    "47339 52661",
+    "2 1 5",
+    "14017 85983",
+    "2 3 2 10",
+    "1 2 6",
+    "17764 82236",
+    "1 2 4",
+    "58230 41770",
+    "2 1 10",
+    "71885 28115",
+    "3 2 2 1",
+    "2 3 10",
+    "81111 18889",
+    "2 3 2",
+    "28768 71232",
+    "2 1 3 10",
+    "2 1 0",
+    "55427 41134 3439",
+    "3 1 2 6",
+    "1 3 0",
+    "55470 44530",
+    "3 3 2 8",
+    "2 1 1",
+    "4685 95315",
+    "3 1 7",
+    "68579 31421",
+    "3 1 0",
+    "81982 18018",
+    "2 2 2 1",
+    "1 2 6",
+    "39757 60243",
+    "2 1 7",
+    "80792 19208",
+    "2 1 3 5",
+    "2 1 10",
+    "17255 56113 26632",
+    "3 2 1 8",
+    "1 2 2",
+    "100000",
+    "3 1 5",
+    "100000",
+    "3 2 3 0",
+    "3 1 0",
+    "59962 28848 11190",
+    "3 1 7",
+    "39737 33373 26890",
+    "2 3 1 6",
+    "2 1 2",
+    "100000",
+    "1 2 8",
+    "100000",
+    "2 1 4",
+    "100000",
+    "3 3 2 2",
+    "2 1 9",
+    "17568 82432",
+    "3 1 4",
+    "65322 34678",
+    "3 2 10",
+    "86916 13084",
+    "2 2 3 2",
+    "2 1 4",
+    "3582 93313 3105",
+    "1 2 1",
+    "17132 19717 63151",
+    "3 3 3 1",
+    "1 3 7",
+    "41114 45362 13524",
+    "3 2 6",
+    "45167 17901 36932",
+    "3 1 4",
+    "27361 17144 55495",
+    "3 3 3 8",
+    "2 3 6",
+    "30249 27412 42339",
+    "2 3 0",
+    "25764 18853 55383",
+    "2 3 8",
+    "44444 26336 29220",
+    "3 3 1 2",
+    "3 1 7",
+    "100000",
+    "2 3 4",
+    "100000",
+    "2 1 10",
+    "100000",
+    "2 1 1 1",
+    "2 1 0",
+    "100000",
+    "3 3 3 9",
+    "3 2 0",
+    "56550 26463 16987",
+    "1 2 1",
+    "26842 59655 13503",
+    "3 2 9",
+    "41939 46618 11443",
+    "2 3 2 2",
+    "1 2 0",
+    "56714 43286",
+    "1 2 2",
+    "41907 58093",
+    "2 1 6",
+    "50697 49303",
+    "3 3 2 8",
+    "3 2 6",
+    "65858 34142",
+    "2 1 6",
+    "9147 90853",
+    "3 1 4",
+    "63993 36007",
+    "2 1 3 0",
+    "1 2 8",
+    "13520 33036 53444",
+    "3 2 1 8",
+    "3 1 1",
+    "100000",
+    "3 2 4",
+    "100000",
+    "3 3 3 0",
+    "3 1 4",
+    "31605 36133 32262",
+    "2 3 5",
+    "13112 37148 49740",
+    "1 3 0",
+    "41585 22167 36248",
+    "3 2 1 2",
+    "3 1 7",
+    "100000",
+    "3 1 0",
+    "100000",
+    "2 2 3 2",
+    "2 1 8",
+    "87557 154 12289",
+    "1 2 9",
+    "2326 93309 4365",
+    "2 2 3 2",
+    "1 2 3",
+    "40312 40856 18832",
+    "2 1 2",
+    "42509 50901 6590",
+    "3 3 3 4",
+    "1 3 6",
+    "45240 24580 30180",
+    "1 2 6",
+    "20245 24308 55447",
+    "2 3 6",
+    "18989 44353 36658",
+    "2 2 2 8",
+    "1 2 4",
+    "67955 32045",
+    "1 2 1",
+    "21113 78887",
+    "2 3 1 4",
+    "1 2 1",
+    "100000",
+    "2 1 7",
+    "100000",
+    "1 2 4",
+    "100000",
+    "2 3 1 10",
+    "1 2 0",
+    "100000",
+    "2 1 2",
+    "100000",
+    "1 2 10",
+    "100000",
+    "3 1 1 2",
+    "2 3 8",
+    "100000",
+    "3 2 2 6",
+    "1 2 3",
+    "55459 44541",
+    "2 3 3",
+    "47973 52027",
+    "3 2 2 8",
+    "3 1 3",
+    "35377 64623",
+    "1 3 3",
+    "44019 55981",
+    "2 1 2 5",
+    "2 1 4",
+    "64675 35325",
+    "2 1 2 9",
+    "2 1 7",
+    "83664 16336",
+    "3 1 3 6",
+    "1 2 4",
+    "49380 46131 4489",
+    "2 2 1 10",
+    "1 2 9",
+    "100000",
+    "1 2 6",
+    "100000",
+    "2 3 1 2",
+    "1 2 3",
+    "100000",
+    "2 1 5",
+    "100000",
+    "2 1 8",
+    "100000",
+    "3 3 1 7",
+    "2 1 1",
+    "100000",
+    "3 1 2",
+    "100000",
+    "3 1 9",
+    "100000",
+    "3 1 3 0",
+    "3 1 8",
+    "16543 24729 58728",
+    "2 2 2 4",
+    "1 2 4",
+    "43388 56612",
+    "1 2 6",
+    "94443 5557",
+    "3 3 3 5",
+    "1 2 10",
+    "14907 79050 6043",
+    "2 1 10",
+    "34389 30174 35437",
+    "3 1 1",
+    "3466 1178 95356",
+    "3 1 1 8",
+    "3 2 10",
+    "100000",
+    "2 3 3 8",
+    "1 2 2",
+    "7521 55092 37387",
+    "2 1 9",
+    "45604 9207 45189",
+    "1 2 8",
+    "46891 30950 22159",
+    "3 1 3 5",
+    "3 2 3",
+    "50073 36257 13670",
+    "3 3 3 8",
+    "1 3 8",
+    "55598 18905 25497",
+    "3 2 5",
+    "25852 48530 25618",
+    "2 3 3",
+    "32632 29608 37760",
+    "3 2 2 10",
+    "1 2 1",
+    "41497 58503",
+    "3 1 2",
+    "82159 17841",
+    "3 1 3 0",
+    "1 3 10",
+    "58070 18649 23281",
+    "2 2 3 6",
+    "2 1 10",
+    "27490 45591 26919",
+    "2 1 5",
+    "13451 29625 56924",
+    "2 2 1 6",
+    "1 2 10",
+    "100000",
+    "1 2 5",
+    "100000",
+    "3 3 1 0",
+    "2 1 6",
+    "100000",
+    "1 2 5",
+    "100000",
+    "2 3 1",
+    "100000",
+    "2 1 2 6",
+    "1 2 1",
+    "49842 50158",
+    "3 2 3 5",
+    "2 3 4",
+    "32264 59350 8386",
+    "2 3 1",
+    "43516 29849 26635",
+    "3 1 3 9",
+    "1 2 4",
+    "12457 33740 53803",
+    "2 3 3 10",
+    "1 2 3",
+    "40011 27397 32592",
+    "2 1 7",
+    "1029 61226 37745",
+    "2 1 2",
+    "39382 42551 18067",
+    "3 3 3 9",
+    "3 2 9",
+    "13437 48475 38088",
+    "3 2 5",
+    "32974 26955 40071",
+    "1 3 10",
+    "33943 19851 46206",
+    "2 3 3 2",
+    "1 2 10",
+    "56680 30200 13120",
+    "1 2 2",
+    "28861 30021 41118",
+    "1 2 0",
+    "87083 8265 4652",
+    "3 1 3 10",
+    "1 2 8",
+    "5168 44566 50266",
+    "2 1 1 0",
+    "1 2 5",
+    "100000",
+    "3 3 2 9",
+    "1 3 5",
+    "50971 49029",
+    "3 1 9",
+    "48768 51232",
+    "1 2 0",
+    "84819 15181",
+    "2 3 1 0",
+    "2 1 10",
+    "100000",
+    "1 2 6",
+    "100000",
+    "2 1 2",
+    "100000",
+    "2 1 3 7",
+    "2 1 10",
+    "22920 24761 52319",
+    "2 2 2 9",
+    "2 1 2",
+    "73196 26804",
+    "1 2 10",
+    "80807 19193",
+    "2 3 1 8",
+    "1 2 0",
+    "100000",
+    "2 1 10",
+    "100000",
+    "1 2 4",
+    "100000",
+    "2 1 2 9",
+    "2 1 1",
+    "52395 47605",
+    "2 3 2 9",
+    "2 1 7",
+    "59750 40250",
+    "1 2 0",
+    "52773 47227",
+    "2 1 9",
+    "31981 68019",
+    "3 3 2 5",
+    "2 3 1",
+    "48668 51332",
+    "2 1 1",
+    "51911 48089",
+    "2 3 7",
+    "54129 45871",
+    "3 3 2 1",
+    "2 3 8",
+    "14183 85817",
+    "2 3 0",
+    "29251 70749",
+    "3 1 10",
+    "44342 55658",
+    "2 1 2 3",
+    "1 2 8",
+    "46762 53238",
+    "3 3 3 7",
+    "2 1 10",
+    "2518 50941 46541",
+    "3 1 8",
+    "19684 76822 3494",
+    "3 2 5",
+    "23923 70758 5319",
+    "2 2 1 6",
+    "2 1 5",
+    "100000",
+    "2 1 6",
+    "100000",
+    "2 1 2 6",
+    "2 1 7",
+    "59381 40619",
+    "3 3 1 2",
+    "1 2 9",
+    "100000",
+    "3 1 1",
+    "100000",
+    "3 1 10",
+    "100000",
+    "3 3 3 3",
+    "1 2 6",
+    "28860 53327 17813",
+    "1 2 4",
+    "51462 41828 6710",
+    "3 2 4",
+    "27164 36871 35965",
+    "3 1 1 5",
+    "2 1 9",
+    "100000",
+    "2 2 2 9",
+    "1 2 9",
+    "40358 59642",
+    "1 2 6",
+    "47284 52716",
+    "3 3 1 10",
+    "2 3 2",
+    "100000",
+    "2 3 10",
+    "100000",
+    "2 3 8",
+    "100000",
+    "2 2 3 8",
+    "2 1 5",
+    "42647 31698 25655",
+    "2 1 3",
+    "19251 50368 30381",
+    "2 2 2 7",
+    "2 1 9",
+    "63970 36030",
+    "1 2 4",
+    "29454 70546",
+    "2 2 2 3",
+    "1 2 1",
+    "56611 43389",
+    "1 2 9",
+    "10320 89680",
+    "3 2 2 5",
+    "3 1 1",
+    "53849 46151",
+    "1 2 5",
+    "18371 81629",
+    "3 3 2 1",
+    "2 3 8",
+    "16413 83587",
+    "2 3 7",
+    "45090 54910",
+    "3 2 2",
+    "14384 85616",
+    "3 2 1 8",
+    "2 3 10",
+    "100000",
+    "1 3 7",
+    "100000",
+    "3 1 3 0",
+    "2 1 8",
+    "20444 51008 28548",
+    "2 3 3 3",
+    "2 1 0",
+    "29837 44240 25923",
+    "1 2 1",
+    "41680 16498 41822",
+    "1 2 1",
+    "9881 44873 45246",
+    "2 1 3 4",
+    "1 2 5",
+    "46374 19762 33864",
+    "3 1 3 1",
+    "3 2 4",
+    "39535 16802 43663",
+}
 
-func parseTestcases(path string)([]testCaseE,error){
-    f,err:=os.Open(path)
-    if err!=nil{return nil,err}
-    defer f.Close()
-    in:=bufio.NewReader(f)
-    var T int
-    if _,err:=fmt.Fscan(in,&T); err!=nil {return nil,err}
-    cases:=make([]testCaseE,T)
-    for i:=0;i<T;i++{
-        var n,m,t,x int
-        fmt.Fscan(in,&n,&m,&t,&x)
+type testCase struct {
+    n, m, t, x int
+    u, v, w    []int
+    prob       [][]float64
+    input      string
+}
+
+func parseCases() []testCase {
+    words := strings.Fields(strings.Join(rawTestcases, "\n"))
+    pos := 0
+    nextInt := func() int {
+        v, _ := strconv.Atoi(words[pos])
+        pos++
+        return v
+    }
+    tcaseCount := nextInt()
+    cases := make([]testCase, 0, tcaseCount)
+    for c := 0; c < tcaseCount; c++ {
+        n := nextInt()
+        m := nextInt()
+        tt := nextInt()
+        x := nextInt()
+        u := make([]int, m)
+        v := make([]int, m)
+        w := make([]int, m)
+        prob := make([][]float64, m)
         var sb strings.Builder
-        fmt.Fprintf(&sb,"%d %d %d %d\n",n,m,t,x)
-        for j:=0;j<m;j++{
-            var u,v,w int
-            fmt.Fscan(in,&u,&v,&w)
-            fmt.Fprintf(&sb,"%d %d %d\n",u,v,w)
-            for k:=0;k<t;k++{
-                var p int
-                fmt.Fscan(in,&p)
-                if k>0{sb.WriteByte(' ')}
-                sb.WriteString(fmt.Sprint(p))
+        fmt.Fprintf(&sb, "%d %d %d %d\n", n, m, tt, x)
+        for i := 0; i < m; i++ {
+            u[i] = nextInt()
+            v[i] = nextInt()
+            w[i] = nextInt()
+            fmt.Fprintf(&sb, "%d %d %d\n", u[i], v[i], w[i])
+            prob[i] = make([]float64, tt+1)
+            for j := 1; j <= tt; j++ {
+                p := nextInt()
+                prob[i][j] = float64(p) / 100000.0
+                if j > 1 {
+                    sb.WriteByte(' ')
+                }
+                sb.WriteString(strconv.Itoa(p))
             }
             sb.WriteByte('\n')
         }
-        cases[i]=testCaseE{input:sb.String()}
+        cases = append(cases, testCase{
+            n:     n,
+            m:     m,
+            t:     tt,
+            x:     x,
+            u:     u,
+            v:     v,
+            w:     w,
+            prob:  prob,
+            input: sb.String(),
+        })
     }
-    return cases,nil
+    return cases
 }
 
-func run(bin,input string)(string,error){
-    var cmd *exec.Cmd
-    if strings.HasSuffix(bin, ".go") {
-        cmd=exec.Command("go","run",bin)
-    }else{ cmd=exec.Command(bin) }
-    cmd.Stdin=strings.NewReader(input)
-    var out,errb bytes.Buffer
-    cmd.Stdout=&out
-    cmd.Stderr=&errb
-    if err:=cmd.Run(); err!=nil{
-        return "",fmt.Errorf("runtime error: %v\n%s",err,errb.String())
+// fft performs in-place FFT on a, invert indicates inverse transform
+func fft(a []complex128, invert bool) {
+    n := len(a)
+    logN := 0
+    for (1 << logN) < n {
+        logN++
     }
-    return strings.TrimSpace(out.String()),nil
+    rev := make([]int, n)
+    for i := 0; i < n; i++ {
+        rev[i] = rev[i>>1]>>1 | ((i & 1) << (logN - 1))
+    }
+    for i := 0; i < n; i++ {
+        if i < rev[i] {
+            a[i], a[rev[i]] = a[rev[i]], a[i]
+        }
+    }
+    for length := 2; length <= n; length <<= 1 {
+        ang := 2 * math.Pi / float64(length)
+        if invert {
+            ang = -ang
+        }
+        wlen := complex(math.Cos(ang), math.Sin(ang))
+        for i := 0; i < n; i += length {
+            wcur := complex(1, 0)
+            half := length >> 1
+            for j := 0; j < half; j++ {
+                u := a[i+j]
+                v := a[i+j+half] * wcur
+                a[i+j] = u + v
+                a[i+j+half] = u - v
+                wcur *= wlen
+            }
+        }
+    }
+    if invert {
+        invN := complex(1/float64(n), 0)
+        for i := 0; i < n; i++ {
+            a[i] *= invN
+        }
+    }
 }
 
-func main(){
-    if len(os.Args)!=2{
-        fmt.Println("usage: go run verifierE.go /path/to/binary")
+func solve(tc testCase) float64 {
+    n, m, t, x := tc.n, tc.m, tc.t, tc.x
+    u, v, w := tc.u, tc.v, tc.w
+    p := tc.prob
+
+    psum := make([][]float64, m)
+    for i := 0; i < m; i++ {
+        psum[i] = make([]float64, t+2)
+        for j := t; j >= 1; j-- {
+            psum[i][j] = psum[i][j+1] + p[i][j]
+        }
+    }
+
+    dis := make([]float64, n+1)
+    const INF = 1e18
+    for i := 1; i <= n; i++ {
+        dis[i] = INF
+    }
+    dis[n] = 0
+    // Bellman-Ford
+    for iter := 0; iter < n; iter++ {
+        updated := false
+        for i := 0; i < m; i++ {
+            if dis[v[i]] >= INF {
+                continue
+            }
+            nd := dis[v[i]] + float64(w[i])
+            if nd < dis[u[i]] {
+                dis[u[i]] = nd
+                updated = true
+            }
+        }
+        if !updated {
+            break
+        }
+    }
+
+    for i := 1; i <= n; i++ {
+        dis[i] += float64(x)
+    }
+
+    f := make([][]float64, n+1)
+    for i := 1; i <= n; i++ {
+        f[i] = make([]float64, t+1)
+        if i != n {
+            for j := 0; j <= t; j++ {
+                f[i][j] = dis[i]
+            }
+        }
+    }
+    g := make([][]float64, m)
+    for i := 0; i < m; i++ {
+        g[i] = make([]float64, t+1)
+    }
+
+    var calc func(l, r, idx int)
+    calc = func(l, r, idx int) {
+        mid := (l + r) >> 1
+        na := r - l
+        nb := mid - l
+        nn := na + nb
+        N := 1 << bits.Len(uint(nn))
+        A := make([]complex128, N)
+        B := make([]complex128, N)
+        for i := 0; i <= na && i < len(A); i++ {
+            A[i] = complex(p[idx][i], 0)
+        }
+        for i := 0; i <= nb && i < len(B); i++ {
+            B[i] = complex(f[v[idx]][i+l], 0)
+        }
+        fft(A, false)
+        fft(B, false)
+        for i := 0; i < N; i++ {
+            A[i] *= B[i]
+        }
+        fft(A, true)
+        for j := mid + 1; j <= r; j++ {
+            idxC := j - l
+            if idxC >= 0 && idxC < len(A) {
+                g[idx][j] += real(A[idxC])
+            }
+        }
+    }
+
+    var divide func(l, r int)
+    divide = func(l, r int) {
+        if l == r {
+            for i := 0; i < m; i++ {
+                val := g[i][l] + float64(w[i]) + psum[i][l+1]*dis[v[i]]
+                if val < f[u[i]][l] {
+                    f[u[i]][l] = val
+                }
+            }
+            return
+        }
+        mid := (l + r) >> 1
+        divide(l, mid)
+        for i := 0; i < m; i++ {
+            calc(l, r, i)
+        }
+        divide(mid+1, r)
+    }
+
+    divide(0, t)
+    return f[1][t]
+}
+
+func runSolution(bin, input string) (string, error) {
+    cmd := exec.Command(bin)
+    cmd.Stdin = strings.NewReader(input)
+    var out bytes.Buffer
+    var errb bytes.Buffer
+    cmd.Stdout = &out
+    cmd.Stderr = &errb
+    if err := cmd.Run(); err != nil {
+        return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
+    }
+    return strings.TrimSpace(out.String()), nil
+}
+
+func main() {
+    if len(os.Args) != 2 {
+        fmt.Println("usage: verifierE <solution-binary>")
         os.Exit(1)
     }
-    bin:=os.Args[1]
-    cases,err:=parseTestcases("testcasesE.txt")
-    if err!=nil{fmt.Fprintf(os.Stderr,"failed to parse testcases: %v\n",err);os.Exit(1)}
-    for idx,tc:=range cases{
-        exp,err:=run("553E.go",tc.input)
-        if err!=nil{
-            fmt.Fprintf(os.Stderr,"oracle failure on case %d: %v\n",idx+1,err)
+    bin := os.Args[1]
+    cases := parseCases()
+    const eps = 1e-3
+    for idx, tc := range cases {
+        expect := solve(tc)
+        gotStr, err := runSolution(bin, tc.input)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
             os.Exit(1)
         }
-        got,err:=run(bin,tc.input)
-        if err!=nil{
-            fmt.Fprintf(os.Stderr,"case %d failed: %v\n",idx+1,err)
+        fields := strings.Fields(gotStr)
+        if len(fields) == 0 {
+            fmt.Fprintf(os.Stderr, "case %d failed: empty output\n", idx+1)
             os.Exit(1)
         }
-        if strings.TrimSpace(got)!=strings.TrimSpace(exp){
-            fmt.Fprintf(os.Stderr,"case %d failed: expected %s got %s\n",idx+1,exp,got)
+        gotVal, err := strconv.ParseFloat(fields[0], 64)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "case %d failed: bad float %q\n", idx+1, fields[0])
+            os.Exit(1)
+        }
+        if math.Abs(gotVal-expect) > eps {
+            fmt.Fprintf(os.Stderr, "case %d failed: expected %.6f got %.6f\n", idx+1, expect, gotVal)
             os.Exit(1)
         }
     }
     fmt.Printf("All %d tests passed\n", len(cases))
 }
-

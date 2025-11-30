@@ -106,6 +106,7 @@ func abs(x int) int {
 	return x
 }
 
+// Embedded copy of testcasesE.txt so the verifier is self-contained.
 const testcasesE = `100
 5
 3 3 4
@@ -707,7 +708,9 @@ func solveOne(segs []segment) int64 {
 	return ans
 }
 
-func referenceSolve(input string) (string, error) {
+// Embedded solution from 1981E.go; used to derive expected outputs without
+// calling an external oracle binary.
+func embeddedSolution(input string) (string, error) {
 	in := bufio.NewReader(strings.NewReader(input))
 	var t int
 	if _, err := fmt.Fscan(in, &t); err != nil {
@@ -715,8 +718,6 @@ func referenceSolve(input string) (string, error) {
 	}
 
 	var sb strings.Builder
-	out := bufio.NewWriter(&sb)
-	defer out.Flush()
 
 	for ; t > 0; t-- {
 		var n int
@@ -730,7 +731,7 @@ func referenceSolve(input string) (string, error) {
 			}
 			segs[i].idx = i
 		}
-		fmt.Fprintln(out, solveOne(segs))
+		fmt.Fprintf(&sb, "%d\n", solveOne(segs))
 	}
 
 	return strings.TrimSpace(sb.String()), nil
@@ -751,9 +752,9 @@ func main() {
 	bin := os.Args[1]
 
 	input := strings.TrimSpace(testcasesE) + "\n"
-	expected, err := referenceSolve(input)
+	expected, err := embeddedSolution(input)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "reference solver error:", err)
+		fmt.Fprintln(os.Stderr, "embedded solver error:", err)
 		os.Exit(1)
 	}
 

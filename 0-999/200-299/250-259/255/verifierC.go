@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,24 +9,96 @@ import (
 	"strings"
 )
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
-	}
-	return strings.TrimSpace(out.String()), nil
-}
+// Embedded testcases (previously in testcasesC.txt) to keep verifier self contained.
+const rawTestcasesC = `
+46 6 8 18 5 19 6 8 17 10 1 15 7 2 14 6 13 17 13 7 13 18 17 16 4 5 3 18 1 3 1 8 13 15 9 14 12 13 9 3 6 19 8 7 2 2 17
+5 15 8 15 5 20
+41 17 10 1 20 5 12 12 12 10 17 9 5 1 16 7 20 13 11 16 10 15 5 16 10 11 12 20 13 13 19 13 17 10 19 8 7 14 7 9 17 6
+33 5 20 17 18 17 16 11 9 14 10 15 17 2 7 9 15 3 1 7 20 4 9 1 7 6 20 6 12 20 9 1 1 1
+39 6 10 8 13 16 12 12 3 19 14 4 1 6 1 20 18 9 12 7 13 7 11 6 6 16 5 20 19 17 14 19 8 1 2 14 20 2 5 17
+6 14 10 11 20 7 2
+22 5 11 9 16 16 20 11 9 3 15 6 4 17 9 18 13 20 15 14 6 20 14
+50 5 4 19 4 6 16 10 4 14 9 9 4 12 17 18 3 1 2 20 1 5 4 14 13 16 1 11 5 3 13 19 8 2 7 14 1 2 20 13 5 18 10 14 13 18 2 15 18 5 18
+9 7 19 6 3 19 16 10 9 9
+14 13 1 2 17 3 1 10 5 5 17 5 4 11 1
+48 11 5 11 19 3 3 12 7 9 15 11 16 16 18 17 3 3 11 15 13 13 18 16 18 14 17 3 8 5 13 17 11 5 3 5 5 2 13 19 4 3 17 9 19 10 12 16 13
+38 11 20 15 17 12 8 17 2 13 12 11 17 1 8 19 3 16 4 12 14 20 8 18 1 17 17 4 2 19 12 2 12 6 11 9 16 16 14
+1 8
+42 16 12 6 2 16 17 6 13 10 19 16 7 1 15 20 20 6 20 15 11 19 11 14 19 5 17 14 13 8 12 13 10 8 7 9 8 18 19 12 15 8 20
+22 20 5 11 8 5 9 18 6 18 20 4 15 16 7 6 20 12 20 8 3 18 16
+14 10 13 9 17 7 12 14 11 1 2 7 7 20 6
+36 15 3 9 17 10 16 14 11 13 2 4 2 11 6 9 20 18 15 10 18 14 16 12 8 3 3 3 17 1 19 17 11 20 4 19 8
+2 2 4
+47 10 3 19 13 5 19 20 17 7 9 10 6 6 19 8 5 5 8 9 16 10 5 20 9 7 3 5 14 6 7 19 1 12 18 16 5 9 3 20 9 20 8 1 5 7 19 1
+27 5 5 16 18 2 17 11 8 6 15 11 15 8 9 7 4 12 16 9 12 18 19 10 7 10 18 13
+5 6 20 10 16 5 6
+31 16 19 13 10 10 7 10 10 17 18 16 2 8 17 14 16 2 13 16 1 5 12 10 7 20 2 14 11 19 14 5 7
+50 20 19 20 18 8 20 17 20 15 8 20 12 5 6 14 10 18 14 12 12 9 2 14 13 8 10 14 12 17 5 7 15 4 8 3 7 6 5 6 9 4 5 15 6 8 10 6 2 14 8
+38 16 3 10 1 4 7 9 2 18 19 10 7 18 16 19 20 6 8 11 19 5 1 14 19 9 15 8 6 19 13 14 16 14 14 2 17 16 11
+26 4 18 15 4 14 20 9 12 5 6 5 9 6 13 14 7 14 10 6 17 4 19 1 11 8 13
+34 15 3 17 7 16 15 19 11 11 8 4 10 20 5 14 19 5 9 10 15 5 5 7 19 6 5 8 15 7 5 4 8 10 16
+8 4 6 12 18 13 17 5 15
+49 7 17 12 10 5 2 8 8 5 16 14 14 2 2 5 4 12 16 7 18 16 1 10 6 18 4 2 12 4 10 3 9 7 2 8 1 4 15 1 8 16 20 18 18 13 1 6 11 7 11
+35 19 10 3 18 11 3 6 17 14 17 1 17 15 6 15 7 18 14 2 7 13 12 8 7 19 7 18 8 16 2 15 14 9 17 14
+30 16 5 17 4 15 6 11 16 8 17 3 5 10 4 7 3 5 18 3 16 17 5 7 18 11 4 15 8 10 6
+34 11 8 6 11 5 7 20 18 15 4 11 2 6 18 6 3 1 3 5 18 16 6 8 16 16 15 2 16 10 15 5 17 10 3
+12 8 1 15 2 15 1 13 10 10 9 1 10
+3 15 10 20
+30 5 1 1 8 17 2 7 14 16 1 7 4 17 20 1 9 12 11 10 5 17 7 13 13 14 16 6 5 19 6
+6 10 12 1 10 12 9
+29 5 9 11 1 5 16 17 14 14 11 2 6 14 4 15 20 12 7 14 6 16 18 20 6 13 9 8 7 10
+4 15 18 11 2 17
+10 16 6 10 20 14 20 18 13 19 10 11
+35 1 11 5 10 14 7 19 12 16 10 7 18 17 10 6 9 18 12 1 20 13 6 15 1 19 12 1 8 4 11 10 2 7 17 12
+49 19 1 3 18 2 2 9 19 4 13 11 8 13 16 3 18 6 19 15 6 9 13 8 2 17 11 1 14 16 18 10 7 15 8 3 19 6 3 12 11 5 7 12 10 11 2 6 12 1
+7 13 14 12 5 10 6 15
+48 1 3 16 14 14 19 18 8 11 19 13 16 10 17 6 16 11 20 2 11 4 7 12 14 10 13 5 3 10 2 17 9 2 2 4 14 7 3 12 15 8 12 9 20 14 1 18 18 12
+9 14 5 5 14 9 20 11 1 16
+30 7 2 10 16 2 11 9 5 18 7 9 10 14 12 15 2 9 15 15 20 3 19 19 4 8 13 6 16 12 2
+12 8 7 7 12 3 12 16 12 9 17 17 6
+7 2 8 3 12 6 9 18
+25 18 13 19 7 9 6 1 17 5 14 2 17 7 15 19 11 16 20 13 2 12 13 11 7 16
+16 3 17 14 12 15 10 4 10 13 13 13 17 7 19 18 12 6
+26 11 8 18 13 5 4 1 7 7 6 12 16 15 10 17 9 8 2 20 2 5 1 14 15 7 3
+15 4 3 17 14 2 17 9 10 4 17 6 2 6 6 18
+30 12 18 17 8 7 20 5 9 1 14 16 4 3 17 5 6 14 14 12 14 3 9 17 13 15 8 14 2 2 10
+40 20 10 11 17 12 17 2 8 12 13 16 19 10 1 6 11 13 2 11 9 9 5 20 20 8 1 1 9 6 15 14 2 15 12 9 6 16 14 17 9
+24 1 19 11 5 7 13 20 5 12 11 17 19 14 12 12 4 3 20 15 5 19 12 12 7
+34 9 3 15 13 19 6 16 1 17 12 2 20 13 11 8 3 5 6 1 10 10 4 2 8 4 18 4 10 1 12 18 19 9 20 13
+12 12 17 8 4 3 5 16 2 9 10 11 7
+22 11 9 3 6 2 20 6 4 2 20 10 9 11 3 11 9 16 14 15 13 16 6
+7 12 14 4 12 1 13 17
+28 15 16 14 20 10 20 4 17 17 15 9 11 14 14 13 20 1 2 5 16 11 2 9 4 13 20 19 6
+38 8 5 16 6 13 1 7 18 3 7 6 13 7 5 7 19 1 18 9 9 7 12 8 3 1 14 5 1 8 16 12 14 5 13 3 10 4 8
+1 8
+16 12 5 5 3 11 1 15 3 18 7 8 5 5 13 17 18
+13 16 12 2 8 7 15 15 15 7 17 14 17 1
+1 19
+20 13 14 6 4 4 17 7 4 15 2 16 16 20 13 2 11 13 16 19 8
+28 14 19 6 7 1 6 11 5 15 20 13 16 18 5 12 5 20 19 5 20 2 20 16 1 15 9 11 3
+18 7 14 10 16 16 13 12 13 19 13 1 5 18 19 1 1 12 3
+14 1 8 5 6 19 17 17 13 20 15 9 15 4 17
+16 16 3 20 6 2 18 6 20 2 3 7 12 17 18 4 8
+30 8 5 5 15 1 10 4 4 17 1 12 1 12 15 2 13 18 13 1 13 6 6 4 15 4 18 7 18 5 12
+24 7 10 20 7 4 5 2 17 16 20 9 18 17 1 13 1 19 12 15 13 14 2 12 15
+18 17 4 2 10 10 9 17 17 16 16 14 8 16 1 7 12 2 8
+30 18 20 9 13 4 5 15 16 2 15 12 11 7 10 13 7 13 14 14 2 1 18 4 13 13 8 18 3 5 12
+50 14 8 10 15 5 20 9 9 10 13 13 3 10 4 15 18 2 10 4 10 11 3 15 19 17 1 16 4 9 17 8 2 15 10 13 18 8 8 15 2 16 17 9 16 8 5 3 16 11 5
+44 12 13 12 11 18 14 16 12 8 17 3 6 20 4 11 10 1 5 18 9 4 3 2 3 6 14 12 15 13 16 14 8 19 18 7 10 9 14 2 7 14 4 14 6
+15 4 13 16 15 10 8 10 1 8 2 3 11 18 9 13 4
+22 4 8 11 8 16 20 9 18 8 19 4 11 12 12 15 10 20 10 7 16 12 15
+36 2 8 5 8 14 1 13 11 15 1 12 3 20 3 20 8 17 8 12 6 9 7 6 9 3 20 7 14 19 6 7 13 17 16 2 2
+48 4 8 11 7 8 3 19 1 11 5 5 1 15 6 10 16 16 14 6 1 15 2 15 17 18 2 15 5 18 1 7 12 2 20 4 3 10 9 13 9 3 1 7 15 17 5 4 11 18 11
+42 12 17 2 20 7 19 1 20 17 9 8 17 16 16 13 11 19 11 9 4 11 17 6 17 4 18 10 15 20 19 4 14 16 13 20 6 19 10 5 16 11 4
+8 10 19 4 9 8 12 6 16
+1 20
+44 3 20 4 19 6 18 20 15 15 3 6 10 6 7 9 5 20 18 4 2 20 16 3 7 2 5 19 1 17 17 7 9 2 20 19 9 2 14 11 6 14 18 15 2
+33 16 1 10 14 17 16 16 18 12 5 12 16 14 2 4 8 10 12 5 5 2 14 11 7 6 9 14 14 6 18 16 3 11
+40 11 7 13 12 13 18 15 5 4 12 6 4 20 12 15 14 9 18 17 20 7 2 16 7 5 13 5 12 16 7 6 6 4 14 5 2 1 5 3 1 3
+35 17 5 18 18 3 7 5 5 15 8 4 1 12 14 6 11 8 16 1 4 6 2 12 4 9 1 11 11 15 14 18 18 19 4 15
+`
 
+// solve mirrors 255C.go to compute expected result.
 func solve(arr []int) int {
 	comp := make(map[int]int, len(arr))
 	vals := make([]int, 0, len(arr))
@@ -93,53 +164,80 @@ func solve(arr []int) int {
 	return ans
 }
 
-func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierC.go /path/to/binary")
-		os.Exit(1)
-	}
-	bin := os.Args[1]
-	file, err := os.Open("testcasesC.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+func loadTestcases() ([][]int, error) {
+	lines := strings.Split(rawTestcasesC, "\n")
+	var cases [][]int
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		idx++
 		fields := strings.Fields(line)
-		n, _ := strconv.Atoi(fields[0])
-		if len(fields)-1 != n {
-			fmt.Fprintf(os.Stderr, "bad test line %d\n", idx)
-			os.Exit(1)
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: parse n: %w", idx+1, err)
+		}
+		if len(fields)-1 < n {
+			return nil, fmt.Errorf("line %d: expected at least %d numbers got %d", idx+1, n, len(fields)-1)
 		}
 		arr := make([]int, n)
 		for i := 0; i < n; i++ {
-			arr[i], _ = strconv.Atoi(fields[i+1])
+			v, err := strconv.Atoi(fields[i+1])
+			if err != nil {
+				return nil, fmt.Errorf("line %d: parse a[%d]: %w", idx+1, i, err)
+			}
+			arr[i] = v
 		}
-		input := fmt.Sprintf("%d\n%s\n", n, strings.Join(fields[1:], " "))
-		want := solve(arr)
-		got, err := run(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
-			os.Exit(1)
-		}
-		gotVal, _ := strconv.Atoi(strings.TrimSpace(got))
-		if gotVal != want {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %d got %d\n", idx, want, gotVal)
-			os.Exit(1)
-		}
+		cases = append(cases, arr)
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
+	return cases, nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+	bin := os.Args[1]
+
+	testcases, err := loadTestcases()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to parse embedded testcases: %v\n", err)
+		os.Exit(1)
+	}
+
+	for idx, arr := range testcases {
+		want := solve(arr)
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprint(len(arr)))
+		sb.WriteByte('\n')
+		for i, v := range arr {
+			if i > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(fmt.Sprint(v))
+		}
+		sb.WriteByte('\n')
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(sb.String())
+		var out bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("case %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr.String())
+			os.Exit(1)
+		}
+		got := strings.TrimSpace(out.String())
+		gotVal, err := strconv.Atoi(got)
+		if err != nil {
+			fmt.Printf("case %d: failed to parse output %q\n", idx+1, got)
+			os.Exit(1)
+		}
+		if gotVal != want {
+			fmt.Printf("case %d failed: expected %d got %d\n", idx+1, want, gotVal)
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

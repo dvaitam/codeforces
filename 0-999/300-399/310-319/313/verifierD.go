@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,120 +9,631 @@ import (
 	"strings"
 )
 
-// run executes the candidate binary with given input
-func run(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
-	}
-	return strings.TrimSpace(out.String()), nil
-}
+// Embedded testcases from testcasesD.txt.
+const embeddedTestcasesD = `100
+4 1 1
+1 2 79
+5 4 2
+3 4 18
+5 5 97
+4 4 82
+1 3 19
+5 4 2
+2 2 92
+1 4 36
+3 5 68
+1 4 60
+5 3 1
+2 2 67
+4 5 12
+3 3 87
+4 4 3
+4 4 56
+4 4 22
+2 4 15
+1 2 81
+5 7 3
+3 3 95
+5 5 41
+3 3 91
+5 5 14
+4 4 62
+3 4 56
+2 2 92
+5 3 2
+4 4 39
+5 5 7
+2 2 74
+3 5 2
+3 3 36
+3 3 48
+1 1 83
+2 2 94
+1 1 22
+3 7 1
+3 3 93
+2 3 33
+3 3 67
+1 3 54
+3 3 74
+3 3 59
+1 3 13
+4 3 4
+2 3 72
+1 3 55
+3 4 19
+1 8 1
+1 1 29
+1 1 18
+1 1 37
+1 1 8
+1 1 50
+1 1 25
+1 1 58
+1 1 6
+4 7 1
+2 4 14
+3 4 30
+3 4 65
+3 3 93
+1 3 28
+1 4 98
+4 4 43
+2 4 1
+2 2 27
+2 2 24
+2 2 6
+1 1 51
+4 7 1
+2 4 37
+3 3 73
+2 3 63
+4 4 79
+3 3 86
+4 4 29
+1 1 46
+4 4 3
+3 3 99
+1 1 86
+4 4 64
+2 3 72
+4 8 2
+2 2 68
+4 4 53
+3 3 11
+3 4 80
+2 4 63
+4 4 21
+3 4 69
+3 4 100
+5 1 4
+1 4 38
+4 6 4
+1 3 27
+4 4 46
+4 4 100
+4 4 9
+3 3 76
+2 4 68
+3 2 1
+3 3 72
+3 3 72
+4 5 2
+1 4 46
+3 4 7
+1 1 32
+4 4 6
+4 4 77
+2 2 2
+1 1 61
+1 1 3
+3 3 2
+1 1 31
+3 3 70
+3 3 8
+4 8 3
+2 4 10
+1 1 8
+2 3 99
+3 3 64
+3 3 72
+2 2 48
+3 3 69
+2 4 66
+3 4 1
+1 2 9
+1 2 54
+2 3 68
+1 1 48
+4 2 2
+1 4 72
+1 3 85
+5 6 2
+1 1 5
+1 2 42
+1 1 37
+3 4 8
+1 4 30
+3 4 99
+5 2 2
+5 5 48
+3 4 47
+1 2 1
+1 1 36
+1 1 63
+3 4 1
+1 2 45
+3 3 21
+1 3 80
+1 3 12
+3 7 1
+3 3 28
+2 2 60
+3 3 57
+1 2 78
+2 3 92
+3 3 55
+3 3 41
+4 7 3
+2 2 48
+4 4 91
+3 3 27
+1 4 27
+2 2 7
+3 4 84
+1 1 78
+5 1 3
+2 3 46
+4 7 3
+3 4 42
+4 4 58
+2 4 60
+2 3 70
+3 4 16
+1 2 90
+3 4 86
+2 2 2
+2 2 13
+2 2 3
+4 8 1
+2 2 27
+2 4 77
+2 3 48
+1 3 89
+3 3 44
+1 3 22
+4 4 94
+4 4 85
+4 8 3
+1 3 3
+1 4 63
+1 2 68
+1 1 49
+1 4 17
+4 4 74
+4 4 69
+1 2 22
+5 3 4
+2 5 25
+1 5 99
+1 5 61
+4 7 3
+4 4 79
+1 2 74
+1 4 63
+4 4 55
+2 2 5
+3 4 63
+2 4 76
+1 4 1
+1 1 38
+1 1 80
+1 1 50
+1 1 79
+3 7 1
+3 3 69
+2 2 34
+2 3 47
+2 3 98
+2 3 1
+1 2 47
+1 1 41
+1 7 1
+1 1 32
+1 1 15
+1 1 82
+1 1 28
+1 1 27
+1 1 74
+1 1 38
+2 4 2
+1 1 63
+1 1 40
+2 2 26
+1 2 40
+2 3 2
+2 2 45
+2 2 54
+1 2 27
+3 7 3
+2 3 8
+2 3 44
+3 3 42
+2 3 83
+3 3 9
+1 3 69
+2 3 80
+4 6 4
+1 3 87
+4 4 70
+1 4 70
+3 3 46
+1 4 65
+4 4 88
+1 5 1
+1 1 65
+1 1 71
+1 1 41
+1 1 58
+1 1 77
+5 7 3
+4 5 79
+5 5 38
+2 3 26
+4 4 32
+3 4 25
+5 5 20
+1 4 25
+2 4 2
+1 2 89
+2 2 96
+1 2 28
+1 1 45
+1 8 1
+1 1 49
+1 1 87
+1 1 81
+1 1 48
+1 1 80
+1 1 68
+1 1 69
+1 1 10
+2 2 2
+1 1 84
+2 2 72
+3 2 3
+3 3 4
+1 3 53
+1 7 1
+1 1 11
+1 1 69
+1 1 64
+1 1 81
+1 1 47
+1 1 44
+1 1 20
+5 5 1
+1 4 24
+4 5 82
+5 5 21
+5 5 87
+2 3 59
+1 2 1
+1 1 45
+1 1 53
+4 2 4
+3 3 44
+4 4 85
+5 5 1
+5 5 6
+5 5 40
+2 4 62
+2 5 44
+5 5 48
+3 8 1
+2 3 73
+3 3 56
+2 3 25
+1 2 7
+1 1 64
+1 1 14
+1 3 28
+3 3 88
+1 7 1
+1 1 49
+1 1 54
+1 1 87
+1 1 15
+1 1 68
+1 1 72
+1 1 2
+2 5 2
+1 2 85
+2 2 42
+2 2 94
+2 2 43
+1 1 17
+5 7 4
+4 4 76
+2 2 37
+1 1 55
+1 2 28
+3 3 86
+2 2 74
+4 5 56
+4 4 3
+1 3 63
+4 4 79
+1 1 15
+4 4 26
+4 1 3
+2 2 30
+3 5 1
+2 3 89
+1 1 25
+2 2 80
+3 3 7
+1 1 46
+5 2 5
+4 5 81
+2 3 57
+4 8 2
+1 2 89
+1 3 75
+2 2 91
+3 4 39
+2 2 14
+2 4 27
+3 4 7
+1 2 70
+4 5 2
+1 1 98
+2 4 65
+2 2 17
+4 4 64
+4 4 47
+4 3 1
+4 4 76
+2 4 50
+3 3 92
+2 6 1
+2 2 100
+2 2 6
+2 2 41
+1 1 42
+2 2 72
+2 2 74
+5 3 2
+1 4 15
+2 5 38
+5 5 38
+1 6 1
+1 1 77
+1 1 7
+1 1 8
+1 1 94
+1 1 11
+1 1 81
+3 6 3
+3 3 4
+3 3 94
+2 3 79
+1 1 46
+2 3 22
+2 2 51
+1 1 1
+1 1 20
+5 1 4
+3 3 3
+1 3 1
+1 1 79
+1 1 84
+1 1 66
+4 4 3
+3 3 47
+3 4 30
+3 4 68
+3 4 49
+4 2 1
+4 4 84
+2 4 87
+2 5 2
+2 2 90
+2 2 100
+2 2 13
+1 2 40
+1 1 5
+1 4 1
+1 1 12
+1 1 93
+1 1 8
+1 1 48
+5 8 2
+5 5 82
+1 4 73
+2 3 76
+2 2 37
+1 4 44
+4 5 19
+5 5 59
+2 5 21
+2 1 2
+2 2 15
+3 5 3
+1 3 91
+2 2 26
+3 3 34
+1 1 59
+1 3 63
+3 3 2
+3 3 1
+1 1 47
+3 3 48
+3 4 2
+1 3 66
+1 3 49
+2 3 50
+2 2 81
+1 1 1
+1 1 70
+2 5 1
+1 2 5
+2 2 71
+1 2 16
+1 1 20
+1 2 67
+4 5 4
+3 3 44
+2 2 60
+4 4 66
+2 3 50
+3 3 45
+3 8 3
+1 3 56
+2 3 53
+3 3 79
+1 2 73
+3 3 85
+2 2 53
+3 3 4
+1 3 33
+2 2 1
+2 2 3
+2 2 14
+4 7 3
+2 4 32
+2 4 57
+4 4 58
+2 4 13
+3 4 80
+1 2 39
+2 4 65
+3 7 3
+2 2 47
+2 2 15
+1 1 86
+2 3 17
+1 1 45
+2 2 97
+1 3 6
+5 4 5
+4 5 23
+4 5 64
+2 5 70
+4 5 30
+1 8 1
+1 1 12
+1 1 83
+1 1 69
+1 1 59
+1 1 17
+1 1 24
+1 1 44
+1 1 40
+3 6 2
+1 2 82
+2 2 89
+2 3 76
+2 3 13
+3 3 88
+1 1 69
+5 6 2
+1 1 72
+1 3 55
+4 5 42
+4 4 98
+2 4 90
+3 4 42
+1 2 1
+1 1 73
+1 1 39
+5 5 5
+2 4 71
+2 3 18
+5 5 49
+2 2 34
+4 5 87
+3 5 3
+2 3 83
+1 3 3
+3 3 19
+2 2 17
+1 3 17
+4 5 1
+4 4 70
+2 4 65
+4 4 78
+2 3 82
+4 4 72
+2 1 1
+2 2 89
+2 4 1
+2 2 19
+1 1 13
+1 1 75
+1 1 84`
 
-// compute minimal cost expected answer for a test case
-func min64(a, b int64) int64 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func solveExpected(n, m, k int, L, R []int, C []int64) int64 {
+func solveExpected(n, m, k int, segments [][3]int64) int64 {
 	const INF int64 = 1 << 60
-	// M[l][r] = minimal cost to buy exact [l,r]
-	mtx := make([][]int64, n+2)
-	for i := range mtx {
-		mtx[i] = make([]int64, n+2)
-		for j := range mtx[i] {
-			mtx[i][j] = INF
+	cost := make([][]int64, n+2)
+	for i := range cost {
+		cost[i] = make([]int64, n+2)
+		for j := range cost[i] {
+			cost[i][j] = INF
 		}
 	}
-	for i := 0; i < m; i++ {
-		l, r := L[i], R[i]
-		if C[i] < mtx[l][r] {
-			mtx[l][r] = C[i]
+	for _, seg := range segments {
+		l, r, c := seg[0], seg[1], seg[2]
+		if c < cost[l][r] {
+			cost[l][r] = c
 		}
 	}
-	// G[l][r] minimal cost to fully cover [l,r]
-	g := make([][]int64, n+2)
-	for i := range g {
-		g[i] = make([]int64, n+2)
-	}
-	for r := 1; r <= n; r++ {
-		// smin[l][x] = min_{t in [x..r]} mtx[l][t]
-		smin := make([][]int64, n+2)
-		for i := range smin {
-			smin[i] = make([]int64, n+2)
+	minCostFrom := make([][]int64, n+2)
+	for a := 1; a <= n; a++ {
+		minCostFrom[a] = make([]int64, n+3)
+		for x := 1; x <= n; x++ {
+			minCostFrom[a][x] = cost[a][x]
 		}
-		for l := r; l >= 1; l-- {
-			cur := INF
-			for x := r; x >= l; x-- {
-				if mtx[l][x] < cur {
-					cur = mtx[l][x]
-				}
-				smin[l][x] = cur
+		minCostFrom[a][n+1] = INF
+		for x := n; x >= 1; x-- {
+			if minCostFrom[a][x] > minCostFrom[a][x+1] {
+				minCostFrom[a][x] = minCostFrom[a][x+1]
 			}
 		}
-		best := make([]int64, n+3)
-		for i := range best {
-			best[i] = INF
+	}
+
+	ans := INF
+	f := make([]int64, n+2)
+	for L := 1; L <= n; L++ {
+		for i := L - 1; i <= n; i++ {
+			f[i] = INF
 		}
-		best[r+1] = 0
-		for l := r; l >= 1; l-- {
-			val := int64(1 << 60)
-			for x := l; x <= r; x++ {
-				sr := smin[l][x]
-				if sr >= INF || best[x+1] >= INF {
+		f[L-1] = 0
+		for x := L; x <= n; x++ {
+			best := INF
+			for a := L; a <= x; a++ {
+				if f[a-1] == INF {
 					continue
 				}
-				v := sr + best[x+1]
-				if v < val {
-					val = v
-				}
-			}
-			best[l] = val
-		}
-		for l := 1; l <= r; l++ {
-			g[l][r] = best[l]
-		}
-	}
-	// DP over disjoint segments to cover at least k positions
-	dp := make([][]int64, n+1)
-	for i := range dp {
-		dp[i] = make([]int64, n+1)
-		for j := range dp[i] {
-			dp[i][j] = INF
-		}
-	}
-	dp[0][0] = 0
-	for i := 1; i <= n; i++ {
-		for t := 0; t <= n; t++ {
-			dp[i][t] = dp[i-1][t]
-		}
-		for l := 1; l <= i; l++ {
-			cost := g[l][i]
-			if cost >= INF {
-				continue
-			}
-			len := i - l + 1
-			for t := len; t <= n; t++ {
-				if dp[l-1][t-len] >= INF {
+				c := minCostFrom[a][x]
+				if c == INF {
 					continue
 				}
-				v := dp[l-1][t-len] + cost
-				if v < dp[i][t] {
-					dp[i][t] = v
+				v := f[a-1] + c
+				if v < best {
+					best = v
 				}
 			}
+			f[x] = best
 		}
-	}
-	ans := int64(1 << 60)
-	for t := k; t <= n; t++ {
-		if dp[n][t] < ans {
-			ans = dp[n][t]
+		end := L + k - 1
+		if end > n {
+			continue
+		}
+		for x := end; x <= n; x++ {
+			if f[x] < ans {
+				ans = f[x]
+			}
 		}
 	}
 	if ans >= INF {
@@ -132,69 +642,84 @@ func solveExpected(n, m, k int, L, R []int, C []int64) int64 {
 	return ans
 }
 
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierD.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	data, err := os.ReadFile("testcasesD.txt")
+	lines := strings.Split(strings.TrimSpace(embeddedTestcasesD), "\n")
+	if len(lines) == 0 {
+		fmt.Println("no testcases found")
+		os.Exit(1)
+	}
+	t, err := strconv.Atoi(strings.TrimSpace(lines[0]))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to read testcases: %v\n", err)
+		fmt.Println("invalid test count")
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("bad test file")
-		os.Exit(1)
+	if t != len(lines)-1 {
+		// proceed; mismatch tolerated
 	}
-	t, _ := strconv.Atoi(scan.Text())
-	for caseNum := 1; caseNum <= t; caseNum++ {
-		if !scan.Scan() {
-			fmt.Println("bad test file")
+	for idx, line := range lines[1:] {
+		parts := strings.Fields(line)
+		if len(parts) < 3 {
+			fmt.Fprintf(os.Stderr, "case %d: invalid line\n", idx+1)
 			os.Exit(1)
 		}
-		n, _ := strconv.Atoi(scan.Text())
-		scan.Scan()
-		m, _ := strconv.Atoi(scan.Text())
-		scan.Scan()
-		k, _ := strconv.Atoi(scan.Text())
-		var input strings.Builder
-		input.WriteString(fmt.Sprintf("%d %d %d\n", n, m, k))
-		Ls := make([]int, m)
-		Rs := make([]int, m)
-		Cs := make([]int64, m)
+		n, err1 := strconv.Atoi(parts[0])
+		m, err2 := strconv.Atoi(parts[1])
+		k, err3 := strconv.Atoi(parts[2])
+		if err1 != nil || err2 != nil || err3 != nil {
+			fmt.Fprintf(os.Stderr, "case %d: parse error\n", idx+1)
+			os.Exit(1)
+		}
+		expectedSegVals := (len(parts) - 3)
+		if expectedSegVals%3 != 0 || expectedSegVals/3 != m {
+			fmt.Fprintf(os.Stderr, "case %d: expected %d segments got %d values\n", idx+1, m, expectedSegVals/3)
+			os.Exit(1)
+		}
+		segs := make([][3]int64, m)
+		pos := 3
 		for i := 0; i < m; i++ {
-			scan.Scan()
-			l, _ := strconv.Atoi(scan.Text())
-			scan.Scan()
-			r, _ := strconv.Atoi(scan.Text())
-			scan.Scan()
-			c, _ := strconv.Atoi(scan.Text())
-			input.WriteString(fmt.Sprintf("%d %d %d\n", l, r, c))
-			Ls[i], Rs[i], Cs[i] = l, r, int64(c)
+			l, _ := strconv.ParseInt(parts[pos], 10, 64)
+			r, _ := strconv.ParseInt(parts[pos+1], 10, 64)
+			c, _ := strconv.ParseInt(parts[pos+2], 10, 64)
+			segs[i] = [3]int64{l, r, c}
+			pos += 3
 		}
-		expected := solveExpected(n, m, k, Ls, Rs, Cs)
-		gotStr, err := run(bin, input.String())
+		var input strings.Builder
+		fmt.Fprintf(&input, "%d %d %d\n", n, m, k)
+		for _, s := range segs {
+			fmt.Fprintf(&input, "%d %d %d\n", s[0], s[1], s[2])
+		}
+		want := solveExpected(n, m, k, segs)
+		got, err := runCandidate(bin, input.String())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", caseNum, err)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		fields := strings.Fields(strings.TrimSpace(gotStr))
-		if len(fields) == 0 {
-			fmt.Fprintf(os.Stderr, "case %d failed: empty output\n", caseNum)
+		gotVal, err := strconv.ParseInt(strings.Fields(got)[0], 10, 64)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: output not integer: %s\n", idx+1, got)
 			os.Exit(1)
 		}
-		got, perr := strconv.ParseInt(fields[0], 10, 64)
-		if perr != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: output is not an integer: %q\n", caseNum, gotStr)
-			os.Exit(1)
-		}
-		if got != expected {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %d got %d\n", caseNum, expected, got)
+		if gotVal != want {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %d got %d\n", idx+1, want, gotVal)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", len(lines)-1)
 }

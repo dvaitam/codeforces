@@ -1,13 +1,115 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
+
+// Embedded copy of testcasesD.txt so the verifier is self-contained.
+const testcasesD = `865 777
+912 42
+266 249
+415 156
+992 367
+598 517
+143 36
+774 634
+819 546
+723 151
+318 38
+921 701
+339 287
+104 56
+324 105
+990 489
+454 267
+267 8
+96 52
+728 641
+2 2
+848 250
+748 721
+892 196
+940 228
+245 37
+823 459
+94 41
+897 502
+112 71
+299 281
+341 105
+987 618
+561 456
+94 50
+325 124
+298 97
+842 34
+628 488
+71 17
+898 40
+863 717
+946 554
+700 538
+283 121
+870 696
+604 594
+282 253
+677 366
+85 79
+119 76
+646 195
+249 188
+278 113
+381 171
+437 32
+104 19
+876 225
+47 41
+932 617
+697 28
+128 31
+401 190
+854 38
+621 200
+985 736
+127 27
+745 696
+24 14
+636 267
+72 10
+663 359
+447 32
+516 41
+611 401
+205 92
+927 482
+859 174
+715 209
+990 60
+808 163
+866 351
+543 121
+612 180
+14 11
+420 261
+940 665
+366 337
+257 7
+469 41
+344 279
+288 123
+781 361
+625 368
+605 318
+398 213
+849 83
+2 1
+716 164
+246 164`
 
 const MOD = 1000000007
 const MAXN = 1000
@@ -97,51 +199,87 @@ func solve(n, k int) int {
 	return f[n][k]
 }
 
-func runCase(bin string, n, k int) error {
+type testCase struct {
+	n int
+	k int
+}
+
+func parseCases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesD), "\n")
+	cases := make([]testCase, 0, len(lines))
+	for idx, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			return nil, fmt.Errorf("line %d: expected 2 numbers", idx+1)
+		}
+		n, err1 := strconv.Atoi(fields[0])
+		k, err2 := strconv.Atoi(fields[1])
+		if err1 != nil || err2 != nil {
+			return nil, fmt.Errorf("line %d: bad integers", idx+1)
+		}
+		cases = append(cases, testCase{n: n, k: k})
+	}
+	return cases, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
-	cmd.Stdin = bytes.NewBufferString(fmt.Sprintf("%d %d\n", n, k))
+	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
+	var stderr bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
 	}
-	outStr := strings.TrimSpace(out.String())
-	var got int
-	fmt.Sscan(outStr, &got)
-	exp := solve(n, k)
-	if got != exp {
-		return fmt.Errorf("expected %d got %s", exp, outStr)
-	}
-	return nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierD.go /path/to/binary")
+		fmt.Println("usage: verifierD /path/to/binary")
 		os.Exit(1)
 	}
-	precompute()
 	bin := os.Args[1]
-	file, err := os.Open("testcasesD.txt")
+	precompute()
+
+	cases, err := parseCases()
 	if err != nil {
-		panic(err)
+		fmt.Println("failed to load testcases:", err)
+		os.Exit(1)
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
+
+	// build bulk input with leading t
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d\n", len(cases))
+	for _, tc := range cases {
+		fmt.Fprintf(&sb, "%d %d\n", tc.n, tc.k)
+	}
+
+	gotStr, err := runCandidate(bin, sb.String())
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	outFields := strings.Fields(gotStr)
+	if len(outFields) != len(cases) {
+		fmt.Printf("expected %d outputs, got %d\n", len(cases), len(outFields))
+		os.Exit(1)
+	}
+	for idx, tc := range cases {
+		exp := solve(tc.n, tc.k)
+		got, err := strconv.Atoi(outFields[idx])
+		if err != nil {
+			fmt.Printf("case %d: bad output\n", idx+1)
+			os.Exit(1)
 		}
-		idx++
-		var n, k int
-		fmt.Sscan(line, &n, &k)
-		if err := runCase(bin, n, k); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
+		if got != exp {
+			fmt.Printf("case %d failed: expected %d got %d\n", idx+1, exp, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

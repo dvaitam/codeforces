@@ -78,14 +78,15 @@ func main() {
        var st, en, cost int
        for _, e := range edges {
            u, v, w := e.u, e.v, e.w
-           // add edge to graph
-           g[u] = append(g[u], v)
-           g[v] = append(g[v], u)
-           // if u and v already connected, this edge closes a cycle
-           if dsu.Find(u) == dsu.Find(v) {
-               st, en, cost = u, v, w
-           }
-           dsu.Union(u, v)
+      // if u and v already connected, this edge closes a cycle; skip adding it
+      if dsu.Find(u) == dsu.Find(v) {
+          st, en, cost = u, v, w
+          continue
+      }
+      // add edge to graph
+      g[u] = append(g[u], v)
+      g[v] = append(g[v], u)
+      dsu.Union(u, v)
        }
        // BFS to find path from st to en excluding the direct closing edge
        vis := make([]bool, n+1)
@@ -99,17 +100,13 @@ func main() {
            if u == en {
                break
            }
-           for _, v2 := range g[u] {
-               if u == st && v2 == en {
-                   // skip the direct cycle edge
-                   continue
-               }
-               if !vis[v2] {
-                   vis[v2] = true
-                   parent[v2] = u
-                   queue = append(queue, v2)
-               }
-           }
+          for _, v2 := range g[u] {
+              if !vis[v2] {
+                  vis[v2] = true
+                  parent[v2] = u
+                  queue = append(queue, v2)
+              }
+          }
        }
        // reconstruct path from en to st
        path := make([]int, 0)

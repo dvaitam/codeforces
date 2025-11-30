@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,7 +9,110 @@ import (
 	"strings"
 )
 
-func expected(p string) int {
+var rawTestcases = []string{
+	"943885643",
+	"9539",
+	"522509092554457696",
+	"629072",
+	"7",
+	"931864282",
+	"291",
+	"89664440644888553",
+	"20829657086930",
+	"823570393426",
+	"973",
+	"813271664465951",
+	"8704366660",
+	"929450678201",
+	"5501318705056246292",
+	"4802227080862",
+	"911824345448",
+	"278209280513793",
+	"825278081850116",
+	"59756851250220593060",
+	"6092516075",
+	"94497620743615110502",
+	"9057877108640",
+	"11551702840065282",
+	"223950",
+	"6033452353267592",
+	"9029062200580",
+	"31",
+	"60669",
+	"32583861269",
+	"166376363769",
+	"448",
+	"809973409561",
+	"526066617972257629",
+	"15525780342954604",
+	"606463522195206967",
+	"168",
+	"222323082759451642",
+	"85826843656",
+	"8466122099813998",
+	"4926",
+	"601",
+	"5175947328818202",
+	"69376409262790619",
+	"5387079148786",
+	"4238524927117696",
+	"147314251202983006",
+	"971785510337443075",
+	"51149635623437546",
+	"21658735564564174172",
+	"325731667879",
+	"36847358017563609061",
+	"352125030",
+	"6",
+	"721993173089618233",
+	"7063609409555",
+	"298141140292639",
+	"36881817187",
+	"2785264619853735",
+	"6070867363477237",
+	"5792813481",
+	"25",
+	"59",
+	"763673",
+	"605835",
+	"889962",
+	"79397037958300023793",
+	"8645",
+	"3258576757123126",
+	"835006316996830",
+	"87468",
+	"119703695410390985",
+	"74197",
+	"366853941",
+	"25",
+	"9718765601692201630",
+	"461545938",
+	"258802704525198614",
+	"19270835183236397",
+	"245833752480",
+	"545",
+	"19",
+	"4",
+	"2438",
+	"571688611975243640",
+	"5",
+	"558",
+	"4382490664",
+	"587716528",
+	"37",
+	"9314122705861",
+	"74466702",
+	"53323422848023623",
+	"292384073062686368",
+	"71218010367465641",
+	"933008",
+	"737",
+	"98409",
+	"55548",
+	"207396574",
+}
+
+func solveCase(p string) int {
 	n := len(p)
 	if n == 0 {
 		return 0
@@ -27,62 +129,35 @@ func expected(p string) int {
 	return leaves
 }
 
-func runCase(bin, p string) error {
-	input := p + "\n"
+func run(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return "", fmt.Errorf("runtime error: %v, output: %s", err, out.String())
 	}
-	gotStr := strings.TrimSpace(out.String())
-	got, err := strconv.Atoi(gotStr)
-	if err != nil {
-		return fmt.Errorf("invalid output: %v", err)
-	}
-	exp := expected(p)
-	if got != exp {
-		return fmt.Errorf("expected %d got %d", exp, got)
-	}
-	return nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierC.go /path/to/binary")
+		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesC.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	scanner.Split(bufio.ScanWords)
-	if !scanner.Scan() {
-		fmt.Fprintln(os.Stderr, "bad test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scanner.Text())
-	for i := 0; i < t; i++ {
-		if !scanner.Scan() {
-			fmt.Fprintf(os.Stderr, "test %d: missing input\n", i+1)
+	for idx, p := range rawTestcases {
+		expected := strconv.Itoa(solveCase(p))
+		got, err := run(bin, p+"\n")
+		if err != nil {
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		p := scanner.Text()
-		if err := runCase(bin, p); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
+		if got != expected {
+			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if scanner.Scan() {
-		fmt.Fprintln(os.Stderr, "extra data in test file")
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", len(rawTestcases))
 }

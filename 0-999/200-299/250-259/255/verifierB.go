@@ -9,13 +9,118 @@ import (
 	"strings"
 )
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+const testcasesB = `xxyxxxyx
+yyyyxyyyyyxyyxxxx
+xyxxxyxyxyxy
+xxyyyyyxxxyxxyxxyyyy
+yyxxyxxyy
+xyyyyxxxxxxyxyx
+yxxxyxxyyyyxyx
+yyyyxxxxxy
+xyxyxxyy
+yxyx
+xyyxyyyx
+xyyxx
+xxxxxyxxxxyyx
+xxyyyyxxxyyyxyxy
+yyyxxxy
+yyxyyxyx
+xxyxyxxxxxxy
+xyy
+xyyxy
+xyyyxyyyxx
+yxxxxxyxxxxxxx
+xyxxyyyxxyxyyx
+xyxyyyyyxyyyxyx
+yxyyyxxyxyyxyyy
+xyxyxxy
+x
+xyyyyyyyyxxxxyxyxyy
+xxyyxxxxxyyyyyxyyyyy
+yxxxyyy
+yx
+y
+xxyyxxxyxyxyxyxxx
+xyyyyyyyxyxyxyx
+yyyxyyxyyxyyx
+xy
+xxxxyxyxyyxy
+xxyyxxxxyxxyxy
+xxxyxyyyyyxyxxxxyxx
+xyxyxyxxyxxxyyy
+yyxxyxxxxyx
+yx
+yxxyxyxyyy
+yyxxyyxyxy
+xxyx
+yxyyyy
+xyy
+x
+yyx
+xxyxxyyxxxxxxyxy
+xxxyyxxyxxyyy
+xyxxxyxxxxyxxxxxxyx
+yyxxyxyxxyyxyy
+yyxyxyyx
+yyxyxyxyy
+xxyx
+yyxyyxxyyyxyxy
+xyyxxyxyyyxy
+yxyyyxyxxxyxxyyyxx
+xxxxxxxxyyyyxy
+xyyxyyxyy
+yyyyxxxxxxxyx
+xxxxyyyxyyyyx
+xxxxyx
+yyxxyxyxyxyyxyx
+xyyyyyxxyxyxyxxy
+yxyyxxyxyxxxx
+xxxyyxyyyxxxxyyyxxy
+yxxyyxyyxxyx
+yyyxxyyyxyyyyyyy
+yyxy
+yxxyy
+xyyyyxyy
+xyxxyyyxyxxyxyxy
+xxyxxx
+y
+xxxxxyxxyxxxxyyyxy
+yxyxyyy
+xxyxxyxxxyxyxyx
+xyxyyxyyxyyyxyxyxy
+yxyxyyxyxyyyxxyy
+yxxxyxxxyxyx
+yxyyxxyxyxyxyxy
+xyxxyyxxxxxxyxxyyyy
+xyyyyyy
+xxxxxyyxyxxyxxy
+yxxxyyyxxyxxyyyxxxx
+yxyyxyyxyyyxyxxxyyx
+yyyyxxyxxxxyxxyyy
+yyyx
+xyxxyxyyxyxyxyxxxy
+xy
+xxxy
+yyxyyxx
+yxyxxyyyxxxyxxy
+yyxyyxx
+yyxyxyyxxxyxyyyxxxy
+xyyyxyyyyxyyxxxyyxxx
+xxxyxyyxxy
+yyyyxxyxxx
+yxxyxxxy`
+
+func solve(s string) string {
+	countX := strings.Count(s, "x")
+	countY := len(s) - countX
+	if countX > countY {
+		return strings.Repeat("x", countX-countY)
 	}
+	return strings.Repeat("y", countY-countX)
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -27,29 +132,14 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func solve(s string) string {
-	countX := strings.Count(s, "x")
-	countY := len(s) - countX
-	if countX > countY {
-		return strings.Repeat("x", countX-countY)
-	}
-	return strings.Repeat("y", countY-countX)
-}
-
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesB))
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())

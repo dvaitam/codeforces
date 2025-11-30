@@ -10,76 +10,358 @@ import (
 	"strings"
 )
 
+const testcasesD = `20
+1
+void p0_0 (string, double, T)
+3
+double v0_0
+int v0_1
+double v0_2
+1
+p0_0 (v0_2, v0_0)
+1
+void p1_0 (T, T, T)
+3
+int v1_0
+int v1_1
+double v1_2
+2
+p1_0 (v1_0, v1_2, v1_0)
+p1_0 (v1_0, v1_1, v1_0)
+2
+void p2_0 (T, T)
+void p2_1 (T, string)
+2
+int v2_0
+int v2_1
+2
+p2_1 (v2_1)
+p2_1 (v2_1, v2_1, v2_1)
+3
+void p3_0 (T, string)
+void p3_1 (int, double)
+void p3_2 (string, double, int)
+3
+double v3_0
+int v3_1
+double v3_2
+5
+p3_1 (v3_0, v3_0)
+p3_1 (v3_1, v3_0, v3_1)
+p3_0 (v3_0, v3_0)
+p3_1 (v3_1, v3_0)
+p3_0 (v3_2, v3_0, v3_1)
+3
+void p4_0 (double, double, string)
+void p4_1 (double)
+void p4_2 (int)
+1
+double v4_0
+5
+p4_0 (v4_0)
+p4_1 (v4_0, v4_0, v4_0)
+p4_1 (v4_0, v4_0)
+p4_1 (v4_0, v4_0)
+p4_2 (v4_0, v4_0, v4_0)
+3
+void p5_0 (string, double, T)
+void p5_1 (double, double)
+void p5_2 (T)
+3
+string v5_0
+int v5_1
+string v5_2
+5
+p5_2 (v5_0, v5_0, v5_2)
+p5_2 (v5_1, v5_1)
+p5_2 (v5_2, v5_2)
+p5_1 (v5_1, v5_0, v5_2)
+p5_0 (v5_0, v5_1, v5_1)
+3
+void p6_0 (double, double)
+void p6_1 (double)
+void p6_2 (double)
+2
+double v6_0
+string v6_1
+3
+p6_1 (v6_0)
+p6_2 (v6_0, v6_1, v6_0)
+p6_2 (v6_0, v6_1)
+1
+void p7_0 (T, int, int)
+3
+string v7_0
+string v7_1
+double v7_2
+2
+p7_0 (v7_0)
+p7_0 (v7_2, v7_0, v7_2)
+2
+void p8_0 (string, int)
+void p8_1 (string)
+2
+double v8_0
+int v8_1
+3
+p8_1 (v8_0, v8_1, v8_0)
+p8_1 (v8_1, v8_1)
+p8_1 (v8_1, v8_1, v8_1)
+3
+void p9_0 (int, T)
+void p9_1 (string)
+void p9_2 (T)
+3
+double v9_0
+string v9_1
+double v9_2
+2
+p9_0 (v9_1, v9_2, v9_2)
+p9_2 (v9_2, v9_1)
+1
+void p10_0 (double)
+1
+int v10_0
+1
+p10_0 (v10_0, v10_0, v10_0)
+1
+void p11_0 (int, string)
+3
+string v11_0
+int v11_1
+double v11_2
+1
+p11_0 (v11_2)
+1
+void p12_0 (string, double)
+3
+string v12_0
+int v12_1
+string v12_2
+2
+p12_0 (v12_2)
+p12_0 (v12_0)
+2
+void p13_0 (int)
+void p13_1 (T, int)
+2
+int v13_0
+string v13_1
+5
+p13_1 (v13_1)
+p13_1 (v13_0)
+p13_0 (v13_0)
+p13_0 (v13_1)
+p13_0 (v13_0, v13_1, v13_1)
+1
+void p14_0 (int, double)
+2
+double v14_0
+string v14_1
+5
+p14_0 (v14_1, v14_0)
+p14_0 (v14_0, v14_0)
+p14_0 (v14_1, v14_0, v14_0)
+p14_0 (v14_1, v14_1)
+p14_0 (v14_1, v14_0, v14_1)
+3
+void p15_0 (double, T)
+void p15_1 (T, T, int)
+void p15_2 (string)
+3
+string v15_0
+double v15_1
+double v15_2
+1
+p15_1 (v15_1)
+1
+void p16_0 (double)
+2
+double v16_0
+string v16_1
+1
+p16_0 (v16_0, v16_1, v16_0)
+3
+void p17_0 (int, int)
+void p17_1 (string, string)
+void p17_2 (int, int)
+3
+int v17_0
+double v17_1
+string v17_2
+2
+p17_0 (v17_0, v17_0)
+p17_0 (v17_1, v17_2, v17_1)
+3
+void p18_0 (int, int)
+void p18_1 (string, int, int)
+void p18_2 (int, double, string)
+1
+int v18_0
+2
+p18_2 (v18_0)
+p18_2 (v18_0, v18_0, v18_0)
+3
+void p19_0 (double, T)
+void p19_1 (T)
+void p19_2 (string, T, string)
+2
+double v19_0
+double v19_1
+5
+p19_2 (v19_1, v19_0, v19_1)
+p19_2 (v19_1, v19_0, v19_1)
+p19_0 (v19_0)
+p19_1 (v19_1, v19_1, v19_0)
+p19_0 (v19_0, v19_0)
+p19_2 (v19_1, v19_0, v19_1)
+`
+
 type Proc struct {
 	name  string
 	types []string
 }
 
-type Call struct {
-	name string
-	args []string
+type testCase struct {
+	input    []byte
+	expected []int
 }
 
 func parseProc(line string) Proc {
 	line = strings.TrimSpace(line)
-	l := strings.Index(line, "(")
-	r := strings.LastIndex(line, ")")
-	header := strings.Fields(line[:l])
-	pname := header[len(header)-1]
-	args := strings.Split(line[l+1:r], ",")
-	types := make([]string, 0, len(args))
-	for _, a := range args {
-		types = append(types, strings.TrimSpace(a))
+	lparen := strings.Index(line, "(")
+	rparen := strings.LastIndex(line, ")")
+	header := line[:lparen]
+	headerFields := strings.Fields(header)
+	pname := headerFields[len(headerFields)-1]
+	typesStr := line[lparen+1 : rparen]
+	parts := strings.Split(typesStr, ",")
+	types := make([]string, 0, len(parts))
+	for _, t := range parts {
+		types = append(types, strings.TrimSpace(t))
 	}
 	return Proc{name: pname, types: types}
 }
 
-func parseVar(line string) (string, string) {
-	fields := strings.Fields(strings.TrimSpace(line))
-	if len(fields) < 2 {
-		return "", ""
-	}
-	return fields[1], fields[0]
-}
-
-func parseCall(line string) Call {
+func matchCount(procs []Proc, varMap map[string]string, line string) int {
 	line = strings.TrimSpace(line)
-	l := strings.Index(line, "(")
-	r := strings.LastIndex(line, ")")
-	name := strings.TrimSpace(line[:l])
-	argsStr := strings.TrimSpace(line[l+1 : r])
+	lparen := strings.Index(line, "(")
+	rparen := strings.LastIndex(line, ")")
+	cname := strings.TrimSpace(line[:lparen])
+	argsStr := line[lparen+1 : rparen]
 	args := []string{}
 	if len(argsStr) > 0 {
 		parts := strings.Split(argsStr, ",")
-		for _, p := range parts {
-			args = append(args, strings.TrimSpace(p))
+		for _, a := range parts {
+			a = strings.TrimSpace(a)
+			if t, ok := varMap[a]; ok {
+				args = append(args, t)
+			} else {
+				args = append(args, "")
+			}
 		}
 	}
-	return Call{name, args}
+	count := 0
+	for _, p := range procs {
+		if p.name != cname || len(p.types) != len(args) {
+			continue
+		}
+		ok := true
+		for j, pt := range p.types {
+			if pt != "T" && pt != args[j] {
+				ok = false
+				break
+			}
+		}
+		if ok {
+			count++
+		}
+	}
+	return count
 }
 
-func solveCase(procs []Proc, vars map[string]string, calls []Call) []int {
-	res := make([]int, len(calls))
-	for i, c := range calls {
-		count := 0
-		for _, p := range procs {
-			if p.name != c.name || len(p.types) != len(c.args) {
-				continue
+func readLine(scanner *bufio.Scanner, label string) (string, error) {
+	if !scanner.Scan() {
+		return "", fmt.Errorf("missing %s", label)
+	}
+	return scanner.Text(), nil
+}
+
+func readIntWithBuffer(scanner *bufio.Scanner, label string, buf *bytes.Buffer) (int, error) {
+	line, err := readLine(scanner, label)
+	if err != nil {
+		return 0, err
+	}
+	buf.WriteString(line)
+	buf.WriteByte('\n')
+	v, convErr := strconv.Atoi(strings.TrimSpace(line))
+	if convErr != nil {
+		return 0, fmt.Errorf("bad %s: %w", label, convErr)
+	}
+	return v, nil
+}
+
+func computeTestCases(data []byte) ([]testCase, error) {
+	scanner := bufio.NewScanner(bytes.NewReader(data))
+	scanner.Split(bufio.ScanLines)
+
+	t, err := readIntWithBuffer(scanner, "test case count", &bytes.Buffer{})
+	if err != nil {
+		return nil, err
+	}
+	cases := make([]testCase, 0, t)
+	for caseIdx := 0; caseIdx < t; caseIdx++ {
+		var caseBuf bytes.Buffer
+
+		n, err := readIntWithBuffer(scanner, "procedure count", &caseBuf)
+		if err != nil {
+			return nil, err
+		}
+		procs := make([]Proc, 0, n)
+		for i := 0; i < n; i++ {
+			line, scanErr := readLine(scanner, "procedure line")
+			if scanErr != nil {
+				return nil, scanErr
 			}
-			ok := true
-			for j, typ := range p.types {
-				if typ != "T" && typ != vars[c.args[j]] {
-					ok = false
-					break
-				}
+			caseBuf.WriteString(line)
+			caseBuf.WriteByte('\n')
+			procs = append(procs, parseProc(line))
+		}
+		m, err := readIntWithBuffer(scanner, "variable count", &caseBuf)
+		if err != nil {
+			return nil, err
+		}
+		varMap := make(map[string]string, m)
+		for i := 0; i < m; i++ {
+			line, scanErr := readLine(scanner, "variable line")
+			if scanErr != nil {
+				return nil, scanErr
 			}
-			if ok {
-				count++
+			caseBuf.WriteString(line)
+			caseBuf.WriteByte('\n')
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				varMap[fields[1]] = fields[0]
 			}
 		}
-		res[i] = count
+		k, err := readIntWithBuffer(scanner, "call count", &caseBuf)
+		if err != nil {
+			return nil, err
+		}
+		tc := testCase{expected: make([]int, 0, k)}
+		for i := 0; i < k; i++ {
+			line, scanErr := readLine(scanner, "call line")
+			if scanErr != nil {
+				return nil, scanErr
+			}
+			caseBuf.WriteString(line)
+			caseBuf.WriteByte('\n')
+			tc.expected = append(tc.expected, matchCount(procs, varMap, line))
+		}
+		tc.input = caseBuf.Bytes()
+		cases = append(cases, tc)
 	}
-	return res
+	return cases, nil
 }
 
 func main() {
@@ -87,69 +369,38 @@ func main() {
 		fmt.Println("usage: go run verifierD.go /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesD.txt")
+
+	cases, err := computeTestCases([]byte(testcasesD))
 	if err != nil {
-		fmt.Println("could not read testcasesD.txt:", err)
+		fmt.Println("could not compute expected output:", err)
 		os.Exit(1)
 	}
-	lineScan := bufio.NewScanner(bytes.NewReader(data))
-	if !lineScan.Scan() {
-		fmt.Println("bad file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(strings.TrimSpace(lineScan.Text()))
-	var expected []int
-	for caseIdx := 0; caseIdx < t; caseIdx++ {
-		lineScan.Scan()
-		n, _ := strconv.Atoi(strings.TrimSpace(lineScan.Text()))
-		procs := make([]Proc, n)
-		for i := 0; i < n; i++ {
-			lineScan.Scan()
-			procs[i] = parseProc(lineScan.Text())
-		}
-		lineScan.Scan()
-		m, _ := strconv.Atoi(strings.TrimSpace(lineScan.Text()))
-		vars := make(map[string]string, m)
-		varNames := make([]string, m)
-		for i := 0; i < m; i++ {
-			lineScan.Scan()
-			name, typ := parseVar(lineScan.Text())
-			vars[name] = typ
-			varNames[i] = name
-		}
-		lineScan.Scan()
-		k, _ := strconv.Atoi(strings.TrimSpace(lineScan.Text()))
-		calls := make([]Call, k)
-		for i := 0; i < k; i++ {
-			lineScan.Scan()
-			calls[i] = parseCall(lineScan.Text())
-		}
-		res := solveCase(procs, vars, calls)
-		expected = append(expected, res...)
-	}
-	cmd := exec.Command(os.Args[1])
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println("execution failed:", err)
-		os.Exit(1)
-	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
-	for i := 0; i < len(expected); i++ {
-		if !outScan.Scan() {
-			fmt.Printf("missing output for line %d\n", i+1)
+
+	for idx, tc := range cases {
+		cmd := exec.Command(os.Args[1])
+		cmd.Stdin = bytes.NewReader(tc.input)
+		out, runErr := cmd.CombinedOutput()
+		if runErr != nil {
+			fmt.Printf("case %d execution failed: %v\n", idx+1, runErr)
 			os.Exit(1)
 		}
-		v, err := strconv.Atoi(outScan.Text())
-		if err != nil || v != expected[i] {
-			fmt.Printf("line %d failed: expected %d got %s\n", i+1, expected[i], outScan.Text())
+		outScan := bufio.NewScanner(bytes.NewReader(out))
+		outScan.Split(bufio.ScanWords)
+		for i := 0; i < len(tc.expected); i++ {
+			if !outScan.Scan() {
+				fmt.Printf("case %d missing output for line %d\n", idx+1, i+1)
+				os.Exit(1)
+			}
+			v, convErr := strconv.Atoi(outScan.Text())
+			if convErr != nil || v != tc.expected[i] {
+				fmt.Printf("case %d line %d failed: expected %d got %s\n", idx+1, i+1, tc.expected[i], outScan.Text())
+				os.Exit(1)
+			}
+		}
+		if outScan.Scan() {
+			fmt.Printf("case %d extra output detected\n", idx+1)
 			os.Exit(1)
 		}
-	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
-		os.Exit(1)
 	}
 	fmt.Println("All tests passed!")
 }

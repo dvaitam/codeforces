@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,6 +8,109 @@ import (
 	"strconv"
 	"strings"
 )
+
+var rawTestcases = []string{
+	"2 1 1 2",
+	"4 2 2 3 1 4",
+	"6 3 2 4 3 6 1 6",
+	"6 7 1 2 1 3 1 4 1 5 1 6 2 4 5 6",
+	"6 4 1 2 1 5 4 5 1 6",
+	"5 2 1 2 1 5",
+	"5 4 1 2 3 4 3 5 1 5",
+	"6 6 1 4 1 5 2 4 2 6 4 6 5 6",
+	"3 1 1 3",
+	"2 1 1 2",
+	"4 3 1 2 1 4 2 4",
+	"2 1 1 2",
+	"3 2 1 3 2 3",
+	"2 1 1 2",
+	"2 1 1 2",
+	"3 3 1 2 1 3 2 3",
+	"6 6 1 4 1 6 2 5 2 6 3 6 4 6",
+	"2 1 1 2",
+	"3 1 1 3",
+	"4 3 1 2 1 4 3 4",
+	"6 9 1 4 1 5 1 6 2 4 3 4 3 5 4 5 4 6 5 6",
+	"6 9 1 3 1 6 2 3 2 5 3 4 3 5 3 6 4 5 4 6",
+	"5 4 1 4 2 4 3 5 1 5",
+	"5 4 2 4 3 4 3 5 1 5",
+	"4 3 1 2 2 3 2 4",
+	"2 1 1 2",
+	"2 1 1 2",
+	"5 5 1 5 2 3 2 4 3 4 4 5",
+	"4 4 1 2 2 3 2 4 3 4",
+	"2 1 1 2",
+	"4 2 2 3 1 4",
+	"5 3 1 2 1 4 1 5",
+	"4 3 1 2 1 3 1 4",
+	"2 1 1 2",
+	"6 8 1 2 1 3 1 5 2 3 2 4 3 5 3 6 4 5",
+	"5 6 1 2 1 3 1 4 2 5 3 4 4 5",
+	"3 1 1 3",
+	"4 2 1 4 2 4",
+	"3 3 1 2 1 3 2 3",
+	"4 2 3 4 1 4",
+	"2 1 1 2",
+	"3 1 1 3",
+	"5 3 1 4 3 5 1 5",
+	"6 5 1 5 2 4 3 4 3 6 5 6",
+	"6 3 1 2 1 6 2 6",
+	"2 1 1 2",
+	"4 2 1 2 1 4",
+	"3 2 1 2 1 3",
+	"4 4 1 2 1 3 2 3 2 4",
+	"6 4 1 4 2 5 3 4 4 6",
+	"2 1 1 2",
+	"3 2 1 2 1 3",
+	"6 10 1 3 1 4 1 6 2 3 2 5 3 4 3 5 3 6 4 5 5 6",
+	"5 4 1 4 2 4 2 5 3 4",
+	"4 5 1 2 1 3 1 4 2 3 3 4",
+	"4 3 1 2 3 4 1 4",
+	"5 4 2 4 3 5 4 5 1 5",
+	"3 2 1 2 1 3",
+	"2 1 1 2",
+	"3 2 1 2 1 3",
+	"2 1 1 2",
+	"4 3 1 2 2 4 3 4",
+	"6 12 1 2 1 3 1 5 1 6 2 4 2 5 2 6 3 4 3 6 4 5 4 6 5 6",
+	"6 6 1 2 2 3 2 4 2 6 3 4 3 6",
+	"3 1 1 3",
+	"6 4 1 5 3 4 3 5 1 6",
+	"2 1 1 2",
+	"6 9 1 3 1 4 1 6 2 3 2 4 2 5 2 6 3 5 4 6",
+	"3 3 1 2 1 3 2 3",
+	"6 7 1 3 1 5 2 3 2 5 2 6 3 4 3 6",
+	"5 3 1 2 1 4 4 5",
+	"3 3 1 2 1 3 2 3",
+	"3 1 1 3",
+	"2 1 1 2",
+	"5 4 1 2 1 5 2 4 3 4",
+	"3 2 1 2 1 3",
+	"2 1 1 2",
+	"5 4 1 5 2 3 2 4 3 5",
+	"3 1 1 3",
+	"5 3 1 4 1 5 3 4",
+	"2 1 1 2",
+	"2 1 1 2",
+	"4 3 1 3 2 3 1 4",
+	"3 2 1 3 2 3",
+	"5 2 1 4 4 5",
+	"2 1 1 2",
+	"6 5 2 3 3 5 4 5 5 6 1 6",
+	"6 7 1 2 1 4 2 4 2 6 3 4 3 6 4 5",
+	"2 1 1 2",
+	"3 2 1 2 1 3",
+	"3 2 1 2 1 3",
+	"6 6 1 3 2 3 2 4 3 5 4 5 5 6",
+	"3 2 1 2 1 3",
+	"2 1 1 2",
+	"6 5 1 3 2 3 4 5 4 6 1 6",
+	"3 2 1 3 2 3",
+	"2 1 1 2",
+	"4 3 1 3 2 3 1 4",
+	"3 2 1 2 2 3",
+	"2 1 1 2",
+}
 
 func bfs(n int, G [][]int, start int) ([]int, []int64) {
 	inf := 1<<31 - 1
@@ -72,29 +174,16 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesC.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		fields := strings.Fields(line)
+	for idx, line := range rawTestcases {
+		fields := strings.Fields(strings.TrimSpace(line))
 		if len(fields) < 2 {
-			fmt.Printf("test %d: invalid line\n", idx)
+			fmt.Printf("test %d: invalid line\n", idx+1)
 			os.Exit(1)
 		}
 		n, _ := strconv.Atoi(fields[0])
 		m, _ := strconv.Atoi(fields[1])
 		if len(fields) != 2+2*m {
-			fmt.Printf("test %d: expected %d edge pairs got %d\n", idx, m, (len(fields)-2)/2)
+			fmt.Printf("test %d: expected %d edge pairs got %d\n", idx+1, m, (len(fields)-2)/2)
 			os.Exit(1)
 		}
 		edges := make([][2]int, m)
@@ -117,18 +206,14 @@ func main() {
 		cmd.Stderr = &stderr
 		err := cmd.Run()
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
+			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr.String())
 			os.Exit(1)
 		}
 		got := strings.TrimSpace(out.String())
 		if got != expect {
-			fmt.Printf("test %d failed\nexpected: %s\n got: %s\n", idx, expect, got)
+			fmt.Printf("test %d failed\nexpected: %s\n got: %s\n", idx+1, expect, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(rawTestcases))
 }

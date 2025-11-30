@@ -120,35 +120,18 @@ func maxInt(a, b int) int {
 	return b
 }
 
-func isGE(a int64, k int, pb int64, pk int) bool {
-	if k == pk {
-		return a >= pb
-	}
-	if k > pk {
-		d := k - pk
-		exp := int64(1 << uint(d))
-		powa := new(big.Int).Exp(big.NewInt(a), big.NewInt(exp), nil)
-		return powa.Cmp(big.NewInt(pb)) >= 0
-	}
-	d := pk - k
-	exp := int64(1 << uint(d))
-	powpb := new(big.Int).Exp(big.NewInt(pb), big.NewInt(exp), nil)
-	return big.NewInt(a).Cmp(powpb) >= 0
-}
-
-func expectedC(arr []int64) int64 {
-	n := len(arr)
+// solve1995CSingle is the core logic from 1995C.go applied to one test case.
+func solve1995CSingle(a []int64) int64 {
+	n := len(a)
 	total := int64(0)
-	prevBase := arr[0]
+	prevBase := a[0]
 	prevK := 0
-	ok := true
-	for i := 1; i < n && ok; i++ {
-		currA := arr[i]
+	for i := 1; i < n; i++ {
+		currA := a[i]
 		var currK int
 		if currA == 1 {
 			if prevBase != 1 {
-				ok = false
-				break
+				return -1
 			}
 			currK = 0
 		} else {
@@ -165,8 +148,7 @@ func expectedC(arr []int64) int64 {
 				}
 			}
 			if !found {
-				ok = false
-				break
+				return -1
 			}
 			currK = minK
 		}
@@ -174,10 +156,48 @@ func expectedC(arr []int64) int64 {
 		prevBase = currA
 		prevK = currK
 	}
-	if !ok {
-		return -1
-	}
 	return total
+}
+
+// solve1995CInput runs the embedded 1995C solution on the provided input.
+func solve1995CInput(input string) (string, error) {
+	in := bufio.NewReader(strings.NewReader(input))
+	var t int
+	if _, err := fmt.Fscan(in, &t); err != nil {
+		return "", fmt.Errorf("read t: %w", err)
+	}
+	var out strings.Builder
+	for tt := 0; tt < t; tt++ {
+		var n int
+		if _, err := fmt.Fscan(in, &n); err != nil {
+			return "", fmt.Errorf("read n for test %d: %w", tt+1, err)
+		}
+		a := make([]int64, n)
+		for i := 0; i < n; i++ {
+			if _, err := fmt.Fscan(in, &a[i]); err != nil {
+				return "", fmt.Errorf("read a[%d] for test %d: %w", i, tt+1, err)
+			}
+		}
+		res := solve1995CSingle(a)
+		fmt.Fprintf(&out, "%d\n", res)
+	}
+	return out.String(), nil
+}
+
+func isGE(a int64, k int, pb int64, pk int) bool {
+	if k == pk {
+		return a >= pb
+	}
+	if k > pk {
+		d := k - pk
+		exp := int64(1 << uint(d))
+		powa := new(big.Int).Exp(big.NewInt(a), big.NewInt(exp), nil)
+		return powa.Cmp(big.NewInt(pb)) >= 0
+	}
+	d := pk - k
+	exp := int64(1 << uint(d))
+	powpb := new(big.Int).Exp(big.NewInt(pb), big.NewInt(exp), nil)
+	return big.NewInt(a).Cmp(powpb) >= 0
 }
 
 func parseTests() ([][]int64, error) {
@@ -239,11 +259,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to parse embedded testcases: %v\n", err)
 		os.Exit(1)
 	}
-	expected := make([]int64, len(tests))
-	for i, arr := range tests {
-		expected[i] = expectedC(arr)
-	}
 	input := buildInput(tests)
+	expectedOut, err := solve1995CInput(input)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to run embedded 1995C solution: %v\n", err)
+		os.Exit(1)
+	}
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
@@ -256,7 +277,19 @@ func main() {
 	}
 	outScan := bufio.NewScanner(bytes.NewReader(out.Bytes()))
 	outScan.Split(bufio.ScanWords)
-	for i, expect := range expected {
+	expScan := bufio.NewScanner(strings.NewReader(expectedOut))
+	expScan.Split(bufio.ScanWords)
+	for i := 0; i < len(tests); i++ {
+		if !expScan.Scan() {
+			fmt.Printf("missing expected output for test %d\n", i+1)
+			os.Exit(1)
+		}
+		expectStr := expScan.Text()
+		expect, err := strconv.ParseInt(expectStr, 10, 64)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to parse expected output for test %d: %v\n", i+1, err)
+			os.Exit(1)
+		}
 		if !outScan.Scan() {
 			fmt.Printf("missing output for test %d\n", i+1)
 			os.Exit(1)

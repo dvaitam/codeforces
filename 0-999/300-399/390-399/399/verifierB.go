@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,32 +8,142 @@ import (
 	"strings"
 )
 
-func computeOps(n int, s string) int {
-	res := 0
-	for i := 0; i < n; i++ {
-		if s[i] == 'B' {
-			res += 1 << i
+func solve(n int, s string) string {
+	b := []byte(s)
+	ops := 0
+	for {
+		hasB := false
+		for i := 0; i < n; i++ {
+			if b[i] == 'B' {
+				hasB = true
+				break
+			}
 		}
+		if !hasB {
+			break
+		}
+		k := 0
+		for k < n && b[k] == 'R' {
+			k++
+		}
+		nb := make([]byte, n)
+		for i := 0; i < k; i++ {
+			nb[i] = 'B'
+		}
+		nb[k] = 'R'
+		for i := k + 1; i < n; i++ {
+			nb[i] = b[i]
+		}
+		b = nb
+		ops++
 	}
-	return res
+	return strconv.Itoa(ops)
 }
 
-func runBinary(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
-	}
-	return strings.TrimSpace(out.String()), nil
+var testcases = []struct {
+	n int
+	s string
+}{
+	{25, "BRBBBBBBRRBRRBRBRRBBRBBBR"},
+	{36, "BBBRRRBRBBRBRRRRRBRRBBRBBRBRBBRBBRBR"},
+	{13, "RRBBRRRRRRBBR"},
+	{14, "BBBBBRBRBBRRRB"},
+	{8, "RBRBBRRR"},
+	{45, "RRRRRRRBRBRRRRRRBRRRBRBRRRBBBRRBRRBRBBBRRRRRB"},
+	{34, "BRBRRBBBBBBRRBRBRBRRBBBBRBBBRRRBRR"},
+	{15, "BBBRBBRRBRBRBBR"},
+	{3, "BBB"},
+	{30, "RBRRRRBBBRRRRRRRRBBRRBBRRBBRBR"},
+	{42, "BRRBRRRRBBBRBBBBRRBBRRRBBBBRBRRBRRBBBRBRBR"},
+	{4, "BRRB"},
+	{26, "BBBRRBBBBRBRBBRBBRRBRRRRRR"},
+	{25, "RRBBBBRBRBRBRBRBRRRBRRBBB"},
+	{14, "RRRRRBBBRRBRBB"},
+	{34, "BBBBRRRBBBRRBRBBBRRRRRRRBRBBRRBBBR"},
+	{37, "RRBRBBBBRRRRBBBRBBBBBBRRRRBBRRBBRBRRB"},
+	{27, "RBBBRRBRRRRBRBRBBRRBBRBRBBR"},
+	{34, "RRBBBRBBRRRBBRRRRBBRRBBRRBRRBRRBBB"},
+	{2, "BB"},
+	{47, "BRBRRBRBBRRRBRRRRRRRBBRRRRBRBBBRRRBBBBBBRRRBRBR"},
+	{9, "RBRRRBBBR"},
+	{9, "RBRRRBBBR"},
+	{38, "BBBRRBBRBBRBBBRBBBRRRBRRBBRBBRRBBRBBRB"},
+	{49, "RBRBBRRBRBRBBRBRBBRRBRRBBBBRBBBRRRRBBBRRRRBBBRRRB"},
+	{41, "BBBBBRRRRBBBRBBBBRBBBBRBBRBRRRBBBRRRBRBRR"},
+	{40, "RBBRRBRRBBBBRBBBRBRBRRRBBBBBBRRBRRBRRRRB"},
+	{4, "RRBR"},
+	{46, "BBBBRBBBBBRBBRRRRBRBRRRBRBRBRBRRBBBBBRRRBRRBRR"},
+	{17, "BBBBBBRRBRRBBBRBB"},
+	{30, "BRRRRRRBRBRBBRRRBRRBBBBRBRBBBB"},
+	{18, "RRRRRBRRBRBRRBBRBR"},
+	{44, "BRRRBBRBBBRRRBBRRBRRRRRBRRRRBBRBRRBBBBRRRBBB"},
+	{46, "RBRBRBBBRRRBRBBRBBRBRBRRBRBRRRRRRBRRBBRRBBRBBR"},
+	{42, "BBBRBBBRRBBRRRRRBRRRRRRRBRBRRBBBRRBRBBRBRB"},
+	{11, "BBBBBRBBBRB"},
+	{44, "RBBRBBBRRBRBBRBBBRRBRBRRBRRRBBBBBBBBRRRRBRBR"},
+	{47, "BBRRBBRRRRRBBBBBRBBBBBRBRRRBBBRBRRBRRBBRRRBRBRB"},
+	{16, "BRRRBRBBBBBBBRBR"},
+	{32, "RBRBBBBRBBRBBRBBRRRBBRRRRBRBRBBR"},
+	{49, "BBRRBBRRRRBRRBRBRRRBRBBBBBRBRRRRBRRBRBRBRBRRBRRRB"},
+	{39, "BBBBBRRBRRRRBRRBRBBRRBRBRBBBBBBRRBBRBRB"},
+	{7, "RRBRRBR"},
+	{21, "BBBRRBBRRRBBRBRRBRRBB"},
+	{11, "RRRRRBRBBRR"},
+	{16, "BBRRBRRBBBRBRRRB"},
+	{46, "RRRRBRRRRRRBRBBBRRBRBRRBBRBBRBBRBRBBRBBBRBRBRB"},
+	{26, "RRRBRBBBRBBRRBBBRBRBBRBBRR"},
+	{17, "RBBBRBBRBBBRBRRRB"},
+	{11, "RBBBRRBRRRR"},
+	{11, "RRRBBBBRBBR"},
+	{22, "BRBBRBBBBBBBRRRRRRRBRB"},
+	{6, "RRRBBB"},
+	{7, "BBBBRRR"},
+	{50, "RRRBRBBBRRBRBRBRBBRBRBRBBBBBRRBRBRBRRBBBRBBRRBRBRR"},
+	{43, "RRRRRBBRBBBRRRRBBBRRBBBRRBBRBBRRBRBBBBRRBBB"},
+	{15, "BBBBBBBRBBRBRBR"},
+	{48, "RBBRRBBBBRBBBRBRRBBBRBRRBRBRBRRRBRRRRBRRRRRBRRBR"},
+	{35, "RRRBBBRBRBRBRBBBBRRBRRBRRRBRBRBRRBR"},
+	{33, "BBRBBRBBBRBRBRBBBRBRBBRBRBBBRRBBB"},
+	{42, "BRRRBRRRBRBRBBRBBRRBRBRBRBRBRBRRBBRRRRRRBR"},
+	{43, "RBBBBRRBBBBBBBRRRRRBBRBRRBRRBBRRRBBBRRBRRBB"},
+	{20, "RRRRBRBBRBBRBBBRBRRR"},
+	{21, "BRBBBBRRBRRRRBRRBBBRB"},
+	{19, "BRRBRRBRBBRBRBRBRRR"},
+	{32, "RRBRRRRBRBBRBBRRBBRBRRBBBRRRBRRB"},
+	{13, "BBRBBRRBBRBRB"},
+	{44, "BRRRBRBBBRRRBRBBBRBBBBRBBRRRBBRRRBRRRBRBBRRB"},
+	{19, "BBBBRRBRRRRBRRBRRRB"},
+	{46, "RRRRRBRBRRBRBBRBBRRRRRRRBBBBBBBRRRRRRRBRBRBRRB"},
+	{43, "BBBBRRBRBBBBBRBBBBBBBBRRBRBRRBBBBBBRRBBRRRR"},
+	{17, "RRRRBBRRRRBRBBBBR"},
+	{38, "BRRRRBBRBRBRRBRBRRRBRRRBBBRRBRBBBBBBRB"},
+	{49, "RRBBBBRBRRRRBBRBBBRBRRRRRRBBBRBRRBRRRBRRBRBBBRBRR"},
+	{42, "RRRBBBBRBRRRRBRRRRBRBRBRRBRBBBBBRRBBBBBBRR"},
+	{10, "BBRRRRRBRR"},
+	{34, "BBBBBBBBRRBBBRRRBRBBRRRRBRBRBBBBBR"},
+	{42, "RBBRRBRBBBRRBRBBBBRBBRBBBRRBRBBRBRBRRBRRBB"},
+	{14, "RBRRBRBBBRBBBR"},
+	{3, "RRR"},
+	{36, "BRBBBBBBRRRBRBBBBBBRRRRRBRRRRRBRBRRB"},
+	{19, "RRRRRRBBBRBRRRBRRRB"},
+	{35, "BRBRBRRRRRBRRBRBRRBBBRBRRBBBBBRBBRR"},
+	{25, "RRRBRBBRRRBBBBRBBBRRRBBBR"},
+	{30, "RBRRBRBRRRRRRBBRRRRBRRRRRBBBBR"},
+	{23, "BRRRBRRRRRBBRBBBBBRRBBR"},
+	{15, "RBRRBBRBRRBBRBR"},
+	{13, "BBBBRRBRBRRBB"},
+	{10, "RBBRRRRBBR"},
+	{3, "BBR"},
+	{44, "BRRBRRRRBBBBRRRRBRRRRRRRRRBRBBBBRRRBRBBBBBRB"},
+	{42, "RRRRRRBBRBBRBBRBRBBRBBRBRBRBBRBBBRRRBRBBRB"},
+	{31, "BBRBBRRRBBRRBBBRBBRRRBBBRBBBBBR"},
+	{6, "BRRRBB"},
+	{16, "BRBRBRBBRBRRRRBB"},
+	{29, "RRBBBRBBRRRRBRBRBRRBRRRRBRRBB"},
+	{45, "RBRBRRRBRBRBBRBBRBRBRBBBBBBBBRRRBBRBBBRRRBRRB"},
+	{45, "BRRBBBBBRRRRBRRBBRRBRBBRRBBBBRRRBBBBRBBBRBBBR"},
+	{26, "BBBBBBBRBRBBBBRRBRBRBRRBRR"},
+	{12, "RRRRBBRBBBBR"},
 }
 
 func main() {
@@ -45,52 +153,24 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
+	for idx, tc := range testcases {
+		expected := solve(tc.n, tc.s)
+		input := fmt.Sprintf("%d\n%s\n", tc.n, tc.s)
 
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		parts := strings.Fields(line)
-		if len(parts) != 2 {
-			fmt.Fprintf(os.Stderr, "case %d invalid format\n", idx)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(parts[0])
-		s := parts[1]
-		if len(s) != n {
-			fmt.Fprintf(os.Stderr, "case %d: length mismatch\n", idx)
-			os.Exit(1)
-		}
-		expect := computeOps(n, s)
-		input := fmt.Sprintf("%d\n%s\n", n, s)
-		res, err := runBinary(bin, input)
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(input)
+		out, err := cmd.CombinedOutput()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n%s", idx+1, err, string(out))
 			os.Exit(1)
 		}
-		got, err := strconv.Atoi(res)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d: invalid output %q\n", idx, res)
-			os.Exit(1)
-		}
-		if got != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %d got %d\n", idx, expect, got)
+
+		got := strings.TrimSpace(string(out))
+		if got != expected {
+			fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %s\n got: %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

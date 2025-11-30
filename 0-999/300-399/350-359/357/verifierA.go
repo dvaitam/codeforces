@@ -1,92 +1,216 @@
 package main
 
 import (
-    "bytes"
-    "fmt"
-    "math/rand"
-    "os"
-    "os/exec"
-    "strings"
-    "time"
+	"bytes"
+	"fmt"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
 )
 
-func solveA(arr []int, x, y int) int {
-    sum2 := 0
-    sum1 := 0
-    for _, v := range arr {
-        sum1 += v
-    }
-    for i, v := range arr {
-        sum2 += v
-        sum1 -= v
-        if sum2 >= x && sum2 <= y && sum1 >= x && sum1 <= y {
-            return i + 2
-        }
-    }
-    return 0
+var testcases = []string{
+	"8 13 1 8 16 15 12 9 15 12 30",
+	"5 16 4 9 4 3 20 28",
+	"10 19 4 9 3 2 10 15 17 3 11 14 24",
+	"5 17 15 14 16 8 2 37",
+	"2 2 12 23 23",
+	"9 10 7 10 2 6 18 7 7 4 26 34",
+	"9 2 2 10 16 15 3 9 17 9 23 26",
+	"10 10 17 6 19 17 18 9 14 2 19 26 32",
+	"7 18 7 9 5 6 5 1 20 28",
+	"9 2 2 4 4 1 2 17 12 16 9 24",
+	"5 18 13 18 8 14 16 37",
+	"7 2 10 19 3 15 18 20 11 38",
+	"5 7 0 8 3 7 12 37",
+	"4 10 13 1 3 26 28",
+	"5 1 18 20 17 19 22 24",
+	"2 3 20 7 14",
+	"8 2 11 3 1 19 0 6 5 23 26",
+	"9 6 1 0 17 13 19 3 8 2 8 12",
+	"6 11 13 5 1 16 14 2 40",
+	"3 12 6 8 12 40",
+	"9 18 5 6 1 5 5 10 16 8 4 32",
+	"4 0 15 13 18 28 36",
+	"6 20 11 12 8 4 17 23 23",
+	"9 2 10 1 17 8 4 7 15 11 20 29",
+	"7 18 20 19 4 9 12 13 27 37",
+	"3 0 19 6 23 33",
+	"4 7 7 20 14 13 35",
+	"8 1 12 18 13 1 5 14 2 9 19",
+	"9 16 15 17 19 0 1 15 10 9 27 34",
+	"2 13 6 18 38",
+	"3 4 0 12 22 35",
+	"7 0 6 0 0 16 19 3 7 14",
+	"5 9 8 5 3 15 28 34",
+	"3 0 8 14 26 38",
+	"3 8 4 20 17 37",
+	"7 3 4 8 0 1 1 6 22 30",
+	"10 10 11 18 1 19 20 15 20 14 20 14 25",
+	"10 5 6 12 18 9 0 4 4 8 10 11 36",
+	"7 2 10 19 1 1 8 5 5 23",
+	"7 12 17 4 9 3 15 7 30 30",
+	"6 5 16 2 9 12 10 10 23",
+	"3 3 17 15 16 26",
+	"7 3 15 3 15 13 1 9 11 34",
+	"4 5 20 18 12 26 36",
+	"3 2 2 6 24 31",
+	"2 12 0 4 29",
+	"10 16 9 14 15 18 6 13 2 11 7 9 19",
+	"8 6 11 3 2 0 16 14 6 4 35",
+	"8 8 6 20 1 6 19 4 3 7 36",
+	"8 11 17 4 3 19 15 4 18 13 33",
+	"8 16 15 10 15 15 20 6 17 20 27",
+	"2 10 10 27 32",
+	"2 16 4 28 32",
+	"4 12 18 9 15 3 8",
+	"10 1 2 7 4 1 9 0 14 10 5 26 28",
+	"9 11 16 12 16 16 1 18 2 16 25 27",
+	"8 6 9 17 19 13 15 12 19 19 26",
+	"2 0 5 10 26",
+	"6 10 2 15 8 9 13 13 38",
+	"8 1 5 20 4 7 9 10 1 2 32",
+	"8 4 15 19 2 4 11 13 1 20 34",
+	"8 14 1 3 15 4 0 1 19 20 24",
+	"7 3 17 20 11 6 12 15 4 7",
+	"9 19 20 10 20 3 19 9 4 12 26 30",
+	"3 16 6 1 26 32",
+	"9 11 6 14 11 20 2 1 1 15 9 10",
+	"10 18 18 6 7 2 20 16 16 13 16 10 40",
+	"3 4 13 18 14 16",
+	"3 13 2 3 14 38",
+	"4 0 14 13 13 1 32",
+	"7 8 2 11 2 3 11 0 12 23",
+	"4 0 7 11 2 20 24",
+	"5 0 6 3 0 9 12 34",
+	"2 19 7 28 30",
+	"4 14 3 15 11 23 31",
+	"4 0 6 11 10 16 25",
+	"6 17 20 10 5 18 2 4 38",
+	"6 5 12 4 4 7 10 17 24",
+	"5 5 9 11 13 1 28 30",
+	"2 12 2 23 25",
+	"4 13 9 17 13 24 28",
+	"8 9 20 11 2 7 14 20 11 21 37",
+	"2 12 13 1 27",
+	"7 14 6 11 9 15 2 5 26 27",
+	"6 3 17 19 4 14 12 6 32",
+	"8 5 7 14 10 16 4 11 14 21 23",
+	"9 6 9 0 14 19 14 0 6 9 4 23",
+	"10 19 4 13 15 2 15 7 17 12 8 21 21",
+	"3 8 1 0 9 34",
+	"10 18 12 14 3 8 11 9 6 19 2 2 6",
+	"6 9 17 10 3 16 7 29 31",
+	"3 13 9 9 17 21",
+	"10 20 6 17 3 13 20 17 12 8 9 15 26",
+	"4 5 3 3 12 13 31",
+	"9 4 17 9 11 20 15 13 6 15 16 38",
+	"10 10 15 20 1 14 9 4 15 1 19 7 8",
+	"7 15 12 0 16 2 2 12 1 24",
+	"2 3 19 1 18",
+	"6 7 4 18 9 6 3 14 28",
+	"7 12 5 10 13 20 13 4 15 37",
 }
 
-func genCase(rng *rand.Rand) (string, string) {
-    m := rng.Intn(9) + 2 // 2..10
-    arr := make([]int, m)
-    total := 0
-    for i := 0; i < m; i++ {
-        arr[i] = rng.Intn(21)
-        total += arr[i]
-    }
-    if total == 0 {
-        idx := rng.Intn(m)
-        arr[idx] = rng.Intn(5) + 1
-        total = arr[idx]
-    }
-    x := rng.Intn(30) + 1
-    y := rng.Intn(11) + x // ensure y>=x
-    if y > 40 {
-        y = 40
-    }
-    var sb strings.Builder
-    fmt.Fprintf(&sb, "%d\n", m)
-    for i, v := range arr {
-        if i > 0 {
-            sb.WriteByte(' ')
-        }
-        fmt.Fprintf(&sb, "%d", v)
-    }
-    fmt.Fprintf(&sb, "\n%d %d\n", x, y)
-
-    exp := fmt.Sprintf("%d\n", solveA(arr, x, y))
-    return sb.String(), exp
+func referenceSolve(a []int, low, high int64) string {
+	var sum1 int64
+	for _, v := range a {
+		sum1 += int64(v)
+	}
+	var sum2 int64
+	for i, v := range a {
+		sum2 += int64(v)
+		sum1 -= int64(v)
+		if sum2 >= low && sum2 <= high && sum1 >= low && sum1 <= high {
+			return strconv.Itoa(i + 2)
+		}
+	}
+	return "0"
 }
 
-func runCase(bin, input, expected string) error {
-    cmd := exec.Command(bin)
-    cmd.Stdin = strings.NewReader(input)
-    var out bytes.Buffer
-    cmd.Stdout = &out
-    cmd.Stderr = &out
-    if err := cmd.Run(); err != nil {
-        return fmt.Errorf("runtime error: %v\n%s", err, out.String())
-    }
-    got := strings.TrimSpace(out.String())
-    if got != strings.TrimSpace(expected) {
-        return fmt.Errorf("expected %s got %s", strings.TrimSpace(expected), got)
-    }
-    return nil
+func runBinary(bin, input string) (string, string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	return out.String(), stderr.String(), err
+}
+
+func parseCase(line string) ([]int, int64, int64, error) {
+	parts := strings.Fields(line)
+	if len(parts) < 4 {
+		return nil, 0, 0, fmt.Errorf("not enough fields")
+	}
+	n, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("parse n: %w", err)
+	}
+	if len(parts) != 1+n+2 {
+		return nil, 0, 0, fmt.Errorf("expected %d numbers, got %d", 1+n+2, len(parts))
+	}
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		val, err := strconv.Atoi(parts[1+i])
+		if err != nil {
+			return nil, 0, 0, fmt.Errorf("parse a[%d]: %w", i, err)
+		}
+		a[i] = val
+	}
+	low, err := strconv.ParseInt(parts[1+n], 10, 64)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("parse low: %w", err)
+	}
+	high, err := strconv.ParseInt(parts[2+n], 10, 64)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("parse high: %w", err)
+	}
+	return a, low, high, nil
 }
 
 func main() {
-    if len(os.Args) != 2 {
-        fmt.Println("usage: go run verifierA.go /path/to/binary")
-        os.Exit(1)
-    }
-    bin := os.Args[1]
-    rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-    for i := 0; i < 100; i++ {
-        in, exp := genCase(rng)
-        if err := runCase(bin, in, exp); err != nil {
-            fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
-            os.Exit(1)
-        }
-    }
-    fmt.Println("All tests passed")
+	if len(os.Args) != 2 {
+		fmt.Println("usage: verifierA /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
+
+	idx := 0
+	for _, tc := range testcases {
+		line := strings.TrimSpace(tc)
+		if line == "" {
+			continue
+		}
+		idx++
+		a, low, high, err := parseCase(line)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx, err)
+			os.Exit(1)
+		}
+		var input strings.Builder
+		input.WriteString(strconv.Itoa(len(a)))
+		input.WriteByte('\n')
+		for i, v := range a {
+			if i > 0 {
+				input.WriteByte(' ')
+			}
+			input.WriteString(strconv.Itoa(v))
+		}
+		input.WriteByte('\n')
+		input.WriteString(fmt.Sprintf("%d %d\n", low, high))
+
+		expected := referenceSolve(a, low, high)
+		out, stderr, err := runBinary(bin, input.String())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr)
+			os.Exit(1)
+		}
+		if strings.TrimSpace(out) != expected {
+			fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %s\ngot: %s\n", idx, expected, strings.TrimSpace(out))
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", idx)
 }

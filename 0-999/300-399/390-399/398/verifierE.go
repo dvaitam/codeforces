@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,7 +9,109 @@ import (
 	"strings"
 )
 
-const mod = 1000000007
+// Embedded copy of testcasesE.txt so the verifier is self-contained.
+const testcasesE = `2 2 0 0
+6 2 4 0 2 6 0 1
+2 2 0 0
+6 0 5 1 3 4 6 2
+6 0 3 4 6 1 5 2
+3 1 1 2 0
+4 1 0 2 1 4
+1 0 1
+4 0 1 2 4 3
+6 1 1 2 3 6 0 4
+5 1 3 1 0 2 5
+5 2 5 0 0 3 2
+3 0 3 2 1
+6 1 0 4 2 6 3 1
+3 1 0 1 2
+5 2 5 2 0 4 0
+5 0 2 4 5 3 1
+1 0 1
+2 1 1 0
+2 2 0 0
+3 0 1 3 2
+4 2 2 0 0 4
+6 2 1 4 0 3 0 6
+5 1 0 2 3 4 1
+4 2 3 0 1 0
+6 1 2 6 1 4 3 0
+1 1 0
+6 1 4 0 1 6 5 3
+3 1 1 0 3
+4 0 2 4 3 1
+3 2 0 0 1
+2 2 0 0
+5 1 0 1 4 2 3
+3 2 2 0 0
+3 0 2 3 1
+5 0 1 5 4 2 3
+6 0 1 6 4 2 3 5
+5 1 1 2 0 3 4
+4 2 0 0 1 4
+1 1 0
+5 2 4 5 0 1 0
+5 1 0 5 3 1 2
+2 0 2 1
+6 2 0 6 5 1 4 0
+2 2 0 0
+5 2 2 0 0 1 4
+3 2 0 0 2
+2 0 2 1
+2 0 1 2
+2 0 1 2
+6 2 6 2 5 3 0 0
+5 1 0 5 2 4 1
+2 0 2 1
+1 0 1
+4 0 4 2 3 1
+3 0 3 1 2
+3 1 1 2 0
+3 1 3 0 2
+4 0 4 1 3 2
+6 2 3 6 5 0 0 4
+6 2 3 2 5 0 1 0
+6 1 2 0 1 5 6 4
+5 1 3 4 2 0 5
+2 0 1 2
+3 2 0 0 2
+6 2 6 2 3 1 0 0
+1 0 1
+4 0 3 1 4 2
+5 0 4 2 3 1 5
+2 0 1 2
+1 0 1
+1 1 0
+5 1 0 4 3 5 1
+5 2 4 0 3 5 0
+1 0 1
+2 2 0 0
+3 1 1 0 3
+5 1 2 5 3 0 1
+6 0 3 2 1 6 5 4
+2 0 2 1
+4 2 0 0 3 4
+3 0 3 2 1
+2 2 0 0
+2 1 2 0
+4 1 3 0 1 2
+3 1 3 2 0
+4 2 3 1 0 0
+1 1 0
+4 0 4 1 3 2
+2 1 0 1
+3 0 2 3 1
+3 0 3 2 1
+2 1 0 1
+1 0 1
+3 1 3 0 1
+5 2 5 2 0 0 3
+4 1 3 2 4 0
+2 2 0 0
+1 1 0
+4 2 4 0 0 3`
+
+const modE = 1000000007
 
 type perm []int
 
@@ -100,7 +202,7 @@ func countWays(start perm) int {
 				ways[k] = ways[permKey(cur)]
 				queue = append(queue, nxt)
 			} else if prev == d+1 {
-				ways[k] = (ways[k] + ways[permKey(cur)]) % mod
+				ways[k] = (ways[k] + ways[permKey(cur)]) % modE
 			}
 		}
 	}
@@ -113,7 +215,15 @@ func countWays(start perm) int {
 	return ways[goalKey]
 }
 
-func solveE(n, k int, arr []int) int {
+type testCase struct {
+	n   int
+	k   int
+	arr []int
+}
+
+func solve(tc testCase) int {
+	n := tc.n
+	arr := append([]int(nil), tc.arr...)
 	used := make([]bool, n+1)
 	for _, v := range arr {
 		if v != 0 {
@@ -126,22 +236,22 @@ func solveE(n, k int, arr []int) int {
 			missing = append(missing, i)
 		}
 	}
-	positions := make([]int, 0)
+	pos := make([]int, 0)
 	for i, v := range arr {
 		if v == 0 {
-			positions = append(positions, i)
+			pos = append(pos, i)
 		}
 	}
 	total := 0
 	var dfs func(int)
 	dfs = func(idx int) {
-		if idx == len(positions) {
+		if idx == len(pos) {
 			p := make(perm, n)
 			copy(p, arr)
 			val := countWays(p)
 			total += val
-			if total >= mod {
-				total %= mod
+			if total >= modE {
+				total %= modE
 			}
 			return
 		}
@@ -149,82 +259,109 @@ func solveE(n, k int, arr []int) int {
 			if num == -1 {
 				continue
 			}
-			arr[positions[idx]] = num
+			arr[pos[idx]] = num
 			missing[i] = -1
 			dfs(idx + 1)
 			missing[i] = num
-			arr[positions[idx]] = 0
+			arr[pos[idx]] = 0
 		}
 	}
-	dfs(0)
-	if len(positions) == 0 {
-		return countWays(perm(arr)) % mod
+	if len(pos) == 0 {
+		total = countWays(perm(arr)) % modE
+	} else {
+		dfs(0)
 	}
-	return total % mod
+	return total % modE
+}
+
+func parseCases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesE), "\n")
+	cases := make([]testCase, 0, len(lines))
+	for idx, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return nil, fmt.Errorf("line %d: not enough fields", idx+1)
+		}
+		n, err1 := strconv.Atoi(fields[0])
+		k, err2 := strconv.Atoi(fields[1])
+		if err1 != nil || err2 != nil {
+			return nil, fmt.Errorf("line %d: bad n or k", idx+1)
+		}
+		if len(fields) != 2+n {
+			return nil, fmt.Errorf("line %d: expected %d numbers got %d", idx+1, n, len(fields)-2)
+		}
+		arr := make([]int, n)
+		for i := 0; i < n; i++ {
+			val, err := strconv.Atoi(fields[2+i])
+			if err != nil {
+				return nil, fmt.Errorf("line %d: bad value %d", idx+1, i+1)
+			}
+			arr[i] = val
+		}
+		cases = append(cases, testCase{n: n, k: k, arr: arr})
+	}
+	return cases, nil
+}
+
+func buildInput(tc testCase) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d %d\n", tc.n, tc.k)
+	for i, v := range tc.arr {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(v))
+	}
+	sb.WriteByte('\n')
+	return sb.String()
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("usage: go run verifierE.go /path/to/binary")
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: verifierE /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesE.txt")
+
+	cases, err := parseCases()
 	if err != nil {
-		fmt.Println("could not open testcasesE.txt:", err)
+		fmt.Println("failed to load testcases:", err)
 		os.Exit(1)
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
-			fmt.Printf("bad test case %d\n", idx)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(fields[0])
-		k, _ := strconv.Atoi(fields[1])
-		arr := make([]int, n)
-		for i := 0; i < n; i++ {
-			arr[i], _ = strconv.Atoi(fields[2+i])
-		}
-		exp := solveE(n, k, arr)
-		var input strings.Builder
-		input.WriteString(fmt.Sprintf("%d %d\n", n, k))
-		for i := 0; i < n; i++ {
-			if i > 0 {
-				input.WriteByte(' ')
-			}
-			input.WriteString(strconv.Itoa(arr[i]))
-		}
-		input.WriteByte('\n')
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input.String())
-		out, err := cmd.CombinedOutput()
+
+	for idx, tc := range cases {
+		expect := solve(tc)
+		input := buildInput(tc)
+		got, err := runCandidate(bin, input)
 		if err != nil {
-			fmt.Printf("Test %d runtime error: %v\n", idx, err)
+			fmt.Printf("case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		gotStr := strings.TrimSpace(string(out))
-		got, err := strconv.Atoi(gotStr)
+		g, err := strconv.Atoi(strings.TrimSpace(got))
 		if err != nil {
-			fmt.Printf("Test %d: output not integer\n", idx)
+			fmt.Printf("case %d: bad output\n", idx+1)
 			os.Exit(1)
 		}
-		if got%mod != exp%mod {
-			fmt.Printf("Test %d failed: expected %d got %d\n", idx, exp%mod, got%mod)
+		if g%modE != expect {
+			fmt.Printf("case %d failed: expected %d got %d\n", idx+1, expect, g)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Println("scanner error:", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d cases passed\n", len(cases))
 }

@@ -1,77 +1,175 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
+	"strconv"
 	"strings"
 )
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: go run verifierA.go /path/to/binary\n")
-		os.Exit(1)
-	}
-	candidate := os.Args[1]
+// Embedded testcases from testcasesA.txt.
+const embeddedTestcasesA = `8 49 27 3
+6 33 32 26
+6 31 23 38
+5 33 9 19
+4 49 7 40
+6 35 46 39
+4 20 7 47
+3 44 22 31
+10 7 23 28
+7 40 41 14
+10 31 29 34
+6 4 36 1
+3 47 26 46
+2 40 32 22
+5 47 21 46
+3 13 37 15
+5 10 35 29
+3 6 21 33
+9 7 20 36
+6 46 8 36
+7 35 14 39
+10 38 19 29
+3 39 25 21
+5 19 12 13
+4 3 40 43
+6 31 5 6
+4 10 3 6
+10 44 26 46
+10 18 34 16
+5 44 38 27
+6 29 32 43
+7 6 21 40
+3 32 38 41
+7 13 16 2
+6 8 46 15
+7 11 22 28
+2 7 10 45
+5 3 37 41
+10 39 44 5
+2 8 41 13
+3 26 6 24
+3 3 39 2
+5 12 46 8
+9 14 47 4
+2 35 28 40
+3 17 5 15
+3 42 20 23
+8 12 4 33
+9 3 39 7
+8 13 17 23
+9 37 11 45
+5 50 4 44
+4 11 22 34
+6 8 39 29
+4 1 31 44
+8 37 33 20
+7 25 43 17
+4 36 45 1
+9 48 6 22
+2 35 18 9
+5 49 31 23
+6 44 23 38
+4 46 20 25
+8 42 6 1
+5 45 22 11
+5 15 41 29
+8 46 44 37
+8 3 26 45
+8 50 43 46
+2 11 29 5
+6 45 11 29
+10 32 36 39
+2 3 32 21
+6 30 4 27
+5 36 41 6
+4 1 26 44
+8 21 1 14
+2 46 49 1
+10 40 7 13
+3 39 42 13
+6 18 45 12
+3 31 26 41
+3 2 18 29
+3 17 9 42
+10 42 42 23
+3 10 18 2
+2 3 14 44
+6 36 21 24
+2 48 45 39
+9 46 42 30
+8 24 35 12
+5 25 38 19
+2 9 10 18
+7 22 24 46
+3 22 50 40
+2 3 18 11
+4 38 19 24
+8 36 9 19
+3 31 47 16
+2 20 12 34`
 
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	ref := filepath.Join(dir, "refA")
-	cmd := exec.Command("go", "build", "-o", ref, filepath.Join(dir, "402A.go"))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build reference solution: %v\n%s", err, out)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
-	f, err := os.Open(filepath.Join(dir, "testcasesA.txt"))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
+func solve402A(k, a, b, v int) int {
+	for m := 1; ; m++ {
+		maxDiv := m * (k - 1)
+		divUsed := b
+		if maxDiv < b {
+			divUsed = maxDiv
 		}
-		idx++
-		input := line + "\n"
-		candOut, cErr := runBinary(candidate, input)
-		refOut, rErr := runBinary(ref, input)
-		if cErr != nil {
-			fmt.Fprintf(os.Stderr, "test %d: candidate error: %v\n", idx, cErr)
-			os.Exit(1)
-		}
-		if rErr != nil {
-			fmt.Fprintf(os.Stderr, "test %d: reference error: %v\n", idx, rErr)
-			os.Exit(1)
-		}
-		if strings.TrimSpace(candOut) != strings.TrimSpace(refOut) {
-			fmt.Fprintf(os.Stderr, "test %d failed\ninput: %sexpected:%sactual:%s\n", idx, input, refOut, candOut)
-			os.Exit(1)
+		totalSections := m + divUsed
+		if totalSections*v >= a {
+			return m
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
 }
 
-func runBinary(path, input string) (string, error) {
-	cmd := exec.Command(path)
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return out.String(), err
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: go run verifierA.go /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
+	lines := strings.Split(strings.TrimSpace(embeddedTestcasesA), "\n")
+	for idx, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) != 4 {
+			fmt.Fprintf(os.Stderr, "case %d: expected 4 integers, got %d\n", idx+1, len(fields))
+			os.Exit(1)
+		}
+		k, err1 := strconv.Atoi(fields[0])
+		a, err2 := strconv.Atoi(fields[1])
+		b, err3 := strconv.Atoi(fields[2])
+		v, err4 := strconv.Atoi(fields[3])
+		if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
+			fmt.Fprintf(os.Stderr, "case %d: parse error\n", idx+1)
+			os.Exit(1)
+		}
+
+		want := strconv.Itoa(solve402A(k, a, b, v))
+		input := line + "\n"
+		got, err := runCandidate(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
+			os.Exit(1)
+		}
+		if got != want {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, want, got)
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", len(lines))
 }

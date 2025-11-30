@@ -8,86 +8,321 @@ import (
 	"os/exec"
 	"sort"
 	"strconv"
+	"strings"
 )
 
-func solveCase(n, k int, floors []int) int64 {
+const testcases = `
+100
+5 10
+4 10 5 17 16
+16 7
+8 5 17 2 14 15 2 16 10 9 20 5 12 2 2 2
+18 1
+14 8 15 2 18 9 16 17 19 9 13 9 9 16 11 2 15 19
+4 3
+11 5 12 18
+14 9
+8 11 11 20 17 18 14 20 3 17 9 14 15 7
+12 9
+13 4 16 18 5 7 18 14 13 17 2 17
+2 5
+20 20
+13 3
+7 18 9 2 8 19 19 9 14 18 13 20 13
+15 5
+19 2 14 18 6 18 19 8 15 3 17 13 20 19 8
+17 7
+17 13 15 13 2 19 19 12 16 2 9 7 19 20 7 4 19
+9 1
+4 4 2 16 2 10 9 10 5
+20 3
+13 11 4 7 7 10 18 7 10 11 16 12 17 17 5 2 11 14 12 15
+7 5
+5 10 18 8 15 2 9
+1 7
+6
+2 3
+16 18
+14 9
+9 18 16 9 18 2 14 20 12 15 3 11 6 8
+2 5
+4 4
+10 5
+7 15 20 10 6 2 19 3 20 8
+19 8
+7 18 3 14 8 13 5 8 20 15 20 8 17 5 14 11 18 17 2
+11 10
+14 11 2 7 8 12 20 6 12 15 8
+9 2
+14 19 13 19 17 19 9 4 3
+3 3
+7 7 19
+7 5
+12 18 10 13 12 12 5
+10 4
+17 6 20 19 5 12 3 15 4 14
+5 3
+12 5 20 14 4
+19 9
+9 20 4 10 13 11 20 19 5 16 10 5 3 11 2 2 4 15 5
+2 4
+9 20
+14 3
+5 16 7 9 7 5 15 14 19 11 19 10 17 12
+4 4
+12 3 2 2
+10 10
+12 16 14 12 14 4 4 12 16 5
+9 4
+19 17 13 10 7 19 8 11 8
+8 6
+4 10 4 16 4 20 12 9
+13 5
+3 12 7 12 20 11 9 12 5 19 20 4 9
+8 1
+9 14 4 10 19 4 4 2
+1 5
+13
+16 8
+6 5 18 12 4 18 7 7 6 6 12 11 5 18 11 6
+7 3
+19 3 12 19 8 7 11
+14 9
+7 3 9 10 4 16 15 19 10 19 16 19 16 2
+13 6
+7 10 17 2 15 20 2 3 13 20 6 20 6
+5 5
+10 14 20 14 7
+20 2
+9 17 2 7 18 12 18 16 9 9 12 17 17 9 15 12 19 10 9 3
+3 9
+13 7 18
+7 5
+11 11 19 13 7 16 4
+4 10
+18 20 14 7
+5 5
+15 8 20 3 17
+13 6
+14 18 7 19 3 18 4 10 5 10 4 6 4
+15 4
+14 15 14 7 12 16 6 17 8 5 15 19 15 5 11
+9 4
+14 19 2 8 18 16 20 2 2
+20 4
+10 8 7 11 6 19 8 10 11 20 10 16 7 19 13 17 15 5 8 20
+13 4
+11 5 2 5 20 2 19 11 6 4 18 13 20
+10 7
+18 13 18 12 2 5 16 16 13 11
+18 7
+12 20 17 5 14 14 8 19 2 10 18 8 16 18 15 11 7 16
+20 9
+8 13 18 2 14 20 15 14 12 20 4 17 9 11 2 15 6 14 10 7
+3 10
+2 13 10
+14 9
+11 6 16 10 17 7 16 18 3 10 18 5 20 15
+3 6
+4 16 2
+6 9
+7 4 14 10 11 8
+17 4
+9 12 10 4 4 18 13 16 18 19 3 7 11 19 10 13 9
+13 9
+14 7 17 10 12 9 10 9 2 14 12 15 9
+9 4
+4 7 20 16 20 6 10 16 18
+6 3
+6 16 13 11 14 9
+4 4
+11 4 5 9
+13 6
+17 5 7 3 3 2 8 3 17 18 16 12 10
+4 10
+7 5 9 14
+8 8
+16 14 7 9 9 11 16 19
+19 7
+8 16 10 12 17 20 5 8 4 3 2 2 17 12 14 20 11 8 14
+6 3
+2 2 14 6 19 3
+19 7
+10 6 4 16 11 2 3 19 3 18 6 3 10 5 15 4 8 2 17
+5 5
+8 16 14 12 10
+9 4
+9 3 20 20 7 13 15 19 18
+2 6
+19 15
+18 4
+19 15 4 10 4 10 7 5 6 3 8 15 3 3 4 18 17 18
+12 2
+12 3 6 19 3 16 6 14 16 2 18 10
+3 5
+12 4 11
+2 7
+3 10
+11 3
+10 14 5 11 5 15 9 18 19 8 12
+11 9
+14 20 17 5 6 16 18 19 20 18 19
+1 5
+7
+7 6
+14 18 12 5 15 13 6
+19 2
+3 11 19 12 15 11 12 13 10 12 18 18 2 18 5 6 12 12 12
+19 2
+16 10 17 16 13 14 4 20 3 6 3 18 17 20 10 9 20 12 13
+12 7
+11 16 12 19 18 7 2 6 10 9 20 6
+4 3
+15 3 5 19
+9 2
+8 10 4 20 18 4 4 8 7
+17 7
+2 20 13 17 11 9 8 17 9 15 16 13 19 8 17 4 10
+14 4
+2 19 14 18 17 4 14 18 20 20 15 3 13 16
+1 4
+11
+1 9
+5
+10 9
+12 19 20 19 11 18 15 19 18 15
+20 10
+11 16 11 6 18 16 20 6 19 7 10 2 15 20 3 13 15 14 11 2
+3 2
+2 14 10
+15 5
+13 17 12 14 16 5 17 13 6 15 6 2 7 10 13
+5 10
+11 15 10 18 11
+14 5
+15 12 17 8 17 14 15 4 4 6 8 6 9 2
+4 5
+6 17 5 14
+6 1
+4 15 3 19 8 19
+14 6
+3 5 19 15 5 10 10 7 17 3 8 4 14 5
+15 5
+18 17 14 5 17 5 6 14 8 7 18 10 15 19 11
+16 9
+8 12 17 5 2 13 10 3 19 16 11 5 9 18 10 10
+8 7
+6 6 10 8 15 19 3 19
+
+`
+
+type testCase struct {
+	n int
+	k int
+	a []int
+}
+
+func parseCases() ([]testCase, error) {
+	scan := bufio.NewScanner(strings.NewReader(testcases))
+	scan.Split(bufio.ScanWords)
+	cases := []testCase{}
+	// optional leading total
+	if !scan.Scan() {
+		return nil, fmt.Errorf("no data")
+	}
+	first, err := strconv.Atoi(scan.Text())
+	if err != nil {
+		return nil, fmt.Errorf("parse first token: %w", err)
+	}
+	_ = first // count may be inaccurate; we parse until exhaustion
+
+	for {
+		if !scan.Scan() {
+			break
+		}
+		n, err := strconv.Atoi(scan.Text())
+		if err != nil {
+			return nil, fmt.Errorf("parse n: %w", err)
+		}
+		if !scan.Scan() {
+			return nil, fmt.Errorf("missing k")
+		}
+		k, err := strconv.Atoi(scan.Text())
+		if err != nil {
+			return nil, fmt.Errorf("parse k: %w", err)
+		}
+		a := make([]int, n)
+		for i := 0; i < n; i++ {
+			if !scan.Scan() {
+				return nil, fmt.Errorf("case %d: missing a[%d]", len(cases)+1, i)
+			}
+			a[i], err = strconv.Atoi(scan.Text())
+			if err != nil {
+				return nil, fmt.Errorf("case %d: parse a[%d]: %w", len(cases)+1, i, err)
+			}
+		}
+		cases = append(cases, testCase{n: n, k: k, a: a})
+	}
+	if err := scan.Err(); err != nil {
+		return nil, err
+	}
+	return cases, nil
+}
+
+func referenceSolve(n, k int, floors []int) string {
 	sort.Ints(floors)
 	var ans int64
 	for i := n - 1; i >= 0; i -= k {
 		ans += int64(2 * (floors[i] - 1))
 	}
-	return ans
+	return strconv.FormatInt(ans, 10)
+}
+
+func runBinary(bin, input string) (string, string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	return out.String(), stderr.String(), err
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("Usage: go run verifierB.go /path/to/binary")
+		fmt.Println("usage: verifierB /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	data, err := os.ReadFile("testcasesB.txt")
+
+	cases, err := parseCases()
 	if err != nil {
-		fmt.Println("could not read testcasesB.txt:", err)
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	inputs := make([]struct {
-		n, k   int
-		floors []int
-	}, t)
-	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Println("bad test file")
+
+	for idx, tc := range cases {
+		var input strings.Builder
+		fmt.Fprintf(&input, "%d %d\n", tc.n, tc.k)
+		for i, v := range tc.a {
+			if i > 0 {
+				input.WriteByte(' ')
+			}
+			input.WriteString(strconv.Itoa(v))
+		}
+		input.WriteByte('\n')
+
+		expected := referenceSolve(tc.n, tc.k, append([]int(nil), tc.a...))
+		out, stderr, err := runBinary(bin, input.String())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr)
 			os.Exit(1)
 		}
-		n, _ := strconv.Atoi(scan.Text())
-		scan.Scan()
-		k, _ := strconv.Atoi(scan.Text())
-		floors := make([]int, n)
-		for j := 0; j < n; j++ {
-			scan.Scan()
-			v, _ := strconv.Atoi(scan.Text())
-			floors[j] = v
-		}
-		inputs[i] = struct {
-			n, k   int
-			floors []int
-		}{n, k, floors}
-	}
-	expected := make([]int64, t)
-	for i, in := range inputs {
-		expected[i] = solveCase(in.n, in.k, append([]int(nil), in.floors...))
-	}
-	cmd := exec.Command(bin)
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.Output()
-	if err != nil {
-		fmt.Println("execution failed:", err)
-		os.Exit(1)
-	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
-	for i := 0; i < t; i++ {
-		if !outScan.Scan() {
-			fmt.Printf("missing output for test %d\n", i+1)
-			os.Exit(1)
-		}
-		gotStr := outScan.Text()
-		got, _ := strconv.ParseInt(gotStr, 10, 64)
-		if got != expected[i] {
-			fmt.Printf("test %d failed: expected %d got %d\n", i+1, expected[i], got)
+		if strings.TrimSpace(out) != expected {
+			fmt.Fprintf(os.Stderr, "case %d failed\nexpected: %s\ngot: %s\n", idx+1, expected, strings.TrimSpace(out))
 			os.Exit(1)
 		}
 	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
-		os.Exit(1)
-	}
-	fmt.Println("All tests passed!")
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

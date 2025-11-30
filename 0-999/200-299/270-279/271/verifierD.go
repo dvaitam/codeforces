@@ -1,39 +1,167 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
+func solve(input string) (string, error) {
+	reader := strings.NewReader(strings.TrimSpace(input))
+	var s string
+	if _, err := fmt.Fscan(reader, &s); err != nil {
 		return "", err
 	}
-	oracle := filepath.Join(dir, "oracleD")
-	cmd := exec.Command("go", "build", "-o", oracle, "271D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	var goodStr string
+	if _, err := fmt.Fscan(reader, &goodStr); err != nil {
+		return "", err
 	}
-	return oracle, nil
+	var k int
+	if _, err := fmt.Fscan(reader, &k); err != nil {
+		return "", err
+	}
+
+	n := len(s)
+	good := make([]bool, 26)
+	for i := 0; i < 26 && i < len(goodStr); i++ {
+		if goodStr[i] == '1' {
+			good[i] = true
+		}
+	}
+
+	const base uint64 = 1315423911
+	H := make([]uint64, n+1)
+	P := make([]uint64, n+1)
+	P[0] = 1
+	for i := 0; i < n; i++ {
+		H[i+1] = H[i]*base + uint64(s[i]-'a'+1)
+		P[i+1] = P[i] * base
+	}
+
+	seen := make(map[uint64]struct{})
+	result := 0
+	for i := 0; i < n; i++ {
+		bad := 0
+		for j := i; j < n; j++ {
+			if !good[s[j]-'a'] {
+				bad++
+				if bad > k {
+					break
+				}
+			}
+			hj := H[j+1] - H[i]*P[j-i+1]
+			if _, ok := seen[hj]; !ok {
+				seen[hj] = struct{}{}
+				result++
+			}
+		}
+	}
+
+	return fmt.Sprint(result), nil
 }
 
-func run(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var errb bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
-	}
-	return strings.TrimSpace(out.String()), nil
+var testcases = []string{
+	`sreltpus 00110011100010000101111110 5`,
+	`bepg 11111110101010011001101010 0`,
+	`nyndbttybm 11001000001110011101111011 10`,
+	`whjniqjrkaznskamtsuebuuk 11111000111110101111100010 20`,
+	`ihkfvnuwddtkkvhozfckxugsoi 00001011010111111111010001 26`,
+	`tqnrwhbxoyvxqjrkhcsjdzhbbzwqg 10010010010010110100000010 26`,
+	`apusmbyihitqqnbpkyabyebdbcpbwc 11010111111011000100011101 1`,
+	`upywknwnoahg 10101001110101010010010001 2`,
+	`akdadvpwjsjzcbysqqwhdrxdrbr 10000011111110101011010001 23`,
+	`wqosxfeiygesqkhw 11101011100101101101010101 7`,
+	`huwyvcgihgyieftwvbifbkfncxzcd 01101110011111001101010101 28`,
+	`idqwlvylyojvvvuzi 01011010001100011101110000 17`,
+	`sxmldiimbebpqihwyq 11110110010000011001000011 9`,
+	`z 11111111000001010000101001 0`,
+	`balthqcprakkklwwecty 00100010110010001110101101 14`,
+	`wmofobxilloqltmhazgizleor 00000100000110001111000101 15`,
+	`h 00110010100111110101110010 0`,
+	`avca 00100101111011101010111011 1`,
+	`znohoywplifq 11000010010001111000101101 1`,
+	`ughwbeuesadhjghrqnqytkzrzgo 00000001001100111101110001 9`,
+	`ucklgpycrvxlnzuctqghlbkh 11010100011101111010000010 20`,
+	`bgxgipnbloxgxzje 01111000111101111011101111 7`,
+	`zqaaeuqerafbagyzolzlrbpfhainkb 01110111100100001101000010 28`,
+	`ooqvytqnlqufjfcverdnylooizi 11010011011010101101010110 9`,
+	`lfummkbigbkktmrjbenincphgxcwqd 00101111110001000011001000 9`,
+	`ueebqer 01011001000010110001010011 1`,
+	`kpaxlqxzosnorrjoeromgyt 10101100001000001110111001 14`,
+	`slukslwtyxlwkjjif 00101111011010011100110010 1`,
+	`pdnxmwrlajlqlmoluv 01010010000011100011101101 7`,
+	`ejjrgdftcnazlmap 01101011110001100111011010 12`,
+	`buq 00000111110011011101011010 1`,
+	`dodqmgkfybkphmvxbhmlmhfjili 01000110001001001101110011 0`,
+	`fiqnvphmqplmtpyfdwn 10101011011101001111101111 11`,
+	`fhjwgsmwdkrfkxpfrmo 01100100000011110111010001 11`,
+	`eilvfisyqgvhhi 11000001101000110111111111 2`,
+	`bf 10000110100000111001010000 0`,
+	`w 01111000110001110001011011 0`,
+	`alghfnmdmksdrvthjdamaskhgo 11011001010101001100101010 0`,
+	`p 00100111111101010000001000 1`,
+	`qapclvpcnvwkrzmno 10111111010111101000101010 5`,
+	`qoinnsskmnblxymlxmiqhehgytaunx 01111101100000010000101100 6`,
+	`unpkuoqairaskkrmgdjgcgm 00100110010100101101010001 13`,
+	`brmisjqgo 01100111010000110010010111 0`,
+	`oywoyfpadzflpimq 01111101111010100000110100 10`,
+	`atbmfduyqolxpzaovnurxcdycvcgd 10100010001111000010111101 27`,
+	`jchyfrkozmhqwrkjklyyy 01100111110010110111101001 14`,
+	`wfgiwersiafgu 01011000111101101111100001 8`,
+	`laf 01010010100010101110111011 0`,
+	`uwytcinjldafzzdnxbmwnyhvcnbilf 11100101111001000110011011 12`,
+	`smcgmudgyvslzlijwvumuryne 10111001000111000010111001 5`,
+	`pyyvmiqhfvsyzypcglasvpbrnn 01111110100110100110110000 6`,
+	`huzdglfrycfmqoadkgmz 10000010010010100001110011 2`,
+	`ffutaodyzhdferkwgryna 10101001001001101001000100 7`,
+	`tkpwojcdzls 00110001001101101101001110 6`,
+	`cwsgpvqcm 10100011100000111111111010 1`,
+	`mtniwojdhoswtpfdsmwpgwojaxsjvz 10000011111000111000010110 9`,
+	`ubusipkyagmw 01000110110101101001000000 3`,
+	`kkozrbnhckdpuwhmfkfllrk 00101010001111010000011000 20`,
+	`zsqdwegkukzyhcvfmwahzijb 11111110101101101010101001 1`,
+	`tiahjliftoveekqltrqgwjknwcz 10010001111101100010001011 19`,
+	`wbmhamqrijvifl 00000001011100111000110111 2`,
+	`yclainroklt 00100111110110111010010100 0`,
+	`ptnjvsxmwtmilowusb 10000110011111000101110001 3`,
+	`etzxus 00111011110110110111100011 3`,
+	`tqoljolbxifdbcbjloqoswxk 00011110111010000011101011 22`,
+	`jhbpcichxmaxoem 00111101001110010110110011 10`,
+	`ukmtxejlithxqodeqlshlscsulzg 10000100011110101100110011 24`,
+	`bybkkdgqxogiskrllnnvqvtmfmi 11100100011110011110000111 22`,
+	`ekqjwlgfiaqncctfmxz 10100100100110101100000100 0`,
+	`oaipheulvovko 11110110100100010101001001 7`,
+	`rgmqapxgiocomjykpqgxldhcxcqcg 10000010011011000111110010 12`,
+	`zcffueelictdf 10100101100111010010101100 3`,
+	`pqgbsfhmikjjhajgjwrlqyrnmrvkxh 11010101011000010001100100 27`,
+	`ujkkfxolqivvhufidfplwsvvulv 11111001111001000100101011 25`,
+	`lckfnwkwrsizbpnrsojxdfbxn 01110000101110001101100001 17`,
+	`sw 11101000011001101010010000 1`,
+	`ako 00001011000001001001001100 0`,
+	`zv 01010011001001010011011111 2`,
+	`ywranpmsoqtspjcvltengfpwyisio 11100001100000001001000000 5`,
+	`sukqizatwwcdjhnyqwjei 11110010000100011011010010 5`,
+	`nlxwfcnmcltslgrkkplncwafnfoo 01010111101111110101001101 0`,
+	`ixgnakyoizduyshirjaqdlvela 10000100100011110011101100 12`,
+	`uqcswipoodezyrr 11111110100010101000001110 9`,
+	`nmxefqzxti 00110111011001011100101010 0`,
+	`tigqhinldahaxmyhfty 00010110000100001001100000 2`,
+	`ruezidnpalcrpctq 01010100110111110001001000 1`,
+	`wyiwxdse 01101111101110010001111000 0`,
+	`asvjec 10111110110000110011101110 4`,
+	`uekvssalpzgvjnho 00110010010100010011111000 6`,
+	`xujevnjsechkf 00000110110110011110111001 13`,
+	`vybjamyjlrlirncpiuihzyayjz 10100101011111111111001010 25`,
+	`rgepd 01101010111010011001111000 3`,
+	`kdeswppcx 11100010110011000011100011 6`,
+	`jedlbrajjaomjw 10101001111001011100101011 3`,
+	`edhsyohjcmlo 10101000100010001001000110 12`,
+	`mylckvxrxjgggprnznxmhcewwoame 11000100101000011111111100 28`,
+	`dnseuooixnxcjxidgifpkkarhvue 01000101001100101101010110 28`,
+	`ktkaerxdlcoowufkpjredfad 11011100110010011100110000 6`,
+	`kjhius 11101001000010010100010100 4`,
+	`leeevysiiurjxwwagifkj 00001110101001111111100010 11`,
 }
 
 func main() {
@@ -42,55 +170,30 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
-	file, err := os.Open("testcasesD.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
+	for idx, tc := range testcases {
+		input := strings.TrimSpace(tc) + "\n"
 
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		fields := strings.Fields(line)
-		if len(fields) < 3 {
-			fmt.Printf("test %d invalid line\n", idx)
-			os.Exit(1)
-		}
-		s := fields[0]
-		good := fields[1]
-		k := fields[2]
-		input := fmt.Sprintf("%s\n%s\n%s\n", s, good, k)
-		expected, err := run(oracle, input)
+		expected, err := solve(input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on test %d: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "test %d: oracle error: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got, err := run(bin, input)
+
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(input)
+		out, err := cmd.CombinedOutput()
 		if err != nil {
-			fmt.Printf("test %d: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n%s", idx+1, err, string(out))
 			os.Exit(1)
 		}
+
+		got := strings.TrimSpace(string(out))
 		if got != expected {
-			fmt.Printf("test %d failed\nexpected: %s\n got: %s\n", idx, expected, got)
+			fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %s\n got: %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,7 +10,113 @@ import (
 	"strings"
 )
 
-func solveB(n int, pairs [][2]int) float64 {
+const testcasesB = `2 4 1 2 1 2 2 2 2 1
+1 1 1 1
+4 4 1 4 3 2 1 3 1 1
+1 0
+4 5 2 4 1 2 4 4 2 3 2 2
+4 2 1 4 1 2
+3 0
+3 5 3 3 2 3 3 1 2 2 3 2
+5 3 5 1 4 2 4 4
+2 2 2 1 2 1
+2 4 2 2 2 1 2 1 2 2
+2 1 1 1
+2 4 1 2 2 2 2 2 1 2
+5 1 5 5
+2 3 1 2 2 1 2 2
+3 3 2 1 3 3 3 3
+3 3 3 1 1 3 1 3
+5 1 1 5
+3 0
+1 0
+1 1 1 1
+2 2 1 1 2 2
+1 0
+2 2 1 2 2 2
+3 3 2 1 1 2 2 2
+4 1 3 1
+3 5 3 1 3 2 1 1 1 2 1 1
+2 3 2 1 2 1 1 2
+5 2 4 1 3 2
+2 0
+3 0
+1 1 1 1
+4 4 3 2 1 1 2 4 2 1
+4 1 3 1
+2 4 2 1 2 1 2 2 2 1
+3 4 2 2 1 1 1 2 3 1
+3 3 1 2 3 1 2 3
+3 5 3 2 3 1 1 3 1 1 1 1
+2 4 1 2 2 2 2 2 2 1
+3 1 3 3
+4 1 1 3
+1 1 1 1
+2 1 2 1
+5 4 4 1 5 5 2 5 1 3
+3 2 3 3 1 2
+3 0
+1 1 1 1
+1 1 1 1
+2 1 2 1
+1 1 1 1
+2 0
+4 3 3 3 4 3 1 2
+3 0
+1 0
+3 5 3 2 2 2 2 2 1 1 2 3
+4 0
+3 1 3 3
+4 5 3 3 2 2 3 2 2 3 1 3
+1 1 1 1
+2 3 2 1 2 1 2 2
+2 2 1 1 1 1
+1 0
+4 0
+3 4 1 3 1 1 3 1 2 2
+4 3 2 1 3 1 2 2
+2 1 2 2
+1 1 1 1
+2 4 1 2 1 1 2 2 1 1
+2 2 1 2 2 2
+5 3 5 4 1 4 3 2
+3 3 1 3 2 3 1 1
+3 4 1 3 1 1 2 2 2 3
+4 1 1 2
+4 0
+2 4 2 2 1 1 2 2 2 1
+4 2 3 2 1 1
+5 5 3 2 5 2 3 3 3 5 3 2
+4 4 1 1 4 2 2 3 4 2
+5 5 1 4 4 3 4 5 2 5 1 5
+1 1 1 1
+1 0
+5 5 1 4 2 4 4 4 2 3 4 2
+5 3 2 1 4 5 5 4
+1 1 1 1
+4 5 1 2 4 1 1 2 3 2 2 3
+2 4 1 2 2 2 2 1 2 2
+4 0
+2 4 2 1 2 1 1 1 1 2
+2 0
+5 2 5 3 4 5
+3 4 2 1 1 2 3 2 2 2
+5 3 3 5 4 1 4 4
+2 4 1 2 1 2 2 2 1 2
+5 5 5 2 3 5 1 4 5 4 4 3
+5 4 1 4 2 3 1 4 2 4
+3 1 1 3
+1 1 1 1
+5 2 2 4 3 4
+2 3 1 2 1 2 1 2
+1 1 1 1
+3 1 1 3
+1 1 1 1
+5 2 2 4 3 4
+2 3 1 2 1 2 1 2
+1 1 1 1`
+
+func expected(n int, pairs [][2]int) string {
 	a := make([]bool, n+1)
 	b := make([]bool, n+1)
 	for _, p := range pairs {
@@ -46,22 +153,31 @@ func solveB(n int, pairs [][2]int) float64 {
 			}
 		}
 	}
-	return f[A][B]
+	return fmt.Sprintf("%.9f", f[A][B])
+}
+
+func runCandidate(bin string, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("usage: go run verifierB.go /path/to/binary")
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Println("could not open testcasesB.txt:", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
+
+	scanner := bufio.NewScanner(strings.NewReader(testcasesB))
+	scanner.Buffer(make([]byte, 0, 1024), 1<<20)
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -71,51 +187,43 @@ func main() {
 		idx++
 		fields := strings.Fields(line)
 		if len(fields) < 2 {
-			fmt.Printf("bad test case %d\n", idx)
+			fmt.Fprintf(os.Stderr, "bad test line %d\n", idx)
 			os.Exit(1)
 		}
-		n, _ := strconv.Atoi(fields[0])
-		m, _ := strconv.Atoi(fields[1])
-		var pairs [][2]int
-		for i := 0; i < m; i++ {
-			x, _ := strconv.Atoi(fields[2+2*i])
-			y, _ := strconv.Atoi(fields[3+2*i])
-			pairs = append(pairs, [2]int{x, y})
-		}
-		exp := solveB(n, pairs)
-		var input strings.Builder
-		input.WriteString(fmt.Sprintf("%d %d\n", n, m))
-		for _, p := range pairs {
-			input.WriteString(fmt.Sprintf("%d %d\n", p[0], p[1]))
-		}
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input.String())
-		out, err := cmd.CombinedOutput()
+		n, err := strconv.Atoi(fields[0])
 		if err != nil {
-			fmt.Printf("Test %d runtime error: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "bad test line %d\n", idx)
 			os.Exit(1)
 		}
-		gotStr := strings.TrimSpace(string(out))
-		got, err := strconv.ParseFloat(gotStr, 64)
+		m, err := strconv.Atoi(fields[1])
 		if err != nil {
-			fmt.Printf("Test %d: output not a float\n", idx)
+			fmt.Fprintf(os.Stderr, "bad test line %d\n", idx)
 			os.Exit(1)
 		}
-		if abs(got-exp) > 1e-6 {
-			fmt.Printf("Test %d failed: expected %.9f got %.9f\n", idx, exp, got)
+		if len(fields) != 2+2*m {
+			fmt.Fprintf(os.Stderr, "bad test line %d\n", idx)
+			os.Exit(1)
+		}
+		pairs := make([][2]int, m)
+		for i := 0; i < 2*m; i++ {
+			v, _ := strconv.Atoi(fields[2+i])
+			pairs[i/2][i%2] = v
+		}
+		want := expected(n, pairs)
+		input := fmt.Sprintf("%d %d\n%s\n", n, m, strings.Join(fields[2:], " "))
+		got, err := runCandidate(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
+			os.Exit(1)
+		}
+		if got != want {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected\n%s\ngot\n%s\n", idx, want, got)
 			os.Exit(1)
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		fmt.Println("scanner error:", err)
+		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Printf("All %d tests passed\n", idx)
-}
-
-func abs(x float64) float64 {
-	if x < 0 {
-		return -x
-	}
-	return x
 }

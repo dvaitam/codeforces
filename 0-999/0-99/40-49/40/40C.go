@@ -152,7 +152,7 @@ func main() {
    }
    // Z = isolated nodes
    Z := int64((N - cntI) + (M - cntJ))
-   Cc := int64(Z + CCbig)
+   Cc := Z + int64(CCbig)
    // total regions F = 2*P + Cc + 1
    F := 2*P + Cc + 1
    // output

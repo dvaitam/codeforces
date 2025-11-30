@@ -1,22 +1,156 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 )
 
-func runCandidate(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+// Embedded copy of testcasesA.txt so the verifier is self-contained.
+const testcasesA = `2
+4
+6
+8
+10
+12
+14
+16
+18
+20
+22
+24
+26
+28
+30
+32
+34
+36
+38
+40
+42
+44
+46
+48
+50
+52
+54
+56
+58
+60
+62
+64
+66
+68
+70
+72
+74
+76
+78
+80
+82
+84
+86
+88
+90
+92
+94
+96
+98
+100
+2
+4
+6
+8
+10
+12
+14
+16
+18
+20
+22
+24
+26
+28
+30
+32
+34
+36
+38
+40
+42
+44
+46
+48
+50
+52
+54
+56
+58
+60
+62
+64
+66
+68
+70
+72
+74
+76
+78
+80
+82
+84
+86
+88
+90
+92
+94
+96
+98
+100`
+
+// Embedded solution from 334A.go.
+func buildExpected(n int) []int {
+	res := make([]int, 0, n*n)
+	for i := 1; i <= n; i++ {
+		for k := 0; k < n; k++ {
+			var val int
+			if k < n/2 {
+				val = k*n + i
+			} else {
+				val = k*n + n - (i - 1)
+			}
+			res = append(res, val)
+		}
 	}
+	return res
+}
+
+func parseOutput(n int, output string) ([]int, error) {
+	var nums []int
+	r := strings.NewReader(output)
+	for {
+		var v int
+		_, err := fmt.Fscan(r, &v)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		nums = append(nums, v)
+	}
+	if len(nums) != n*n {
+		return nil, fmt.Errorf("expected %d numbers, got %d", n*n, len(nums))
+	}
+	return nums, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -25,88 +159,41 @@ func runCandidate(bin, input string) (string, error) {
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
 	}
-	return out.String(), nil
-}
-
-func checkOutput(n int, output string) error {
-	output = strings.TrimSpace(output)
-	lines := strings.Split(output, "\n")
-	if len(lines) != n {
-		return fmt.Errorf("expected %d lines, got %d", n, len(lines))
-	}
-	used := make([]bool, n*n+1)
-	target := n * (n*n + 1) / 2
-	for i, line := range lines {
-		fields := strings.Fields(line)
-		if len(fields) != n {
-			return fmt.Errorf("line %d: expected %d numbers, got %d", i+1, n, len(fields))
-		}
-		sum := 0
-		for _, f := range fields {
-			v, err := strconv.Atoi(f)
-			if err != nil {
-				return fmt.Errorf("line %d: bad integer %q", i+1, f)
-			}
-			if v < 1 || v > n*n {
-				return fmt.Errorf("line %d: value %d out of range", i+1, v)
-			}
-			if used[v] {
-				return fmt.Errorf("number %d repeated", v)
-			}
-			used[v] = true
-			sum += v
-		}
-		if sum != target {
-			return fmt.Errorf("line %d: sum %d expected %d", i+1, sum, target)
-		}
-	}
-	for v := 1; v <= n*n; v++ {
-		if !used[v] {
-			return fmt.Errorf("number %d missing", v)
-		}
-	}
-	return nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierA.go /path/to/binary")
+		fmt.Println("usage: verifierA /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcasesA.txt: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		n, err := strconv.Atoi(line)
+
+	lines := strings.Fields(testcasesA)
+	for idx, nStr := range lines {
+		n, err := strconv.Atoi(strings.TrimSpace(nStr))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "bad testcase on line %d: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "bad testcase at %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
 		input := fmt.Sprintf("%d\n", n)
-		out, err := runCandidate(bin, input)
+		expect := buildExpected(n)
+		gotStr, err := runCandidate(bin, input)
 		if err != nil {
-			fmt.Printf("test %d failed: %v\n", idx, err)
+			fmt.Printf("test %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if err := checkOutput(n, out); err != nil {
-			fmt.Printf("test %d failed: %v\n", idx, err)
+		got, err := parseOutput(n, gotStr)
+		if err != nil {
+			fmt.Printf("test %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
+		for i, v := range expect {
+			if got[i] != v {
+				fmt.Printf("test %d failed at position %d: expected %d got %d\n", idx+1, i+1, v, got[i])
+				os.Exit(1)
+			}
+		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(lines))
 }

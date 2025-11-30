@@ -10,7 +10,142 @@ import (
 	"strings"
 )
 
-func expectedNumber(a string, k int) string {
+// Embedded copy of testcasesB.txt to avoid filesystem dependency.
+const testcasesBData = `
+91417 97
+763170669074391 40
+1 3
+163608377835337406 71
+2415 92
+68344978690736625 70
+178128657070 39
+2283038836859 45
+489068288360759 70
+8675650 68
+995790328921840110 57
+4 31
+192541224 67
+447577 14
+4 49
+63414839603 2
+2027868387380 50
+60423041144 95
+694208 4
+9729806 25
+139693716487 2
+96402359256 27
+168587831 92
+12 21
+834598 32
+551439729815 5
+16225199619839 10
+549817410 37
+9 85
+1 52
+1339 53
+172321 55
+8484751350004 92
+76561159714 27
+754283433514171953 49
+1525943518 78
+330 31
+1481100457721 64
+18222254189 37
+32805 79
+324682034176848787 1
+5247069005929 16
+44696 22
+370 22
+58733577365894301 97
+52834448527911989 48
+246390 63
+5682808141412 99
+736 55
+2572973169861 84
+4368038790 3
+43242834 39
+728576139 49
+4101908 37
+18594 55
+58501775486597166 26
+149837986427983580 86
+9665991734062 81
+4219054684274 62
+780481 95
+15170282164943 67
+3541185 59
+80248459368627495 91
+49309656 97
+43129792 77
+782227546 30
+3411 29
+5712009030789 56
+41921363776 96
+334789 49
+7457913 10
+10 61
+69436220062 85
+196421740080820416 11
+1724376 42
+433099256 77
+805868386149142120 26
+10187851502807 85
+67084 11
+514060452 33
+1416388355869 61
+2788 92
+80423568516529104 83
+564554588081255591 57
+775619020 67
+9439555647958820 18
+392126901 69
+134198113 82
+860957 90
+3397367583 61
+463 1
+687169899605703408 15
+8589848688 52
+7428792824 81
+6 94
+56 51
+1110647457 98
+67175262024 47
+94648 36
+46573766112323 93
+`
+
+type testCase struct {
+	a string
+	k int
+}
+
+func parseTestcases() ([]testCase, error) {
+	reader := bufio.NewReader(strings.NewReader(testcasesBData))
+	var cases []testCase
+	for lineNum := 1; ; lineNum++ {
+		line, err := reader.ReadString('\n')
+		if err != nil && len(line) == 0 {
+			break
+		}
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("line %d: expected 2 fields", lineNum)
+		}
+		k, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: invalid k: %v", lineNum, err)
+		}
+		cases = append(cases, testCase{a: parts[0], k: k})
+	}
+	return cases, nil
+}
+
+// solve mirrors 435B.go logic: greedily bubble the best digit within k distance.
+func solve(a string, k int) string {
 	s := []byte(a)
 	n := len(s)
 	for i := 0; i < n && k > 0; i++ {
@@ -36,55 +171,42 @@ func expectedNumber(a string, k int) string {
 	return string(s)
 }
 
+func runCandidate(bin string, tc testCase) (string, error) {
+	input := fmt.Sprintf("%s %d\n", tc.a, tc.k)
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\nstderr: %s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	file, err := os.Open("testcasesB.txt")
+	tests, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
 		os.Exit(1)
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		parts := strings.Fields(line)
-		if len(parts) != 2 {
-			fmt.Fprintf(os.Stderr, "bad test case on line %d\n", idx)
-			os.Exit(1)
-		}
-		a := parts[0]
-		k, _ := strconv.Atoi(parts[1])
-		expect := expectedNumber(a, k)
-		input := fmt.Sprintf("%s %d\n", a, k)
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		var stderr bytes.Buffer
-		cmd.Stderr = &stderr
-		err := cmd.Run()
+	bin := os.Args[1]
+	for idx, tc := range tests {
+		expect := solve(tc.a, tc.k)
+		got, err := runCandidate(bin, tc)
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
 		if got != expect {
-			fmt.Printf("test %d failed: expected %s got %s\n", idx, expect, got)
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, expect, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

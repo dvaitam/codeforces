@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math"
@@ -130,9 +131,19 @@ func delta(x, y int64) int64 {
 	return int64(math.Ceil(val))
 }
 
-func expectedC1(x int64, arr []int64) int64 {
+// embeddedSolve mirrors solve from 1995C1.go so the verifier stays self contained.
+func embeddedSolve(r *bufio.Reader, w *bufio.Writer) {
+	var n, x int64
+	if _, err := fmt.Fscan(r, &n, &x); err != nil {
+		return
+	}
+	n--
+
 	var ans, temp int64
-	for _, y := range arr {
+	for n > 0 {
+		var y int64
+		fmt.Fscan(r, &y)
+
 		if y == 1 && x != 1 {
 			ans = -1
 		}
@@ -145,8 +156,30 @@ func expectedC1(x int64, arr []int64) int64 {
 			}
 			ans += temp
 		}
+
 		x = y
+		n--
 	}
+	fmt.Fprintln(w, ans)
+}
+
+// embeddedAnswer computes the expected value using the embedded reference solution.
+func embeddedAnswer(x int64, arr []int64) int64 {
+	var builder strings.Builder
+	fmt.Fprintf(&builder, "%d %d", len(arr)+1, x)
+	for _, v := range arr {
+		fmt.Fprintf(&builder, " %d", v)
+	}
+	builder.WriteString("\n")
+
+	reader := bufio.NewReader(strings.NewReader(builder.String()))
+	var out bytes.Buffer
+	writer := bufio.NewWriter(&out)
+	embeddedSolve(reader, writer)
+	writer.Flush()
+
+	var ans int64
+	fmt.Fscan(&out, &ans)
 	return ans
 }
 
@@ -182,7 +215,7 @@ func main() {
 		for i := 0; i < n-1; i++ {
 			fmt.Sscan(fields[2+i], &arr[i])
 		}
-		expect := expectedC1(x, arr)
+		expect := embeddedAnswer(x, arr)
 		input := fmt.Sprintf("1\n%d %d\n", n, x)
 		for i := 0; i < n-1; i++ {
 			input += fmt.Sprintf("%d ", arr[i])

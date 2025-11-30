@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,6 +8,613 @@ import (
 	"strconv"
 	"strings"
 )
+
+var rawTestcases = []string{
+	"3 4",
+	"0331",
+	"0003",
+	"4201",
+	"",
+	"4 4",
+	"1021",
+	"0221",
+	"1222",
+	"0423",
+	"",
+	"3 3",
+	"132",
+	"042",
+	"024",
+	"",
+	"4 3",
+	"334",
+	"233",
+	"112",
+	"200",
+	"",
+	"2 5",
+	"24432",
+	"11031",
+	"",
+	"5 4",
+	"1234",
+	"2412",
+	"0012",
+	"4410",
+	"2123",
+	"",
+	"2 2",
+	"20",
+	"22",
+	"",
+	"2 4",
+	"2213",
+	"4024",
+	"",
+	"3 5",
+	"21234",
+	"12402",
+	"03122",
+	"",
+	"4 2",
+	"31",
+	"31",
+	"00",
+	"00",
+	"",
+	"3 3",
+	"404",
+	"341",
+	"200",
+	"",
+	"4 5",
+	"13113",
+	"33013",
+	"31313",
+	"10022",
+	"",
+	"3 3",
+	"132",
+	"120",
+	"240",
+	"",
+	"5 2",
+	"33",
+	"03",
+	"14",
+	"12",
+	"23",
+	"",
+	"4 5",
+	"41223",
+	"30210",
+	"34120",
+	"13433",
+	"",
+	"5 3",
+	"011",
+	"042",
+	"033",
+	"140",
+	"114",
+	"",
+	"4 5",
+	"43000",
+	"40342",
+	"41020",
+	"40220",
+	"",
+	"2 5",
+	"31231",
+	"33000",
+	"",
+	"4 5",
+	"33012",
+	"33041",
+	"21112",
+	"32240",
+	"",
+	"3 2",
+	"20",
+	"40",
+	"34",
+	"",
+	"5 2",
+	"41",
+	"32",
+	"21",
+	"10",
+	"04",
+	"",
+	"4 5",
+	"42434",
+	"43312",
+	"42213",
+	"04141",
+	"",
+	"4 4",
+	"1424",
+	"0031",
+	"2221",
+	"2040",
+	"",
+	"2 4",
+	"0114",
+	"3400",
+	"",
+	"3 5",
+	"14234",
+	"13122",
+	"12443",
+	"",
+	"5 5",
+	"22334",
+	"02143",
+	"44233",
+	"40140",
+	"32420",
+	"",
+	"4 5",
+	"13401",
+	"10210",
+	"13444",
+	"42041",
+	"",
+	"3 2",
+	"10",
+	"20",
+	"02",
+	"",
+	"2 4",
+	"4113",
+	"1042",
+	"",
+	"2 3",
+	"431",
+	"123",
+	"",
+	"2 5",
+	"11243",
+	"42321",
+	"",
+	"5 2",
+	"30",
+	"20",
+	"21",
+	"01",
+	"04",
+	"",
+	"2 3",
+	"140",
+	"341",
+	"",
+	"5 5",
+	"21441",
+	"03422",
+	"34012",
+	"44232",
+	"01200",
+	"",
+	"4 5",
+	"20103",
+	"44410",
+	"10241",
+	"20440",
+	"",
+	"2 3",
+	"424",
+	"000",
+	"",
+	"5 3",
+	"121",
+	"223",
+	"430",
+	"133",
+	"044",
+	"",
+	"4 4",
+	"1321",
+	"1033",
+	"2233",
+	"2412",
+	"",
+	"4 2",
+	"03",
+	"24",
+	"21",
+	"42",
+	"",
+	"2 3",
+	"401",
+	"213",
+	"",
+	"2 4",
+	"0341",
+	"1014",
+	"",
+	"2 2",
+	"22",
+	"44",
+	"",
+	"3 2",
+	"10",
+	"11",
+	"20",
+	"",
+	"4 4",
+	"4211",
+	"1001",
+	"0230",
+	"1133",
+	"",
+	"5 4",
+	"2330",
+	"0112",
+	"1212",
+	"4142",
+	"3240",
+	"",
+	"3 3",
+	"214",
+	"100",
+	"012",
+	"",
+	"4 5",
+	"02311",
+	"34322",
+	"03130",
+	"31022",
+	"",
+	"2 2",
+	"31",
+	"40",
+	"",
+	"3 3",
+	"424",
+	"003",
+	"314",
+	"",
+	"3 2",
+	"11",
+	"42",
+	"13",
+	"",
+	"4 4",
+	"1244",
+	"2242",
+	"4041",
+	"2413",
+	"",
+	"5 2",
+	"04",
+	"11",
+	"14",
+	"14",
+	"04",
+	"",
+	"4 2",
+	"04",
+	"14",
+	"12",
+	"40",
+	"",
+	"4 5",
+	"21324",
+	"01230",
+	"02442",
+	"01303",
+	"",
+	"2 4",
+	"1111",
+	"0000",
+	"",
+	"4 5",
+	"00421",
+	"14400",
+	"01310",
+	"42422",
+	"",
+	"3 2",
+	"44",
+	"04",
+	"01",
+	"",
+	"2 4",
+	"4324",
+	"2142",
+	"",
+	"5 3",
+	"431",
+	"344",
+	"044",
+	"412",
+	"444",
+	"",
+	"5 4",
+	"1212",
+	"2214",
+	"3422",
+	"2120",
+	"1211",
+	"",
+	"5 2",
+	"20",
+	"40",
+	"00",
+	"41",
+	"11",
+	"",
+	"4 5",
+	"31332",
+	"40200",
+	"10303",
+	"13041",
+	"",
+	"4 4",
+	"4210",
+	"2203",
+	"4132",
+	"4340",
+	"",
+	"5 3",
+	"033",
+	"410",
+	"020",
+	"113",
+	"323",
+	"",
+	"4 5",
+	"23023",
+	"40332",
+	"14413",
+	"20240",
+	"",
+	"3 3",
+	"314",
+	"233",
+	"340",
+	"",
+	"5 2",
+	"32",
+	"32",
+	"11",
+	"22",
+	"12",
+	"",
+	"5 3",
+	"333",
+	"244",
+	"032",
+	"441",
+	"410",
+	"",
+	"5 4",
+	"1001",
+	"2122",
+	"3412",
+	"0003",
+	"0113",
+	"",
+	"2 3",
+	"110",
+	"141",
+	"",
+	"3 2",
+	"43",
+	"22",
+	"24",
+	"",
+	"5 3",
+	"204",
+	"220",
+	"020",
+	"301",
+	"103",
+	"",
+	"5 4",
+	"0013",
+	"3430",
+	"1101",
+	"3443",
+	"3243",
+	"",
+	"3 4",
+	"2402",
+	"3422",
+	"0141",
+	"",
+	"3 5",
+	"41141",
+	"40402",
+	"00430",
+	"",
+	"2 4",
+	"2110",
+	"2432",
+	"",
+	"4 2",
+	"03",
+	"24",
+	"13",
+	"42",
+	"",
+	"3 5",
+	"11120",
+	"11434",
+	"21412",
+	"",
+	"5 5",
+	"22033",
+	"22102",
+	"34433",
+	"02240",
+	"42401",
+	"",
+	"5 3",
+	"331",
+	"021",
+	"134",
+	"113",
+	"323",
+	"",
+	"4 4",
+	"3104",
+	"0410",
+	"4322",
+	"0120",
+	"",
+	"5 5",
+	"21232",
+	"34031",
+	"13321",
+	"34224",
+	"01124",
+	"",
+	"3 2",
+	"34",
+	"02",
+	"41",
+	"",
+	"2 5",
+	"32310",
+	"01324",
+	"",
+	"5 2",
+	"22",
+	"43",
+	"10",
+	"22",
+	"22",
+	"",
+	"5 4",
+	"0441",
+	"3240",
+	"1400",
+	"3423",
+	"0333",
+	"",
+	"5 3",
+	"341",
+	"222",
+	"034",
+	"441",
+	"243",
+	"",
+	"4 5",
+	"42024",
+	"32421",
+	"11424",
+	"02332",
+	"",
+	"5 3",
+	"431",
+	"322",
+	"123",
+	"113",
+	"034",
+	"",
+	"3 2",
+	"24",
+	"01",
+	"23",
+	"",
+	"4 4",
+	"1044",
+	"0321",
+	"2202",
+	"4404",
+	"",
+	"5 5",
+	"44311",
+	"23142",
+	"34111",
+	"31314",
+	"02141",
+	"",
+	"4 3",
+	"412",
+	"300",
+	"242",
+	"130",
+	"",
+	"4 3",
+	"140",
+	"420",
+	"011",
+	"401",
+	"",
+	"4 3",
+	"022",
+	"233",
+	"104",
+	"224",
+	"",
+	"4 4",
+	"0404",
+	"3204",
+	"2024",
+	"0443",
+	"",
+	"2 5",
+	"33434",
+	"32404",
+	"",
+	"3 3",
+	"342",
+	"423",
+	"021",
+	"",
+	"5 3",
+	"432",
+	"013",
+	"214",
+	"430",
+	"100",
+	"",
+	"5 3",
+	"340",
+	"114",
+	"411",
+	"102",
+	"121",
+	"",
+}
+
+type testcase struct {
+	n, m  int
+	grid  []string
+	input string
+}
+
+func parseCases() []testcase {
+	var cases []testcase
+	for i := 0; i < len(rawTestcases); {
+		line := strings.TrimSpace(rawTestcases[i])
+		i++
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) != 2 {
+			continue
+		}
+		n, _ := strconv.Atoi(parts[0])
+		m, _ := strconv.Atoi(parts[1])
+		grid := make([]string, n)
+		for r := 0; r < n && i < len(rawTestcases); r++ {
+			grid[r] = strings.TrimSpace(rawTestcases[i])
+			i++
+		}
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "%d %d\n", n, m)
+		for _, row := range grid {
+			sb.WriteString(row)
+			sb.WriteByte('\n')
+		}
+		cases = append(cases, testcase{n: n, m: m, grid: grid, input: sb.String()})
+	}
+	return cases
+}
 
 func solveE(n, m int, grid []string) []string {
 	s := make([][]byte, n)
@@ -145,99 +751,56 @@ func solveE(n, m int, grid []string) []string {
 	return []string{"0"}
 }
 
+func runSolution(bin, input string) ([]string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("runtime error: %v\nstderr: %s", err, stderr.String())
+	}
+	text := strings.TrimSpace(out.String())
+	if text == "" {
+		return nil, nil
+	}
+	lines := strings.Split(text, "\n")
+	for i := range lines {
+		lines[i] = strings.TrimSpace(lines[i])
+	}
+	return lines, nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierE.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: verifierE <solution-binary>")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesE.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	var pending string
-	for {
-		var line string
-		if pending != "" {
-			line = pending
-			pending = ""
-		} else {
-			if !scanner.Scan() {
-				break
-			}
-			line = strings.TrimSpace(scanner.Text())
-			if line == "" {
-				continue
-			}
-		}
-
-		parts := strings.Fields(line)
-		if len(parts) != 2 {
-			fmt.Fprintf(os.Stderr, "bad header on test %d\n", idx+1)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(parts[0])
-		m, _ := strconv.Atoi(parts[1])
-
-		grid := make([]string, n)
-		for i := 0; i < n; i++ {
-			if !scanner.Scan() {
-				fmt.Fprintf(os.Stderr, "unexpected EOF in test %d\n", idx+1)
-				os.Exit(1)
-			}
-			grid[i] = strings.TrimSpace(scanner.Text())
-		}
-
-		expect := solveE(n, m, grid)
-		input := fmt.Sprintf("%d %d\n", n, m)
-		for i := 0; i < n; i++ {
-			input += grid[i] + "\n"
-		}
-
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		var stderr bytes.Buffer
-		cmd.Stderr = &stderr
-		err = cmd.Run()
+	cases := parseCases()
+	for idx, tc := range cases {
+		expect := solveE(tc.n, tc.m, tc.grid)
+		got, err := runSolution(bin, tc.input)
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr.String())
+			fmt.Printf("test %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-
-		outputLines := strings.Split(strings.TrimSpace(out.String()), "\n")
-		if len(outputLines) != len(expect) {
-			fmt.Printf("test %d failed: expected %d lines got %d\n", idx+1, len(expect), len(outputLines))
+		if len(got) != len(expect) {
+			fmt.Printf("test %d failed: expected %d lines got %d\n", idx+1, len(expect), len(got))
 			os.Exit(1)
 		}
-		mismatch := false
+		match := true
 		for i := range expect {
-			if strings.TrimSpace(outputLines[i]) != expect[i] {
-				mismatch = true
+			if expect[i] != got[i] {
+				match = false
 				break
 			}
 		}
-		if mismatch {
-			fmt.Printf("test %d failed: expected\n%s\ngot\n%s\n", idx+1, strings.Join(expect, "\n"), strings.Join(outputLines, "\n"))
+		if !match {
+			fmt.Printf("test %d failed: expected\n%s\ngot\n%s\n", idx+1, strings.Join(expect, "\n"), strings.Join(got, "\n"))
 			os.Exit(1)
 		}
-
-		idx++
-		if scanner.Scan() {
-			pending = strings.TrimSpace(scanner.Text())
-		} else {
-			pending = ""
-		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

@@ -1,68 +1,159 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleE")
-	cmd := exec.Command("go", "build", "-o", oracle, "654E.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("oracle build failed: %v\n%s", err, out)
-	}
-	return oracle, nil
+type testcase struct {
+	n   int
+	arr []int64
 }
 
-func lineToInput(line string) (string, error) {
-	fields := strings.Fields(line)
-	if len(fields) < 2 {
-		return "", fmt.Errorf("not enough numbers")
+// Embedded testcases from testcasesE.txt.
+const testcasesRaw = `4 310 105 738 405
+8 158 92 68 20 411 562 939 296
+1 227
+9 549 368 283 798 176 846 108 268 219
+1 848
+5 819 278 198 168 317
+5 642 888 749 983 875
+6 88 865 620 345 687 397
+9 254 182 253 484 286 91 967 957 837
+9 860 307 7 930 298 586 721 903 319
+9 199 423 433 613 295 441 462 165 238
+5 265 832 816 44 83
+1 473
+5 531 547 663 482 717
+6 148 689 200 68 422 935
+4 650 647 451 282
+3 364 446 764
+10 328 649 571 203 926 331 103 859 63 725
+4 284 783 596 630
+4 125 339 957 181
+5 470 26 43 365 714
+2 917 987
+5 752 691 982 334 18
+6 295 329 989 156 793 667
+7 882 965 890 635 696 837 79
+5 632 196 915 454 299
+3 256 390 613
+3 339 586 9
+6 45 465 173 373 802 823
+6 297 585 99 449 212 434
+4 116 60 63 56
+3 609 693 993
+3 621 41 559
+8 596 255 329 36 125 854 541 299
+7 667 205 489 206 247 449 420
+8 37 224 431 454 254 662 910 438
+4 510 192 32 37
+5 259 248 538 213 790
+4 427 890 267 145
+6 52 912 950 322 578 119
+10 412 985 922 668 669 891 809 734 762 41
+8 396 95 440 215 952 894 586 921
+3 344 303 672
+8 818 922 657 322 834 430 540 220
+5 346 944 401 979 508
+2 879 994
+5 984 642 684 195 45
+7 920 634 130 785 991 275 683
+1 890
+3 704 650 475
+10 483 764 413 949 399 223 817 3 216 944
+3 13 624 897
+5 118 405 829 788 801
+7 898 227 563 54 899 973 206
+3 687 622 338
+9 792 803 482 937 539 450 27 80 35
+10 115 500 574 885 263 622 792 142 42 371
+2 786 900
+9 926 10 304 857 355 847 76 87 982
+9 464 390 210 806 1000 318 397 239 776
+8 876 989 409 97 79 117 937 635
+6 524 444 425 878 728 795
+8 68 643 902 963 200 652 309 952
+8 432 121 817 571 171 380 895 166
+3 723 152 334
+8 880 346 264 554 997 925 4 727
+3 5 663 319
+2 558 113
+8 805 732 615 495 538 77 533 251
+7 867 300 365 234 785 184 884
+1 692
+1 624
+6 557 934 930 478 801 933
+10 312 959 888 518 805 451 627 632 452 401
+3 257 789 611
+6 677 348 136 443 84 620
+3 691 828 637
+3 292 923 962
+6 202 589 812 358 691 635
+2 78 412
+3 337 669 380
+6 178 307 904 23 618 20
+9 972 772 849 90 820 367 826 832 976
+2 162 186
+10 507 676 587 960 78 778 947 991 119 176
+8 691 907 763 227 632 805 851 676
+5 873 950 704 415 902
+10 243 918 501 720 226 317 376 235 763 334
+9 641 542 462 920 822 409 518 410 992
+6 290 448 421 602 13 257
+3 918 553 469
+9 629 845 373 413 973 397 638 28 159
+9 69 469 997 988 645 942 355 618 815
+5 932 93 773 264 495
+4 655 950 488 913
+10 796 67 152 946 244 70 306 135 970 48
+3 407 809 595
+10 560 730 982 551 268 18 536 251 161 769
+2 210 32
+6 83 124 277 62 899 658`
+
+func parseTestcases() ([]testcase, error) {
+	lines := strings.Split(testcasesRaw, "\n")
+	var res []testcase
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: invalid n", idx+1)
+		}
+		if len(fields) != n+1 {
+			return nil, fmt.Errorf("line %d: expected %d numbers got %d", idx+1, n+1, len(fields))
+		}
+		arr := make([]int64, n)
+		for i := 0; i < n; i++ {
+			val, err := strconv.ParseInt(fields[1+i], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("line %d: bad value", idx+1)
+			}
+			arr[i] = val
+		}
+		res = append(res, testcase{n: n, arr: arr})
 	}
-	n, err := strconv.Atoi(fields[0])
-	if err != nil {
-		return "", err
-	}
-	if len(fields) != n+1 {
-		return "", fmt.Errorf("expected %d numbers, got %d", n+1, len(fields))
-	}
-	var b strings.Builder
-	b.WriteString(fields[0])
-	b.WriteByte('\n')
-	for i := 0; i < n; i++ {
-		b.WriteString(fields[i+1])
-		if i+1 < n {
-			b.WriteByte(' ')
+	return res, nil
+}
+
+// Embedded solver logic from 654E.go.
+func solve(arr []int64) int64 {
+	max := int64(-1 << 63)
+	for _, x := range arr {
+		if x > max {
+			max = x
 		}
 	}
-	b.WriteByte('\n')
-	return b.String(), nil
-}
-
-func run(bin string, input string) (string, string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	return out.String(), stderr.String(), err
+	return max
 }
 
 func main() {
@@ -71,51 +162,43 @@ func main() {
 		os.Exit(1)
 	}
 	target := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
-	f, err := os.Open("testcasesE.txt")
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "open testcases: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to parse embedded testcases: %v\n", err)
 		os.Exit(1)
 	}
-	defer f.Close()
 
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
+	for idx, tc := range cases {
+		expect := solve(tc.arr)
+
+		var b strings.Builder
+		b.WriteString(strconv.Itoa(tc.n))
+		b.WriteByte('\n')
+		for i, v := range tc.arr {
+			if i > 0 {
+				b.WriteByte(' ')
+			}
+			b.WriteString(strconv.FormatInt(v, 10))
 		}
-		idx++
-		input, err := lineToInput(line)
-		if err != nil {
-			fmt.Printf("test %d: parse error: %v\n", idx, err)
+		b.WriteByte('\n')
+
+		cmd := exec.Command(target)
+		cmd.Stdin = strings.NewReader(b.String())
+		var out bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr.String())
 			os.Exit(1)
 		}
-		expOut, expErr, err := run(oracle, input)
-		if err != nil {
-			fmt.Printf("oracle run failed on test %d: %v\nstderr: %s\n", idx, err, expErr)
-			os.Exit(1)
-		}
-		gotOut, gotErr, err := run(target, input)
-		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, gotErr)
-			os.Exit(1)
-		}
-		if strings.TrimSpace(gotOut) != strings.TrimSpace(expOut) {
-			fmt.Printf("test %d failed\nexpected: %s\n got: %s\n", idx, strings.TrimSpace(expOut), strings.TrimSpace(gotOut))
+		gotStr := strings.TrimSpace(out.String())
+		got, err := strconv.ParseInt(gotStr, 10, 64)
+		if err != nil || got != expect {
+			fmt.Printf("test %d failed\nexpected: %d\n got: %s\n", idx+1, expect, gotStr)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

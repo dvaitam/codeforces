@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,10 +8,107 @@ import (
 	"strings"
 )
 
-type TestCaseA struct {
-	n   int
-	tri [][3]int
-	ans int
+var rawTestcases = []string{
+	"7\n1 0 1\n1 1 1\n1 1 0\n0 1 0\n0 1 0\n1 0 0\n1 1 0",
+	"6\n1 1 0\n1 1 1\n0 0 0\n1 0 1\n1 0 1\n0 0 0",
+	"4\n0 1 0\n0 1 1\n0 1 1\n0 1 0",
+	"10\n1 1 0\n1 1 0\n1 0 0\n0 0 1\n1 0 0\n0 0 0\n0 1 1\n0 0 1\n1 1 1\n1 0 1",
+	"10\n0 1 1\n0 0 0\n1 0 0\n1 0 1\n1 0 0\n0 0 0\n0 0 0\n0 0 1\n0 1 0\n0 0 0",
+	"3\n0 1 0\n0 0 1\n0 1 0",
+	"4\n0 1 1\n1 0 0\n1 0 0\n1 0 1",
+	"6\n1 0 0\n0 0 0\n1 1 0\n1 0 0\n1 1 1\n1 1 1",
+	"3\n0 1 0\n1 0 1\n0 0 1",
+	"6\n1 1 0\n1 1 1\n0 0 0\n1 0 0\n0 1 1\n1 0 1",
+	"10\n1 0 0\n1 0 1\n0 1 1\n0 0 1\n1 1 1\n0 1 0\n0 0 0\n1 1 1\n0 0 0\n0 0 0",
+	"2\n0 1 1\n0 0 1",
+	"7\n0 0 1\n1 0 1\n0 1 0\n0 1 0\n0 0 0\n1 1 1\n0 1 1",
+	"7\n1 0 0\n1 1 0\n0 0 1\n1 1 1\n0 1 0\n0 1 0\n0 1 1",
+	"7\n0 1 0\n1 0 0\n1 0 0\n1 1 1\n1 1 0\n0 1 1\n1 1 0",
+	"8\n0 1 1\n0 1 1\n0 0 1\n0 0 0\n0 0 0\n1 0 0\n1 1 1\n1 0 1",
+	"2\n1 0 1\n0 1 0",
+	"6\n0 0 0\n1 0 0\n1 1 1\n0 0 0\n0 0 0\n1 1 1",
+	"9\n0 0 1\n0 1 1\n1 1 1\n1 0 0\n0 1 1\n1 0 0\n1 0 1\n1 1 0\n0 0 0",
+	"4\n0 0 1\n0 1 1\n0 0 1\n1 1 0",
+	"10\n0 0 1\n0 1 1\n1 1 0\n0 0 0\n1 1 1\n0 1 1\n1 1 1\n1 0 0\n0 0 1\n1 0 0",
+	"8\n1 0 1\n0 0 1\n1 0 1\n1 1 0\n0 1 0\n0 0 0\n1 0 1\n0 1 1",
+	"2\n0 1 1\n0 1 0",
+	"7\n1 0 0\n0 1 1\n1 0 1\n1 0 0\n0 1 1\n0 0 0\n0 1 1",
+	"2\n0 1 1\n0 0 1",
+	"2\n0 1 0\n0 1 1",
+	"7\n0 1 1\n1 0 1\n0 0 1\n0 1 1\n0 0 0\n1 0 0\n0 0 0",
+	"2\n0 1 1\n0 0 0",
+	"3\n1 0 1\n1 1 0\n0 0 1",
+	"6\n1 1 1\n1 0 0\n0 1 0\n1 0 0\n0 1 0\n0 0 1",
+	"6\n1 0 0\n0 1 0\n0 0 1\n1 1 0\n1 1 1\n0 0 1",
+	"6\n0 1 1\n0 1 1\n1 0 1\n1 1 0\n0 0 1\n0 0 1",
+	"7\n0 1 1\n0 0 1\n1 0 1\n1 0 1\n0 1 0\n1 1 0\n0 1 0",
+	"5\n0 1 1\n0 1 0\n1 1 0\n0 1 0\n0 1 1",
+	"9\n1 1 0\n1 1 1\n0 0 0\n0 1 1\n1 0 0\n0 0 1\n1 1 0\n0 0 1\n1 1 1",
+	"8\n1 0 0\n0 0 1\n1 1 0\n1 1 1\n1 0 1\n1 1 1\n0 1 1\n0 1 0",
+	"10\n0 0 1\n1 1 0\n0 0 1\n0 1 0\n0 0 1\n1 0 0\n1 0 0\n1 1 1\n1 0 1\n1 1 0",
+	"8\n0 1 0\n0 0 1\n1 1 1\n1 1 0\n0 1 0\n0 1 0\n0 0 0\n1 0 0",
+	"4\n1 0 1\n1 1 1\n0 1 1\n1 1 1",
+	"4\n1 1 0\n0 0 0\n1 0 1\n0 0 0",
+	"7\n0 1 0\n1 0 1\n0 0 1\n1 1 1\n1 0 0\n0 1 0\n0 1 0",
+	"4\n1 1 1\n1 1 1\n1 0 0\n1 0 0",
+	"8\n1 1 0\n1 1 1\n1 0 0\n0 0 0\n0 1 0\n1 0 1\n1 0 0\n0 1 0",
+	"3\n1 1 1\n1 0 1\n0 1 1",
+	"9\n1 1 1\n0 0 0\n0 0 1\n0 0 1\n0 1 0\n0 1 1\n0 1 0\n1 0 0\n0 1 1",
+	"4\n1 1 1\n0 0 0\n1 1 0\n0 1 0",
+	"3\n0 0 0\n1 0 0\n0 0 1",
+	"6\n0 1 0\n0 1 1\n1 1 0\n0 0 1\n1 1 0\n1 0 1",
+	"4\n1 1 1\n0 0 0\n1 0 1\n1 0 1",
+	"6\n0 1 0\n1 0 0\n1 0 1\n0 0 0\n0 0 0\n1 0 0",
+	"6\n1 0 0\n1 1 0\n1 1 0\n1 1 1\n0 1 1\n1 0 0",
+	"7\n1 0 0\n0 0 0\n1 0 0\n0 0 0\n0 0 1\n0 1 0\n0 1 1",
+	"7\n0 0 1\n0 1 1\n0 1 0\n1 0 1\n1 1 1\n1 0 1\n1 1 0",
+	"9\n1 0 1\n1 0 1\n1 1 0\n0 1 0\n1 1 0\n1 1 1\n0 0 1\n0 1 0\n0 1 0",
+	"10\n0 0 1\n1 1 1\n1 1 1\n1 0 0\n0 0 1\n0 1 0\n1 1 0\n0 1 1\n0 0 0\n0 0 1",
+	"7\n1 1 1\n0 1 1\n1 1 1\n0 1 0\n0 0 1\n1 1 0\n1 0 0",
+	"6\n0 0 1\n1 0 0\n0 1 0\n1 0 1\n0 1 0\n0 0 1",
+	"2\n1 1 1\n1 1 1",
+	"10\n1 0 1\n0 1 0\n1 0 1\n1 1 1\n0 1 1\n0 1 1\n0 1 1\n0 0 0\n1 1 0\n0 0 0",
+	"9\n1 0 1\n0 1 1\n0 1 1\n0 0 1\n1 0 0\n0 0 1\n0 0 1\n0 1 0\n0 0 1",
+	"4\n1 1 1\n1 1 0\n1 0 0\n0 0 1",
+	"2\n0 1 0\n1 0 1",
+	"3\n1 0 0\n1 0 0\n0 1 1",
+	"10\n1 1 1\n1 0 0\n1 0 0\n0 0 1\n0 0 1\n0 1 1\n0 0 1\n0 1 0\n1 1 1\n1 1 1",
+	"3\n0 1 1\n0 1 0\n1 0 0",
+	"1\n1 0 0",
+	"7\n0 1 1\n1 1 0\n0 1 1\n0 0 0\n1 1 0\n1 0 0\n1 0 0",
+	"7\n1 0 0\n0 0 0\n0 1 0\n1 1 0\n0 0 1\n1 0 0\n1 0 0",
+	"7\n1 1 0\n1 0 0\n0 1 0\n0 0 0\n1 0 0\n0 0 0\n0 1 0",
+	"7\n1 1 0\n0 1 0\n1 0 0\n1 1 0\n1 1 0\n1 1 0\n1 0 1",
+	"7\n0 1 1\n1 0 1\n0 1 0\n1 1 0\n0 0 1\n0 1 1\n1 0 1",
+	"10\n1 0 0\n1 1 1\n0 1 0\n1 1 0\n1 1 0\n0 1 0\n1 1 1\n0 1 1\n0 1 1\n1 0 1",
+	"3\n0 0 1\n0 0 1\n1 1 0",
+	"2\n1 0 0\n0 0 0",
+	"4\n0 0 1\n1 1 1\n0 1 1\n0 1 1",
+	"9\n0 1 1\n0 1 1\n1 1 1\n1 1 0\n0 0 0\n0 0 0\n1 0 1\n0 0 0\n0 1 1",
+	"6\n0 1 1\n1 1 0\n0 0 0\n0 0 1\n0 1 1\n1 0 0",
+	"7\n0 1 0\n1 0 1\n1 0 1\n0 1 0\n1 1 1\n1 1 0\n0 1 0",
+	"5\n0 1 0\n0 1 1\n1 0 1\n1 0 0\n1 0 1",
+	"2\n0 0 0\n0 0 0",
+	"7\n1 0 1\n1 1 0\n0 0 0\n1 1 1\n0 0 1\n1 1 0\n0 1 1",
+	"4\n1 1 0\n0 1 0\n1 1 1\n1 0 0",
+	"7\n1 1 0\n1 1 1\n1 1 1\n1 0 1\n1 0 1\n0 1 0\n0 1 1",
+	"4\n0 1 1\n1 1 0\n1 1 1\n0 1 0",
+	"2\n1 1 1\n0 1 0",
+	"10\n0 1 0\n1 0 1\n0 0 0\n1 0 0\n0 0 1\n0 0 0\n0 0 1\n0 0 1\n0 0 0\n0 1 1",
+	"8\n0 1 0\n1 0 1\n0 1 1\n1 1 0\n0 1 0\n0 1 0\n0 0 1\n0 1 0",
+	"7\n0 0 1\n0 1 1\n0 1 1\n0 1 1\n1 0 1\n0 1 0\n1 1 1",
+	"1\n1 0 1",
+	"8\n0 1 0\n1 1 1\n0 0 1\n1 1 1\n0 0 0\n1 0 0\n0 1 0\n1 0 1",
+	"7\n0 1 1\n0 0 1\n0 1 0\n1 0 1\n0 1 0\n1 0 0\n1 1 0",
+	"1\n0 0 0",
+	"4\n1 0 0\n1 1 1\n1 0 0\n1 1 1",
+	"7\n1 1 1\n0 0 0\n0 0 1\n1 0 1\n0 0 1\n0 0 1\n1 0 0",
+	"3\n1 1 1\n0 0 1\n0 0 1",
+	"10\n1 1 0\n0 0 0\n1 0 1\n1 0 1\n1 0 1\n1 1 0\n1 0 0\n0 1 1\n0 1 1\n1 1 0",
+	"2\n1 0 0\n0 0 1",
+	"4\n0 1 1\n1 0 1\n1 1 0\n0 1 0",
+	"3\n1 0 1\n1 0 1\n0 1 0",
+	"5\n0 0 0\n1 0 0\n1 0 0\n0 0 1\n0 1 1",
 }
 
 func solveCaseA(n int, tri [][3]int) int {
@@ -26,36 +121,29 @@ func solveCaseA(n int, tri [][3]int) int {
 	return cnt
 }
 
-func readCasesA(path string) ([]TestCaseA, error) {
-	data, err := os.ReadFile(path)
+func parseCase(input string) (int, [][3]int, error) {
+	fields := strings.Fields(input)
+	if len(fields) == 0 {
+		return 0, nil, fmt.Errorf("empty case")
+	}
+	idx := 0
+	n, err := strconv.Atoi(fields[idx])
 	if err != nil {
-		return nil, err
+		return 0, nil, fmt.Errorf("invalid n: %v", err)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		return nil, fmt.Errorf("bad file")
+	idx++
+	if len(fields) != 1+3*n {
+		return 0, nil, fmt.Errorf("expected %d numbers, got %d", 1+3*n, len(fields))
 	}
-	t, _ := strconv.Atoi(scan.Text())
-	cases := make([]TestCaseA, t)
-	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			return nil, fmt.Errorf("bad file")
-		}
-		n, _ := strconv.Atoi(scan.Text())
-		tri := make([][3]int, n)
-		for j := 0; j < n; j++ {
-			scan.Scan()
-			a, _ := strconv.Atoi(scan.Text())
-			scan.Scan()
-			b, _ := strconv.Atoi(scan.Text())
-			scan.Scan()
-			c, _ := strconv.Atoi(scan.Text())
-			tri[j] = [3]int{a, b, c}
-		}
-		cases[i] = TestCaseA{n: n, tri: tri, ans: solveCaseA(n, tri)}
+	tri := make([][3]int, n)
+	for i := 0; i < n; i++ {
+		a, _ := strconv.Atoi(fields[idx])
+		b, _ := strconv.Atoi(fields[idx+1])
+		c, _ := strconv.Atoi(fields[idx+2])
+		idx += 3
+		tri[i] = [3]int{a, b, c}
 	}
-	return cases, nil
+	return n, tri, nil
 }
 
 func runCase(bin string, input string) (string, error) {
@@ -77,19 +165,14 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	cases, err := readCasesA("testcasesA.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesA.txt:", err)
-		os.Exit(1)
-	}
-	for idx, tc := range cases {
-		var sb strings.Builder
-		fmt.Fprintln(&sb, tc.n)
-		for _, t := range tc.tri {
-			fmt.Fprintf(&sb, "%d %d %d\n", t[0], t[1], t[2])
+	for idx, tcStr := range rawTestcases {
+		n, tri, err := parseCase(tcStr)
+		if err != nil {
+			fmt.Printf("case %d invalid: %v\n", idx+1, err)
+			os.Exit(1)
 		}
-		expected := fmt.Sprintf("%d", tc.ans)
-		got, err := runCase(bin, sb.String())
+		expected := fmt.Sprintf("%d", solveCaseA(n, tri))
+		got, err := runCase(bin, tcStr+"\n")
 		if err != nil {
 			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)

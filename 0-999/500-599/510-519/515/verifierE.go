@@ -7,132 +7,761 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
-func cwDist(pref []int64, total int64, i, j int) int64 {
-	if i <= j {
-		return pref[j-1] - pref[i-1]
-	}
-	return total - (pref[i-1] - pref[j-1])
+const negInf = int64(-4e18)
+
+// testcasesE will be filled with the contents of testcasesE.txt.
+const testcasesE = `
+100
+6 3
+1 1 1 3 4 4
+4 2 3 4 4 5
+1 1
+4 6
+3 6
+6 2
+4 4 4 5 5 3
+4 5 3 3 4 5
+6 2
+3 4
+6 4
+3 1 2 3 2 4
+1 5 3 2 2 4
+1 1
+2 5
+1 2
+6 2
+3 4
+4 2 3
+4 4 3
+3 3
+1 1
+3 3
+2 2
+3 1
+3 2 4
+3 5 2
+2 2
+6 1
+1 1 3 1 3 3
+1 1 1 5 1 2
+5 2
+6 1
+5 2 1 5 2 1
+1 1 5 1 2 1
+4 4
+3 1
+4 4 5
+2 5 1
+1 1
+3 1
+5 2 1
+4 3 5
+2 2
+5 2
+5 1 2 5 4
+3 3 3 5 3
+1 1
+1 2
+5 2
+2 2 1 4 4
+2 3 3 2 1
+2 3
+3 3
+3 4
+2 3 3
+2 1 5
+3 3
+1 1
+2 2
+3 3
+3 3
+2 4 1
+4 5 3
+1 1
+3 3
+3 3
+6 1
+3 2 2 3 3 5
+1 2 4 2 5 5
+5 1
+6 3
+1 3 1 1 5 2
+3 2 4 2 5 5
+2 2
+6 6
+2 4
+6 3
+3 3 1 1 4 3
+2 4 2 4 5 1
+6 2
+5 6
+4 4
+6 2
+2 4 4 4 2 3
+1 2 5 1 3 2
+1 2
+3 3
+6 3
+5 4 3 5 4 4
+4 1 3 5 3 3
+3 6
+3 4
+5 5
+3 4
+5 5 2
+4 3 4
+3 3
+1 1
+1 1
+3 3
+5 2
+3 4 1 2 1
+2 5 4 2 4
+3 4
+2 4
+5 4
+3 5 2 1 3
+5 3 4 5 5
+1 3
+2 2
+2 2
+3 3
+3 1
+4 4 1
+5 5 1
+1 1
+6 2
+5 3 1 3 3 2
+4 3 1 3 1 1
+5 6
+1 3
+5 3
+2 1 4 4 4
+2 1 4 3 4
+4 4
+4 4
+2 4
+4 3
+1 2 4 3
+3 3 4 3
+2 2
+4 4
+2 2
+6 3
+2 1 3 2 3 3
+1 1 4 3 3 3
+3 6
+6 3
+6 2
+4 2
+4 2 1 5
+3 1 1 4
+1 1
+4 4
+4 2
+1 1 2 1
+4 5 1 3
+1 1
+2 3
+6 2
+5 4 3 3 2 4
+3 2 2 1 2 5
+3 6
+6 6
+3 3
+5 4 3
+4 1 2
+2 2
+2 2
+1 1
+4 4
+4 1 3 2
+1 3 2 2
+2 3
+4 4
+4 4
+3 3
+4 1
+3 4 2 1
+1 4 5 5
+4 4
+5 3
+2 3 4 2 5
+1 4 2 1 1
+5 1
+2 2
+1 3
+5 2
+1 1 2 2 3
+4 5 5 3 4
+2 4
+1 1
+4 1
+4 1 4 2
+2 1 5 2
+3 3
+5 4
+3 5 4 4 3
+3 5 3 4 5
+3 4
+3 4
+3 4
+3 4
+6 2
+2 4 2 2 5 2
+1 3 5 5 2 5
+2 4
+1 4
+4 4
+2 1 1 5
+1 1 1 5
+2 2
+2 3
+3 4
+4 4
+5 1
+2 4 1 2 2
+2 3 3 3 2
+4 4
+3 1
+4 1 1
+2 3 4
+1 1
+5 1
+4 5 4 3 2
+4 1 3 3 2
+1 1
+5 4
+1 5 2 2 5
+5 3 4 1 4
+3 4
+3 4
+1 1
+2 3
+5 3
+5 2 4 4 1
+5 3 2 4 1
+3 3
+5 2
+1 2
+6 3
+2 5 3 5 2 1
+1 2 1 2 4 2
+1 4
+3 3
+3 5
+5 4
+5 1 3 4 4
+2 4 1 5 5
+4 4
+2 3
+3 3
+2 3
+4 1
+3 4 2 3
+3 5 2 4
+1 1
+4 4
+4 1 1 5
+2 5 1 2
+3 4
+1 2
+2 2
+4 4
+4 1
+4 1 1 1
+5 2 2 4
+2 3
+3 2
+3 5 1
+5 3 3
+3 3
+2 2
+6 3
+1 3 3 3 1 3
+5 2 3 1 1 5
+4 1
+4 4
+5 5
+5 1
+2 5 4 5 1
+1 1 1 2 4
+4 5
+4 2
+5 1 1 1
+4 4 3 2
+4 1
+3 4
+4 3
+5 2 1 4
+4 5 1 2
+3 4
+2 2
+2 2
+4 1
+3 3 3 3
+2 2 5 4
+3 4
+3 4
+2 4 2
+4 4 2
+3 3
+2 2
+1 1
+3 3
+4 2
+5 4 4 2
+5 1 5 1
+2 2
+3 3
+3 2
+5 5 5
+2 5 4
+2 2
+2 2
+3 2
+4 5 3
+4 1 2
+3 3
+1 1
+5 4
+3 3 1 3 1
+3 3 2 3 2
+2 2
+2 4
+1 1
+3 3
+5 4
+1 5 1 5 4
+1 3 2 5 3
+1 1
+5 5
+5 2
+2 2
+5 3
+2 4 3 2 5
+5 2 1 4 2
+3 4
+3 3
+1 2
+6 3
+5 2 1 4 4 4
+3 5 3 4 2 3
+1 4
+6 1
+4 5
+4 1
+1 4 2 3
+1 4 5 3
+1 1
+6 4
+5 3 2 2 2 1
+1 5 5 2 3 3
+4 5
+2 4
+2 5
+5 2
+5 2
+1 3 2 1 5
+3 5 2 1 5
+1 3
+3 5
+3 2
+1 4 3
+5 3 2
+3 3
+2 2
+4 1
+1 4 3 3
+3 4 1 3
+3 3
+5 3
+3 4 2 1 4
+5 5 3 4 5
+1 1
+1 3
+1 2
+3 2
+1 5 3
+2 3 2
+3 3
+2 2
+5 1
+1 4 3 4 2
+2 4 1 2 1
+2 3
+3 2
+2 4 3
+3 5 3
+3 3
+3 3
+6 1
+2 2 2 2 1 2
+1 1 5 5 1 5
+6 6
+6 4
+4 4 1 5 5 3
+5 2 2 5 3 5
+3 6
+4 5
+5 1
+4 5
+4 4
+3 5 3 1
+3 5 3 5
+3 4
+4 1
+3 3
+1 1
+5 1
+1 3 5 1 5
+2 5 1 1 1
+3 4
+3 1
+4 2 3
+5 3 3
+1 1
+6 4
+4 3 3 1 5 5
+5 3 1 3 1 2
+4 4
+3 3
+3 5
+6 6
+4 2
+5 4 4 3
+4 1 1 2
+1 1
+4 4
+4 3
+4 1 5 5
+3 3 3 5
+3 3
+1 1
+2 3
+5 3
+4 1 4 2 2
+3 2 1 1 4
+4 4
+5 1
+3 4
+5 2
+2 4 1 4 5
+1 3 1 2 1
+1 3
+4 5
+5 1
+3 4 5 3 3
+3 2 1 5 2
+4 5
+3 4
+3 1 5
+2 1 5
+1 1
+3 3
+2 2
+3 3
+6 4
+4 2 4 3 2 1
+3 3 3 3 2 4
+1 1
+6 1
+2 5
+3 5
+4 1
+1 5 2 5
+2 1 2 2
+2 3
+5 3
+5 1 2 5 1
+3 3 3 1 5
+3 3
+1 2
+3 5
+5 2
+2 5 2 5 2
+5 1 3 5 5
+5 5
+1 1
+4 3
+3 4 3 4
+2 4 4 3
+1 2
+3 3
+3 4
+3 3
+3 3 3
+2 4 2
+1 1
+3 3
+3 3
+4 1
+3 2 1 4
+4 5 1 1
+4 4
+4 4
+1 5 2 4
+5 4 4 5
+4 4
+4 1
+3 3
+2 3
+3 4
+2 5 4
+2 2 3
+1 1
+2 2
+3 3
+2 2
+4 3
+5 5 2 2
+4 5 4 3
+4 1
+4 4
+3 3
+4 3
+4 3 4 5
+2 4 2 2
+4 4
+1 1
+2 3
+6 1
+3 3 2 2 2 3
+2 2 3 2 5 5
+2 2
+3 2
+3 5 3
+3 2 1
+2 2
+1 1
+3 1
+3 4 5
+4 3 5
+1 1
+6 4
+1 5 3 5 3 2
+1 1 2 4 3 1
+3 3
+5 5
+5 5
+5 6
+3 1
+5 5 2
+2 3 5
+2 2
+3 1
+1 3 2
+4 5 1
+2 2
+
+`
+
+type node struct {
+	mxL, mxR, best int64
 }
 
-func solveQuery(n int, d, h []int64, a, b int) int64 {
-	banned := make(map[int]bool)
-	for x := a; ; x = x%n + 1 {
-		banned[x] = true
-		if x == b {
-			break
-		}
+func max(a, b int64) int64 {
+	if a > b {
+		return a
 	}
-	open := []int{}
-	for x := b%n + 1; x != a; x = x%n + 1 {
-		if !banned[x] {
-			open = append(open, x)
-		}
-	}
-	// Build prefix distances along circle
-	pref := make([]int64, n+1)
-	for i := 1; i <= n; i++ {
-		pref[i] = pref[i-1] + d[i-1]
-	}
-	total := pref[n]
-	// Build prefix along open arc
-	arcPref := make([]int64, len(open))
-	for i := 1; i < len(open); i++ {
-		arcPref[i] = arcPref[i-1] + cwDist(pref, total, open[i-1], open[i])
-	}
-	best := int64(-1 << 60)
-	for i := 0; i < len(open); i++ {
-		for j := i + 1; j < len(open); j++ {
-			dist := arcPref[j] - arcPref[i]
-			energy := dist + 2*(h[open[i]-1]+h[open[j]-1])
-			if energy > best {
-				best = energy
-			}
-		}
-	}
-	return best
+	return b
 }
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run verifierE.go /path/to/binary")
-		os.Exit(1)
+func merge(a, b node) node {
+	return node{
+		mxL:  max(a.mxL, b.mxL),
+		mxR:  max(a.mxR, b.mxR),
+		best: max(max(a.best, b.best), a.mxL+b.mxR),
 	}
-	data, err := os.ReadFile("testcasesE.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesE.txt:", err)
-		os.Exit(1)
+}
+
+func build(seg []node, L, R []int64, p, l, r int) {
+	if l == r {
+		seg[p] = node{mxL: L[l], mxR: R[l], best: negInf}
+		return
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
+	m := (l + r) >> 1
+	build(seg, L, R, p<<1, l, m)
+	build(seg, L, R, p<<1|1, m+1, r)
+	seg[p] = merge(seg[p<<1], seg[p<<1|1])
+}
+
+func query(seg []node, p, l, r, ql, qr int) node {
+	if qr < l || r < ql {
+		return node{mxL: negInf, mxR: negInf, best: negInf}
+	}
+	if ql <= l && r <= qr {
+		return seg[p]
+	}
+	m := (l + r) >> 1
+	left := query(seg, p<<1, l, m, ql, qr)
+	right := query(seg, p<<1|1, m+1, r, ql, qr)
+	return merge(left, right)
+}
+
+type solver struct {
+	n   int
+	N   int
+	seg []node
+}
+
+func newSolver(n int, d, h []int64) *solver {
+	N := 2 * n
+	C := make([]int64, N+2)
+	for i := 1; i <= N; i++ {
+		di := d[(i-1)%n+1]
+		C[i] = C[i-1] + di
+	}
+	Larr := make([]int64, N+2)
+	Rarr := make([]int64, N+2)
+	for i := 1; i <= N; i++ {
+		hi := h[(i-1)%n+1]
+		Larr[i] = 2*hi - C[i-1]
+		Rarr[i] = 2*hi + C[i-1]
+	}
+	seg := make([]node, 4*(N+2))
+	build(seg, Larr, Rarr, 1, 1, N)
+	return &solver{n: n, N: N, seg: seg}
+}
+
+func (s *solver) answer(a, b int) int64 {
+	var l, r int
+	if a <= b {
+		l = b + 1
+		r = a - 1 + s.n
+	} else {
+		l = b + 1
+		r = a - 1
+	}
+	res := query(s.seg, 1, 1, s.N, l, r)
+	return res.best
+}
+
+type testCase struct {
+	n       int
+	d, h    []int64
+	queries [][2]int
+}
+
+func loadTests() ([]testCase, error) {
+	scan := bufio.NewScanner(strings.NewReader(strings.TrimSpace(testcasesE)))
 	scan.Split(bufio.ScanWords)
 	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
+		return nil, fmt.Errorf("missing test count")
 	}
-	t, _ := strconv.Atoi(scan.Text())
-	answers := make([][]int64, t)
-	casesN := make([]int, t)
+	t, err := strconv.Atoi(scan.Text())
+	if err != nil {
+		return nil, fmt.Errorf("bad test count: %v", err)
+	}
+	tests := make([]testCase, 0, t)
 	for idx := 0; idx < t; idx++ {
 		if !scan.Scan() {
-			fmt.Println("bad test file")
-			os.Exit(1)
+			return nil, fmt.Errorf("case %d: missing n", idx+1)
 		}
 		n, _ := strconv.Atoi(scan.Text())
-		scan.Scan()
+		if !scan.Scan() {
+			return nil, fmt.Errorf("case %d: missing m", idx+1)
+		}
 		m, _ := strconv.Atoi(scan.Text())
-		d := make([]int64, n)
-		for i := 0; i < n; i++ {
-			scan.Scan()
+		d := make([]int64, n+1)
+		for i := 1; i <= n; i++ {
+			if !scan.Scan() {
+				return nil, fmt.Errorf("case %d: missing d[%d]", idx+1, i)
+			}
 			val, _ := strconv.ParseInt(scan.Text(), 10, 64)
 			d[i] = val
 		}
-		h := make([]int64, n)
-		for i := 0; i < n; i++ {
-			scan.Scan()
+		h := make([]int64, n+1)
+		for i := 1; i <= n; i++ {
+			if !scan.Scan() {
+				return nil, fmt.Errorf("case %d: missing h[%d]", idx+1, i)
+			}
 			val, _ := strconv.ParseInt(scan.Text(), 10, 64)
 			h[i] = val
 		}
-		res := make([]int64, m)
-		for q := 0; q < m; q++ {
-			scan.Scan()
+		queries := make([][2]int, m)
+		for i := 0; i < m; i++ {
+			if !scan.Scan() {
+				return nil, fmt.Errorf("case %d: missing a for query %d", idx+1, i+1)
+			}
 			a, _ := strconv.Atoi(scan.Text())
-			scan.Scan()
+			if !scan.Scan() {
+				return nil, fmt.Errorf("case %d: missing b for query %d", idx+1, i+1)
+			}
 			b, _ := strconv.Atoi(scan.Text())
-			res[q] = solveQuery(n, d, h, a, b)
+			queries[i] = [2]int{a, b}
 		}
-		answers[idx] = res
-		casesN[idx] = m
+		tests = append(tests, testCase{n: n, d: d, h: h, queries: queries})
 	}
-	cmd := exec.Command(os.Args[1])
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.CombinedOutput()
+	return tests, nil
+}
+
+func buildInput(tc testCase) string {
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "%d %d\n", tc.n, len(tc.queries))
+	for i := 1; i <= tc.n; i++ {
+		if i > 1 {
+			buf.WriteByte(' ')
+		}
+		buf.WriteString(strconv.FormatInt(tc.d[i], 10))
+	}
+	buf.WriteByte('\n')
+	for i := 1; i <= tc.n; i++ {
+		if i > 1 {
+			buf.WriteByte(' ')
+		}
+		buf.WriteString(strconv.FormatInt(tc.h[i], 10))
+	}
+	buf.WriteByte('\n')
+	for _, q := range tc.queries {
+		fmt.Fprintf(&buf, "%d %d\n", q[0], q[1])
+	}
+	return buf.String()
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("Usage: verifierE /path/to/binary")
+		os.Exit(1)
+	}
+	cases, err := loadTests()
 	if err != nil {
-		fmt.Println("execution failed:", err)
+		fmt.Println("failed to load testcases:", err)
 		os.Exit(1)
 	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
-	for idx := 0; idx < t; idx++ {
-		for j := 0; j < casesN[idx]; j++ {
+
+	for idx, tc := range cases {
+		input := buildInput(tc)
+		cmd := exec.Command(os.Args[1])
+		cmd.Stdin = strings.NewReader(input)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf("case %d runtime error: %v\n%s", idx+1, err, string(out))
+			os.Exit(1)
+		}
+
+		outScan := bufio.NewScanner(bytes.NewReader(out))
+		outScan.Split(bufio.ScanWords)
+		s := newSolver(tc.n, tc.d, tc.h)
+		for qIdx, q := range tc.queries {
 			if !outScan.Scan() {
-				fmt.Printf("missing output for test %d query %d\n", idx+1, j+1)
+				fmt.Printf("case %d query %d missing output\n", idx+1, qIdx+1)
 				os.Exit(1)
 			}
-			got, err := strconv.ParseInt(outScan.Text(), 10, 64)
-			if err != nil {
-				fmt.Printf("bad output for test %d query %d\n", idx+1, j+1)
-				os.Exit(1)
-			}
-			if got != answers[idx][j] {
-				fmt.Printf("test %d query %d failed: expected %d got %d\n", idx+1, j+1, answers[idx][j], got)
+			got, _ := strconv.ParseInt(outScan.Text(), 10, 64)
+			expect := s.answer(q[0], q[1])
+			if got != expect {
+				fmt.Printf("case %d query %d failed: expected %d got %d\n", idx+1, qIdx+1, expect, got)
 				os.Exit(1)
 			}
 		}
+		if outScan.Scan() {
+			fmt.Printf("case %d extra output detected\n", idx+1)
+			os.Exit(1)
+		}
 	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
-		os.Exit(1)
-	}
-	fmt.Println("All tests passed!")
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

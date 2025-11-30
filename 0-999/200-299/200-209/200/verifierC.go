@@ -11,7 +11,8 @@ import (
 	"strings"
 )
 
-const testcasesC = `20
+// Embedded copy of testcasesC.txt so the verifier is self-contained.
+const testcasesRaw = `20
 A B 5:5
 A C 2:2
 BERLAND C 4:1
@@ -111,33 +112,48 @@ A B 5:3
 BERLAND C 3:1
 B C 4:4
 A C 0:0
-BERLAND B 2:0
-`
+BERLAND B 2:0`
 
-type Team struct {
+type team struct {
 	name     string
 	points   int
 	scored   int
 	conceded int
 }
 
-func compute(lines []string) string {
-	teams := make(map[string]*Team)
+func parseMatch(line string) (string, string, int, int, error) {
+	fields := strings.Fields(strings.TrimSpace(line))
+	if len(fields) != 3 {
+		return "", "", 0, 0, fmt.Errorf("bad line %q", line)
+	}
+	sides := strings.Split(fields[2], ":")
+	if len(sides) != 2 {
+		return "", "", 0, 0, fmt.Errorf("bad score %q", fields[2])
+	}
+	left, err := strconv.Atoi(sides[0])
+	if err != nil {
+		return "", "", 0, 0, fmt.Errorf("parse score: %w", err)
+	}
+	right, err := strconv.Atoi(sides[1])
+	if err != nil {
+		return "", "", 0, 0, fmt.Errorf("parse score: %w", err)
+	}
+	return fields[0], fields[1], left, right, nil
+}
+
+func solveCase(lines []string) (string, error) {
+	teams := make(map[string]*team)
 	games := make(map[string]int)
 	for _, line := range lines {
-		parts := strings.Fields(line)
-		if len(parts) != 3 {
-			continue
+		t1, t2, g1, g2, err := parseMatch(line)
+		if err != nil {
+			return "", err
 		}
-		t1, t2 := parts[0], parts[1]
-		sc := strings.Split(parts[2], ":")
-		g1, _ := strconv.Atoi(sc[0])
-		g2, _ := strconv.Atoi(sc[1])
 		if teams[t1] == nil {
-			teams[t1] = &Team{name: t1}
+			teams[t1] = &team{name: t1}
 		}
 		if teams[t2] == nil {
-			teams[t2] = &Team{name: t2}
+			teams[t2] = &team{name: t2}
 		}
 		games[t1]++
 		games[t2]++
@@ -145,11 +161,12 @@ func compute(lines []string) string {
 		teams[t1].conceded += g2
 		teams[t2].scored += g2
 		teams[t2].conceded += g1
-		if g1 > g2 {
+		switch {
+		case g1 > g2:
 			teams[t1].points += 3
-		} else if g1 < g2 {
+		case g1 < g2:
 			teams[t2].points += 3
-		} else {
+		default:
 			teams[t1].points++
 			teams[t2].points++
 		}
@@ -161,31 +178,32 @@ func compute(lines []string) string {
 			break
 		}
 	}
-	orig := make(map[string]Team)
-	for n, t := range teams {
-		orig[n] = *t
+	orig := make(map[string]team, len(teams))
+	for name, t := range teams {
+		orig[name] = *t
 	}
-	limit := 1000
-	for d := 1; d <= limit; d++ {
-		for y := 0; y <= limit; y++ {
-			x := y + d
-			sim := make([]Team, 0, len(orig))
+	found := false
+	bestX, bestY := 0, 0
+	for diff := 1; diff <= 1000 && !found; diff++ {
+		for y := 0; y <= 1000; y++ {
+			x := y + diff
+			snapshot := make([]team, 0, len(orig))
 			for _, t := range orig {
-				sim = append(sim, t)
+				snapshot = append(snapshot, t)
 			}
-			for i := range sim {
-				if sim[i].name == "BERLAND" {
-					sim[i].points += 3
-					sim[i].scored += x
-					sim[i].conceded += y
+			for i := range snapshot {
+				if snapshot[i].name == "BERLAND" {
+					snapshot[i].points += 3
+					snapshot[i].scored += x
+					snapshot[i].conceded += y
 				}
-				if sim[i].name == opp {
-					sim[i].scored += y
-					sim[i].conceded += x
+				if snapshot[i].name == opp {
+					snapshot[i].scored += y
+					snapshot[i].conceded += x
 				}
 			}
-			sort.Slice(sim, func(i, j int) bool {
-				a, b := sim[i], sim[j]
+			sort.Slice(snapshot, func(i, j int) bool {
+				a, b := snapshot[i], snapshot[j]
 				if a.points != b.points {
 					return a.points > b.points
 				}
@@ -200,61 +218,88 @@ func compute(lines []string) string {
 				return a.name < b.name
 			})
 			rank := -1
-			for i, t := range sim {
+			for i, t := range snapshot {
 				if t.name == "BERLAND" {
 					rank = i
 					break
 				}
 			}
 			if rank >= 0 && rank < 2 {
-				return fmt.Sprintf("%d:%d", x, y)
+				bestX, bestY = x, y
+				found = true
+				break
 			}
 		}
 	}
-	return "IMPOSSIBLE"
+	if !found {
+		return "IMPOSSIBLE", nil
+	}
+	return fmt.Sprintf("%d:%d", bestX, bestY), nil
+}
+
+func loadTestcases() ([][]string, error) {
+	scan := bufio.NewScanner(strings.NewReader(testcasesRaw))
+	if !scan.Scan() {
+		return nil, fmt.Errorf("empty testcase data")
+	}
+	t, err := strconv.Atoi(strings.TrimSpace(scan.Text()))
+	if err != nil {
+		return nil, fmt.Errorf("parse t: %w", err)
+	}
+	cases := make([][]string, 0, t)
+	for i := 0; i < t; i++ {
+		lines := make([]string, 0, 5)
+		for j := 0; j < 5; j++ {
+			if !scan.Scan() {
+				return nil, fmt.Errorf("test %d: missing line %d", i+1, j+1)
+			}
+			lines = append(lines, scan.Text())
+		}
+		cases = append(cases, lines)
+	}
+	return cases, nil
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
-	data := []byte(testcasesC)
-	scanLines := bufio.NewScanner(bytes.NewReader(data))
-	if !scanLines.Scan() {
-		fmt.Println("bad file")
+	testcases, err := loadTestcases()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load testcases: %v\n", err)
 		os.Exit(1)
 	}
-	t, _ := strconv.Atoi(strings.TrimSpace(scanLines.Text()))
-	cases := make([][]string, t)
-	for i := 0; i < t; i++ {
-		lines := make([]string, 5)
-		for j := 0; j < 5; j++ {
-			scanLines.Scan()
-			lines[j] = scanLines.Text()
-		}
-		cases[i] = lines
-	}
-	
-	for i, lns := range cases {
-		expected := compute(lns)
-		inputData := strings.Join(lns, "\n") + "\n"
-		
-		cmd := exec.Command(os.Args[1])
-		cmd.Stdin = strings.NewReader(inputData)
-		out, err := cmd.CombinedOutput()
-		
+	bin := os.Args[1]
+	for idx, lines := range testcases {
+		expect, err := solveCase(lines)
 		if err != nil {
-			fmt.Printf("test %d execution failed: %v\n", i+1, err)
+			fmt.Fprintf(os.Stderr, "test %d: failed to solve: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		
-		got := strings.TrimSpace(string(out))
-		if got != expected {
-			fmt.Printf("test %d failed: expected %s got %s\n", i+1, expected, got)
+		input := strings.Join(lines, "\n") + "\n"
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(input)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr.String())
+			os.Exit(1)
+		}
+		fields := strings.Fields(stdout.String())
+		if len(fields) == 0 {
+			fmt.Printf("test %d: no output\n", idx+1)
+			os.Exit(1)
+		}
+		if fields[0] != expect {
+			fmt.Printf("test %d failed: expected %s got %s\n", idx+1, expect, fields[0])
+			os.Exit(1)
+		}
+		if len(fields) > 1 {
+			fmt.Printf("test %d: extra output detected\n", idx+1)
 			os.Exit(1)
 		}
 	}
-
-	fmt.Println("All tests passed!")
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

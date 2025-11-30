@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// Embedded contents of testcasesF.txt to keep the verifier self-contained.
 const testcases = `6 9 3 4 3 1 4 4 1 3 8 1 5 4 1 6 3 3 6 9 2 4 9 1 6 4 2 4 2
 3 3 1 2 6 1 2 7 1 3 4
 4 3 3 4 3 1 2 5 1 3 5
@@ -159,12 +160,13 @@ func solveCase(n int, edges []Edge) (int, []int) {
 	var st, en, cost int
 	for _, e := range edges {
 		u, v, w := e.u, e.v, e.w
-		g[u] = append(g[u], v)
-		g[v] = append(g[v], u)
 		if dsu.Find(u) == dsu.Find(v) {
 			st, en, cost = u, v, w
+			continue
 		}
 		dsu.Union(u, v)
+		g[u] = append(g[u], v)
+		g[v] = append(g[v], u)
 	}
 
 	vis := make([]bool, n+1)
@@ -177,9 +179,6 @@ func solveCase(n int, edges []Edge) (int, []int) {
 			break
 		}
 		for _, v := range g[u] {
-			if u == st && v == en {
-				continue
-			}
 			if !vis[v] {
 				vis[v] = true
 				parent[v] = u
@@ -204,6 +203,14 @@ type testCase struct {
 	n, m  int
 	edges []Edge
 }
+
+var embeddedCases = func() []testCase {
+	cases, err := parseCases(testcases)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse embedded testcases: %v", err))
+	}
+	return cases
+}()
 
 func parseCases(raw string) ([]testCase, error) {
 	lines := strings.Split(strings.TrimSpace(raw), "\n")
@@ -267,13 +274,8 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	cases, err := parseCases(testcases)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
-		os.Exit(1)
-	}
 
-	for idx, tc := range cases {
+	for idx, tc := range embeddedCases {
 		cost, path := solveCase(tc.n, tc.edges)
 		var exp strings.Builder
 		exp.WriteString(fmt.Sprintf("%d %d\n", cost, len(path)))
@@ -300,5 +302,5 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(cases))
+	fmt.Printf("All %d tests passed\n", len(embeddedCases))
 }

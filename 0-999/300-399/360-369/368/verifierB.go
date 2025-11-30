@@ -10,14 +10,361 @@ import (
 	"strings"
 )
 
-func solveQueries(a []int, queries []int) []int {
+const testcasesData = `100
+9 6
+16 2 15 10 5 16 2 20 7
+1 6 8 7 1 9
+2 2
+13 1
+2 1
+2 10
+1 9
+2 1 1 2 1 1 2 2 2 2
+3 6
+14 14 5
+2 3 1 3 2 1
+4 3
+15 12 13 14
+4 4 2
+4 8
+7 19 2 13
+1 2 1 2 3 1 2 2
+10 5
+20 3 17 10 12 14 15 2 17 18
+7 10 8 8 5
+8 4
+11 9 2 2 2 6 12 1
+5 1 3 2
+7 4
+20 13 18 8 15 7 11
+5 1 5 1
+6 6
+18 15 11 9 1 17
+1 2 3 1 2 5
+6 4
+7 9 10 10 17 13
+3 4 3 6
+4 1
+10 18 3 1
+4
+8 8
+2 14 16 15 15 4 3 3
+4 2 3 7 4 8 2 7
+9 7
+2 6 8 16 8 5 9 12 11
+7 2 9 5 9 4 5
+8 9
+20 15 18 9 9 8 1 4
+2 3 7 4 4 5 1 7 1
+2 7
+9 4
+2 1 2 1 1 1 2
+6 4
+12 16 10 19 6 5
+1 5 5 3
+6 10
+1 5 13 5 6 17
+1 2 2 4 5 6 2 2 6 2
+4 7
+12 20 19 5
+4 1 1 3 4 4 3
+1 4
+18
+1 1 1 1
+2 5
+5 20
+2 1 2 2 2
+1 4
+2
+1 1 1 1
+4 5
+12 6 10 1
+3 1 2 3 1
+8 1
+1 8 2 1 8 11 3 2
+6
+7 3
+7 15 14 5 12 10 6
+6 3 6
+7 7
+1 14 9 18 18 15 2
+5 1 4 4 2 1 5
+3 10
+17 5 3
+2 1 1 1 1 1 3 3 3 1
+2 7
+20 4
+2 1 1 2 2 2 1
+1 8
+3
+1 1 1 1 1 1 1 1
+6 5
+16 13 1 10 17 10
+5 4 1 5 5
+9 5
+2 15 13 4 13 12 16 2 1
+5 1 5 5 4
+9 9
+11 13 9 7 4 19 11 8 19
+9 6 3 3 6 1 1 3 6
+6 5
+10 11 16 13 20 14
+2 1 2 5 1
+8 3
+11 1 16 9 20 7 3 18
+7 5 3
+9 3
+3 6 19 4 17 18 20 13 14
+5 5 5
+1 7
+9
+1 1 1 1 1 1 1
+9 3
+19 13 12 15 2 18 14 20 8
+1 6 9
+3 4
+12 16 1
+3 3 1 3
+4 5
+6 14 3 19
+4 2 4 1 2
+3 8
+3 14 13
+2 2 2 2 3 2 1 2
+1 8
+1
+1 1 1 1 1 1 1 1
+6 10
+5 19 9 11 1 13
+4 5 2 1 1 5 3 3 1 1
+4 2
+18 16 2 11
+1 3
+7 3
+9 14 5 20 5 13 10
+5 1 2
+3 3
+16 2 17
+1 3 3
+7 3
+12 19 3 3 18 6 9
+2 7 3
+6 5
+9 17 15 5 15 18
+2 1 6 5 2
+9 1
+11 3 7 15 20 8 15 17 6
+6
+3 8
+18 2 18
+1 3 2 1 1 1 2 3
+6 10
+15 11 13 17 12 4
+2 3 1 2 6 2 1 3 5 2
+1 7
+2
+1 1 1 1 1 1 1
+1 8
+12
+1 1 1 1 1 1 1 1
+4 7
+3 12 4 4
+1 3 1 2 4 1 3
+8 9
+16 16 3 2 18 13 9 1
+2 2 6 6 2 8 1 3 5
+1 1
+13
+1
+3 9
+5 6 6
+1 3 3 1 3 2 1 2 3
+7 1
+8 8 10 11 6 8 12
+2
+3 7
+15 12 19
+1 2 3 1 1 3 1
+7 3
+5 1 1 11 17 1 2
+1 7 1
+10 10
+5 5 13 1 14 14 19 11 8 5
+6 9 4 9 7 2 3 7 10 6
+2 7
+14 8
+2 2 1 2 1 2 2
+10 2
+9 9 17 12 18 1 20 20 16 8
+5 1
+10 6
+13 4 18 2 5 13 1 14 13 14
+2 8 10 8 3 3
+6 8
+14 6 19 10 17 4
+3 3 2 6 3 4 6 5
+1 4
+9
+1 1 1 1
+1 5
+18
+1 1 1 1 1
+4 6
+5 5 4 20
+3 2 1 4 4 4
+2 2
+14 18
+1 1
+3 4
+6 8 1
+3 1 2 2
+10 5
+11 4 14 9 6 11 17 11 18 5
+7 9 5 4 7
+6 7
+16 17 10 14 14 4
+6 2 2 1 5 5 6
+9 2
+7 20 20 17 4 9 20 6 13
+2 1
+1 2
+12
+1 1
+2 8
+12 19
+2 2 1 1 1 1 1 1
+9 7
+20 7 15 13 9 1 19 5 13
+3 8 1 7 2 7 6
+4 9
+15 2 16 20
+1 3 4 4 4 3 2 2 3
+3 5
+20 5 15
+1 1 2 2 3
+7 9
+3 9 16 8 4 10 5
+3 7 1 2 6 7 1 7 6
+3 10
+18 7 1
+1 2 3 3 3 2 3 3 1 2
+9 6
+11 4 1 8 8 16 10 9 8
+1 8 6 9 6 2
+2 5
+19 14
+1 2 2 1 1
+5 4
+16 12 10 13 20
+2 1 4 3
+9 8
+8 12 12 14 9 12 13 10 4
+8 5 2 8 3 6 4 3
+6 8
+8 4 13 13 15 17
+4 5 5 2 6 4 5 3
+8 4
+11 17 1 3 16 11 13 8
+7 1 1 7
+2 5
+7 11
+1 1 1 2 1
+4 1
+1 13 18 1
+2
+2 10
+20 7
+1 2 1 1 2 1 1 1 1 2
+7 8
+1 14 7 13 2 20 9
+1 5 3 6 3 7 3 6
+8 3
+20 17 3 9 4 4 9 1
+3 3 7
+4 10
+11 7 14 17
+1 1 4 1 4 4 2 4 3 2
+7 5
+13 3 19 17 11 8 15
+2 3 4 7 4
+1 8
+1
+1 1 1 1 1 1 1 1
+3 4
+15 10 12
+3 2 3 1
+9 2
+7 10 17 4 2 5 11 2 11
+3 8
+7 4
+14 16 7 6 13 2 11
+7 6 7 5
+4 6
+6 17 18 20
+4 2 4 2 4 1
+4 8
+20 11 18 7
+1 1 1 2 2 4 2 1
+9 7
+10 11 16 7 6 12 18 12 15
+7 8 6 8 2 3 4
+2 3
+13 15
+1 2 1`
+
+type testCase struct {
+	n       int
+	a       []int
+	queries []int
+}
+
+func parseTestcases() ([]testCase, error) {
+	scan := bufio.NewScanner(strings.NewReader(testcasesData))
+	scan.Split(bufio.ScanWords)
+	if !scan.Scan() {
+		return nil, fmt.Errorf("missing test count")
+	}
+	t, err := strconv.Atoi(scan.Text())
+	if err != nil {
+		return nil, fmt.Errorf("parse t: %w", err)
+	}
+	cases := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		if !scan.Scan() {
+			return nil, fmt.Errorf("case %d: missing n", i+1)
+		}
+		n, _ := strconv.Atoi(scan.Text())
+		if !scan.Scan() {
+			return nil, fmt.Errorf("case %d: missing m", i+1)
+		}
+		m, _ := strconv.Atoi(scan.Text())
+		a := make([]int, n)
+		for j := 0; j < n; j++ {
+			if !scan.Scan() {
+				return nil, fmt.Errorf("case %d: missing a[%d]", i+1, j)
+			}
+			a[j], _ = strconv.Atoi(scan.Text())
+		}
+		q := make([]int, m)
+		for j := 0; j < m; j++ {
+			if !scan.Scan() {
+				return nil, fmt.Errorf("case %d: missing query %d", i+1, j+1)
+			}
+			q[j], _ = strconv.Atoi(scan.Text())
+		}
+		cases = append(cases, testCase{n: n, a: a, queries: q})
+	}
+	return cases, nil
+}
+
+func referenceSolve(a []int, queries []int) []int {
 	n := len(a)
 	ans := make([]int, n+1)
-	seen := make(map[int]bool)
+	seen := make(map[int]struct{})
 	distinct := 0
 	for i := n - 1; i >= 0; i-- {
-		if !seen[a[i]] {
-			seen[a[i]] = true
+		if _, ok := seen[a[i]]; !ok {
+			seen[a[i]] = struct{}{}
 			distinct++
 		}
 		ans[i] = distinct
@@ -29,102 +376,60 @@ func solveQueries(a []int, queries []int) []int {
 	return res
 }
 
-func runCase(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+func runBinary(bin, input string) (string, string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	var errBuf bytes.Buffer
+	var stderr bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
-	}
-	return strings.TrimSpace(out.String()), nil
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	return out.String(), stderr.String(), err
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierB.go /path/to/binary")
+		fmt.Println("usage: verifierB /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
 
-	data, err := os.ReadFile("testcasesB.txt")
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not read testcasesB.txt: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Fprintln(os.Stderr, "invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
 
-	for caseNum := 1; caseNum <= t; caseNum++ {
-		if !scan.Scan() {
-			fmt.Fprintf(os.Stderr, "bad test case %d\n", caseNum)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(scan.Text())
-		if !scan.Scan() {
-			fmt.Fprintf(os.Stderr, "bad test case %d\n", caseNum)
-			os.Exit(1)
-		}
-		m, _ := strconv.Atoi(scan.Text())
-		arr := make([]int, n)
-		for i := 0; i < n; i++ {
-			if !scan.Scan() {
-				fmt.Fprintf(os.Stderr, "bad test case %d\n", caseNum)
-				os.Exit(1)
-			}
-			arr[i], _ = strconv.Atoi(scan.Text())
-		}
-		queries := make([]int, m)
-		for i := 0; i < m; i++ {
-			if !scan.Scan() {
-				fmt.Fprintf(os.Stderr, "bad test case %d\n", caseNum)
-				os.Exit(1)
-			}
-			queries[i], _ = strconv.Atoi(scan.Text())
-		}
-
-		var sb strings.Builder
-		fmt.Fprintf(&sb, "%d %d\n", n, m)
-		for i, v := range arr {
+	for idx, tc := range cases {
+		var input strings.Builder
+		fmt.Fprintf(&input, "%d %d\n", tc.n, len(tc.queries))
+		for i, v := range tc.a {
 			if i > 0 {
-				sb.WriteByte(' ')
+				input.WriteByte(' ')
 			}
-			sb.WriteString(strconv.Itoa(v))
+			input.WriteString(strconv.Itoa(v))
 		}
-		sb.WriteByte('\n')
-		for _, q := range queries {
-			fmt.Fprintf(&sb, "%d\n", q)
+		input.WriteByte('\n')
+		for _, q := range tc.queries {
+			fmt.Fprintf(&input, "%d\n", q)
 		}
 
-		expected := solveQueries(arr, queries)
-		got, err := runCase(bin, sb.String())
+		expectedSlice := referenceSolve(tc.a, tc.queries)
+		expectedStrs := make([]string, len(expectedSlice))
+		for i, v := range expectedSlice {
+			expectedStrs[i] = strconv.Itoa(v)
+		}
+		expected := strings.Join(expectedStrs, "\n")
+
+		out, stderr, err := runBinary(bin, input.String())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", caseNum, err)
+			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr)
 			os.Exit(1)
 		}
-		tokens := strings.Fields(got)
-		if len(tokens) != len(expected) {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %d lines got %d\n", caseNum, len(expected), len(tokens))
+		if strings.TrimSpace(out) != expected {
+			fmt.Fprintf(os.Stderr, "case %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx+1, expected, strings.TrimSpace(out))
 			os.Exit(1)
-		}
-		for i, val := range expected {
-			if tokens[i] != strconv.Itoa(val) {
-				fmt.Fprintf(os.Stderr, "case %d failed: expected %d got %s\n", caseNum, val, tokens[i])
-				os.Exit(1)
-			}
 		}
 	}
-	fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,23 +9,699 @@ import (
 	"strings"
 )
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
-	}
-	return strings.TrimSpace(out.String()), nil
-}
+// Embedded testcases from testcasesB.txt.
+const embeddedTestcasesB = `3 10
+0 1 0 1 1 1 1 0 0 1
+0 1 1 0 1 1 0 0 1 0
+0 0 0 1 0 1 0 0 1 1
+9 4
+1 0 0 1
+1 0 1 0
+0 1 0 1
+1 0 1 1
+1 1 0 1
+0 1 1 0
+1 1 0 1
+0 0 1 1
+1 0 1 0
+5 10
+1 0 0 0 0 0 0 1 1 1
+1 1 0 1 0 0 1 0 1 1
+0 1 1 1 1 1 0 1 1 0
+0 0 0 0 1 0 0 0 0 1
+0 1 0 1 0 0 1 1 0 0
+3 5
+0 1 1 1 1
+1 1 0 0 1
+1 1 1 0 1
+2 5
+0 1 0 0 0
+1 0 0 0 1
+9 7
+0 1 0 0 1 1 1
+0 1 0 0 0 1 0
+0 1 1 0 1 1 0
+0 0 0 1 0 0 1
+0 1 0 0 1 0 1
+0 1 1 1 0 1 1
+1 0 0 0 1 0 1
+1 0 1 0 1 1 1
+0 0 0 0 0 0 0
+9 4
+1 1 1 1
+1 1 0 1
+0 1 0 0
+1 0 1 0
+1 0 0 1
+0 1 0 0
+0 1 1 1
+0 1 1 0
+0 1 0 0
+2 7
+0 0 0 0 1 0 0
+1 0 0 0 0 1 1
+9 5
+1 1 1 0 0
+1 0 0 0 1
+1 1 1 1 1
+0 0 1 1 0
+1 0 1 1 1
+0 0 1 0 0
+1 0 1 0 1
+0 1 0 1 1
+0 1 0 1 1
+4 6
+0 0 0 0 0 0
+1 0 1 0 0 0
+0 1 1 1 1 0
+0 1 0 0 0 0
+3 6
+1 0 1 0 0 0
+0 1 0 0 1 1
+0 0 0 1 0 1
+7 9
+1 1 1 0 1 1 0 1 1
+0 1 0 0 1 0 0 0 1
+1 1 1 0 0 0 1 0 0
+1 1 0 0 1 1 1 0 1
+1 1 0 0 0 1 0 0 1
+1 1 1 0 1 0 0 1 0
+0 1 1 0 0 1 1 1 1
+9 3
+0 0 1
+0 1 0
+0 0 1
+0 1 1
+1 0 1
+1 0 1
+0 0 1
+1 0 1
+1 0 1
+9 1
+0
+1
+0
+0
+0
+1
+0
+0
+1
+3 9
+0 1 1 1 1 0 1 1 1
+0 0 1 0 1 0 0 0 0
+1 0 0 1 1 1 1 1 0
+2 8
+1 1 1 1 1 1 0 1
+1 0 0 1 0 1 1 1
+3 8
+0 1 0 1 1 1 1 0
+1 0 1 0 1 0 1 1
+0 0 0 1 1 1 1 0
+8 5
+1 0 1 0 1
+0 1 0 1 0
+1 0 0 0 0
+1 1 1 0 0
+0 1 1 0 0
+1 1 0 0 1
+1 1 0 1 1
+0 1 1 1 0
+5 10
+0 0 1 1 1 0 1 0 0 0
+1 0 1 1 0 0 0 1 1 1
+1 0 0 0 1 0 0 0 1 1
+1 0 0 0 0 0 0 0 1 1
+1 1 0 0 0 0 1 0 1 1
+7 3
+0 0 1
+1 1 0
+1 1 1
+1 0 0
+0 0 0
+0 1 1
+1 1 0
+7 3
+0 0 0
+1 0 0
+1 1 0
+0 1 1
+0 0 0
+0 0 1
+0 1 0
+4 1
+1
+0
+1
+0
+8 7
+1 1 1 0 0 0 0
+1 1 0 1 1 0 1
+0 1 0 1 0 0 0
+0 0 1 0 0 0 1
+1 0 1 0 0 0 1
+0 1 1 0 1 0 1
+1 0 1 0 1 0 1
+1 0 1 1 0 1 0
+7 4
+0 1 1 1
+1 0 0 1
+0 1 0 0
+1 1 1 0
+1 1 0 0
+0 1 1 1
+1 1 1 1
+6 9
+0 0 0 1 1 1 0 1 1
+1 1 1 1 0 0 0 0 1
+1 0 1 1 1 1 1 1 1
+0 0 0 1 0 0 0 0 1
+0 0 1 0 0 1 0 0 0
+0 0 1 0 1 1 1 0 0
+10 8
+0 1 1 1 0 1 0 1
+1 0 0 1 1 0 1 1
+0 1 1 0 0 1 0 0
+1 1 1 1 1 1 1 1
+0 1 0 0 1 0 1 0
+1 1 1 1 0 0 0 0
+1 1 1 1 1 1 1 1
+1 0 1 1 0 1 0 0
+0 1 1 0 1 1 1 1
+1 1 1 1 1 0 1 1
+7 2
+0 0
+0 0
+0 0
+0 1
+0 1
+0 1
+0 0
+2 7
+0 0 1 1 0 0 1
+0 1 1 0 1 0 0
+2 7
+0 1 1 1 1 0 1
+0 0 1 0 0 1 1
+9 5
+1 0 1 1 0
+0 1 1 0 1
+1 0 0 1 1
+0 1 0 0 1
+0 1 0 0 1
+1 1 1 1 1
+1 0 1 1 1
+0 1 0 0 1
+0 0 1 0 0
+6 10
+1 1 1 0 0 0 1 0 0 0
+0 0 0 0 1 1 1 0 0 1
+0 0 0 1 1 1 1 0 0 1
+1 0 0 1 0 0 1 0 0 0
+1 1 0 1 0 1 0 0 0 1
+1 0 0 1 1 0 1 0 1 0
+10 5
+1 0 1 1 1
+1 0 1 0 0
+0 0 0 0 1
+1 0 1 1 1
+1 0 1 0 1
+0 1 0 1 1
+0 0 0 0 0
+1 1 1 1 0
+0 1 1 1 0
+0 1 1 0 0
+3 7
+0 1 0 1 1 1 1
+1 1 1 0 0 1 0
+0 0 0 0 1 1 1
+8 4
+0 0 1 0
+0 0 1 1
+1 1 0 1
+1 1 1 1
+1 1 0 0
+0 1 0 0
+1 1 0 0
+1 0 1 0
+7 4
+0 0 1 1
+0 1 1 1
+1 0 1 1
+1 0 1 1
+0 0 0 1
+1 0 0 0
+0 1 1 1
+3 3
+0 1 0
+1 1 0
+1 0 0
+7 3
+0 1 0
+0 0 0
+1 0 0
+1 0 0
+0 0 0
+1 1 0
+0 1 0
+9 2
+1 0
+0 0
+0 1
+1 1
+1 0
+0 1
+1 1
+0 1
+1 0
+8 5
+1 0 1 1 0
+0 1 1 0 1
+1 1 1 1 1
+1 0 0 0 1
+0 0 0 0 1
+0 0 1 1 0
+0 0 0 0 0
+1 1 1 0 0
+9 9
+0 0 1 0 1 0 1 1 0
+0 1 0 1 1 1 0 1 0
+1 0 1 0 1 1 1 0 0
+1 0 0 0 0 1 0 0 1
+0 0 1 0 1 0 0 0 1
+1 0 1 0 0 0 1 1 1
+1 1 1 0 0 0 0 1 0
+1 0 1 1 0 0 0 0 1
+1 0 0 0 1 1 0 0 1
+10 2
+1 0
+1 0
+0 0
+1 1
+0 0
+1 0
+1 1
+1 1
+1 1
+0 1
+1 7
+1 1 0 1 0 1 1
+7 9
+0 0 0 0 0 1 1 1 0
+1 0 1 0 1 1 0 0 1
+1 0 0 0 0 1 1 1 1
+1 1 1 0 0 0 1 1 1
+0 0 0 1 1 0 0 1 1
+0 0 0 1 1 0 1 0 0
+1 1 1 0 0 1 1 0 0
+6 7
+0 0 1 0 0 0 0
+0 0 1 1 0 0 1
+1 1 1 0 0 0 1
+0 0 1 0 0 0 0
+0 0 0 0 1 1 0
+1 1 1 1 0 0 0
+4 10
+1 1 1 1 0 1 0 0 1 1
+1 0 1 0 1 1 1 1 0 1
+1 1 1 1 1 0 0 1 1 1
+0 1 0 1 1 0 1 1 0 0
+6 1
+1
+0
+1
+1
+0
+1
+6 5
+0 0 0 1 0
+0 0 1 1 1
+0 0 0 1 1
+1 1 1 1 0
+0 1 0 0 0
+0 0 1 1 0
+10 3
+1 1 0
+1 1 1
+0 0 0
+1 1 1
+1 1 0
+1 1 1
+0 1 0
+1 0 0
+1 1 1
+0 0 0
+10 9
+0 0 1 0 0 0 0 0 1
+0 0 0 0 0 1 1 0 0
+0 1 0 1 1 1 0 0 0
+1 0 0 1 0 1 1 1 0
+0 0 0 0 0 0 0 1 0
+0 1 0 0 1 0 0 0 1
+1 0 0 1 0 0 0 0 0
+0 0 0 0 0 1 1 1 0
+0 1 0 1 1 1 1 1 1
+0 1 0 1 1 0 0 0 0
+7 5
+1 1 1 1 1
+1 1 1 1 1
+0 1 0 1 0
+1 0 0 0 1
+0 0 0 0 1
+0 1 1 0 1
+1 1 0 1 0
+9 6
+1 0 0 1 0 0
+1 0 0 0 1 1
+1 1 1 0 0 1
+0 1 0 0 0 1
+1 1 0 1 0 0
+1 0 0 0 0 0
+1 1 0 0 0 0
+1 1 1 1 0 1
+0 1 0 1 0 0
+3 3
+0 0 0
+1 1 0
+0 1 0
+10 4
+0 0 1 0
+1 0 0 0
+1 1 0 0
+1 1 1 0
+1 0 1 1
+1 0 1 1
+1 0 1 0
+1 0 0 1
+0 1 1 1
+1 1 1 0
+5 3
+1 0 0
+1 1 0
+1 1 1
+1 1 0
+1 0 1
+2 7
+1 0 1 1 0 1 0
+0 0 0 0 0 1 1
+6 9
+0 1 1 0 1 1 0 1 0
+1 1 1 0 1 0 1 1 0
+0 0 1 0 1 1 0 1 1
+0 0 0 1 0 0 1 1 0
+1 1 0 0 1 0 0 1 0
+1 1 1 1 0 1 0 1 0
+1 6
+0 1 1 0 1 1
+9 8
+1 0 0 0 0 0 1 0
+1 1 0 1 1 0 0 1
+1 1 1 1 0 1 0 0
+0 0 0 1 1 1 1 0
+1 0 1 1 1 1 1 0
+0 1 1 1 0 1 0 1
+0 0 0 0 1 0 0 0
+1 0 1 0 1 1 1 1
+0 1 1 1 1 1 1 1
+5 3
+0 1 0
+1 0 1
+0 0 1
+1 1 1
+1 1 1
+8 7
+0 0 0 0 0 0 1
+0 1 1 0 1 1 1
+1 0 1 0 1 1 1
+0 0 1 1 0 0 0
+1 1 0 1 0 1 0
+1 0 1 0 0 0 1
+0 1 1 1 1 0 0
+0 0 0 0 0 1 0
+7 3
+1 1 0
+0 1 0
+0 0 1
+1 0 0
+0 1 0
+0 1 0
+1 1 0
+7 8
+0 1 0 0 0 0 1 0
+1 0 0 0 0 1 1 0
+1 1 1 0 1 1 1 1
+1 1 1 0 0 0 0 0
+0 0 0 1 1 1 0 0
+0 0 0 1 1 1 0 0
+1 1 1 0 1 0 1 0
+6 2
+0 0
+1 0
+0 1
+0 0
+1 0
+1 0
+8 2
+1 0
+1 0
+0 1
+1 0
+1 1
+1 1
+0 0
+0 1
+2 2
+1 0
+0 0
+10 2
+0 1
+0 0
+1 1
+0 1
+1 1
+0 0
+1 1
+1 0
+1 1
+1 1
+9 1
+1
+0
+1
+1
+1
+0
+1
+1
+1
+9 10
+1 1 0 1 0 0 0 1 0 1
+1 1 1 0 0 0 1 0 1 1
+1 1 0 0 0 1 0 1 1 0
+1 0 1 0 0 1 1 0 1 1
+0 0 0 0 0 0 0 1 0 0
+0 0 0 0 1 1 1 0 1 0
+0 1 0 0 1 1 1 1 1 0
+0 0 0 1 1 1 1 0 0 0
+0 0 1 0 1 1 0 0 1 0
+9 7
+0 1 0 1 1 1 1
+0 0 1 0 1 1 0
+0 0 1 0 1 1 0
+1 0 0 0 1 0 0
+1 1 1 1 1 0 1
+0 1 0 0 1 1 1
+0 0 1 1 1 1 0
+1 0 1 0 0 1 1
+1 0 1 0 0 1 1
+1 8
+0 1 1 0 0 1 0 1
+10 2
+0 0
+1 0
+1 0
+1 0
+0 0
+0 1
+1 1
+0 1
+1 1
+0 1
+9 4
+1 0 0 0
+1 1 1 1
+0 1 1 0
+0 0 0 0
+1 1 0 0
+0 0 1 1
+0 0 0 1
+0 1 0 1
+0 1 1 1
+2 2
+0 0
+0 1
+9 8
+0 0 1 1 0 0 0 0
+1 0 1 1 1 1 1 1
+0 0 0 1 0 0 0 1
+1 1 0 0 0 0 0 0
+0 0 1 0 0 1 0 0
+0 0 0 0 0 1 0 1
+0 1 0 1 1 1 1 1
+1 1 0 0 1 1 0 0
+0 0 1 0 0 1 1 0
+7 10
+1 0 0 0 1 1 1 0 0 0
+1 1 1 0 1 0 0 0 0 0
+1 0 0 1 1 0 0 0 0 1
+1 0 0 1 0 1 0 0 0 1
+1 1 1 1 0 1 1 1 1 1
+0 1 0 0 1 0 0 1 1 0
+1 0 0 1 1 0 1 0 1 1
+3 10
+0 1 1 1 0 1 1 0 1 0
+1 1 0 0 1 0 0 1 0 0
+1 1 1 1 1 0 1 0 0 0
+1 5
+0 1 1 0 1
+10 6
+0 1 1 0 0 1
+0 0 1 0 1 0
+0 0 0 1 0 0
+1 0 1 0 0 1
+0 1 1 0 0 1
+1 1 1 1 1 1
+0 0 1 1 0 1
+0 0 1 1 1 1
+1 1 1 1 1 0
+1 0 1 0 0 1
+7 3
+1 1 1
+0 0 1
+0 0 0
+0 1 0
+0 0 0
+1 1 0
+0 1 0
+9 8
+0 1 1 0 1 1 1 1
+1 0 0 1 1 1 1 1
+1 0 0 0 1 1 1 0
+1 0 0 0 0 1 0 1
+0 0 1 0 0 1 1 1
+1 0 0 0 1 0 0 0
+1 1 1 1 1 1 1 0
+0 0 1 0 0 0 0 0
+0 1 0 1 1 1 1 1
+2 7
+1 0 0 1 0 0 1
+0 1 1 0 1 1 0
+9 6
+1 0 1 0 1 1
+0 0 0 1 1 0
+1 0 0 1 1 0
+1 1 1 0 1 1
+0 1 0 1 1 0
+0 1 1 1 1 0
+1 0 1 1 1 0
+1 0 0 0 1 0
+1 0 0 0 0 0
+2 2
+0 0
+0 1
+7 3
+1 0 0
+1 0 0
+1 0 1
+1 0 1
+0 0 0
+1 0 1
+0 0 0
+5 9
+1 1 1 1 0 0 1 0 0
+1 1 0 1 0 1 0 1 1
+0 1 0 0 0 0 1 1 0
+1 1 1 1 0 1 0 1 1
+0 0 0 0 1 1 1 0 1
+9 3
+1 1 0
+1 0 0
+0 1 1
+0 0 1
+0 0 0
+1 1 1
+1 1 0
+0 0 1
+1 0 1
+1 3
+0 1 0
+2 7
+1 1 0 0 0 1 1
+1 1 1 1 1 1 1
+10 2
+1 0
+1 1
+1 0
+0 0
+0 0
+1 1
+1 1
+0 0
+1 0
+0 1
+7 8
+0 1 0 1 0 1 0 1
+1 0 1 1 1 0 1 1
+1 0 1 0 1 1 1 1
+1 0 1 1 1 0 1 1
+1 1 0 1 0 0 0 1
+0 1 0 1 0 1 0 0
+1 0 1 1 0 0 0 1
+1 8
+0 0 1 0 1 1 0 0
+1 8
+1 0 1 1 1 0 0 1
+7 10
+1 0 0 1 1 0 0 1 0 1
+1 0 1 0 1 0 1 0 0 1
+1 1 1 0 1 0 1 0 1 0
+0 0 1 0 1 0 1 1 0 1
+0 0 0 0 1 0 0 1 0 0
+1 0 0 1 1 0 0 0 0 1
+1 1 0 1 1 0 1 1 0 1
+6 10
+1 0 0 0 0 0 1 0 1 0
+0 0 0 1 1 1 0 1 1 0
+0 0 1 1 1 1 1 1 0 1
+1 1 1 0 1 0 1 0 0 1
+0 1 0 1 1 0 1 1 0 1
+1 1 1 1 1 0 1 1 1 0
+2 3
+1 1 1
+1 0 1
+1 7
+0 0 0 1 1 0 0
+4 10
+0 1 1 1 0 1 1 0 0 0
+0 0 0 1 0 0 1 1 0 0
+1 0 0 0 0 1 1 0 0 0
+0 1 0 1 1 0 0 1 0 0
+2 3
+0 0 0
+1 0 1
+2 6
+1 0 1 1 0 0
+0 1 1 1 0 1
+9 7
+1 0 0 0 1 1 0
+1 1 1 0 1 0 1
+1 0 0 0 1 0 0
+0 1 0 1 1 0 1
+0 0 1 1 0 1 0
+1 1 1 0 0 0 0
+1 0 0 1 1 1 1
+0 1 1 0 0 0 0
+1 0 0 1 0 1 0`
 
 func mapIndex(i, total, x int) int {
 	cur := i
@@ -41,7 +716,7 @@ func mapIndex(i, total, x int) int {
 	return cur
 }
 
-func check(a [][]int, total, x int) bool {
+func checkMatrix(a [][]int, total, x int) bool {
 	n := total
 	for i := x; i < n; i++ {
 		idx := mapIndex(i, n, x)
@@ -66,80 +741,97 @@ func expected(a [][]int) int {
 			continue
 		}
 		x := n / div
-		if check(a, n, x) {
+		if checkMatrix(a, n, x) {
 			return x
 		}
 	}
 	return n
 }
 
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func parseMatrix(lines []string, n, m int) [][]int {
+	mat := make([][]int, n)
+	for i := 0; i < n; i++ {
+		fields := strings.Fields(lines[i])
+		if len(fields) != m {
+			fmt.Fprintf(os.Stderr, "row %d expected %d values, got %d\n", i+1, m, len(fields))
+			os.Exit(1)
+		}
+		row := make([]int, m)
+		for j, f := range fields {
+			v, err := strconv.Atoi(f)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "invalid int at row %d col %d: %v\n", i+1, j+1, err)
+				os.Exit(1)
+			}
+			row[j] = v
+		}
+		mat[i] = row
+	}
+	return mat
+}
+
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierB.go /path/to/binary")
+		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
+	lines := strings.Split(strings.TrimSpace(embeddedTestcasesB), "\n")
 	idx := 0
-	for {
-		if !scanner.Scan() {
-			break
+	for pos := 0; pos < len(lines); {
+		header := strings.Fields(lines[pos])
+		if len(header) != 2 {
+			fmt.Fprintf(os.Stderr, "case %d: malformed header\n", idx+1)
+			os.Exit(1)
 		}
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
+		n, err1 := strconv.Atoi(header[0])
+		m, err2 := strconv.Atoi(header[1])
+		if err1 != nil || err2 != nil {
+			fmt.Fprintf(os.Stderr, "case %d: invalid n or m\n", idx+1)
+			os.Exit(1)
 		}
-		idx++
-		var n, m int
-		fmt.Sscan(line, &n, &m)
-		matrix := make([][]int, n)
-		rows := make([]string, n)
-		for i := 0; i < n; i++ {
-			if !scanner.Scan() {
-				fmt.Fprintf(os.Stderr, "case %d malformed: missing row %d\n", idx, i+1)
-				os.Exit(1)
-			}
-			rowLine := strings.TrimSpace(scanner.Text())
-			fields := strings.Fields(rowLine)
-			if len(fields) != m {
-				fmt.Fprintf(os.Stderr, "case %d malformed: row %d expected %d values got %d\n", idx, i+1, m, len(fields))
-				os.Exit(1)
-			}
-			row := make([]int, m)
-			for j, f := range fields {
-				v, err := strconv.Atoi(f)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "case %d malformed: %v\n", idx, err)
-					os.Exit(1)
-				}
-				row[j] = v
-			}
-			matrix[i] = row
-			rows[i] = strings.Join(fields, " ")
+		if pos+1+n > len(lines) {
+			fmt.Fprintf(os.Stderr, "case %d: insufficient rows\n", idx+1)
+			os.Exit(1)
 		}
-		input := line + "\n" + strings.Join(rows, "\n") + "\n"
-		want := fmt.Sprintf("%d", expected(matrix))
-		got, err := run(bin, input)
+		rows := lines[pos+1 : pos+1+n]
+		matrix := parseMatrix(rows, n, m)
+		want := strconv.Itoa(expected(matrix))
+
+		var input strings.Builder
+		input.WriteString(lines[pos])
+		input.WriteByte('\n')
+		for i, r := range rows {
+			input.WriteString(r)
+			if i != len(rows)-1 {
+				input.WriteByte('\n')
+			}
+		}
+
+		got, err := runCandidate(bin, input.String())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != want {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", idx, want, got, input)
+		if got != want {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, want, got)
 			os.Exit(1)
 		}
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
+
+		pos += 1 + n
+		idx++
 	}
 	fmt.Printf("All %d tests passed\n", idx)
 }

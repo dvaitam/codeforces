@@ -1,13 +1,138 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
+
+// Embedded copy of testcasesC.txt.
+const testcasesCData = `
+OOX O.O OOO
+O.X .XO XX.
+O.. .XO X.X
+.OO .XO OO.
+.X. OO. OX.
+XX. O.. .X.
+OOX .O. XX.
+XXX .OX XO.
+OXO .O. X.O
+.X. ..O OX.
+OO. XOX XXX
+..O OXX .XX
+XX. ..O ..O
+.XX ..O .OO
+O.. .OX O.X
+O.. OXX X.O
+X.X OXO OXX
+X.X X.. ...
+XXX .X. .XO
+XOX X.X XX.
+XOX .X. X.O
+.XO XXX .OO
+OXX .OX .X.
+OXO O.O .X.
+.XX .XX O.O
+X.O .XX O.O
+..O .OO .OX
+..X O.X O.X
+.OX XOO .O.
+O.. .X. OO.
+O.X X.X .OX
+XX. OO. ..O
+XO. .O. .XX
+OXO .XO .O.
+.XX OOO OXO
+X.. X.X XO.
+OOX XX. X..
+.XX X.. XOO
+.XX OO. XXO
+OXO X.. ..O
+XXO XXX X.O
+.OO .X. ...
+O.. O.O O.X
+XO. OXX XOO
+OO. XO. XXO
+XX. OOO .XO
+XO. XXO X..
+XOO OOO XX.
+OOO OXO X.O
+OXO O.. XX.
+.O. XXX X.X
+XOX XO. .OO
+O.. .XO XOX
+O.X OXO XX.
+X.O .XX OOO
+X.X X.X XXO
+OO. XX. OX.
+O.. O.O .OO
+O.. X.. XXO
+..O OX. XO.
+XO. O.. OXX
+.XX XXX OXO
+OXX .OO .O.
+.X. X.. .X.
+OXO ..O OO.
+.XX .X. XO.
+.OO XOO OOO
+OXX .XX O.O
+XXO OXO ..X
+..X OOX .OO
+OXX OXX X..
+X.O X.. .OX
+OOX X.. O..
+O.X ... OXO
+O.. X.X XOO
+OXO O.X XXO
+OX. ... XXX
+... .O. OXX
+O.O XXO XXO
+X.X OO. OXO
+O.O XOX XO.
+XOO XXX OX.
+XXX X.. .X.
+XOO .X. XXX
+OXO O.O XXX
+OOO OO. .OX
+.XX ..O XOX
+XXO .XX XOO
+O.X X.X OX.
+XXO O.O .X.
+OO. OXX O.O
+..X OOX O.O
+OXO OOX XXO
+X.. .X. OOX
+OOX XOO .XO
+O.. XOX OX.
+O.O XXO X.O
+..X O.O X.O
+X.O O.X XO.
+XXO O.. .OO
+`
+
+type testCase struct {
+	board [3]string
+}
+
+func parseTestcases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesCData), "\n")
+	cases := make([]testCase, 0, len(lines))
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) != 3 {
+			return nil, fmt.Errorf("line %d: expected 3 rows", idx+1)
+		}
+		cases = append(cases, testCase{board: [3]string{parts[0], parts[1], parts[2]}})
+	}
+	return cases, nil
+}
 
 func win(board [3]string, ch byte) bool {
 	for i := 0; i < 3; i++ {
@@ -27,7 +152,8 @@ func win(board [3]string, ch byte) bool {
 	return false
 }
 
-func verdict(board [3]string) string {
+// solve mirrors 3C.go verdict logic.
+func solve(board [3]string) string {
 	xCnt, oCnt := 0, 0
 	for i := 0; i < 3; i++ {
 		for j := 0; j < 3; j++ {
@@ -36,10 +162,12 @@ func verdict(board [3]string) string {
 				xCnt++
 			case '0':
 				oCnt++
+			default:
+				// '.' or other handled by main validation in original; assume testcases valid
 			}
 		}
 	}
-	if oCnt > xCnt || xCnt-oCnt > 1 {
+	if !(xCnt == oCnt || xCnt == oCnt+1) {
 		return "illegal"
 	}
 	xWin := win(board, 'X')
@@ -47,17 +175,17 @@ func verdict(board [3]string) string {
 	if xWin && oWin {
 		return "illegal"
 	}
-	if xWin && xCnt != oCnt+1 {
-		return "illegal"
-	}
-	if oWin && xCnt != oCnt {
-		return "illegal"
-	}
 	if xWin {
-		return "the first player won"
+		if xCnt == oCnt+1 {
+			return "the first player won"
+		}
+		return "illegal"
 	}
 	if oWin {
-		return "the second player won"
+		if xCnt == oCnt {
+			return "the second player won"
+		}
+		return "illegal"
 	}
 	if xCnt+oCnt == 9 {
 		return "draw"
@@ -68,45 +196,42 @@ func verdict(board [3]string) string {
 	return "second"
 }
 
+func runCandidate(bin string, tc testCase) (string, error) {
+	input := fmt.Sprintf("%s\n%s\n%s\n", tc.board[0], tc.board[1], tc.board[2])
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\nstderr: %s", err, stderr.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
 func main() {
-	if len(os.Args) < 2 {
+	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
-	binary := os.Args[1]
-	file, err := os.Open("testcasesC.txt")
+	bin := os.Args[1]
+	tests, err := parseTestcases()
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
+		os.Exit(1)
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		parts := strings.Fields(line)
-		if len(parts) != 3 {
-			fmt.Printf("invalid testcase format on line %d\n", idx)
-			os.Exit(1)
-		}
-		board := [3]string{parts[0], parts[1], parts[2]}
-		exp := verdict(board)
-		input := fmt.Sprintf("%s\n%s\n%s\n", parts[0], parts[1], parts[2])
-		cmd := exec.Command(binary)
-		cmd.Stdin = bytes.NewBufferString(input)
-		out, err := cmd.CombinedOutput()
+	for i, tc := range tests {
+		expect := solve(tc.board)
+		got, err := runCandidate(bin, tc)
 		if err != nil {
-			fmt.Printf("Test %d: runtime error: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(string(out))
-		if got != exp {
-			fmt.Printf("Test %d failed: expected %s got %s\n", idx, exp, got)
+		if got != expect {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", i+1, expect, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

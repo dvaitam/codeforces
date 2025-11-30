@@ -32,6 +32,15 @@ func main() {
 		return
 	}
 
+	if b1 == 0 {
+		if bad[0] {
+			fmt.Println(0)
+		} else {
+			fmt.Println("inf")
+		}
+		return
+	}
+
 	// handle q == 0 separately
 	if q == 0 {
 		if !bad[b1] {

@@ -1,34 +1,189 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-func expected(n int, nums []string) string {
+// Embedded testcases from testcasesA.txt.
+const embeddedTestcasesA = `4 3.445 0.331 2.121 4.188 3.980 3.317 2.484 3.904
+3 4.779 1.789 4.134 1.140 2.308 1.144
+1 2.052 4.362
+5 1.203 2.540 0.809 0.604 2.704 3.867 4.585 0.824 2.898 3.556
+3 1.675 4.526 3.907 3.626 4.270 2.133
+1 4.494 0.115
+1 3.267 0.009
+5 4.043 2.729 1.998 2.664 0.515 1.565 4.649 1.816 1.954 1.167
+5 3.669 0.747 0.659 2.621 4.161 4.008 0.893 2.469 4.515 2.384
+1 4.484 2.725
+5 1.664 4.941 4.482 4.813 2.356 3.645 0.750 4.884 3.153 2.597
+5 1.983 2.378 1.506 1.551 1.529 0.270 2.130 3.903 0.565 0.735
+2 1.225 0.316 0.657 4.428
+4 4.297 2.257 4.274 1.929 1.762 4.831 3.435 4.748
+3 3.691 4.035 2.927 0.674 2.656 0.944
+4 4.809 2.746 1.559 1.990 0.132 2.220 0.959 1.806
+3 1.396 2.724 3.490 0.509 0.824 1.198
+2 0.370 4.701 4.376 4.932
+1 0.218 1.019
+2 4.967 4.718 0.980 3.204
+1 3.032 0.950
+1 4.960 0.177
+2 1.515 1.014 3.925 1.725
+1 0.186 4.458
+4 0.831 2.129 0.573 1.809 0.589 2.466 2.869 3.572
+2 0.500 4.125 3.826 0.322
+5 0.826 3.205 1.633 2.131 2.937 3.852 4.667 1.387 1.666 0.475
+2 1.326 2.804 4.337 2.053
+1 4.888 3.623
+2 0.108 3.863 3.357 4.662
+5 2.551 2.925 3.183 2.055 1.256 4.592 0.101 3.751 0.647 2.751
+1 4.459 2.300
+2 1.967 3.947 2.885 4.998
+3 2.942 4.835 1.084 2.541 3.178 3.394
+1 0.012 4.870
+2 2.739 1.311 1.961 1.827
+4 3.101 4.654 3.394 0.258 3.295 4.648 3.426 0.383
+2 3.648 0.523 2.123 1.291
+4 4.321 3.991 4.599 4.947 0.000 0.318 4.051 2.670
+3 3.824 0.408 3.400 1.540 4.493 0.683
+2 0.120 3.291 3.420 2.590
+1 1.749 0.117
+1 4.328 0.801
+2 0.974 4.983 1.626 2.477
+3 1.492 0.820 3.896 3.249 0.666 0.178
+3 3.710 0.948 2.101 1.092 4.266 2.843
+1 1.265 2.280
+1 0.346 0.333
+2 2.127 4.574 2.578 3.005
+5 0.344 4.977 4.050 3.757 3.567 3.051 4.406 1.460 1.702 3.076
+5 2.384 0.072 1.134 1.237 2.223 2.731 2.764 3.008 0.767 2.770
+5 0.292 0.337 2.208 1.342 1.224 4.779 2.371 2.956 3.234 4.493
+2 2.403 0.941 3.916 1.963
+1 2.522 1.471
+5 0.580 2.479 3.302 2.691 2.451 3.397 0.890 0.814 4.594 3.941
+4 2.761 2.815 1.018 3.924 0.950 4.077 3.494 0.309
+3 2.744 1.275 1.364 4.624 3.076 0.712
+1 0.693 1.622
+2 0.500 3.152 0.064 0.803
+4 4.558 4.251 2.374 3.674 4.002 4.791 1.779 3.465
+1 3.017 1.803
+3 4.794 1.364 3.532 1.572 2.936 0.942
+1 0.226 4.307
+4 1.652 0.974 4.072 3.260 2.101 1.697 0.344 1.768
+5 1.198 0.857 1.621 3.755 3.096 2.962 4.476 1.239 0.858 4.884
+4 1.215 4.619 3.325 3.467 4.269 4.058 2.641 4.083
+4 1.654 4.446 4.995 1.792 0.079 2.787 2.607 2.636
+1 4.301 1.215
+3 4.936 1.277 3.104 4.775 2.411 3.853
+1 0.693 4.231
+1 0.543 1.843
+2 0.332 2.461 0.125 3.674
+3 1.316 1.219 3.774 3.041 4.136 3.131
+5 4.115 0.275 4.701 0.742 4.243 4.916 0.625 3.492 1.688 2.372
+5 4.903 3.422 3.950 3.183 4.976 4.803 1.913 0.167 0.001 1.490
+3 4.152 4.671 2.084 2.725 0.537 4.042
+3 2.480 3.342 3.147 3.143 0.510 1.341
+2 1.957 2.351 2.736 0.454
+1 3.943 3.423
+2 4.029 4.931 0.668 1.240
+3 3.368 0.288 3.819 3.167 3.759 0.385
+1 3.857 1.240
+1 0.265 4.901
+5 1.087 2.653 0.862 4.498 2.839 1.597 3.140 4.016 0.909 0.492
+5 3.827 2.767 1.018 2.427 1.041 3.175 2.406 0.995 4.251 1.549
+1 3.211 3.641
+3 1.560 3.731 2.920 0.617 0.365 0.327
+4 2.092 0.218 4.260 4.663 4.684 1.769 1.881 0.765
+5 4.290 3.441 4.154 2.501 0.929 1.193 3.489 4.636 3.457 0.688
+1 3.404 0.515
+1 3.401 1.279
+1 3.659 3.531
+4 0.246 4.068 2.658 2.069 0.643 2.887 0.576 0.994
+3 0.240 2.829 2.849 1.457 0.081 1.888
+3 0.577 4.887 1.173 1.703 0.026 1.677
+1 0.058 2.402
+3 0.201 4.954 1.907 1.162 1.531 3.719
+1 3.905 2.821
+3 1.066 0.228 1.704 2.967 2.744 3.877
+3 2.427 4.531 2.678 1.507 4.858 0.661
+1 1.803 4.659
+1 4.097 3.105
+1 2.731 1.263
+1 4.003 2.355
+1 2.361 0.821
+1 3.744 0.010
+2 3.664 1.949 0.630 2.363
+3 4.304 3.401 4.721 4.950 2.821 2.547
+5 0.708 3.460 0.939 0.959 1.192 0.226 2.350 3.268 0.689 3.006
+1 0.147 0.092
+3 3.518 2.496 2.412 3.419 1.760 2.172
+1 1.423 4.908
+5 4.753 2.100 3.970 3.708 1.871 3.561 0.785 3.030 0.850 3.218
+4 3.435 3.026 2.754 1.246 1.233 2.570 0.157 3.906
+2 1.760 4.708 0.939 0.838
+5 2.108 3.159 2.146 4.906 3.868 2.585 4.552 1.385 3.238 4.955
+4 4.757 4.354 4.021 2.751 2.862 0.256 2.584 3.223
+1 1.568 1.347
+1 0.512 2.887
+3 2.707 0.572 0.403 1.474 1.053 0.197
+2 4.275 3.200 2.470 2.632
+3 0.403 3.809 1.398 1.389 0.548 4.606
+3 0.710 2.895 3.823 4.958 3.306 0.530
+1 3.060 3.104
+4 4.652 3.591 1.243 3.081 1.259 0.302 1.676 1.627
+4 3.602 2.935 4.412 2.576 2.037 4.136 4.386 2.995
+3 2.204 0.626 0.431 2.268 1.935 1.809
+3 2.185 4.818 4.070 2.254 1.557 1.834
+3 4.397 1.588 2.690 0.903 0.927 1.846
+2 1.855 0.228 3.523 1.325
+1 3.243 0.242
+2 3.750 4.008 0.109 1.111
+1 2.510 3.343
+5 4.513 2.221 4.580 4.626 3.065 0.574 2.499 3.834 2.847 3.111
+1 4.559 4.948
+5 3.002 1.668 3.084 4.403 1.536 1.965 4.464 0.855 3.878 4.916
+4 3.854 0.301 4.833 1.362 0.387 4.549 2.265 2.571
+2 1.910 0.861 3.974 2.127
+3 4.845 3.082 3.938 1.218 2.895 3.880
+3 3.749 1.504 3.676 0.612 4.575 1.154
+2 3.382 2.873 1.859 1.779
+4 3.276 0.773 1.533 1.542 2.718 3.976 0.425 4.906
+1 1.017 0.429
+4 0.134 2.955 1.401 3.631 3.818 0.961 3.859 3.772
+2 0.178 1.358 4.171 0.011
+1 1.741 1.468
+4 2.360 1.218 3.808 3.973 3.089 2.847 0.847 0.908
+4 2.090 3.873 3.968 1.481 3.777 1.268 3.577 3.030
+4 0.830 0.643 2.656 2.575 3.028 0.917 3.288 4.361
+4 1.442 3.286 1.770 3.257 4.897 0.544 3.620 0.062`
+
+func parseFrac(s string) int {
+	parts := strings.SplitN(s, ".", 2)
+	if len(parts) != 2 {
+		return 0
+	}
+	frac := parts[1]
+	if len(frac) < 3 {
+		frac += strings.Repeat("0", 3-len(frac))
+	} else if len(frac) > 3 {
+		frac = frac[:3]
+	}
+	v, _ := strconv.Atoi(frac)
+	return v
+}
+
+func solve351(n int, nums []string) string {
 	k := 0
 	sum := 0
 	for _, s := range nums {
-		parts := strings.SplitN(s, ".", 2)
-		frac := 0
-		if len(parts) == 2 {
-			fracPart := parts[1]
-			if len(fracPart) > 3 {
-				fracPart = fracPart[:3]
-			}
-			fracPart = fmt.Sprintf("%03s", fracPart)
-			fracPart = strings.ReplaceAll(fracPart, " ", "0")
-			frac, _ = strconv.Atoi(fracPart)
-		}
-		if frac != 0 {
+		rem := parseFrac(s)
+		if rem != 0 {
 			k++
-			sum += frac
+			sum += rem
 		}
 	}
 	L := k - n
@@ -39,31 +194,29 @@ func expected(n int, nums []string) string {
 	if R > n {
 		R = n
 	}
-	c0 := (sum + 500) / 1000
-	c := c0
+	c := (sum + 500) / 1000
 	if c < L {
 		c = L
 	} else if c > R {
 		c = R
 	}
-	diff := c*1000 - sum
+	diff := c*1000 - int64(sum)
 	if diff < 0 {
 		diff = -diff
 	}
 	return fmt.Sprintf("%d.%03d", diff/1000, diff%1000)
 }
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
 		return "", err
 	}
-	oracle := filepath.Join(dir, "oracleA")
-	cmd := exec.Command("go", "build", "-o", oracle, "351A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
@@ -72,72 +225,34 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
+	lines := strings.Split(strings.TrimSpace(embeddedTestcasesA), "\n")
+	for idx, line := range lines {
 		parts := strings.Fields(line)
-		n, _ := strconv.Atoi(parts[0])
+		if len(parts) < 1 {
+			fmt.Fprintf(os.Stderr, "case %d: empty line\n", idx+1)
+			os.Exit(1)
+		}
+		n, err := strconv.Atoi(parts[0])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: invalid n\n", idx+1)
+			os.Exit(1)
+		}
 		if len(parts) != 1+2*n {
-			fmt.Printf("test %d: wrong number of values\n", idx)
+			fmt.Fprintf(os.Stderr, "case %d: expected %d numbers got %d\n", idx+1, 2*n, len(parts)-1)
 			os.Exit(1)
 		}
 		nums := parts[1:]
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d\n", n))
-		sb.WriteString(strings.Join(nums, " "))
-		sb.WriteByte('\n')
-		input := sb.String()
-
-		// run oracle
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(input)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error: %v\n", err)
+		input := fmt.Sprintf("%d\n%s\n", n, strings.Join(nums, " "))
+		want := solve351(n, nums)
+		got, err := runCandidate(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		expected := strings.TrimSpace(outO.String())
-
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var errBuf bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &errBuf
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, errBuf.String())
-			os.Exit(1)
-		}
-		got := strings.TrimSpace(out.String())
-		if got != expected {
-			fmt.Printf("test %d failed\nexpected: %s\ngot: %s\n", idx, expected, got)
+		if got != want {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, want, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(lines))
 }

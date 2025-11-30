@@ -6,21 +6,169 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
+const testcasesA = `4 6 11 -18 5 -4 -1 12 10
+3 17 -12 -7 -2 12 -12
+1 19 -4
+5 18 1 -11 10 -1 15 -14 -14 -16 2
+4 0 15 19 10 20 8 -7 13
+3 -17 -15 15 5 -20 20
+1 19 11
+3 -5 -8 0 16 -16 -6
+2 -11 8 14 -15
+1 0 12
+4 -14 -13 -1 15 15 1 -2 14
+2 18 17 15 -2
+4 -15 16 18 -5 4 -2 0 -9
+2 -9 19 -18 -4
+4 -16 -18 -15 -15 -12 14 -11 5
+5 -3 6 13 17 -5 -3 -7 8 17 11
+3 -15 -13 0 11 19 17
+3 -8 -3 -5 -13 -19 -6
+3 -10 -17 1 -14 7 -11
+2 -18 20 16 14
+5 -16 18 -19 16 -13 -13 20 5 -8 -15
+3 -13 -19 -18 -8 18 -9
+1 10 -7
+1 -19 14
+4 19 -6 -14 -16 -4 -1 -16 2
+4 -9 -18 -17 18 12 -14 9 5
+2 -4 10 2 16
+2 -7 -10 -17 -10
+3 13 18 -4 8 -13 -9
+1 10 6
+5 12 -11 -1 15 2 -20 4 9 -4 -15
+3 -18 -12 14 -5 -3 10
+3 19 17 -2 20 2 19
+2 -1 6 4 -15
+1 18 -8
+3 -10 20 -5 8 -6 4
+5 6 8 -18 -16 5 -4 16 -10 -10 8
+5 11 11 15 1 18 -1 -20 9 -18 -17
+4 -8 -12 15 -20 20 5 -15 6
+3 -20 19 -7 -14 13 -8
+1 18 -8
+3 -3 10 -9 5 -14 20
+1 -19 -3
+4 -13 2 -4 -13 -12 -11 13 -3
+1 -18 -18
+2 -4 1 15 3
+5 -18 7 18 3 11 14 9 -9 20 -7
+4 17 -11 -2 -3 -20 1 -12 1
+3 -15 -18 1 -18 19 -3
+2 -11 -2 17 3
+4 15 10 -12 -5 -2 -17 -13 -1
+2 13 -1 -16 5
+3 -1 -14 6 15 -14 10
+4 1 7 -13 -18 10 -1 11 1
+2 -10 16 20 4
+1 -16 -15
+2 -6 4 -17 -20
+1 5 15
+5 -2 7 8 -15 11 3 17 -6 -7 -4
+5 -10 -16 7 -19 -8 13 2 8 -13 -8
+1 11 5
+3 -7 -11 -18 -14 19 -8
+4 4 -14 3 18 14 11 -11 -11
+5 5 1 20 11 7 11 13 20 11 -8
+5 19 1 -6 -18 -20 13 1 -11 0 -4
+5 -11 -16 4 -15 17 13 -2 -18 10 -16
+2 -12 -1 -18 -20
+4 1 3 -10 12 -11 4 9 13
+5 -18 -16 16 7 -15 -7 13 -2 18 14
+5 6 -6 10 -19 4 -20 18 -9 17 -1
+5 16 -4 -4 -1 1 6 -16 4 11 4
+1 -10 -12
+2 -2 -17 1 -18
+4 6 -15 -11 -11 11 2 18 6
+1 19 9
+4 9 -11 -17 -19 -14 -18 10 18
+5 -12 2 20 -8 0 4 -14 11 15 -13
+1 19 9
+5 20 -12 1 4 -13 -2 19 -13 -2 13
+2 -18 8 5 3
+2 9 20 2 -16
+1 -18 11
+3 -19 16 13 -7 16 -6
+1 20 12
+5 6 7 12 16 -1 7 -13 -15 -11 -14
+4 -16 -19 -14 8 6 7 -11 6
+1 11 1
+3 -15 -13 2 2 -16 -19
+3 2 -6 -9 3 -20 -16
+5 -11 3 -7 -19 -20 18 -13 -6 -2 -11
+2 9 10 -13 2
+3 -12 3 -19 1 -7 10
+3 -2 1 15 -9 20 17
+1 -14 14
+5 -1 -6 -10 1 4 12 -11 -5 -12 -5
+2 -2 6 3 -18
+2 18 5 -19 -16
+1 -12 6
+3 15 17 6 7 -11 -1
+3 -15 20 -5 3 8 20`
+
+// expectedResult implements the 29A solution.
+func expectedResult(n int, pairs [][2]int) string {
+	pos := make(map[int]int, n)
+	x := make([]int, n)
+	d := make([]int, n)
+	for i := 0; i < n; i++ {
+		x[i] = pairs[i][0]
+		d[i] = pairs[i][1]
+		pos[x[i]] = i
+	}
+	for i := 0; i < n; i++ {
+		target := x[i] + d[i]
+		if j, ok := pos[target]; ok {
+			if x[j]+d[j] == x[i] {
+				return "YES"
+			}
+		}
+	}
+	return "NO"
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errb bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func parseCase(line string) (int, [][2]int, error) {
+	fields := strings.Fields(line)
+	if len(fields) < 1 {
+		return 0, nil, fmt.Errorf("invalid line")
+	}
+	n, err := strconv.Atoi(fields[0])
 	if err != nil {
-		return "", err
+		return 0, nil, err
 	}
-	oracle := filepath.Join(dir, "oracleA")
-	cmd := exec.Command("go", "build", "-o", oracle, "29A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	if len(fields) != 1+2*n {
+		return 0, nil, fmt.Errorf("expected %d numbers got %d", 1+2*n, len(fields))
 	}
-	return oracle, nil
+	pairs := make([][2]int, n)
+	idx := 1
+	for i := 0; i < n; i++ {
+		a, err1 := strconv.Atoi(fields[idx])
+		b, err2 := strconv.Atoi(fields[idx+1])
+		if err1 != nil || err2 != nil {
+			return 0, nil, fmt.Errorf("bad pair")
+		}
+		pairs[i] = [2]int{a, b}
+		idx += 2
+	}
+	return n, pairs, nil
 }
 
 func main() {
@@ -29,21 +177,8 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesA))
+	scanner.Buffer(make([]byte, 0, 1024), 1<<20)
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -51,47 +186,28 @@ func main() {
 			continue
 		}
 		idx++
-		// build input
-		fields := strings.Fields(line)
-		if len(fields) < 1 {
-			fmt.Printf("bad test case %d\n", idx)
+		n, pairs, err := parseCase(line)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d parse error: %v\n", idx, err)
 			os.Exit(1)
 		}
-		n := fields[0]
-		pairs := fields[1:]
+		expected := expectedResult(n, pairs)
 		var input strings.Builder
-		input.WriteString(n)
+		input.WriteString(strconv.Itoa(n))
 		input.WriteByte('\n')
-		for i := 0; i < len(pairs); i += 2 {
-			input.WriteString(pairs[i])
+		for _, p := range pairs {
+			input.WriteString(strconv.Itoa(p[0]))
 			input.WriteByte(' ')
-			input.WriteString(pairs[i+1])
+			input.WriteString(strconv.Itoa(p[1]))
 			input.WriteByte('\n')
 		}
-		inputStr := input.String()
-		// run oracle
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(inputStr)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error: %v\n", err)
+		got, err := run(bin, input.String())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
 			os.Exit(1)
 		}
-		expected := strings.TrimSpace(outO.String())
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(inputStr)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
-			os.Exit(1)
-		}
-		got := strings.TrimSpace(out.String())
 		if got != expected {
-			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx, expected, got)
+			fmt.Printf("case %d failed\nexpected:\n%s\ngot:\n%s\n", idx, expected, got)
 			os.Exit(1)
 		}
 	}

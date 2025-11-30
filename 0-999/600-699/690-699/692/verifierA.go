@@ -10,57 +10,178 @@ import (
 	"strings"
 )
 
-func expected(n int) string {
-	return fmt.Sprintf("%d\n", n*2)
+const testcases = `
+100
+864
+394
+776
+911
+430
+41
+265
+988
+523
+497
+414
+940
+802
+849
+310
+991
+488
+366
+597
+913
+929
+223
+516
+142
+288
+143
+773
+97
+633
+818
+256
+931
+545
+722
+829
+616
+923
+150
+317
+101
+747
+75
+920
+870
+700
+338
+483
+573
+103
+362
+444
+323
+625
+655
+934
+209
+989
+565
+488
+453
+886
+533
+266
+63
+824
+940
+561
+937
+14
+95
+736
+860
+408
+727
+844
+803
+684
+640
+1
+626
+505
+847
+888
+341
+249
+747
+333
+720
+891
+64
+195
+939
+581
+227
+244
+822
+990
+145
+822
+556
+
+`
+
+func referenceSolve(n int) string {
+	return strconv.Itoa(n * 2)
 }
 
-func runCase(bin, input, exp string) error {
+func parseCases() ([]int, error) {
+	scanner := bufio.NewScanner(strings.NewReader(testcases))
+	scanner.Split(bufio.ScanWords)
+	if !scanner.Scan() {
+		return nil, fmt.Errorf("no test count")
+	}
+	t, err := strconv.Atoi(scanner.Text())
+	if err != nil {
+		return nil, fmt.Errorf("parse t: %w", err)
+	}
+	values := make([]int, 0, t)
+	for i := 0; i < t; i++ {
+		if !scanner.Scan() {
+			return nil, fmt.Errorf("case %d: missing n", i+1)
+		}
+		n, err := strconv.Atoi(scanner.Text())
+		if err != nil {
+			return nil, fmt.Errorf("case %d: parse n: %w", i+1, err)
+		}
+		values = append(values, n)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return values, nil
+}
+
+func runBinary(bin, input string) (string, string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
+	var stderr bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
-	}
-	got := out.String()
-	if got != exp {
-		return fmt.Errorf("expected %q got %q", exp, got)
-	}
-	return nil
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	return out.String(), stderr.String(), err
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierA.go /path/to/binary")
+		fmt.Println("usage: verifierA /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
 
-	data, err := os.ReadFile("testcasesA.txt")
+	values, err := parseCases()
 	if err != nil {
-		fmt.Println("could not read testcasesA.txt:", err)
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("empty test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Println("invalid test file")
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(scan.Text())
+
+	for idx, n := range values {
 		input := fmt.Sprintf("%d\n", n)
-		exp := expected(n)
-		if err := runCase(bin, input, exp); err != nil {
-			fmt.Printf("case %d failed: %v\ninput:%s", i+1, err, input)
+		expected := referenceSolve(n)
+		out, stderr, err := runBinary(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr)
+			os.Exit(1)
+		}
+		if strings.TrimSpace(out) != expected {
+			fmt.Fprintf(os.Stderr, "case %d failed\nexpected: %s\ngot: %s\n", idx+1, expected, strings.TrimSpace(out))
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(values))
 }

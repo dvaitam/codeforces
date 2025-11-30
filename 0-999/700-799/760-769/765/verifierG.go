@@ -10,6 +10,90 @@ import (
 	"strings"
 )
 
+// Embedded testcases (same format as original file).
+const embeddedTestcases = `15
+01010
+1
+2 2
+0000
+3
+2 2
+13 4
+5 5
+0
+5
+29 5
+31 3
+19 1
+17 2
+5 3
+0
+2
+17 5
+11 2
+010
+4
+5 3
+17 2
+2 4
+3 1
+000
+3
+23 1
+19 5
+3 4
+000
+3
+31 3
+17 2
+7 5
+00
+2
+3 3
+5 3
+0
+3
+7 3
+5 1
+2 3
+0000
+1
+2 5
+0
+3
+29 4
+11 4
+13 5
+0000
+5
+5 5
+2 2
+23 4
+11 2
+3 1
+000
+5
+13 2
+23 5
+5 1
+3 5
+31 3
+000
+5
+3 3
+11 2
+29 2
+19 4
+23 1
+011
+3
+17 3
+5 2
+29 2
+010
+1
+31 2`
+
 type PA struct {
 	p int
 	a int
@@ -97,11 +181,7 @@ func main() {
 		fmt.Println("usage: go run verifierG.go /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesG.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesG.txt:", err)
-		os.Exit(1)
-	}
+	data := []byte(embeddedTestcases)
 	scan := bufio.NewScanner(bytes.NewReader(data))
 	scan.Split(bufio.ScanLines)
 	if !scan.Scan() {

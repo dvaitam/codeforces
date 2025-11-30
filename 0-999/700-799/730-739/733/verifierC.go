@@ -15,6 +15,408 @@ type op struct {
         typ byte
 }
 
+// Embedded testcases from testcasesC.txt.
+const testcasesRaw = `100
+1
+5
+1
+5
+1
+3
+1
+3
+4
+2 4 3 3
+3
+7 3 2
+1
+5
+1
+5
+3
+5 5 3
+1
+13
+6
+3 3 2 1 4 3
+6
+6 4 2 2 1 1
+6
+3 1 5 4 2 2
+2
+9 8
+2
+3 2
+2
+2 3
+1
+2
+1
+2
+4
+1 3 2 1
+1
+7
+1
+5
+1
+5
+6
+3 1 1 4 5 3
+5
+13 1 1 1 1
+5
+5 1 5 2 5
+2
+3 15
+1
+5
+1
+5
+3
+4 1 4
+2
+8 1
+2
+5 4
+1
+9
+2
+2 5
+2
+3 4
+2
+3 4
+1
+7
+2
+3 4
+1
+7
+1
+3
+1
+3
+5
+3 3 1 3 2
+5
+2 7 1 1 1
+1
+3
+1
+3
+1
+3
+1
+3
+5
+4 2 3 1 4
+1
+14
+5
+3 1 4 5 2
+1
+15
+4
+2 5 3 4
+3
+11 1 2
+5
+5 5 2 2 2
+5
+1 8 5 1 1
+3
+3 2 1
+2
+1 5
+6
+2 2 3 4 5 1
+5
+4 1 6 2 4
+5
+1 4 1 4 2
+4
+9 1 1 1
+5
+4 2 3 4 4
+3
+5 3 9
+6
+3 2 5 4 4 4
+3
+2 3 17
+4
+5 4 4 1
+1
+14
+4
+3 2 4 2
+4
+6 1 1 3
+6
+3 2 5 5 2 1
+5
+8 6 1 2 1
+5
+1 1 3 3 3
+3
+4 6 1
+3
+1 4 5
+2
+5 5
+5
+2 3 1 1 2
+1
+9
+1
+5
+1
+5
+3
+3 4 3
+3
+5 1 4
+6
+4 1 5 1 2 3
+3
+12 1 3
+3
+1 2 1
+1
+4
+3
+5 4 1
+2
+7 3
+2
+5 4
+2
+4 5
+6
+4 1 4 1 1 2
+5
+1 5 1 3 3
+5
+5 2 5 3 1
+1
+16
+1
+3
+1
+3
+4
+4 4 3 3
+1
+14
+3
+3 2 2
+1
+7
+2
+5 4
+2
+6 3
+5
+1 5 4 1 1
+2
+3 9
+5
+4 1 2 1 5
+1
+13
+2
+2 2
+2
+3 1
+4
+1 2 4 2
+3
+4 3 2
+5
+4 2 4 3 2
+3
+5 9 1
+6
+2 5 4 2 4 1
+1
+18
+6
+4 2 3 1 4 3
+4
+10 3 2 2
+3
+4 4 2
+2
+3 7
+6
+3 3 3 4 3 3
+1
+19
+5
+2 1 4 4 2
+2
+9 4
+1
+2
+1
+2
+3
+4 5 3
+1
+12
+4
+2 2 5 1
+2
+9 1
+3
+5 1 2
+3
+4 2 2
+1
+5
+1
+5
+6
+5 1 4 2 2 3
+2
+4 13
+5
+3 5 1 2 2
+2
+11 2
+3
+3 2 1
+3
+3 1 2
+2
+1 2
+2
+1 2
+5
+1 4 2 4 2
+2
+10 3
+1
+5
+1
+5
+4
+3 1 4 5
+3
+1 6 6
+3
+5 2 2
+3
+2 1 6
+2
+5 5
+2
+4 6
+3
+5 2 3
+2
+3 7
+4
+2 2 2 5
+2
+1 10
+1
+2
+1
+2
+6
+1 1 3 5 3 2
+3
+2 4 9
+6
+2 1 3 3 5 5
+3
+1 9 9
+1
+2
+1
+2
+5
+2 4 2 1 5
+4
+7 3 3 1
+3
+4 2 4
+1
+10
+1
+2
+1
+2
+5
+2 1 1 4 2
+1
+10
+5
+4 5 1 4 1
+4
+5 6 3 1
+1
+5
+1
+5
+2
+4 2
+2
+2 4
+1
+4
+1
+4
+6
+5 1 1 4 3 2
+4
+2 5 7 2
+6
+2 4 2 3 3 2
+6
+10 1 2 1 1 1
+5
+1 5 1 3 3
+1
+13
+1
+1
+1
+1
+3
+4 4 3
+1
+11
+4
+2 4 5 4
+2
+8 7
+5
+4 5 2 5 1
+2
+2 15
+5
+1 2 3 5 4
+3
+13 1 1
+6
+5 4 4 5 2 3
+1
+23
+4
+2 3 3 2
+1
+10
+5
+1 4 1 3 2
+1
+11
+2
+1 2
+2
+2 1`
 // parseInput reads a single test case input and returns the initial and final
 // queues.
 func parseInput(input string) (n int, a []int64, k int, b []int64, err error) {
@@ -97,6 +499,70 @@ func checkSolution(out string, n int, a []int64, k int, b []int64) error {
                 }
         }
         return nil
+}
+
+func parseTestcases() ([]string, error) {
+	scan := bufio.NewScanner(strings.NewReader(testcasesRaw))
+	scan.Split(bufio.ScanWords)
+	if !scan.Scan() {
+		return nil, fmt.Errorf("missing test count")
+	}
+	t, err := strconv.Atoi(scan.Text())
+	if err != nil {
+		return nil, fmt.Errorf("bad test count: %v", err)
+	}
+	var cases []string
+	for i := 0; i < t; i++ {
+		if !scan.Scan() {
+			return nil, fmt.Errorf("unexpected EOF reading n for case %d", i+1)
+		}
+		n, err := strconv.Atoi(scan.Text())
+		if err != nil {
+			return nil, fmt.Errorf("case %d bad n: %v", i+1, err)
+		}
+		a := make([]string, n)
+		for j := 0; j < n; j++ {
+			if !scan.Scan() {
+				return nil, fmt.Errorf("case %d incomplete a", i+1)
+			}
+			a[j] = scan.Text()
+		}
+		if !scan.Scan() {
+			return nil, fmt.Errorf("case %d missing k", i+1)
+		}
+		k, err := strconv.Atoi(scan.Text())
+		if err != nil {
+			return nil, fmt.Errorf("case %d bad k: %v", i+1, err)
+		}
+		b := make([]string, k)
+		for j := 0; j < k; j++ {
+			if !scan.Scan() {
+				return nil, fmt.Errorf("case %d incomplete b", i+1)
+			}
+			b[j] = scan.Text()
+		}
+		var sb strings.Builder
+		sb.WriteString(strconv.Itoa(n))
+		sb.WriteByte('\n')
+		for j := 0; j < n; j++ {
+			if j > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(a[j])
+		}
+		sb.WriteByte('\n')
+		sb.WriteString(strconv.Itoa(k))
+		sb.WriteByte('\n')
+		for j := 0; j < k; j++ {
+			if j > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(b[j])
+		}
+		sb.WriteByte('\n')
+		cases = append(cases, sb.String())
+	}
+	return cases, nil
 }
 
 func expectedCase(input string) string {
@@ -262,56 +728,15 @@ func main() {
 		os.Exit(1)
 	}
 	exe := os.Args[1]
-	data, err := os.ReadFile("testcasesC.txt")
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Println("could not read testcasesC.txt:", err)
+		fmt.Println("failed to parse embedded testcases:", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Println("bad test file")
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(scan.Text())
-		a := make([]int, n)
-		for j := 0; j < n; j++ {
-			scan.Scan()
-			a[j], _ = strconv.Atoi(scan.Text())
-		}
-		scan.Scan()
-		k, _ := strconv.Atoi(scan.Text())
-		b := make([]int, k)
-		for j := 0; j < k; j++ {
-			scan.Scan()
-			b[j], _ = strconv.Atoi(scan.Text())
-		}
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d\n", n))
-		for j := 0; j < n; j++ {
-			if j > 0 {
-				sb.WriteString(" ")
-			}
-			sb.WriteString(strconv.Itoa(a[j]))
-		}
-		sb.WriteString("\n")
-		sb.WriteString(fmt.Sprintf("%d\n", k))
-		for j := 0; j < k; j++ {
-			if j > 0 {
-				sb.WriteString(" ")
-			}
-			sb.WriteString(strconv.Itoa(b[j]))
-		}
-		sb.WriteString("\n")
-		exp := expectedCase(sb.String())
-		if err := runCase(exe, sb.String(), exp); err != nil {
-			fmt.Printf("case %d failed: %v\ninput:%s", i+1, err, sb.String())
+	for i, input := range cases {
+		exp := expectedCase(input)
+		if err := runCase(exe, input, exp); err != nil {
+			fmt.Printf("case %d failed: %v\ninput:%s", i+1, err, input)
 			os.Exit(1)
 		}
 	}

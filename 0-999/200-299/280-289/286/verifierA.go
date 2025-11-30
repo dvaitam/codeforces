@@ -6,21 +6,152 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+const testcasesA = `50
+98
+54
+6
+34
+66
+63
+52
+39
+62
+46
+75
+28
+65
+18
+37
+18
+97
+13
+80
+33
+69
+91
+78
+19
+40
+13
+94
+10
+88
+43
+61
+72
+13
+46
+56
+41
+79
+82
+27
+71
+62
+57
+67
+34
+8
+71
+2
+12
+93
+52
+91
+86
+81
+1
+79
+64
+43
+32
+94
+42
+91
+9
+25
+73
+29
+31
+19
+70
+58
+12
+11
+41
+66
+63
+14
+39
+71
+38
+91
+16
+71
+43
+70
+27
+78
+71
+76
+37
+57
+12
+77
+50
+41
+74
+31
+38
+24
+25
+24`
+
+func solve(n int) string {
+	if n%4 == 2 || n%4 == 3 {
+		return "-1"
 	}
-	oracle := filepath.Join(dir, "oracleA")
-	cmd := exec.Command("go", "build", "-o", oracle, "286A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	p := make([]int, n+1)
+	half := n / 2
+	for i := 1; i <= half; i += 2 {
+		a := i
+		b := i + 1
+		c := n - a + 1
+		d := n - b + 1
+		p[a] = b
+		p[b] = c
+		p[c] = d
+		p[d] = a
 	}
-	return oracle, nil
+	if n%2 == 1 {
+		mid := (n + 1) / 2
+		p[mid] = mid
+	}
+	var sb strings.Builder
+	for i := 1; i <= n; i++ {
+		if i > 1 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(p[i]))
+	}
+	return sb.String()
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errb bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
@@ -29,53 +160,41 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesA))
+	scanner.Buffer(make([]byte, 0, 1024), 1<<20)
+	if !scanner.Scan() {
+		fmt.Fprintln(os.Stderr, "bad test data")
 		os.Exit(1)
 	}
-	defer os.Remove(oracle)
-
-	f, err := os.Open("testcasesA.txt")
+	t, err := strconv.Atoi(strings.TrimSpace(scanner.Text()))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
+		fmt.Fprintf(os.Stderr, "bad count: %v\n", err)
 		os.Exit(1)
 	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
+	for i := 0; i < t; i++ {
+		if !scanner.Scan() {
+			fmt.Fprintf(os.Stderr, "not enough testcases\n")
+			os.Exit(1)
+		}
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
+			i--
 			continue
 		}
-		idx++
+		n, err := strconv.Atoi(line)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d bad n: %v\n", i+1, err)
+			os.Exit(1)
+		}
 		input := line + "\n"
-		// oracle
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(input)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error: %v\n", err)
+		expected := solve(n)
+		got, err := run(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		expected := strings.TrimSpace(outO.String())
-		// candidate
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
-			os.Exit(1)
-		}
-		got := strings.TrimSpace(out.String())
 		if got != expected {
-			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx, expected, got)
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", i+1, expected, got)
 			os.Exit(1)
 		}
 	}
@@ -83,5 +202,5 @@ func main() {
 		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", t)
 }

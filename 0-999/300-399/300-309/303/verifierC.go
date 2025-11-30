@@ -1,84 +1,361 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
-func runRef(input string) (string, error) {
-	cmd := exec.Command("go", "run", "303C.go")
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+// Embedded testcases (previously stored in testcasesC.txt) to keep verifier self contained.
+const rawTestcasesC = `
+100
+1 1
+23
+2 4
+13 9
+4 0
+0 23 18 47
+3 1
+29 30 7
+3 0
+13 21 23
+5 4
+37 20 5 11 40
+3 1
+20 32 14
+3 2
+26 42 23
+10 0
+47 37 9 44 8 4 25 19 26 35
+7 3
+23 13 28 26 0 20 46
+2 4
+44 38
+8 3
+21 49 15 29 11 27 33 26
+1 3
+39
+8 0
+7 19 40 9 13 49 34 38
+5 0
+7 17 0 2 42
+8 0
+43 38 18 48 22 12 47 16
+2 4
+48 15
+2 3
+33 18
+10 4
+6 34 40 47 13 50 17 25 49 26
+7 3
+37 8 42 29 22 35 19
+9 2
+41 39 3 19 13 47 28 9 31
+7 0
+23 39 40 0 2 7 17
+4 0
+45 29 27 21
+7 3
+9 20 13 8 45 33 28
+7 1
+28 37 3 45 12 50 13
+1 1
+14
+10 2
+29 5 22 45 18 32 48 49 26 39
+4 2
+10 2 17 3
+1 1
+4
+7 1
+14 35 25 12 21 38 29
+9 3
+20 33 5 2 1 23 16 12 13
+5 3
+15 45 2 22 19
+8 3
+31 3 28 7 29 15 5 26
+7 4
+11 48 14 15 31 2 25
+9 2
+18 12 49 32 39 34 50 45 28
+3 3
+13 15 18
+9 4
+22 36 7 27 47 17 3 41 24
+6 1
+18 37 10 30 23 40
+3 3
+11 32 9
+4 3
+13 36 44 49
+4 3
+38 37 22 8
+9 4
+19 31 35 14 22 29 0 10 41
+4 2
+24 3 50 18
+4 2
+14 28 42 46
+5 0
+3 46 22 34 36
+1 0
+15
+1 0
+14
+6 0
+3 42 8 22 13 27
+3 2
+46 47 50
+1 3
+16
+9 4
+7 29 26 2 43 48 47 45 36
+4 1
+47 15 10 1
+7 4
+39 45 38 29 9 40 6
+8 0
+15 18 22 29 9 10 42 32
+9 2
+36 43 34 35 29 2 49 30 16
+1 2
+43
+10 2
+7 33 21 43 13 16 48 24 36 15
+10 1
+25 31 50 23 40 38 20 27 22 18
+8 2
+4 35 11 17 39 27 47 12
+7 2
+27 19 18 17 45 49 0
+7 1
+42 0 48 32 9 50 44
+9 3
+39 1 48 40 43 33 10 23 14
+10 1
+4 48 36 17 26 28 45 11 47 15
+5 2
+39 22 48 27 49
+8 0
+12 40 16 25 24 48 27 49
+10 2
+25 2 33 30 36 22 5 1 20 8
+1 2
+25
+3 2
+42 26 9
+7 2
+8 3 10 30 32 41 45
+3 2
+35 5 37
+4 2
+20 44 16 45
+3 3
+9 35 2
+9 0
+41 48 29 12 20 15 50 4 39
+9 0
+21 33 22 0 5 49 27 6 38
+3 2
+11 46 1
+6 4
+2 3 44 12 41 26
+6 0
+38 26 3 22 39 28
+1 3
+16
+4 3
+6 7 22 4
+3 3
+41 44 39
+8 4
+31 44 30 34 25 3 47 5
+6 0
+9 40 2 33 18 30
+9 1
+40 1 43 49 15 11 10 39 21
+4 2
+10 14 29 26
+7 4
+10 43 37 49 24 0 45
+9 0
+3 43 39 49 36 50 7 2 9
+3 2
+34 32 13
+3 3
+22 42 36
+7 1
+24 37 25 15 41 14 30
+10 4
+2 30 25 20 6 17 39 15 49 40
+7 0
+10 30 26 45 38 21 29
+3 2
+30 49 40
+4 2
+20 11 46 37
+5 4
+43 27 17 2 26
+3 0
+10 22 39
+10 3
+43 45 34 29 49 27 4 46 35 41
+8 2
+39 50 45 21 47 18 7 43
+9 1
+15 19 35 24 26 32 22 47 30
+4 4
+38 41 7 32
+7 0
+46 2 23 30 7 50 0
+`
+
+type testCase struct {
+	n int
+	k int
+	a []int
 }
 
-func runBin(bin string, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+func loadTestcases() ([]testCase, error) {
+	lines := strings.Split(rawTestcasesC, "\n")
+	var cases []testCase
+	i := 0
+	for i < len(lines) {
+		line := strings.TrimSpace(lines[i])
+		i++
+		if line == "" {
+			continue
+		}
+		// skip header if present
+		if len(cases) == 0 {
+			if headerFields := strings.Fields(line); len(headerFields) == 1 {
+				continue
+			}
+		}
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			return nil, fmt.Errorf("line %d: expected two integers", i)
+		}
+		n, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: parse n: %w", i, err)
+		}
+		k, err := strconv.Atoi(fields[1])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: parse k: %w", i, err)
+		}
+		for i < len(lines) && strings.TrimSpace(lines[i]) == "" {
+			i++
+		}
+		if i >= len(lines) {
+			return nil, fmt.Errorf("line %d: missing array line", i)
+		}
+		arrLine := strings.TrimSpace(lines[i])
+		i++
+		arrFields := strings.Fields(arrLine)
+		if len(arrFields) != n {
+			return nil, fmt.Errorf("line %d: expected %d numbers got %d", i, n, len(arrFields))
+		}
+		arr := make([]int, n)
+		for j, s := range arrFields {
+			v, err := strconv.Atoi(s)
+			if err != nil {
+				return nil, fmt.Errorf("line %d: parse a[%d]: %w", i, j, err)
+			}
+			arr[j] = v
+		}
+		cases = append(cases, testCase{n: n, k: k, a: arr})
 	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+	return cases, nil
+}
+
+// solve303C mirrors 303C.go to compute expected minimal m.
+func solve303C(n, k int, a []int) int {
+	maxA := 0
+	for _, v := range a {
+		if v > maxA {
+			maxA = v
+		}
+	}
+	maxM := maxA + 2
+	stamps := make([]int, maxM)
+	stampID := 1
+	start := n - k
+	if start < 1 {
+		start = 1
+	}
+	for m := start; ; m++ {
+		if m >= maxM {
+			return m
+		}
+		coll := 0
+		for _, v := range a {
+			r := v % m
+			if stamps[r] != stampID {
+				stamps[r] = stampID
+			} else {
+				coll++
+				if coll > k {
+					break
+				}
+			}
+		}
+		stampID++
+		if coll <= k {
+			return m
+		}
+	}
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierC.go /path/to/binary")
+		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesC.txt")
+
+	testcases, err := loadTestcases()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "could not open testcasesC.txt:", err)
+		fmt.Fprintf(os.Stderr, "failed to parse embedded testcases: %v\n", err)
 		os.Exit(1)
 	}
-	defer f.Close()
-	sc := bufio.NewScanner(f)
-	if !sc.Scan() {
-		fmt.Fprintln(os.Stderr, "empty test file")
-		os.Exit(1)
-	}
-	var t int
-	fmt.Sscan(sc.Text(), &t)
-	for i := 0; i < t; i++ {
-		if !sc.Scan() {
-			fmt.Fprintf(os.Stderr, "not enough test cases\n")
+
+	for idx, tc := range testcases {
+		expect := solve303C(tc.n, tc.k, tc.a)
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.k))
+		for i, v := range tc.a {
+			if i > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(fmt.Sprint(v))
+		}
+		sb.WriteByte('\n')
+
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(sb.String())
+		var out bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("case %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr.String())
 			os.Exit(1)
 		}
-		line1 := sc.Text()
-		if !sc.Scan() {
-			fmt.Fprintf(os.Stderr, "case %d missing second line\n", i+1)
-			os.Exit(1)
-		}
-		line2 := sc.Text()
-		input := line1 + "\n" + line2 + "\n"
-		exp, err := runRef(input)
+		gotStr := strings.TrimSpace(out.String())
+		got, err := strconv.Atoi(gotStr)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference runtime error on case %d: %v\n", i+1, err)
+			fmt.Printf("case %d: failed to parse output %q\n", idx+1, gotStr)
 			os.Exit(1)
 		}
-		got, err := runBin(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		if got != exp {
-			fmt.Fprintf(os.Stderr, "case %d failed\ninput:\n%s\n%s\nexpected:%s\ngot:%s\n", i+1, line1, line2, exp, got)
+		if got != expect {
+			fmt.Printf("case %d failed: expected %d got %d\n", idx+1, expect, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

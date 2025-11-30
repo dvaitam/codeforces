@@ -6,42 +6,137 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleA")
-	cmd := exec.Command("go", "build", "-o", oracle, "654A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("oracle build failed: %v\n%s", err, out)
-	}
-	return oracle, nil
+const testcases = `
+864
+394
+776
+911
+430
+41
+265
+988
+523
+497
+414
+940
+802
+849
+310
+991
+488
+366
+597
+913
+929
+223
+516
+142
+288
+143
+773
+97
+633
+818
+256
+931
+545
+722
+829
+616
+923
+150
+317
+101
+747
+75
+920
+870
+700
+338
+483
+573
+103
+362
+444
+323
+625
+655
+934
+209
+989
+565
+488
+453
+886
+533
+266
+63
+824
+940
+561
+937
+14
+95
+736
+860
+408
+727
+844
+803
+684
+640
+1
+626
+505
+847
+888
+341
+249
+747
+333
+720
+891
+64
+195
+939
+581
+227
+244
+822
+990
+145
+822
+556
+
+`
+
+func referenceSolve(n int64) string {
+	return strconv.FormatInt(n*(n+1)/2, 10)
 }
 
-func lineToInput(line string) (string, error) {
-	line = strings.TrimSpace(line)
-	if line == "" {
-		return "", fmt.Errorf("empty line")
+func parseCases() ([]int64, error) {
+	scanner := bufio.NewScanner(strings.NewReader(testcases))
+	scanner.Split(bufio.ScanWords)
+	var res []int64
+	for scanner.Scan() {
+		val, err := strconv.ParseInt(scanner.Text(), 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, val)
 	}
-	if _, err := strconv.Atoi(line); err != nil {
-		return "", err
+	if err := scanner.Err(); err != nil {
+		return nil, err
 	}
-	return line + "\n", nil
+	return res, nil
 }
 
-func run(bin string, input string) (string, string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+func runBinary(bin, input string) (string, string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -53,55 +148,29 @@ func run(bin string, input string) (string, string, error) {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierA.go /path/to/binary")
+		fmt.Println("usage: verifierA /path/to/binary")
 		os.Exit(1)
 	}
-	target := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
+	bin := os.Args[1]
 
-	f, err := os.Open("testcasesA.txt")
+	values, err := parseCases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "open testcases: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
 		os.Exit(1)
 	}
-	defer f.Close()
 
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		input, err := lineToInput(line)
+	for idx, n := range values {
+		input := fmt.Sprintf("%d\n", n)
+		expected := referenceSolve(n)
+		out, stderr, err := runBinary(bin, input)
 		if err != nil {
-			fmt.Printf("test %d: parse error: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr)
 			os.Exit(1)
 		}
-		expOut, expErr, err := run(oracle, input)
-		if err != nil {
-			fmt.Printf("oracle run failed on test %d: %v\nstderr: %s\n", idx, err, expErr)
-			os.Exit(1)
-		}
-		gotOut, gotErr, err := run(target, input)
-		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, gotErr)
-			os.Exit(1)
-		}
-		if strings.TrimSpace(gotOut) != strings.TrimSpace(expOut) {
-			fmt.Printf("test %d failed\nexpected: %s\n got: %s\n", idx, strings.TrimSpace(expOut), strings.TrimSpace(gotOut))
+		if strings.TrimSpace(out) != expected {
+			fmt.Fprintf(os.Stderr, "case %d failed\nexpected: %s\ngot: %s\n", idx+1, expected, strings.TrimSpace(out))
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(values))
 }

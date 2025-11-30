@@ -1,26 +1,27 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+const testcaseRuns = 100
+
+func solve() string {
+	var sb strings.Builder
+	sb.WriteString("302 ")
+	sb.WriteByte('\n')
+	sb.WriteString(" 0 800000")
+	sb.WriteByte('\n')
+	s := 60000
+	for j := 300; j > 0; j-- {
+		sb.WriteString(fmt.Sprintf("%d %d\n", s, j))
+		s += 2*j - 1
 	}
-	oracle := filepath.Join(dir, "oracleG")
-	cmd := exec.Command("go", "build", "-o", oracle, "241G.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
+	sb.WriteString(fmt.Sprintf("%d %d\n", s+(1<<17), 800000))
+	return sb.String()
 }
 
 func main() {
@@ -29,50 +30,22 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
-	file, err := os.Open("testcasesG.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		idx++ // number of runs
-		cmdO := exec.Command(oracle)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error: %v\n", err)
-			os.Exit(1)
-		}
-		expected := strings.TrimSpace(outO.String())
+	expected := strings.TrimSpace(solve())
 
+	for idx := 0; idx < testcaseRuns; idx++ {
 		cmd := exec.Command(bin)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n%s", idx+1, err, string(out))
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
+		got := strings.TrimSpace(string(out))
 		if got != expected {
-			fmt.Printf("test %d failed\nexpected: %s\n got: %s\n", idx, expected, got)
+			fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %s\n got: %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+
+	fmt.Printf("All %d tests passed\n", testcaseRuns)
 }

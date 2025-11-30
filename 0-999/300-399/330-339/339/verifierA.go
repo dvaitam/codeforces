@@ -1,26 +1,143 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"sort"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+// Embedded testcases (one expression per line).
+const embeddedTestcases = `2+1+2+3+2+2+2+2+2+3+1+3+1
+1+1+3+2+3+3+3+1+2+1
+3+2+2
+1+2+2+2+3+3+1+3+2+2+3+2+1+3+1+1+3+2
+3
+2+1+3+2+3+1+1+3+1+1+1+3+2+1+1+2
+2+1+2+3+2+3+1+3+2+3+1+3+3+3+2+2+1
+2+2+3+1+2+1+1+1+1+3+3+2+2+1+1+3+1+1+1+1
+3+2+3+3+2+3+1+1+3+3+2+3+2+2+2+3+3+3
+1+2+3+1+2+3+3+2+1+1+1+3
+1+3+1+2+1+2+2+1+1
+3+1+1+3+3
+3+3+1+1+1+3+1+3+3+1+2+1+2+1+1+3+1+1
+3+1+2+1+3+1
+3
+3+1+2+1+1+1+3+2+2+2+1+1+3+2
+3+1
+1+2+2+3+2+3+1+3+3+1+1+3+1
+2+3+2+1+3+2
+1+2+3+2+3+3
+3+2+2+3+2+1+3+3+1+2
+2+3+1
+2+1+1+2+2+3+2+3+2+3+3+3+1+3+2+2+3+2
+1+3+1
+1+1+1+3+2+2+3+3+3+2+1
+3+3+2+3+3+1+1+2+1+2+3+1+2
+2+3+3+1+1+2+2+2+2+1+2+1+3+3+1+3+1
+2
+2+1+1+1+3+1+3+3+3+1+1+1+3+3
+2+2+3+1+1+2+2
+1+2+2
+2+1+3+3
+1+1+2+1+1+1+1+3+2+3+2+2
+1+3+3+3+3+2+3+3+2+3+2+2+3+1+1+2+3+2+1
+1+2+2+2+2
+2+3+1
+2+1
+3+2+2+2+3
+2+1+2+3+1
+2+1
+3+1+2+2+2+2+2+1+1+3+2+2+2+2+1+2+1
+2+1+2+2+3+3+1+1+3+3+2+3+1+1+1+1
+1+2+1+1+2+3+3+2
+2+3+3+3+1+2+1+2+1+2+3+1+2+1+2
+1+3+1+3
+3+1+1+2+2+2+1+3+1+1+3+1+1+1+2
+2+3+1+1+3+2+1+3+2+3+3+2+3
+3+2+2+2+3+3+1+3+3+1+1+2+3+3+2+2
+3+1
+3+1+2+3+2+3+3+2+1
+3+1+1
+1+1+2+1+2+2+1+1
+2+3+2+3+3+1+3+1+3+3+3+1+3+2+1
+3+3+2+2+2+3+3+1+1+3
+3
+2+3+3+2+2+1
+2+2+2+2+2+1+1+3+1+1+2+3+2+1+1+2
+1+2+3+3+1+3+3+1+2+2+1+3+2+2
+1+1+2+1+1+1+3+3+1+3+2+1+3+3+3
+1+2+2+1+1+3+3+2+3+3+2+3
+3+3+3+2
+2+2+3+3+1
+1+1+2+2+2+1+2+2+3+1+1+1+2+2+1+3+3
+3+1+1+1+3+3+3+3+2+3+2+1+1+2+3+2+1+1+2
+1+2+1
+2
+3+2+1+2+2+3+2+1+2+1+1+2+3+1
+2+1+1+1+2+1+3+1+1+1+1+3
+3+1+2+2
+3
+1+1+2+1+2+2+3+2
+1+1+2+2+2
+2+3+3+2+1+3+1+1+3+3
+1+2+1+1+1+2+3+1+1+1
+2+2+3+1+1+3+1+2+1+3
+1+2+2
+2+3+1+3+2+2+3+2+1+1+2+3+2+3+3+1+2+2
+2
+2+1+2+2+2+1+1+1+2+1+3
+3+1+3+2+2+1+2+2+1+1+2+2+3+1+2+2+3+3+1+2
+2+1+3+2+3+2+1
+2+1+3+2+3+3+1
+3+2+1+3+2+1+3+2+2+3+1+1+2+3
+1+2
+3+3+3+2+2+1+3+2+2+2+3+1+3
+1+1+2
+3+2+1+3+1+1+1+2+2+2
+1+3+3+3+1+3+1+2+3+3+2+3+2+2+2+2+3
+1+1+3+1+2
+3+2+1+3+3+2+2+3+2+3+2+1+2
+3+3+2+2+3+1+2+2+1+3+2+1+3+1+1+2
+2+1+3+1+3+1+3+3+3+2+1+2+1+1+3+1
+3+3+2+3+1+1+3+2+1
+2+2+3+2
+1+2+2+3+3+2+1+2+3+1+3+2+1
+1+2+2+2+2+2+2
+1+2+1+3+3+1+2+1
+3+1+1+2+1+3+3+3
+1+3+2+3+1+3
+2+2+2+2+1+3+3+3+3+3+3+3+2+3+2+2+2`
+
+func normalize(s string) string {
+	return strings.TrimSpace(s)
+}
+
+func runCandidate(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
 	}
-	oracle := filepath.Join(dir, "oracleA")
-	cmd := exec.Command("go", "build", "-o", oracle, "339A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
-	return oracle, nil
+	return normalize(out.String()), nil
+}
+
+// Embedded solver logic from 339A.go.
+func solveCase(expr string) string {
+	parts := strings.Split(expr, "+")
+	sort.Strings(parts)
+	return strings.Join(parts, "+")
 }
 
 func main() {
@@ -29,57 +146,23 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	lines := strings.Split(strings.TrimSpace(embeddedTestcases), "\n")
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		idx++
 		input := line + "\n"
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(input)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error: %v\n", err)
+		expected := solveCase(line)
+		got, err := runCandidate(bin, input)
+		if err != nil {
+			fmt.Printf("test %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		expected := strings.TrimSpace(outO.String())
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
-			os.Exit(1)
-		}
-		got := strings.TrimSpace(out.String())
 		if got != expected {
-			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx, expected, got)
+			fmt.Printf("test %d failed\nexpected: %s\ngot: %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(lines))
 }

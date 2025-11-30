@@ -1,118 +1,282 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"sort"
-	"strconv"
 	"strings"
 )
 
-type TestCaseC struct {
-	n   int
-	k   int64
-	arr []int64
-	ans string
-}
-
-func solveCaseC(n int, k int64, arr []int64) string {
-	sort.Slice(arr, func(i, j int) bool { return arr[i] < arr[j] })
+func solve(input string) (string, error) {
+	reader := strings.NewReader(strings.TrimSpace(input))
+	var n int
+	var k int64
+	if _, err := fmt.Fscan(reader, &n, &k); err != nil {
+		return "", err
+	}
+	a := make([]int64, n)
+	for i := 0; i < n; i++ {
+		if _, err := fmt.Fscan(reader, &a[i]); err != nil {
+			return "", err
+		}
+	}
+	sort.Slice(a, func(i, j int) bool { return a[i] < a[j] })
 	pref := make([]int64, n+1)
 	for i := 0; i < n; i++ {
-		pref[i+1] = pref[i] + arr[i]
+		pref[i+1] = pref[i] + a[i]
 	}
 	l := 0
 	bestCount := 1
-	bestValue := arr[0]
+	bestValue := a[0]
 	for r := 0; r < n; r++ {
-		for l <= r && int64(r-l+1)*arr[r]-(pref[r+1]-pref[l]) > k {
+		for l <= r && int64(r-l+1)*a[r]-(pref[r+1]-pref[l]) > k {
 			l++
 		}
 		cnt := r - l + 1
-		if cnt > bestCount || (cnt == bestCount && arr[r] < bestValue) {
+		if cnt > bestCount || (cnt == bestCount && a[r] < bestValue) {
 			bestCount = cnt
-			bestValue = arr[r]
+			bestValue = a[r]
 		}
 	}
-	return fmt.Sprintf("%d %d", bestCount, bestValue)
+	return fmt.Sprintf("%d %d", bestCount, bestValue), nil
 }
 
-func readCasesC(path string) ([]TestCaseC, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		return nil, fmt.Errorf("bad file")
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	cases := make([]TestCaseC, t)
-	for i := 0; i < t; i++ {
-		scan.Scan()
-		n, _ := strconv.Atoi(scan.Text())
-		scan.Scan()
-		k64, _ := strconv.ParseInt(scan.Text(), 10, 64)
-		arr := make([]int64, n)
-		for j := 0; j < n; j++ {
-			scan.Scan()
-			v, _ := strconv.ParseInt(scan.Text(), 10, 64)
-			arr[j] = v
-		}
-		ans := solveCaseC(n, k64, append([]int64(nil), arr...))
-		cases[i] = TestCaseC{n, k64, arr, ans}
-	}
-	return cases, nil
-}
-
-func runCase(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(out.String()), nil
+var testcases = []string{
+	`10 10
+9 3 15 6 4 17 9 18 13 20`,
+	`8 13
+6 20 14 5 4 19 4 6`,
+	`8 9
+4 14 9 9 4 12 17 18`,
+	`2 0
+2 20`,
+	`1 4
+4`,
+	`7 12
+16 1 11 5 3 13 19`,
+	`4 1
+7 14 1 2`,
+	`10 12
+5 18 10 14 13 18 2 15 18 5`,
+	`9 4
+7 19 6 3 19 16 10 9 9`,
+	`4 12
+1 2 17 3`,
+	`1 20
+10`,
+	`3 4
+17 5 4`,
+	`6 0
+11 5 11 19 3 3`,
+	`6 6
+9 15 11 16 16 18`,
+	`9 2
+3 11 15 13 13 18 16 18 14`,
+	`9 2
+8 5 13 17 11 5 3 5 5`,
+	`1 12
+19`,
+	`2 2
+17 9`,
+	`10 9
+12 16 13 19 11 20 15 17 12 8`,
+	`9 1
+13 12 11 17 1 8 19 3 16`,
+	`2 11
+14 20`,
+	`4 17
+1 17 17 4`,
+	`1 18
+12`,
+	`1 11
+6`,
+	`6 8
+16 16 14 1 8 16`,
+	`6 5
+2 16 17 6 13 10`,
+	`10 15
+7 1 15 20 20 6 20 15 11 19`,
+	`6 13
+19 5 17 14 13 8`,
+	`6 12
+10 8 7 9 8 18`,
+	`10 11
+15 8 20 11 20 5 11 8 5 9`,
+	`9 5
+18 20 4 15 16 7 6 20 12`,
+	`10 7
+3 18 16 7 10 13 9 17 7 12`,
+	`7 10
+1 2 7 7 20 6 18`,
+	`8 2
+9 17 10 16 14 11 13 2`,
+	`2 1
+11 6`,
+	`5 19
+18 15 10 18 14`,
+	`8 11
+8 3 3 3 17 1 19 17`,
+	`6 19
+4 19 8 1 2 4`,
+	`5 2
+19 13 5 19 20`,
+	`9 6
+9 10 6 6 19 8 5 5 8`,
+	`5 15
+10 5 20 9 7`,
+	`2 4
+14 6`,
+	`4 18
+1 12 18 16`,
+	`3 8
+3 20 9`,
+	`10 7
+1 5 7 19 1 14 5 5 16 18`,
+	`1 16
+11`,
+	`4 5
+15 11 15 8`,
+	`5 6
+4 12 16 9 12`,
+	`9 18
+10 7 10 18 13 3 6 13 4`,
+	`10 20
+4 17 5 15 5 14 9 18 7 6`,
+	`2 8
+15 11`,
+	`7 16
+2 12 13 13 18 5 18`,
+	`10 4
+2 10 20 15 17 19 14 7 15 7`,
+	`7 2
+4 18 13 4 17 15 6`,
+	`1 6
+8`,
+	`4 3
+20 13 14 3`,
+	`9 6
+17 7 7 16 3 7 4 17 5`,
+	`10 6
+18 19 17 20 14 20 13 9 16 20`,
+	`1 11
+12`,
+	`4 20
+2 7 15 7`,
+	`9 6
+1 5 8 15 16 3 20 9 10`,
+	`7 10
+10 3 20 4 16 12 20`,
+	`10 20
+3 8 5 14 8 1 16 10 5 17`,
+	`6 4
+4 17 11 11 3 12`,
+	`4 6
+10 17 14 13`,
+	`7 1
+5 15 3 10 5 17 7`,
+	`10 15
+12 5 19 5 19 14 9 7 4 6`,
+	`3 14
+18 14 6`,
+	`1 9
+16`,
+	`10 2
+12 4 4 16 8 17 2 1 19 3`,
+	`8 8
+19 9 18 13 6 8 4 19`,
+	`9 5
+16 8 1 8 5 20 5 5 19`,
+	`10 5
+3 4 9 4 9 20 15 19 9 19`,
+	`7 1
+3 5 15 2 12 11 9`,
+	`7 12
+1 10 8 7 3 19 5`,
+	`4 16
+7 15 11 1`,
+	`5 13
+19 17 18 5 11`,
+	`10 20
+18 13 7 10 4 15 9 8 9 10`,
+	`2 11
+5 15`,
+	`1 12
+15`,
+	`1 20
+10`,
+	`9 19
+14 15 20 19 17 7 6 1 9`,
+	`2 12
+9 7`,
+	`8 15
+9 17 13 5 20 16 9 6`,
+	`1 6
+11`,
+	`5 3
+1 14 10 11 20`,
+	`4 10
+14 5 4 8`,
+	`6 15
+15 6 12 14 14 14`,
+	`6 18
+4 3 18 15 5 4`,
+	`1 16
+13`,
+	`8 7
+13 4 14 2 10 20 6 10`,
+	`5 16
+4 18 11 1 5`,
+	`1 2
+11`,
+	`6 14
+7 8 12 19 15 9`,
+	`9 5
+15 13 1 4 1 4 11 7 10`,
+	`9 3
+17 10 3 4 18 20 10 2 8`,
+	`2 5
+15 6`,
+	`3 14
+9 6 15`,
+	`10 0
+18 13 1 4 4 10 3 13 7 9`,
+	`7 7
+15 20 17 18 12 6 14`,
+	`10 13
+4 5 15 8 17 4 15 14 11 17`,
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	cases, err := readCasesC("testcasesC.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesC.txt:", err)
-		os.Exit(1)
-	}
-	for i, tc := range cases {
-		var sb strings.Builder
-		fmt.Fprintf(&sb, "%d %d\n", tc.n, tc.k)
-		for j, v := range tc.arr {
-			if j > 0 {
-				sb.WriteByte(' ')
-			}
-			fmt.Fprint(&sb, v)
-		}
-		sb.WriteByte('\n')
-		expected := tc.ans
-		got, err := runCase(bin, sb.String())
+
+	for idx, tc := range testcases {
+		input := strings.TrimSpace(tc) + "\n"
+
+		expected, err := solve(input)
 		if err != nil {
-			fmt.Printf("case %d failed: %v\n", i+1, err)
+			fmt.Fprintf(os.Stderr, "test %d: oracle error: %v\n", idx+1, err)
 			os.Exit(1)
 		}
+
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(input)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n", idx+1, err)
+			os.Exit(1)
+		}
+
+		got := strings.TrimSpace(string(out))
 		if got != expected {
-			fmt.Printf("case %d failed: expected %s got %s\n", i+1, expected, got)
+			fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %s\n got: %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

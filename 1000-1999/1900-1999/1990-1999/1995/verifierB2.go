@@ -111,6 +111,12 @@ const testcasesB2 = `6 582 10 4 4 2 9 9 7 9 5 2 3 7
 5 61 3 3 3 8 1 9 1 9 7 3
 3 819 10 2 2 9 3 5`
 
+type testCase struct {
+	n, m    int64
+	a, freq []int64
+}
+
+// Solver logic embedded from 1995B2.go.
 func min64(a, b int64) int64 {
 	if a < b {
 		return a
@@ -125,70 +131,96 @@ func max64(a, b int64) int64 {
 	return b
 }
 
-// solveCase mirrors the logic from 1995B2.go for a single testcase.
-func solveCase(n, m int64, a, freq []int64) (int64, error) {
-	if int64(len(a)) != n || int64(len(freq)) != n {
-		return 0, fmt.Errorf("mismatched lengths: n=%d, len(a)=%d, len(freq)=%d", n, len(a), len(freq))
-	}
-
-	mp := make(map[int64]int64, n)
-	for i := int64(0); i < n; i++ {
-		mp[a[i]] = freq[i]
+// solve1995B2 mirrors the reference solution for a single testcase.
+func solve1995B2(tc testCase) int64 {
+	mp := make(map[int64]int64, tc.n)
+	for i := int64(0); i < tc.n; i++ {
+		mp[tc.a[i]] = tc.freq[i]
 	}
 
 	var mx int64
-	for i := int64(0); i < n; i++ {
-		var ans int64
+	for i := int64(0); i < tc.n; i++ {
+		f := min64(tc.m/tc.a[i], mp[tc.a[i]])
+		f1 := min64((tc.m-f*tc.a[i])/(tc.a[i]+1), mp[tc.a[i]+1])
+		ans := f*tc.a[i] + f1*(tc.a[i]+1)
 
-		f := min64(m/a[i], mp[a[i]])
-		f1 := min64((m-f*a[i])/(a[i]+1), mp[a[i]+1])
-		ans = f*a[i] + f1*(a[i]+1)
-
-		f3 := min64(f, mp[a[i]+1]-f1)
+		f3 := min64(f, mp[tc.a[i]+1]-f1)
 		ans += f3
 
-		mx = max64(mx, min64(ans, m))
-		if mx == m {
+		mx = max64(mx, min64(ans, tc.m))
+		if mx == tc.m {
 			break
 		}
 	}
-	return mx, nil
+	return mx
 }
 
-func parseLine(line string) (int64, int64, []int64, []int64, error) {
+func parseLine(line string) (testCase, error) {
 	fields := strings.Fields(line)
 	if len(fields) < 2 {
-		return 0, 0, nil, nil, fmt.Errorf("not enough fields")
+		return testCase{}, fmt.Errorf("not enough fields")
 	}
 	n, err := strconv.ParseInt(fields[0], 10, 64)
 	if err != nil {
-		return 0, 0, nil, nil, fmt.Errorf("invalid n: %v", err)
+		return testCase{}, fmt.Errorf("invalid n: %v", err)
 	}
 	m, err := strconv.ParseInt(fields[1], 10, 64)
 	if err != nil {
-		return 0, 0, nil, nil, fmt.Errorf("invalid m: %v", err)
+		return testCase{}, fmt.Errorf("invalid m: %v", err)
 	}
 	expectLen := 2 + 2*int(n)
 	if len(fields) != expectLen {
-		return 0, 0, nil, nil, fmt.Errorf("expected %d fields, got %d", expectLen, len(fields))
+		return testCase{}, fmt.Errorf("expected %d fields, got %d", expectLen, len(fields))
 	}
 	a := make([]int64, n)
 	freq := make([]int64, n)
 	for i := int64(0); i < n; i++ {
 		v, err := strconv.ParseInt(fields[2+i], 10, 64)
 		if err != nil {
-			return 0, 0, nil, nil, fmt.Errorf("invalid a[%d]: %v", i, err)
+			return testCase{}, fmt.Errorf("invalid a[%d]: %v", i, err)
 		}
 		a[i] = v
 	}
 	for i := int64(0); i < n; i++ {
 		v, err := strconv.ParseInt(fields[2+int(n)+int(i)], 10, 64)
 		if err != nil {
-			return 0, 0, nil, nil, fmt.Errorf("invalid freq[%d]: %v", i, err)
+			return testCase{}, fmt.Errorf("invalid freq[%d]: %v", i, err)
 		}
 		freq[i] = v
 	}
-	return n, m, a, freq, nil
+	return testCase{n: n, m: m, a: a, freq: freq}, nil
+}
+
+func loadTestcases(data string) ([]testCase, error) {
+	lines := strings.Split(data, "\n")
+	cases := make([]testCase, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		tc, err := parseLine(line)
+		if err != nil {
+			return nil, fmt.Errorf("parse error: %w", err)
+		}
+		cases = append(cases, tc)
+	}
+	return cases, nil
+}
+
+func buildInput(tc testCase) string {
+	var b strings.Builder
+	b.WriteString("1\n")
+	b.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.m))
+	for i := int64(0); i < tc.n; i++ {
+		b.WriteString(fmt.Sprintf("%d ", tc.a[i]))
+	}
+	b.WriteString("\n")
+	for i := int64(0); i < tc.n; i++ {
+		b.WriteString(fmt.Sprintf("%d ", tc.freq[i]))
+	}
+	b.WriteString("\n")
+	return b.String()
 }
 
 func runBinary(bin, input string) (string, string, error) {
@@ -208,52 +240,30 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	lines := strings.Split(testcasesB2, "\n")
-	passed := 0
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		passed++
-		n, m, a, freq, err := parseLine(line)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d parse error: %v\n", passed, err)
-			os.Exit(1)
-		}
-		expect, err := solveCase(n, m, a, freq)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d invalid: %v\n", passed, err)
-			os.Exit(1)
-		}
+	cases, err := loadTestcases(testcasesB2)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load embedded testcases: %v\n", err)
+		os.Exit(1)
+	}
 
-		inputBuilder := strings.Builder{}
-		inputBuilder.WriteString("1\n")
-		inputBuilder.WriteString(fmt.Sprintf("%d %d\n", n, m))
-		for i := int64(0); i < n; i++ {
-			inputBuilder.WriteString(fmt.Sprintf("%d ", a[i]))
-		}
-		inputBuilder.WriteString("\n")
-		for i := int64(0); i < n; i++ {
-			inputBuilder.WriteString(fmt.Sprintf("%d ", freq[i]))
-		}
-		inputBuilder.WriteString("\n")
+	for idx, tc := range cases {
+		expect := solve1995B2(tc)
 
-		out, stderr, err := runBinary(bin, inputBuilder.String())
+		out, stderr, err := runBinary(bin, buildInput(tc))
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", passed, err, stderr)
+			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr)
 			os.Exit(1)
 		}
 		gotStr := strings.TrimSpace(out)
 		got, err := strconv.ParseInt(gotStr, 10, 64)
 		if err != nil {
-			fmt.Printf("test %d: failed to parse output %q\n", passed, gotStr)
+			fmt.Printf("test %d: failed to parse output %q\n", idx+1, gotStr)
 			os.Exit(1)
 		}
 		if got != expect {
-			fmt.Printf("test %d failed: expected %d got %d\n", passed, expect, got)
+			fmt.Printf("test %d failed: expected %d got %d\n", idx+1, expect, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", passed)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

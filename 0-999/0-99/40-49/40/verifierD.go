@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"math/big"
@@ -10,9 +9,124 @@ import (
 	"strings"
 )
 
-func expected(s string) string {
+// Embedded testcases from testcasesD.txt.
+const testcasesRaw = `2
+13
+98259791
+7483378876232860129
+40
+796669725
+273
+646869589
+93504925899139
+411771516
+4661
+99
+69
+84830401198
+36
+9420555266
+869819846346484
+506950699205755947
+9
+5
+749952525
+944610924834
+52611955
+72153974
+10835924
+19592648475
+46960623079868
+7848531
+4130083690071284308
+609152487053318123
+207960434
+88607500201017018875
+515669
+5435612806
+920
+798609605756
+70338491636205
+841718615981
+723608191620510174
+4109883181808592132
+79645965
+616836269987262217
+8792243298538469
+9434047632953572679
+7980716
+73
+13433422
+4205261111440579500
+56671397628
+14161784185
+744159881785
+49
+225711
+259684277421128896
+144602078438
+567815712491
+9123
+6629926388292345407
+65894784709301
+72873383
+87
+9422
+190059381780555
+219015313637
+10613267718
+37407767270455
+859630345278323
+2
+6820219277200675600
+60670331
+7325915190447
+7384055510
+19901010280703
+53757506496142618
+8586268525673
+754289670220711
+39090775501
+6159417
+330
+29013
+3388689583
+291019013411763
+17569714976318074155
+7185619
+33505367143523397
+653967679040210248
+7033476057342174
+71327465264778
+354407554380028280
+3755
+72304650981744376
+500602932
+85824020070778
+86582421281657744748
+95280
+73799405998172
+416150877
+4526650
+305596840
+64617`
+
+func parseTestcases() []string {
+	lines := strings.Split(testcasesRaw, "\n")
+	var res []string
+	for _, ln := range lines {
+		ln = strings.TrimSpace(ln)
+		if ln != "" {
+			res = append(res, ln)
+		}
+	}
+	return res
+}
+
+// Embedded solver logic from 40D.go (big integer comparisons against 2 and 13).
+func solve(input string) string {
 	A := new(big.Int)
-	A.SetString(s, 10)
+	A.SetString(input, 10)
 	two := big.NewInt(2)
 	thirteen := big.NewInt(13)
 	if A.Cmp(two) == 0 {
@@ -25,38 +139,28 @@ func expected(s string) string {
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierD.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesD.txt")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		exp := expected(line)
-		input := line + "\n"
+
+	cases := parseTestcases()
+	for idx, input := range cases {
+		exp := solve(input)
+
 		cmd := exec.Command(bin)
-		cmd.Stdin = bytes.NewBufferString(input)
+		cmd.Stdin = bytes.NewBufferString(input + "\n")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			fmt.Printf("Test %d: runtime error: %v\n", idx, err)
+			fmt.Printf("Test %d: runtime error: %v\n%s", idx+1, err, string(out))
 			os.Exit(1)
 		}
 		got := strings.TrimSpace(string(out))
 		if got != exp {
-			fmt.Printf("Test %d failed:\nexpected:\n%s\n\ngot:\n%s\n", idx, exp, got)
+			fmt.Printf("Test %d failed:\nexpected:\n%s\n\ngot:\n%s\n", idx+1, exp, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

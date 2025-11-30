@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -11,8 +10,111 @@ import (
 	"strings"
 )
 
+// Embedded copy of testcasesA.txt so the verifier is self-contained.
+const testcasesA = `3 9 95 -84 -35
+2 7 94 15
+8 10 -3 -47 -76 24 -93 -1 10 55
+1 7 -32
+4 9 -74 -19 -93 -95
+1 10 38
+1 6 75
+4 6 85 -93 35 -44
+8 7 41 -41 -12 -41 73 -44 94 17
+5 0 6 42 64 -75 -53
+5 1 90 -15 84 82 28
+7 8 71 -52 -23 -28 50 27 29
+7 9 -92 22 -38 90 3 6 70
+3 5 40 79 98
+6 1 12 69 30 -73 99 -59
+9 6 -6 25 87 -93 20 -89 -22 80 57
+10 9 0 65 -57 -57 28 -42 -97 97 -49 38
+9 3 3 31 -12 47 -10 17 -32 68 40
+10 0 -2 100 89 31 -67 32 99 43 -48 9
+1 7 -7
+10 8 -49 29 5 24 -9 6 -12 -100 37 38
+10 9 -16 17 53 -93 -42 62 -55 40 49 -54
+2 8 -35 -92
+2 1 -96 15
+1 4 -37
+5 1 59 -53 -12 -26 -83
+3 2 -35 35 -57
+5 10 82 -25 16 79 -18
+8 7 -71 -94 -21 -2 -13 7 -52 -34
+2 4 86 30
+4 9 10 -95 -43 -96
+7 2 -91 84 -59 14 80 29 73
+7 8 -44 61 77 32 15 -43 34
+1 6 72
+10 5 68 61 9 -85 88 -24 -68 -46 -88 -22
+2 1 -21 -24
+3 6 44 -36 -67
+1 8 -91
+10 3 45 17 -57 99 80 59 30 -91 -4 -49
+6 1 -48 46 72 10 51 -51
+8 1 70 -1 -25 29 27 -96 -17 56
+7 4 -96 -60 -49 -17 44 100 -66
+6 6 -46 -32 72 -76 -3 40
+6 10 36 24 96 36 -40 -84
+1 1 -66
+3 2 37 -46 -32
+6 9 29 -35 -6 -14 -13 -71
+5 3 54 99 83 25 -66
+10 8 97 -74 -18 -90 4 -82 -3 -63 -68 -13
+2 9 50 100
+7 1 46 40 -43 44 -80 -32 -7
+5 9 36 -71 17 -30 -73
+1 4 -97
+10 10 -97 -77 5 -71 -90 -52 -39 50 7 -59
+2 7 -58 74
+4 2 90 -74 11 -4
+9 4 40 -36 82 22 -20 -75 -47 66 -19
+1 0 -98
+5 9 -19 15 0 -20 2
+2 1 -19 53
+8 1 -36 -45 100 58 99 38 76 20
+6 4 -54 38 -47 -22 -50 -37
+6 1 -29 -78 92 14 -77 66
+10 10 -14 -42 -1 -22 -90 -17 -53 -19 48 -23
+4 5 -75 39 56 48
+10 1 -38 -44 -95 -38 2 -82 -32 41 -82 86
+2 0 62 -98
+5 5 26 20 -61 -75 28
+6 1 30 70 -56 -55 98 -62
+3 5 -22 -73 81
+9 9 -25 -68 -48 -64 39 84 -92 99 -20
+10 10 41 91 76 -48 -55 -24 10 37 -60 -88
+4 4 99 -84 74 14
+7 8 -36 38 12 37 16 -98 1
+6 2 -34 24 -94 65 6 46
+1 0 77
+6 9 -65 51 -68 -65 -34 -30
+7 9 2 -56 56 -78 -41 24 -99
+3 8 -19 28 66
+8 10 63 87 -43 -39 -20 26 75 22
+4 6 -14 43 56 86
+5 10 -44 -88 -82 95 30
+6 2 30 96 -48 -21 -24 77
+5 8 -5 -58 79 79 88
+8 9 -79 -69 55 31 46 -4 -55 -61
+5 6 -45 45 84 93 100
+1 7 74
+7 10 -11 -2 31 -58 39 86 -90
+9 1 -35 60 -75 -32 88 -79 -65 98 57
+2 7 -39 -3
+7 6 -58 -17 12 -68 59 24 -46
+2 6 53 36
+7 1 69 -25 -29 -37 -4 91 43
+1 3 35
+8 9 -95 -93 60 55 -38 -34 -48 -56
+5 2 38 -49 -31 -21 49
+5 10 14 -57 39 -9 25
+7 1 96 -47 46 -2 -48 -28 -73
+1 1 45
+1 8 -25`
+
 type pair struct{ val, idx int }
 
+// Embedded solver from 430A.go.
 func solve(nums []int) string {
 	n := len(nums)
 	a := make([]pair, n)
@@ -36,67 +138,90 @@ func solve(nums []int) string {
 	return b.String()
 }
 
-func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierA.go /path/to/binary")
-		os.Exit(1)
-	}
-	bin := os.Args[1]
-	f, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
+type testCase struct {
+	n    int
+	m    int
+	nums []int
+}
+
+func parseCases() ([]testCase, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesA), "\n")
+	cases := make([]testCase, 0, len(lines))
+	for idx, line := range lines {
+		if strings.TrimSpace(line) == "" {
 			continue
 		}
 		fields := strings.Fields(line)
-		if len(fields) < 3 {
-			fmt.Printf("invalid testcase on line %d\n", idx+1)
-			os.Exit(1)
+		if len(fields) < 2 {
+			return nil, fmt.Errorf("line %d: too few fields", idx+1)
 		}
-		n, _ := strconv.Atoi(fields[0])
-		m, _ := strconv.Atoi(fields[1]) // m is read but not used in solution
+		n, err1 := strconv.Atoi(fields[0])
+		m, err2 := strconv.Atoi(fields[1])
+		if err1 != nil || err2 != nil {
+			return nil, fmt.Errorf("line %d: bad n or m", idx+1)
+		}
 		if len(fields) != 2+n {
-			fmt.Printf("invalid testcase on line %d\n", idx+1)
-			os.Exit(1)
+			return nil, fmt.Errorf("line %d: expected %d numbers got %d", idx+1, n, len(fields)-2)
 		}
 		nums := make([]int, n)
 		for i := 0; i < n; i++ {
-			nums[i], _ = strconv.Atoi(fields[2+i])
+			val, err := strconv.Atoi(fields[2+i])
+			if err != nil {
+				return nil, fmt.Errorf("line %d: bad value %d", idx+1, i+1)
+			}
+			nums[i] = val
 		}
-		expect := solve(nums)
-		var buf bytes.Buffer
-		fmt.Fprintf(&buf, "%d %d\n", n, m)
-		for i, v := range nums {
+		cases = append(cases, testCase{n: n, m: m, nums: nums})
+	}
+	return cases, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: verifierA /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
+
+	cases, err := parseCases()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load testcases: %v\n", err)
+		os.Exit(1)
+	}
+
+	for idx, tc := range cases {
+		expect := solve(tc.nums)
+		var buf strings.Builder
+		fmt.Fprintf(&buf, "%d %d\n", tc.n, tc.m)
+		for i, v := range tc.nums {
 			if i > 0 {
 				buf.WriteByte(' ')
 			}
-			fmt.Fprintf(&buf, "%d", v)
+			buf.WriteString(strconv.Itoa(v))
 		}
 		buf.WriteByte('\n')
-		cmd := exec.Command(bin)
-		cmd.Stdin = bytes.NewReader(buf.Bytes())
-		out, err := cmd.CombinedOutput()
+		got, err := runCandidate(bin, buf.String())
 		if err != nil {
-			fmt.Printf("Test %d: runtime error: %v\n", idx+1, err)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(string(out))
 		if got != expect {
-			fmt.Printf("Test %d failed.\nInput:\n%sExpected: %s\nGot: %s\n", idx+1, buf.String(), expect, got)
+			fmt.Fprintf(os.Stderr, "case %d failed:\nexpected: %s\ngot:      %s\n", idx+1, expect, got)
 			os.Exit(1)
 		}
-		idx++
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

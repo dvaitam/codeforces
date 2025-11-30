@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,7 +9,815 @@ import (
 	"strings"
 )
 
-func solveCase(s string, queries [][2]int) []int {
+const testcasesData = `100
+#.##.#.##.##.#....##......##..
+10
+27 29
+19 24
+15 23
+22 28
+3 14
+20 22
+16 26
+21 27
+28 29
+8 9
+#..#.##..........#.#.....
+2
+16 20
+24 25
+.#.#...###..#..#.###...
+3
+6 17
+17 20
+4 19
+..######..#.#.#..####.#
+7
+14 16
+1 21
+7 18
+6 14
+8 19
+15 22
+22 23
+##.
+3
+2 3
+2 3
+2 3
+..####.#....###....
+9
+4 8
+4 14
+7 12
+9 12
+4 12
+13 19
+3 4
+9 17
+4 18
+.#..#....#
+9
+6 9
+1 9
+8 10
+6 8
+4 8
+5 6
+3 5
+5 8
+6 9
+.#..#..###.#.#..#..#####
+2
+4 22
+16 24
+#.#.##.##..#
+2
+2 4
+4 8
+#..
+7
+2 3
+2 3
+2 3
+2 3
+2 3
+2 3
+2 3
+.#..
+8
+2 4
+1 4
+1 2
+3 4
+1 2
+2 4
+2 3
+1 4
+.######...###..#.
+7
+10 16
+16 17
+3 12
+2 4
+8 11
+2 7
+1 16
+..###...#.##
+8
+7 12
+10 11
+1 12
+1 4
+5 10
+10 12
+6 7
+8 11
+####....##..##.#..##.###..#.
+1
+2 22
+.#.#.##..##.#.##...##
+6
+7 15
+12 14
+2 4
+16 19
+1 18
+19 20
+.##..##..
+7
+2 3
+7 8
+1 9
+7 9
+1 9
+6 9
+5 6
+..#.##...#...
+1
+4 6
+.##....#.###...######...#
+3
+13 16
+5 13
+11 20
+..###...#
+2
+2 4
+7 9
+#.###..##.##.###.##
+8
+3 9
+4 9
+4 13
+5 18
+15 19
+6 19
+14 18
+6 10
+#.##.#.#.##..#.#
+9
+10 12
+7 15
+2 13
+8 12
+9 16
+7 12
+11 12
+2 7
+15 16
+##
+9
+1 2
+1 2
+1 2
+1 2
+1 2
+1 2
+1 2
+1 2
+1 2
+##...######....###.####.####.
+8
+10 15
+24 28
+2 22
+7 8
+12 28
+13 14
+28 29
+22 29
+#.#.
+2
+3 4
+2 4
+..#..####.###.#.#...#####
+7
+24 25
+7 22
+7 9
+13 14
+8 11
+6 18
+2 23
+..#.####.#####.##....#.
+5
+21 22
+5 8
+14 18
+20 22
+18 20
+.#..#####...#..#
+4
+14 15
+5 16
+12 15
+5 14
+####..#..###.####......#.#.##
+1
+6 14
+..####.#.#####...
+10
+4 7
+14 15
+7 12
+1 15
+2 4
+13 16
+4 16
+12 14
+10 12
+8 10
+##.###...##..#....
+4
+16 17
+8 11
+8 15
+12 17
+.#..####...###.#.#.#
+5
+13 14
+7 8
+11 15
+11 19
+8 13
+.#.#..#.#....
+1
+4 10
+.##.
+4
+2 4
+1 3
+2 3
+3 4
+##.###..##.....#.......#.
+10
+21 25
+23 24
+20 25
+2 11
+11 24
+24 25
+1 22
+2 18
+3 15
+10 21
+#.#.##
+5
+4 6
+1 4
+5 6
+5 6
+1 6
+#.##.###..#.##.###..
+10
+11 15
+19 20
+6 20
+5 11
+1 20
+2 7
+12 18
+10 15
+11 19
+13 18
+....#.#.##..##.
+9
+3 5
+11 13
+10 11
+9 15
+13 15
+13 15
+5 10
+5 6
+7 12
+##.#...###
+1
+9 10
+..#..##...#.#.#.#...#.
+7
+21 22
+9 14
+14 20
+20 22
+3 13
+1 17
+1 10
+####.##.
+10
+6 8
+3 4
+4 8
+5 6
+1 2
+5 7
+3 4
+1 3
+6 7
+6 8
+#.#
+7
+1 3
+2 3
+1 3
+2 3
+1 2
+1 3
+1 2
+#.#...#.#####.#....#..#.#.#.
+8
+25 28
+2 20
+3 20
+11 12
+27 28
+4 18
+20 26
+19 27
+##..#....#..
+7
+11 12
+5 12
+7 8
+10 11
+6 7
+7 8
+8 11
+####..##.#.#...#..#.#
+8
+18 21
+16 20
+3 5
+18 20
+9 10
+17 18
+3 14
+12 14
+..#..##......#.##
+1
+8 12
+##..#..###.#...#....#.
+1
+2 6
+..#.###..#.#..##.##.
+8
+13 15
+13 15
+16 20
+19 20
+9 14
+17 19
+18 19
+16 18
+.##...#.##
+7
+2 10
+8 9
+3 6
+8 10
+3 8
+5 10
+2 8
+.##..#.###.##
+1
+11 13
+#.#...#..#
+10
+7 9
+2 4
+7 10
+9 10
+3 5
+4 6
+4 5
+9 10
+8 10
+5 8
+.##.##.##.#######......
+10
+21 22
+9 21
+20 21
+13 15
+2 3
+4 16
+16 19
+4 19
+12 22
+9 20
+......#.###..#.#.
+7
+3 14
+13 16
+8 17
+15 16
+16 17
+9 17
+13 17
+..#.#.#..#
+7
+7 10
+2 7
+8 9
+2 7
+3 6
+2 5
+1 4
+...##.###....###..##
+9
+11 13
+3 13
+19 20
+8 20
+12 19
+5 9
+10 14
+16 19
+10 17
+..###.#######.##.#.#.
+3
+11 19
+8 10
+13 20
+#.###.#..###.#..
+7
+2 7
+4 16
+6 9
+2 5
+13 16
+6 7
+4 5
+#.
+3
+1 2
+1 2
+1 2
+#....###.#.#.#.###
+8
+5 15
+17 18
+9 11
+4 9
+1 6
+5 12
+7 17
+11 13
+..#.##.##.###.#
+4
+8 10
+6 14
+13 15
+1 9
+.##.#.###..####...#...#.#
+10
+6 21
+13 24
+7 21
+16 20
+6 19
+2 13
+22 25
+7 18
+6 23
+18 24
+#.#.#..##......#..####..#####
+6
+28 29
+3 8
+8 12
+25 27
+13 28
+23 28
+#..#..##
+9
+2 8
+1 7
+2 7
+6 8
+3 7
+5 8
+1 2
+5 8
+4 5
+###....#
+3
+4 7
+1 6
+4 7
+.###.#...##.####..#....#..###.
+6
+10 22
+20 24
+24 29
+18 19
+11 28
+18 19
+#.##.#.
+10
+5 7
+1 4
+5 6
+5 6
+5 6
+4 5
+5 6
+3 4
+5 6
+2 4
+.##.##..##.#..
+6
+5 11
+1 3
+10 11
+5 7
+3 8
+4 13
+##.##..##.#.##...#.
+6
+11 16
+2 10
+17 18
+9 19
+2 15
+14 17
+.####.##...##...#...
+8
+1 13
+17 19
+4 12
+16 19
+9 16
+14 18
+2 8
+17 19
+...#..#.
+3
+2 8
+4 6
+2 7
+..#.#.
+1
+4 5
+#.##.......###
+7
+6 13
+5 7
+13 14
+10 12
+12 13
+1 14
+1 10
+.#.#.#..#####..#.#####.####
+10
+13 20
+19 26
+23 26
+22 27
+8 15
+14 18
+9 26
+6 23
+5 25
+17 26
+######..##....#....##....#
+4
+13 21
+24 26
+12 14
+19 23
+....##.#.#..#.#...#...###..
+6
+5 16
+22 25
+16 24
+20 23
+9 12
+15 18
+.####.#....##.###.#......###.#
+3
+3 26
+13 21
+2 9
+..#.###.#.....#
+5
+5 10
+4 11
+11 12
+14 15
+9 10
+.#....#.#.#..#.#####..######..
+3
+21 28
+27 30
+11 16
+....#..########..###...#.##...
+1
+19 25
+#.#
+5
+2 3
+2 3
+1 3
+2 3
+1 3
+.###..#.####.##.##
+5
+8 12
+9 13
+12 16
+8 18
+11 16
+.#..#..##..#..#.###.##
+6
+1 3
+7 11
+20 21
+18 22
+3 12
+17 20
+####...#.######.....#...
+1
+4 14
+#..#
+5
+1 2
+3 4
+1 2
+1 3
+2 4
+#...#.
+4
+5 6
+3 6
+4 5
+3 4
+#.....#..#.#..###.#..#####.##.
+3
+13 17
+19 30
+4 21
+.#.##...####.###...###.#.#..#
+2
+17 28
+15 27
+......##....#.....####
+10
+1 13
+12 16
+21 22
+7 15
+7 16
+7 21
+1 6
+8 16
+16 17
+20 22
+####..##...#..##.#..##.#..##
+7
+13 14
+5 20
+3 13
+21 27
+5 22
+7 27
+16 22
+.##...
+3
+4 6
+2 3
+3 5
+.#..#....####....#..
+4
+5 17
+5 19
+5 19
+19 20
+.#.#
+10
+2 4
+3 4
+1 4
+1 2
+2 3
+2 4
+2 4
+2 3
+2 3
+1 2
+...##.##.##.#.##.##.
+6
+5 13
+1 14
+15 16
+10 19
+14 18
+19 20
+.#.##.#
+8
+3 7
+2 7
+4 6
+2 3
+2 5
+3 4
+6 7
+4 6
+.##...###.##
+7
+7 10
+10 11
+2 11
+8 10
+2 3
+9 12
+7 11
+#.#.#.##.
+9
+6 7
+3 4
+2 5
+6 8
+4 6
+6 9
+8 9
+3 7
+7 8
+..#.#
+9
+1 4
+1 2
+3 4
+2 3
+2 4
+2 3
+4 5
+2 4
+1 5
+..
+5
+1 2
+1 2
+1 2
+1 2
+1 2
+.#.########...##.###..
+2
+15 21
+17 19
+##..####
+6
+1 3
+5 6
+1 5
+2 8
+1 7
+5 8
+##..#.##..####...####.#
+8
+13 22
+1 22
+14 19
+22 23
+5 18
+22 23
+13 23
+20 22`
+
+type testCase struct {
+	s       string
+	queries [][2]int
+}
+
+func parseTestcases() ([]testCase, error) {
+	r := strings.NewReader(testcasesData)
+	var t int
+	if _, err := fmt.Fscan(r, &t); err != nil {
+		return nil, fmt.Errorf("parse t: %w", err)
+	}
+	cases := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		var s string
+		if _, err := fmt.Fscan(r, &s); err != nil {
+			return nil, fmt.Errorf("parse string for case %d: %w", i+1, err)
+		}
+		var m int
+		if _, err := fmt.Fscan(r, &m); err != nil {
+			return nil, fmt.Errorf("parse m for case %d: %w", i+1, err)
+		}
+		q := make([][2]int, m)
+		for j := 0; j < m; j++ {
+			if _, err := fmt.Fscan(r, &q[j][0], &q[j][1]); err != nil {
+				return nil, fmt.Errorf("parse query %d for case %d: %w", j+1, i+1, err)
+			}
+		}
+		cases = append(cases, testCase{s: s, queries: q})
+	}
+	return cases, nil
+}
+
+func referenceSolve(s string, queries [][2]int) []int {
 	n := len(s)
 	p := make([]int, n+1)
 	for i := 1; i < n; i++ {
@@ -27,64 +834,44 @@ func solveCase(s string, queries [][2]int) []int {
 	return res
 }
 
-func run(bin, input string) (string, error) {
+func runBinary(bin, input string) (string, string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
+	var stderr bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
-	}
-	return strings.TrimSpace(out.String()), nil
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	return out.String(), stderr.String(), err
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierB.go /path/to/binary")
+		fmt.Println("usage: verifierB /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	data, err := os.ReadFile("testcasesB.txt")
+
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to read testcases: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to parse embedded testcases: %v\n", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	scan.Scan()
-	t, _ := strconv.Atoi(scan.Text())
-	for caseNum := 1; caseNum <= t; caseNum++ {
-		if !scan.Scan() {
-			fmt.Println("bad test file")
-			os.Exit(1)
-		}
-		s := scan.Text()
-		if !scan.Scan() {
-			fmt.Println("bad test file")
-			os.Exit(1)
-		}
-		m, _ := strconv.Atoi(scan.Text())
-		queries := make([][2]int, m)
-		for i := 0; i < m; i++ {
-			scan.Scan()
-			l, _ := strconv.Atoi(scan.Text())
-			scan.Scan()
-			r, _ := strconv.Atoi(scan.Text())
-			queries[i] = [2]int{l, r}
-		}
-		expectedSlice := solveCase(s, queries)
+
+	for idx, tc := range cases {
+		expectedSlice := referenceSolve(tc.s, tc.queries)
 		var input strings.Builder
-		input.WriteString(s)
+		input.WriteString(tc.s)
 		input.WriteByte('\n')
-		input.WriteString(strconv.Itoa(m))
+		input.WriteString(strconv.Itoa(len(tc.queries)))
 		input.WriteByte('\n')
-		for _, q := range queries {
+		for _, q := range tc.queries {
 			input.WriteString(fmt.Sprintf("%d %d\n", q[0], q[1]))
 		}
-		got, err := run(bin, input.String())
+
+		out, stderr, err := runBinary(bin, input.String())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", caseNum, err)
+			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr)
 			os.Exit(1)
 		}
 		expectedStrs := make([]string, len(expectedSlice))
@@ -92,10 +879,10 @@ func main() {
 			expectedStrs[i] = strconv.Itoa(v)
 		}
 		expected := strings.Join(expectedStrs, "\n")
-		if got != expected {
-			fmt.Fprintf(os.Stderr, "case %d failed:\nexpected:\n%s\n\ngot:\n%s\n", caseNum, expected, got)
+		if strings.TrimSpace(out) != expected {
+			fmt.Fprintf(os.Stderr, "case %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx+1, expected, strings.TrimSpace(out))
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", t)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,7 +8,123 @@ import (
 	"strings"
 )
 
-func expected(comps []string) string {
+// Embedded testcases from testcasesB.txt.
+const testcasesRaw = `A>B B<C A>C
+B>C A>B A>C
+B<C A>C A<B
+A>C A<B B<C
+A>B B<C A>C
+A>B B>C A<C
+A<B A<C B<C
+B>C A>C A<B
+A<C B<C A<B
+A>B B<C A<C
+A>C A<B B>C
+B>C A>B A<C
+B<C A>B A>C
+A<B A<C B<C
+A<C A>B B<C
+A<B A<C B<C
+A>B A<C B<C
+A>B A>C B>C
+A<B B<C A>C
+A<B A<C B<C
+B>C A<C A<B
+A<C B<C A>B
+A<C B<C A<B
+B<C A<B A>C
+A<C B<C A<B
+A<C A>B B<C
+A<C B>C A>B
+B>C A<B A<C
+A>C A<B B<C
+A>B B>C A<C
+A<C A<B B<C
+B>C A>C A<B
+A<B A<C B>C
+A>B A>C B>C
+A<C A<B B>C
+A<C B>C A>B
+A>B A>C B>C
+A<B A>C B>C
+A<B A<C B<C
+A<B A<C B<C
+A>B B<C A>C
+B>C A<C A<B
+A>C A<B B>C
+A<B B>C A>C
+A>C A<B B<C
+A<B A<C B>C
+A<C B<C A>B
+A<C A<B B<C
+B<C A>C A>B
+A>B B<C A<C
+A<B A>C B<C
+A<C B>C A<B
+A<B A<C B>C
+A>B A<C B>C
+B<C A>C A>B
+B<C A<C A>B
+A>C A>B B>C
+B<C A>B A<C
+B>C A<B A>C
+A<C A>B B>C
+A>C A<B B<C
+A>B B>C A>C
+A<B B>C A<C
+B>C A<C A>B
+B>C A>B A<C
+A>C B<C A<B
+B<C A<B A<C
+A<B B>C A>C
+B<C A<B A>C
+B>C A<C A<B
+A<B A<C B<C
+A<B B>C A<C
+A<C A<B B<C
+A<B B>C A<C
+B>C A<C A<B
+A>B B>C A>C
+A<B B<C A<C
+B<C A>B A<C
+A>C B>C A>B
+A<C B<C A<B
+B>C A>B A<C
+A<B A>C B>C
+A<B A<C B<C
+A<B B>C A<C
+A<C A<B B<C
+B>C A>C A>B
+A>B B>C A>C
+B<C A<C A<B
+A>B B<C A<C
+A>C A<B B<C
+A>B A>C B<C
+B<C A>C A>B
+A<C A<B B<C
+B>C A<C A<B
+A>B A<C B<C
+B>C A<C A<B
+B<C A<C A<B
+A>B B<C A>C
+A<B B<C A<C
+B<C A<C A<B`
+
+func parseTestcases() [][]string {
+	lines := strings.Split(testcasesRaw, "\n")
+	var res [][]string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		res = append(res, strings.Fields(line))
+	}
+	return res
+}
+
+// Embedded solver logic from 47B.go.
+func solve(comps []string) string {
 	perms := []string{"ABC", "ACB", "BAC", "BCA", "CAB", "CBA"}
 	for _, perm := range perms {
 		ok := true
@@ -48,24 +163,13 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		comps := strings.Fields(line)
-		expect := expected(comps)
+	cases := parseTestcases()
+
+	for idx, comps := range cases {
+		expect := solve(comps)
 		input := strings.Join(comps, "\n") + "\n"
+
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(input)
 		var out bytes.Buffer
@@ -74,18 +178,14 @@ func main() {
 		cmd.Stderr = &stderr
 		err := cmd.Run()
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
+			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr.String())
 			os.Exit(1)
 		}
 		got := strings.TrimSpace(out.String())
 		if got != expect {
-			fmt.Printf("test %d failed: expected %s got %s\n", idx, expect, got)
+			fmt.Printf("test %d failed: expected %s got %s\n", idx+1, expect, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

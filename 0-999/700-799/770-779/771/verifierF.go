@@ -12,9 +12,402 @@ import (
 	"strings"
 )
 
+const testcases = `
+100
+3 2 4
+3 -4
+4 3
+3 -1 -1
+3 1
+1 4
+5 1 -5
+-5 -4
+1 0
+4 0
+-4 5
+3 -5 3
+-3 -5
+1 -3
+3 4 -4
+3 0
+-3 5
+4 1 -3
+3 0
+5 5
+-1 2
+4 -4 -1
+0 5
+3 2
+-5 3
+3 -3 5
+-1 -2
+1 -4
+3 -5 -5
+0 -1
+2 -4
+4 4 3
+4 -4
+3 1
+-1 5
+4 5 -1
+4 -1
+0 4
+2 1
+3 0 -5
+4 -4
+3 1
+3 -3 5
+-5 4
+3 0
+4 4 0
+-2 -1
+5 -5
+-1 2
+4 -2 3
+0 5
+-1 -5
+1 3
+4 -1 5
+-2 1
+4 3
+2 5
+4 1 3
+1 4
+1 -1
+5 -5
+5 -4 -2
+-4 3
+-5 -5
+-1 5
+-3 -3
+5 4 -3
+5 -3
+1 -1
+-1 -2
+3 -4
+5 -1 -1
+-3 3
+-1 4
+4 -5
+-5 5
+3 -3 2
+-4 -3
+-5 -2
+4 3 -3
+5 3
+5 4
+1 1
+5 -3 1
+-3 4
+-2 2
+-5 5
+4 -3
+4 2 -2
+-1 4
+-4 -2
+-4 -4
+4 1 2
+-3 2
+-4 1
+2 3
+4 -1 3
+-4 -3
+4 -4
+-2 5
+3 -4 -2
+3 1
+-1 -2
+3 5 2
+-2 0
+-1 -4
+5 0 -5
+-1 3
+-2 -4
+-1 5
+-2 5
+4 1 2
+-3 5
+-3 5
+-2 5
+3 5 5
+5 1
+-2 0
+3 5 5
+2 3
+2 3
+5 3 2
+1 -3
+2 -1
+-4 2
+2 -3
+3 -3 -1
+-2 3
+5 0
+3 3 -5
+0 3
+-1 0
+5 4 2
+5 -2
+0 -5
+-2 4
+0 0
+4 3 3
+4 -3
+-3 -3
+-4 4
+3 -4 2
+5 2
+3 4
+4 2 -4
+2 -1
+-5 0
+-1 4
+5 -3 -3
+0 -1
+-3 -1
+-1 -3
+-2 -1
+5 -5 3
+-3 2
+4 -3
+-2 -2
+0 -3
+4 0 1
+-1 5
+-3 -2
+3 4
+4 -3 -5
+-1 1
+1 0
+5 4
+5 2 4
+2 -3
+1 3
+2 -2
+3 0
+3 -1 2
+3 3
+-5 -1
+4 4 5
+1 1
+4 -1
+-4 3
+5 2 -5
+-5 2
+2 1
+0 -1
+2 4
+5 4 5
+-1 -4
+-1 -5
+-3 -3
+-2 4
+4 -2 0
+-5 4
+4 -5
+3 5
+4 0 4
+2 -3
+-4 5
+3 4
+3 -2 2
+5 1
+0 -2
+5 -1 -5
+-4 3
+-5 1
+0 5
+-2 -3
+5 -4 -3
+-1 1
+3 -5
+1 4
+-3 5
+4 0 -1
+-3 1
+3 1
+-3 4
+3 3 -2
+1 1
+4 -5
+3 -5 -1
+5 -1
+2 -3
+4 4 4
+1 -3
+-3 1
+0 4
+4 3 3
+4 5
+0 -3
+-1 5
+5 2 4
+-5 -3
+0 -5
+4 -2
+-2 1
+3 3 -3
+4 5
+-4 1
+4 -2 -1
+3 3
+-5 5
+-2 -1
+3 4 1
+5 -3
+3 2
+5 -1 4
+-2 0
+-1 -2
+4 -1
+-1 2
+3 5 2
+0 -3
+4 1
+4 -4 3
+3 -1
+-3 4
+-2 1
+4 1 2
+-2 -4
+-4 3
+-2 0
+3 -1 5
+3 -1
+3 -1
+5 -3 2
+-2 0
+1 2
+3 -2
+-4 -1
+5 -2 -2
+-1 -2
+3 -2
+0 -2
+5 3
+4 -4 4
+-5 2
+2 4
+-5 -3
+5 -5 2
+0 2
+-4 3
+2 -3
+2 -5
+4 -4 -1
+1 0
+-3 -1
+4 5
+4 -4 -3
+-4 3
+-3 5
+-3 4
+3 -2 2
+-5 5
+-1 -3
+5 5 3
+3 -4
+-2 4
+-1 -1
+0 0
+5 -5 -3
+2 -2
+-1 -5
+-5 -2
+-4 5
+3 0 -1
+-1 2
+5 -4
+3 -3 -4
+5 1
+-5 3
+3 5 3
+4 2
+-5 -3
+4 -5 1
+-2 1
+-5 2
+4 -2
+3 5 4
+-5 -3
+-5 -3
+3 -2 -4
+1 -1
+3 -4
+4 -4 -2
+-3 -1
+2 1
+3 4
+4 1 1
+3 3
+-3 -3
+-4 3
+5 2 4
+-2 1
+-2 3
+-1 5
+3 -1
+4 5 -2
+2 0
+4 -4
+3 -3
+4 -3 -5
+-3 4
+4 3
+-3 5
+3 -5 0
+3 3
+-4 2
+5 4 2
+-5 -5
+-3 -4
+2 5
+5 -5
+3 -3 -3
+-4 5
+2 5
+5 4 -1
+-4 0
+1 -3
+4 0
+-2 5
+3 1 -1
+-4 -4
+-4 0
+3 4 0
+4 3
+-3 2
+3 0 -2
+-5 -4
+-1 1
+5 1 1
+0 2
+-3 -1
+5 -3
+-4 -3
+4 -2 -5
+-5 -4
+2 5
+1 5
+3 5 -5
+-2 1
+5 -4
+4 3 -4
+1 3
+-3 3
+-2 0
+3 -1 2
+0 -1
+-3 -1
+5 -3 0
+0 1
+-5 -3
+-3 -5
+-1 -5
+
+`
 const eps = 1e-9
 
-// point structure
 type Pt struct{ x, y float64 }
 
 func (a Pt) Add(b Pt) Pt        { return Pt{a.x + b.x, a.y + b.y} }
@@ -22,6 +415,8 @@ func (a Pt) Sub(b Pt) Pt        { return Pt{a.x - b.x, a.y - b.y} }
 func (a Pt) Mul(f float64) Pt   { return Pt{a.x * f, a.y * f} }
 func (a Pt) Dot(b Pt) float64   { return a.x*b.x + a.y*b.y }
 func (a Pt) Cross(b Pt) float64 { return a.x*b.y - a.y*b.x }
+func (a Pt) Abs() float64       { return math.Hypot(a.x, a.y) }
+
 func (a Pt) Up() bool {
 	if math.Abs(a.y) < eps {
 		return a.x > 0
@@ -37,13 +432,15 @@ type line struct {
 func newLinePoints(p1, p2 Pt) line {
 	dir := p2.Sub(p1)
 	n := Pt{-dir.y, dir.x}
-	d := math.Hypot(n.x, n.y)
+	d := n.Abs()
 	if d > 0 {
 		n = n.Mul(1 / d)
 	}
 	return line{v: n, c: n.Dot(p1)}
 }
+
 func (l line) signedDist(p Pt) float64 { return l.v.Dot(p) - l.c }
+
 func cmpAngle(a, b Pt) bool {
 	au, bu := a.Up(), b.Up()
 	if au != bu {
@@ -51,12 +448,14 @@ func cmpAngle(a, b Pt) bool {
 	}
 	return a.Cross(b) > eps
 }
+
 func eqLine(a, b line) bool {
 	if a.v.Up() != b.v.Up() {
 		return false
 	}
 	return math.Abs(a.v.Cross(b.v)) < eps
 }
+
 func cmpLine(a, b line) bool {
 	au, bu := a.v.Up(), b.v.Up()
 	if au != bu {
@@ -68,9 +467,11 @@ func cmpLine(a, b line) bool {
 	}
 	return a.c > b.c
 }
+
 func det3x3(a, b, c line) float64 {
 	return a.c*(b.v.Cross(c.v)) + b.c*(c.v.Cross(a.v)) + c.c*(a.v.Cross(b.v))
 }
+
 func intersect(l1, l2 line) Pt {
 	d := l1.v.x*l2.v.y - l1.v.y*l2.v.x
 	if math.Abs(d) < eps {
@@ -141,7 +542,7 @@ func halfplanesIntersection(ls []line) []Pt {
 	return res
 }
 
-func solveOne(n int, pivot Pt, pts []Pt) float64 {
+func solveArea(n int, pivot Pt, pts []Pt) float64 {
 	ev := make([]Pt, 0, (n-1)*2)
 	for _, p := range pts {
 		v := p.Sub(pivot)
@@ -181,78 +582,111 @@ func solveOne(n int, pivot Pt, pts []Pt) float64 {
 	return math.Abs(area) / 2.0
 }
 
-func runCandidate(bin string, input []byte) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+type testCase struct {
+	n   int
+	piv Pt
+	pts []Pt
+}
+
+func parseCases() ([]testCase, error) {
+	scan := bufio.NewScanner(strings.NewReader(testcases))
+	scan.Split(bufio.ScanWords)
+	nextInt := func() (int, error) {
+		if !scan.Scan() {
+			return 0, fmt.Errorf("unexpected EOF")
+		}
+		v, err := strconv.Atoi(scan.Text())
+		if err != nil {
+			return 0, err
+		}
+		return v, nil
 	}
-	cmd.Stdin = bytes.NewReader(input)
-	out, err := cmd.CombinedOutput()
+	t, err := nextInt()
 	if err != nil {
-		return "", fmt.Errorf("execution failed: %v", err)
+		return nil, fmt.Errorf("read t: %w", err)
 	}
-	return strings.TrimSpace(string(out)), nil
+	cases := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		n, err := nextInt()
+		if err != nil {
+			return nil, fmt.Errorf("case %d: read n: %w", i+1, err)
+		}
+		px, err := nextInt()
+		if err != nil {
+			return nil, fmt.Errorf("case %d: read px: %w", i+1, err)
+		}
+		py, err := nextInt()
+		if err != nil {
+			return nil, fmt.Errorf("case %d: read py: %w", i+1, err)
+		}
+		pts := make([]Pt, n-1)
+		for j := 0; j < n-1; j++ {
+			x, err := nextInt()
+			if err != nil {
+				return nil, fmt.Errorf("case %d: read x%d: %w", i+1, j, err)
+			}
+			y, err := nextInt()
+			if err != nil {
+				return nil, fmt.Errorf("case %d: read y%d: %w", i+1, j, err)
+			}
+			pts[j] = Pt{float64(x), float64(y)}
+		}
+		cases = append(cases, testCase{n: n, piv: Pt{float64(px), float64(py)}, pts: pts})
+	}
+	if err := scan.Err(); err != nil {
+		return nil, err
+	}
+	return cases, nil
+}
+
+func runBinary(bin, input string) (string, string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	return out.String(), stderr.String(), err
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("usage: go run verifierF.go /path/to/binary")
+	if len(os.Args) != 2 {
+		fmt.Println("usage: verifierF /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesF.txt")
+	bin := os.Args[1]
+
+	cases, err := parseCases()
 	if err != nil {
-		fmt.Println("could not read testcasesF.txt:", err)
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	var inputs strings.Builder
-	inputs.WriteString(fmt.Sprintf("%d\n", t))
-	expected := make([]float64, t)
-	for caseIdx := 0; caseIdx < t; caseIdx++ {
-		scan.Scan()
-		n, _ := strconv.Atoi(scan.Text())
-		scan.Scan()
-		px, _ := strconv.ParseFloat(scan.Text(), 64)
-		scan.Scan()
-		py, _ := strconv.ParseFloat(scan.Text(), 64)
-		pts := make([]Pt, n-1)
-		for i := 1; i < n; i++ {
-			scan.Scan()
-			x, _ := strconv.ParseFloat(scan.Text(), 64)
-			scan.Scan()
-			y, _ := strconv.ParseFloat(scan.Text(), 64)
-			pts[i-1] = Pt{x, y}
+
+	for idx, tc := range cases {
+		var input strings.Builder
+		fmt.Fprintf(&input, "1\n")
+		fmt.Fprintf(&input, "%d %.0f %.0f\n", tc.n, tc.piv.x, tc.piv.y)
+		for _, p := range tc.pts {
+			fmt.Fprintf(&input, "%.0f %.0f\n", p.x, p.y)
 		}
-		expected[caseIdx] = solveOne(n, Pt{px, py}, pts)
-		inputs.WriteString(fmt.Sprintf("%d %.0f %.0f\n", n, px, py))
-		for _, p := range pts {
-			inputs.WriteString(fmt.Sprintf("%.0f %.0f\n", p.x, p.y))
+
+		expected := solveArea(tc.n, tc.piv, tc.pts)
+		out, stderr, err := runBinary(bin, input.String())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr)
+			os.Exit(1)
 		}
-	}
-	out, err := runCandidate(os.Args[1], []byte(inputs.String()))
-	if err != nil {
-		fmt.Println("candidate failed:", err)
-		os.Exit(1)
-	}
-	outLines := strings.Fields(out)
-	if len(outLines) != t {
-		fmt.Printf("expected %d outputs got %d\n", t, len(outLines))
-		os.Exit(1)
-	}
-	for i := 0; i < t; i++ {
-		val, err := strconv.ParseFloat(outLines[i], 64)
-		if err != nil || math.Abs(val-expected[i]) > 1e-6 {
-			fmt.Printf("case %d failed: expected %.6f got %s\n", i+1, expected[i], outLines[i])
+		fields := strings.Fields(out)
+		if len(fields) == 0 {
+			fmt.Fprintf(os.Stderr, "case %d: empty output\n", idx+1)
+			os.Exit(1)
+		}
+		val, err := strconv.ParseFloat(fields[0], 64)
+		if err != nil || math.Abs(val-expected) > 1e-6 {
+			fmt.Fprintf(os.Stderr, "case %d failed\nexpected: %.6f\ngot: %s\n", idx+1, expected, strings.TrimSpace(out))
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed!")
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

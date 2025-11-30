@@ -1,12 +1,116 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 )
+
+var rawTestcases = []string{
+	"2 3\n.*\n.*",
+	"3 2\n*..\n*.*\n*.*",
+	"3 3\n..*\n...\n.*.",
+	"3 3\n..*\n*.*\n..*",
+	"3 1\n*..\n*.*\n*.*",
+	"3 3\n**.\n*.*\n*.*",
+	"3 1\n*..\n***\n.*.",
+	"3 3\n*..\n...\n.**",
+	"3 2\n*.*\n..*\n.**",
+	"2 3\n*.\n**",
+	"2 1\n..\n.*",
+	"2 3\n..\n.*",
+	"2 2\n.*\n..",
+	"3 2\n...\n*.*\n***",
+	"3 2\n..*\n***\n.*.",
+	"3 3\n.*.\n..*\n...",
+	"3 3\n*.*\n..*\n**.",
+	"3 1\n..*\n..*\n*.*",
+	"3 1\n...\n*..\n*.*",
+	"2 1\n*.\n*.",
+	"3 2\n*.*\n**.\n..*",
+	"2 2\n*.\n*.",
+	"3 3\n**.\n...\n...",
+	"2 2\n*.\n*.",
+	"3 1\n.*.\n*.*\n..*",
+	"2 3\n*.\n..",
+	"3 2\n*.*\n*..\n*..",
+	"2 2\n..\n..",
+	"3 1\n.*.\n...\n***",
+	"3 3\n**.\n.*.\n..*",
+	"3 2\n***\n..*\n*.*",
+	"2 3\n**\n*.",
+	"2 2\n..\n*.",
+	"3 1\n*.*\n.**\n.*.",
+	"3 3\n*.*\n...\n...",
+	"3 1\n*..\n..*\n***",
+	"2 1\n*.\n..",
+	"2 1\n**\n.*",
+	"2 1\n..\n*.",
+	"2 2\n*.\n..",
+	"3 1\n***\n**.\n**.",
+	"3 2\n.*.\n.*.\n..*",
+	"3 2\n*..\n.*.\n.**",
+	"2 1\n**\n*.",
+	"3 2\n*..\n.*.\n.**",
+	"3 3\n*.*\n..*\n..*",
+	"3 1\n.**\n**.\n..*",
+	"2 2\n..\n.*",
+	"2 2\n**\n.*",
+	"3 1\n*..\n**.\n**.",
+	"3 3\n..*\n...\n*..",
+	"3 1\n.**\n**.\n***",
+	"2 1\n*.\n*.",
+	"2 1\n.*\n..",
+	"3 3\n***\n*..\n***",
+	"3 3\n***\n.**\n..*",
+	"2 2\n**\n.*",
+	"2 2\n.*\n**",
+	"3 3\n.*.\n*.*\n.**",
+	"2 1\n.*\n**",
+	"3 1\n***\n.*.\n*.*",
+	"2 2\n.*\n..",
+	"2 3\n.*\n**",
+	"2 3\n..\n**",
+	"2 1\n**\n..",
+	"3 3\n**.\n**.\n***",
+	"2 2\n..\n**",
+	"3 1\n*..\n.*.\n**.",
+	"2 1\n..\n.*",
+	"2 1\n.*\n**",
+	"2 1\n..\n..",
+	"2 2\n**\n*.",
+	"2 1\n.*\n.*",
+	"3 2\n...\n***\n.**",
+	"3 2\n...\n...\n***",
+	"3 1\n*..\n..*\n..*",
+	"3 1\n.**\n...\n..*",
+	"2 2\n..\n.*",
+	"2 3\n*.\n**",
+	"3 3\n**.\n...\n**.",
+	"3 3\n*.*\n.*.\n*..",
+	"2 1\n.*\n..",
+	"2 3\n**\n.*",
+	"2 1\n.*\n.*",
+	"3 1\n*.*\n*.*\n.*.",
+	"3 2\n.**\n.*.\n*..",
+	"3 2\n**.\n.*.\n*..",
+	"3 2\n*.*\n*..\n.**",
+	"3 2\n***\n*..\n.**",
+	"3 3\n.**\n***\n*..",
+	"2 1\n**\n.*",
+	"3 3\n***\n**.\n..*",
+	"2 3\n..\n.*",
+	"2 1\n*.\n.*",
+	"2 3\n..\n..",
+	"3 1\n***\n..*\n.**",
+	"3 3\n.*.\n**.\n.**",
+	"2 2\n*.\n**",
+	"2 1\n*.\n.*",
+	"3 3\n***\n***\n.*.",
+}
 
 func solveCase(n, k int, model []string) []string {
 	cur := make([][]byte, n)
@@ -50,69 +154,70 @@ func solveCase(n, k int, model []string) []string {
 	return res
 }
 
+func parseCase(raw string) (int, int, []string, error) {
+	lines := strings.Split(strings.TrimSpace(raw), "\n")
+	if len(lines) < 2 {
+		return 0, 0, nil, fmt.Errorf("invalid case")
+	}
+	var n, k int
+	if _, err := fmt.Sscan(lines[0], &n, &k); err != nil {
+		return 0, 0, nil, err
+	}
+	if len(lines)-1 != n {
+		return 0, 0, nil, fmt.Errorf("expected %d rows, got %d", n, len(lines)-1)
+	}
+	model := make([]string, n)
+	copy(model, lines[1:])
+	return n, k, model, nil
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v, output: %s", err, out.String())
+	}
+	return out.String(), nil
+}
+
 func main() {
-	if len(os.Args) < 2 {
+	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesB.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesB.txt:", err)
-		os.Exit(1)
-	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanLines)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	var t int
-	fmt.Sscan(scan.Text(), &t)
-	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Println("bad test file")
-			os.Exit(1)
-		}
-		var n, k int
-		fmt.Sscan(scan.Text(), &n, &k)
-		model := make([]string, n)
-		for j := 0; j < n; j++ {
-			if !scan.Scan() {
-				fmt.Println("bad test file")
-				os.Exit(1)
-			}
-			model[j] = scan.Text()
-		}
-		expected := solveCase(n, k, model)
-		var input bytes.Buffer
-		fmt.Fprintf(&input, "%d %d\n", n, k)
-		for _, row := range model {
-			input.WriteString(row)
-			input.WriteByte('\n')
-		}
-		cmd := exec.Command(os.Args[1])
-		cmd.Stdin = bytes.NewReader(input.Bytes())
-		out, err := cmd.CombinedOutput()
+	bin := os.Args[1]
+	for idx, raw := range rawTestcases {
+		n, k, model, err := parseCase(raw)
 		if err != nil {
-			fmt.Printf("case %d: runtime error: %v\n", i+1, err)
+			fmt.Printf("case %d invalid: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		outScan := bufio.NewScanner(bytes.NewReader(out))
-		outScan.Split(bufio.ScanLines)
-		for _, exp := range expected {
-			if !outScan.Scan() {
-				fmt.Printf("case %d: missing output line\n", i+1)
-				os.Exit(1)
-			}
-			if outScan.Text() != exp {
-				fmt.Printf("case %d mismatch\nexpected: %s\ngot: %s\n", i+1, exp, outScan.Text())
-				os.Exit(1)
-			}
+		expectedLines := solveCase(n, k, model)
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("%d %d\n", n, k))
+		for _, row := range model {
+			sb.WriteString(row)
+			sb.WriteByte('\n')
 		}
-		if outScan.Scan() {
-			fmt.Printf("case %d: extra output\n", i+1)
+		got, err := run(bin, sb.String())
+		if err != nil {
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
+		}
+		outLines := strings.Split(strings.TrimRight(got, "\n"), "\n")
+		if len(outLines) != len(expectedLines) {
+			fmt.Printf("case %d failed: expected %d lines got %d\n", idx+1, len(expectedLines), len(outLines))
+			os.Exit(1)
+		}
+		for i := range expectedLines {
+			if outLines[i] != expectedLines[i] {
+				fmt.Printf("case %d failed at line %d\nexpected: %s\ngot: %s\n", idx+1, i+1, expectedLines[i], outLines[i])
+				os.Exit(1)
+			}
 		}
 	}
-	fmt.Println("All tests passed!")
+	fmt.Printf("All %d tests passed\n", len(rawTestcases))
 }

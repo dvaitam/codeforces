@@ -1,32 +1,201 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
+type para struct {
+	a, b int
+}
+
+var staff []para
+
+func findNext(x para) para {
+	l, r := 0, len(staff)-1
+	var mid int
+	for l <= r {
+		mid = (l + r) / 2
+		if staff[mid].a > x.b {
+			r = mid - 1
+		} else if staff[mid].a < x.b {
+			l = mid + 1
+		} else {
+			if staff[mid].b != x.a {
+				return staff[mid]
+			}
+			if mid+1 < len(staff) && staff[mid+1].a == x.b && staff[mid+1].b != x.a {
+				return staff[mid+1]
+			}
+			return staff[mid-1]
+		}
+	}
+	return staff[mid]
+}
+
+func solve(line string) (string, error) {
+	fields := strings.Fields(strings.TrimSpace(line))
+	if len(fields) == 0 {
+		return "", fmt.Errorf("empty testcase")
+	}
+	n, err := strconv.Atoi(fields[0])
 	if err != nil {
 		return "", err
 	}
-	oracle := filepath.Join(dir, "oracleC")
-	cmd := exec.Command("go", "build", "-o", oracle, "29C.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	if len(fields) != 1+2*n {
+		return "", fmt.Errorf("expected %d endpoints, got %d", 2*n, len(fields)-1)
 	}
-	return oracle, nil
+
+	staff = make([]para, 0, 2*n)
+	for i := 0; i < n; i++ {
+		u, err1 := strconv.Atoi(fields[1+2*i])
+		v, err2 := strconv.Atoi(fields[1+2*i+1])
+		if err1 != nil || err2 != nil {
+			return "", fmt.Errorf("bad edge data")
+		}
+		staff = append(staff, para{a: u, b: v})
+		staff = append(staff, para{a: v, b: u})
+	}
+
+	sort.Slice(staff, func(i, j int) bool {
+		if staff[i].a != staff[j].a {
+			return staff[i].a < staff[j].a
+		}
+		return staff[i].b < staff[j].b
+	})
+
+	idx := 0
+	for idx+1 < len(staff) && staff[idx].a == staff[idx+1].a {
+		idx += 2
+	}
+	cur := staff[idx]
+
+	res := make([]int, 0, n+1)
+	res = append(res, cur.a)
+	for i := 0; i < n; i++ {
+		if i == n-1 {
+			res = append(res, cur.b)
+		} else {
+			cur = findNext(cur)
+			res = append(res, cur.a)
+		}
+	}
+
+	var sb strings.Builder
+	for i, v := range res {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(v))
+	}
+	return sb.String(), nil
 }
 
-func atoi(s string) int {
-	v, _ := strconv.Atoi(s)
-	return v
+var testcases = []string{
+	"4 9796 1699 1699 7496 7496 2459 2459 9863",
+	"1 4137 5575",
+	"4 447 596 596 8133 8133 1469 1469 5872",
+	"3 2471 7506 7506 3870 3870 8314",
+	"3 2659 6631 6631 5532 5532 4422",
+	"4 6433 243 243 5092 5092 8690 8690 4723",
+	"5 7683 573 573 8713 8713 9348 9348 9046 9046 4300",
+	"1 7470 6473",
+	"1 6616 5679",
+	"4 839 339 339 4474 4474 562 562 4161",
+	"5 4748 3394 3394 8672 8672 8459 8459 5576 5576 6326",
+	"3 3424 1901 1901 9274 9274 5398",
+	"2 9604 8730 8730 5790",
+	"2 2508 5418 5418 149",
+	"5 840 9255 9255 2559 2559 5646 5646 5951 5951 4771",
+	"3 5293 8108 8108 6614 6614 9842",
+	"4 2786 17 17 2307 2307 9316 9316 715",
+	"4 2062 5593 5593 153 153 7872 7872 4221",
+	"5 3075 1151 1151 8993 8993 6945 6945 4567 4567 2849",
+	"5 2783 1037 1037 2579 2579 9498 9498 1804 1804 8257",
+	"5 9914 6303 6303 7122 7122 4355 4355 5102 5102 4669",
+	"1 7024 4595",
+	"3 8813 8639 8639 9086 9086 5209",
+	"3 3113 7073 7073 2322 2322 98",
+	"5 2545 9229 9229 6294 6294 5914 5914 7605 7605 596",
+	"5 6745 3741 3741 258 258 5935 5935 8669 8669 2598",
+	"2 5808 8143 8143 314",
+	"2 9365 3967 3967 4497",
+	"2 6881 1277 1277 9391",
+	"4 3879 7368 7368 8338 8338 1646 1646 3085",
+	"2 7218 1069 1069 6992",
+	"4 4455 4141 4141 7164 7164 5836 5836 9990",
+	"3 1485 5031 5031 494 494 8070",
+	"1 4106 3323",
+	"4 6335 7138 7138 6378 6378 630 630 9547",
+	"4 5810 9320 9320 2078 2078 9248 9248 4561",
+	"3 399 6523 6523 7762 7762 8548",
+	"2 682 1336 1336 9273",
+	"3 5915 74 74 1137 1137 3126",
+	"1 8858 7719",
+	"1 5154 416",
+	"3 6434 2053 2053 4507 4507 6659",
+	"2 9760 2417 2417 6623",
+	"3 8381 981 981 2670 2670 2055",
+	"2 7879 766 766 8514",
+	"1 9093 6345",
+	"2 5648 9600 9600 1357",
+	"1 9172 2858",
+	"3 3304 4276 4276 5373 5373 4160",
+	"3 8478 7479 7479 2543 2543 7354",
+	"5 2504 633 633 9593 9593 2900 2900 8393 8393 554",
+	"3 1174 3161 3161 7481 7481 3912",
+	"4 8557 2612 2612 5467 5467 2210 2210 7807",
+	"5 937 8904 8904 1351 1351 8482 8482 5626 5626 41",
+	"1 1704 7008",
+	"5 5773 9344 9344 7399 7399 5502 5502 6195 6195 8396",
+	"3 1948 2231 2231 5192 5192 373",
+	"2 2050 315 315 5536",
+	"5 3168 724 724 6781 6781 1017 1017 5100 5100 6382",
+	"1 9838 2756",
+	"3 1269 6689 6689 885 885 7221",
+	"3 9899 4192 4192 5075 5075 9220",
+	"4 6754 2961 2961 503 503 7434 7434 4328",
+	"2 6352 1051 1051 5860",
+	"1 2022 430",
+	"3 350 2902 2902 6616 6616 224",
+	"3 7479 9078 9078 8127 8127 7808",
+	"1 848 8776",
+	"4 4297 456 456 8452 8452 1569 1569 1313",
+	"3 5875 1614 1614 7724 7724 542",
+	"2 8464 4704 4704 603",
+	"1 6172 5533",
+	"2 8984 2407 2407 2631",
+	"2 2605 3975 3975 5379",
+	"1 7913 6523",
+	"1 3710 3937",
+	"3 5384 2786 2786 3903 3903 5769",
+	"2 2681 6894 6894 7585",
+	"3 9264 2261 2261 6333 6333 9256",
+	"1 2657 9563",
+	"1 6389 2818",
+	"2 320 413 413 5298",
+	"5 61 626 626 774 774 1834 1834 9389 9389 2420",
+	"2 6224 434 434 6861",
+	"4 9307 5455 5455 4063 4063 2259 2259 5965",
+	"5 3550 8739 8739 6560 6560 1197 1197 2127 2127 6681",
+	"5 5745 1582 1582 7071 7071 7145 7145 4025 4025 7720",
+	"4 3687 6470 6470 3934 3934 7884 7884 6506",
+	"5 1131 4135 4135 4520 4520 8628 8628 6092 6092 8886",
+	"1 9897 7776",
+	"2 4527 661 661 5269",
+	"4 1748 8757 8757 799 799 2363 2363 6430",
+	"1 6899 6441",
+	"4 1718 7548 7548 9899 9899 7570 7570 2645",
+	"2 5579 7772 7772 6736",
+	"2 9670 4649 4649 8251",
+	"1 6034 5660",
+	"2 5860 7745 7745 8499",
+	"1 3207 4222",
+	"2 9564 5320 5320 4851",
 }
 
 func main() {
@@ -35,72 +204,30 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
-	file, err := os.Open("testcasesC.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
+	for idx, tc := range testcases {
+		input := strings.TrimSpace(tc) + "\n"
 
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		fields := strings.Fields(line)
-		n := atoi(fields[0])
-		if len(fields) != 1+2*n {
-			fmt.Printf("bad case %d\n", idx)
+		expected, err := solve(tc)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: oracle error: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		var input strings.Builder
-		input.WriteString(fields[0])
-		input.WriteByte('\n')
-		for i := 0; i < n; i++ {
-			input.WriteString(fields[1+2*i])
-			input.WriteByte(' ')
-			input.WriteString(fields[1+2*i+1])
-			input.WriteByte('\n')
-		}
-		inputStr := input.String()
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(inputStr)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error: %v\n", err)
-			os.Exit(1)
-		}
-		expected := strings.TrimSpace(outO.String())
+
 		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(inputStr)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
+		cmd.Stdin = strings.NewReader(input)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n%s", idx+1, err, string(out))
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
+
+		got := strings.TrimSpace(string(out))
 		if got != expected {
-			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx, expected, got)
+			fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %s\n got: %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

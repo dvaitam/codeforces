@@ -1,27 +1,159 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+// Embedded testcases, one case per line: n followed by n grid strings.
+const embeddedTestcases = `8 ##..##.. #..#..## #.###.#. .#.##... #....... ##....#. ###...## ####...#
+4 #... #... ###. ..#.
+8 ..###.## #..##.## .###.### ...#..## .##..##. ##.#.#.# #..#.#.# #.#.##..
+5 ..### #.### ....# ##... .###.
+7 ..##### #....## #.####. ####.## .#...## #...#.# ...##..
+7 #..#### .###.#. #...### ###..#. .#....# ...#.## ##.####
+8 #.##.... #.#...#. #.#.#..# ####...# ..#..### ####..#. .###.### #......#
+4 #.## ...# ..## ##.#
+7 .#####. ....#.. #.#..## .#.#... ##.###. ..##..# .....#.
+4 ..## .#.. #### ...#
+8 ##.#.#.# ##...#.# #.##.#.# ..#.#... ...#..## ..##.##. ###.###. .##.....
+5 ..... ..#.# ..### ..#.# #.#.#
+4 #### #.## #.#. ##.#
+5 #..#. ##.## #..#. #..#. ..###
+8 #####... .#.#.##. .##..... #####.## ###.#... ###.#..# ..##...# .#.#.#..
+4 #.## #### #.#. #.#.
+6 ###.## .##.## ...##. ...#.# .##.## ..##..
+4 .#.. #.#. ..#. ####
+7 #.#.... #..#.#. #.#..#. ..##### #..#... .#..#.# #..#.#.
+6 #####. .##.#. #...#. .#.### #..##. ..##.#
+3 .#. .## ...
+4 ..#. ##.. .##. .#..
+6 ##.#.. .#.... #..... .#.### ..#.#. .##.##
+4 ##.# .##. ###. #.#.
+7 ##...#. ###.##. .###.#. ##.##.. #.###.# #.###.# ...#..#
+7 ##..#.. ......# ###.##. ##.##.# ######. ......# .#....#
+8 ##.####. .....#.# ##..#.#. #.##.#.# .#####.. #.#.#..# ##.##..# .#......
+3 ##. ### ...
+4 ###. .### ..## .##.
+4 #.## ##.. ###. ####
+5 ##.## .#.#. .##.. ####. ###.#
+7 ..###.# ..#.#.# ...#... .#..... #..#... .###.#. #.#.###
+8 #..#..#. ..#.#.#. .#.##.## .###.#.# .###.#.# #.#.###. .####... #...#.#.
+6 #.##.. #.#.#. #.#.#. .##... ...#.. ####..
+5 ##### #.... .##.# ..#.. ##...
+7 ###..#. .###... .#.##.# #.###.# ...##.# ###..#. ...#..#
+5 #.### ..#.. #.##. #.#.# ...#.
+7 .#....# .##.##. .##.#.. ###...# ..#.##. ##..##. #.##...
+8 #.###... #.###.## ##.##... ##...#.. .#.##..# #####..# ....#..# ...#....
+8 .#.#..#. ##.##... ....#### ###..... ..#.#.#. .#####.. #.#####. ########
+8 ..#.#..# #####..# #....#.. ..##.... #.####.# ....##.# .#..#.#. ..#...##
+5 ..#.# ##### .#..# ###.# ....#
+5 .###. #.... ..### .#..# ...#.
+3 #.# ##. #..
+8 ...####. #....#.. ..#.#.#. .#.##### ..###### ...##... ..#..### #####..#
+5 #...# .##.. ..#.# .#### #..##
+8 ..#.###. .#.####. ##.###.. #.##.#.# ..#..##. .#..#.## #.###... ..#.####
+5 #...# .#### ##... ..#.. ...#.
+7 #..##.. ....### .#...#. ..##.#. #.....# ..#.#.. ###.#..
+5 ####. ##..# ...#. ##... ####.
+5 ##... ###.# .#..# .#... ...##
+3 ... #.. ...
+7 ####.## ...#... ..##.## ###..## ...#..# #.#..## .#..###
+6 ..#.#. .##..# #....# #..##. #..#.. ..####
+4 ...# .... .... .#.#
+7 ###...# .#####. #...... ##.##.# #.#.##. ##.#.#. ##.###.
+4 .#.# #.## ##.# #...
+5 #..## #.##. ..### .#### #..#.
+3 .## .#. #.#
+7 .##.#.. ..###.. ###.##. ...#.#. #..#... .#..##. #.#...#
+3 #.# #.# #.#
+8 .#.##### ###...## .###...# ..##..## ###....# ..##..#. ##..#### ...####.
+5 ##.## #.### ##### .#.## ##..#
+4 #.#. .#.. .... .##.
+5 ###.. #...# ####. ###.. #.##.
+6 .#...# .##... ...#.. ...... ..##.. ##...#
+8 #.....## ###...## ###....# ....##.# #...##.. #.##...# #.###.#. #.##.#.#
+8 .##.#..# #..#..## .#...#.# ....#### #..##.#. #..###.. ###.#... #...#.##
+7 #####.# #####.# .###..# .#..### ###..#. ##....# .###.##
+6 #..### .#.... #...## ...#.# .##.## .#...#
+8 ##..###. .######. #.#.#..# #####..# .#.#..## ..#.##.. #####..# ...#..#.
+3 #.# ##. ...
+4 .#.# ...# #.## #.##
+4 ...# #.## ##.. #.#.
+4 ..## .#.. #... ####
+7 ##..#.. ##...## ###.##. .#..... ..##... ..####. #...#.#
+4 ...# #### #### ####
+8 ###..### #..#.... #..#.#.# ........ .##..##. #..##..# ....###. ##..#...
+5 #.##. #.### .#.## ..##. ..##.
+6 ###.#. #..### .##.#. #.#... ##.##. #.....
+4 #..# #### #.## #.#.
+7 ##.##.. #..##.# #.#...# #.....# #....## ..#.... .#.#..#
+7 .##.#.# #.###.# .#..#.# .###..# .....## .....## #.#.##.
+7 #..##.. ##..... .####.. ##.#.#. #.##.## ...##.. ...#.#.
+4 .##. #... ###. .#.#
+8 .####.#. ##.#.... #.#.##.. #.#.#..# #...##.# #...#.## ##..##.. ######.#
+3 #.# ... #.#
+8 .##..### ......## #.#..#.. #..#...# ###...## #.##.#.. .#####.# #.####..
+6 ##..#. #....# .#...# ##..## #..#.. ....#.
+8 ..###### ........ ..####.# ..###.#. ###.#### #.##.##. .#.....# #..#.###
+4 #### #.#. #..# ####
+7 ..####. ...#### .##.##. ####.#. #.####. #..#... ###.#..
+6 #..#.# .#.... ###.## ###... #.##.. ...#..
+7 ###.##. .####.# ....#.. ....... ##.###. ..###.# #.#.##.
+4 ...# ..## ###. ###.
+5 .#.## .#### .#... ##..# ..##.
+3 ##. #.. ###
+7 ###.#.. #.#.#.. #.####. #.#.#.# .##...# .#..### #..####
+4 #### .#.. ##.# .##.
+5 #...# ..#.. ...## #..## .####`
+
+func canCover(grid [][]byte) bool {
+	n := len(grid)
+	for i := 1; i < n-1; i++ {
+		for j := 1; j < n-1; j++ {
+			if grid[i][j] == '#' &&
+				grid[i-1][j] == '#' &&
+				grid[i+1][j] == '#' &&
+				grid[i][j-1] == '#' &&
+				grid[i][j+1] == '#' {
+				grid[i][j] = '.'
+				grid[i-1][j] = '.'
+				grid[i+1][j] = '.'
+				grid[i][j-1] = '.'
+				grid[i][j+1] = '.'
+			}
+		}
 	}
-	oracle := filepath.Join(dir, "oracleB")
-	cmd := exec.Command("go", "build", "-o", oracle, "389B.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	for i := 0; i < n; i++ {
+		for j := 0; j < n; j++ {
+			if grid[i][j] == '#' {
+				return false
+			}
+		}
 	}
-	return oracle, nil
+	return true
+}
+
+func runCandidate(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
@@ -30,79 +162,58 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	lines := strings.Split(strings.TrimSpace(embeddedTestcases), "\n")
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		idx++
-		parts := strings.Fields(line)
-		if len(parts) < 1 {
-			fmt.Printf("test %d: invalid line\n", idx)
+		fields := strings.Fields(line)
+		if len(fields) < 1 {
+			fmt.Fprintf(os.Stderr, "test %d: empty\n", idx+1)
 			os.Exit(1)
 		}
-		n, err := strconv.Atoi(parts[0])
+		n, err := strconv.Atoi(fields[0])
 		if err != nil {
-			fmt.Printf("test %d: invalid n\n", idx)
+			fmt.Fprintf(os.Stderr, "test %d: bad n\n", idx+1)
 			os.Exit(1)
 		}
-		if len(parts) != 1+n {
-			fmt.Printf("test %d: expected %d rows got %d\n", idx, n, len(parts)-1)
+		if len(fields) != 1+n {
+			fmt.Fprintf(os.Stderr, "test %d: expected %d rows got %d\n", idx+1, n, len(fields)-1)
 			os.Exit(1)
+		}
+		grid := make([][]byte, n)
+		for i := 0; i < n; i++ {
+			grid[i] = []byte(fields[1+i])
+		}
+		expected := "NO"
+		if canCover(cloneGrid(grid)) {
+			expected = "YES"
 		}
 		var input strings.Builder
 		input.WriteString(fmt.Sprintf("%d\n", n))
 		for i := 0; i < n; i++ {
-			input.WriteString(parts[1+i])
+			input.WriteString(fields[1+i])
 			input.WriteByte('\n')
 		}
-		// run oracle
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(input.String())
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error: %v\n", err)
-			os.Exit(1)
-		}
-		expected := strings.TrimSpace(outO.String())
-
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input.String())
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		err = cmd.Run()
+		got, err := runCandidate(bin, input.String())
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
+			fmt.Printf("test %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
 		if got != expected {
-			fmt.Printf("test %d failed\nexpected: %s\n got: %s\n", idx, expected, got)
+			fmt.Printf("test %d failed\nexpected: %s\ngot: %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
+	fmt.Printf("All %d tests passed\n", len(lines))
+}
+
+func cloneGrid(g [][]byte) [][]byte {
+	res := make([][]byte, len(g))
+	for i := range g {
+		res[i] = make([]byte, len(g[i]))
+		copy(res[i], g[i])
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+	return res
 }

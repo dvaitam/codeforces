@@ -26,11 +26,16 @@ type embedTask struct {
 
 func main() {
 	var concurrency int
+	var memLimitMB int
 	flag.IntVar(&concurrency, "c", 3, "concurrency / codex session count")
+	flag.IntVar(&memLimitMB, "memlimit-mb", 0, "memory limit in MB for each codex run (0 = no limit)")
 	flag.Parse()
 
 	if concurrency < 1 {
 		concurrency = 1
+	}
+	if memLimitMB < 0 {
+		memLimitMB = 0
 	}
 
 	logDir := filepath.Join("/home/ubuntu", "log", "embed_verifier")
@@ -103,7 +108,7 @@ func main() {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
-			runEmbedWorker(workerID, taskCh)
+			runEmbedWorker(workerID, taskCh, memLimitMB)
 		}(i + 1)
 	}
 
@@ -118,13 +123,13 @@ func main() {
 
 var sessionPattern = regexp.MustCompile(`session id:\s*([a-f0-9-]+)`)
 
-func runEmbedWorker(workerID int, taskCh <-chan embedTask) {
+func runEmbedWorker(workerID int, taskCh <-chan embedTask, memLimitMB int) {
 	var sessionID string
 	for t := range taskCh {
 		fmt.Printf("[worker %d] Starting codex for %s\n", workerID, t.label)
 		cmdStr := buildPrompt(t)
 		args := buildCodexArgs(sessionID, cmdStr)
-		cmd := exec.Command("codex", args...)
+		cmd := buildCodexCmd(args, memLimitMB)
 		output, err := cmd.CombinedOutput()
 		if writeErr := os.WriteFile(t.logPath, output, 0o644); writeErr != nil {
 			fmt.Printf("Error writing log for %s: %v\n", t.label, writeErr)
@@ -162,6 +167,18 @@ func buildCodexArgs(sessionID, prompt string) []string {
 	}
 	args = append(args, prompt)
 	return args
+}
+
+func buildCodexCmd(args []string, memLimitMB int) *exec.Cmd {
+	if memLimitMB <= 0 {
+		return exec.Command("codex", args...)
+	}
+
+	memLimitKB := memLimitMB * 1024
+	script := fmt.Sprintf("ulimit -v %d; exec codex \"$@\"", memLimitKB)
+	bashArgs := []string{"-c", script, "--"}
+	bashArgs = append(bashArgs, args...)
+	return exec.Command("bash", bashArgs...)
 }
 
 func extractSessionID(output []byte) string {

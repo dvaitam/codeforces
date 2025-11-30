@@ -1,12 +1,832 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
+
+// Embedded testcases (previously in testcasesF1.txt) to keep verifier self contained.
+const rawTestcasesF1 = `
+7 2
+1
+8
+16
+15
+12
+9
+15
+21
+---
+6 3
+6
+16
+4
+9
+4
+3
+15
+---
+5 1
+9
+3
+2
+10
+15
+13
+---
+2 1
+13
+10
+0
+---
+4 2
+14
+16
+8
+1
+2
+---
+1 1
+12
+0
+---
+1 1
+10
+0
+---
+4 2
+2
+6
+18
+7
+16
+---
+4 1
+17
+14
+2
+2
+0
+---
+6 3
+15
+3
+9
+17
+9
+3
+14
+---
+6 3
+6
+19
+17
+18
+9
+14
+19
+---
+2 1
+10
+18
+8
+---
+4 2
+5
+6
+5
+1
+1
+---
+5 2
+2
+2
+4
+4
+1
+2
+---
+2 1
+16
+8
+0
+---
+4 1
+18
+13
+18
+8
+5
+---
+8 4
+20
+11
+2
+10
+19
+3
+15
+18
+32
+---
+6 1
+7
+0
+8
+3
+7
+11
+11
+---
+3 1
+13
+1
+3
+2
+---
+3 1
+1
+18
+20
+19
+---
+2 1
+3
+20
+17
+---
+4 1
+12
+2
+11
+3
+9
+---
+1 1
+6
+0
+---
+3 1
+15
+6
+1
+0
+---
+1 1
+19
+0
+---
+2 1
+2
+7
+5
+---
+2 1
+11
+13
+2
+---
+3 1
+16
+14
+1
+0
+---
+2 1
+6
+8
+2
+---
+6 3
+15
+18
+5
+6
+1
+5
+8
+---
+3 1
+16
+8
+3
+0
+---
+8 2
+0
+15
+13
+18
+16
+9
+20
+11
+29
+---
+7 3
+8
+4
+17
+0
+14
+2
+10
+35
+---
+1 1
+4
+0
+---
+4 2
+11
+19
+9
+11
+10
+---
+3 1
+12
+13
+20
+8
+---
+2 1
+19
+6
+0
+---
+6 1
+7
+7
+20
+14
+12
+18
+13
+---
+7 1
+12
+18
+13
+1
+5
+14
+2
+13
+---
+5 1
+14
+16
+15
+17
+19
+5
+---
+1 1
+15
+0
+---
+6 2
+14
+1
+13
+6
+17
+20
+26
+---
+2 1
+0
+12
+12
+---
+7 2
+0
+6
+0
+0
+16
+19
+3
+25
+---
+4 1
+19
+20
+6
+9
+3
+---
+5 1
+3
+15
+12
+20
+2
+17
+---
+1 1
+14
+0
+---
+2 1
+4
+20
+16
+---
+6 1
+4
+8
+0
+1
+1
+6
+6
+---
+5 2
+11
+18
+1
+19
+20
+26
+---
+8 4
+20
+13
+11
+17
+5
+6
+12
+18
+19
+---
+5 1
+4
+4
+8
+10
+10
+6
+---
+6 3
+2
+10
+19
+1
+1
+8
+24
+---
+3 1
+18
+9
+11
+2
+---
+7 3
+4
+9
+3
+15
+7
+1
+9
+25
+---
+3 1
+9
+12
+10
+3
+---
+5 2
+3
+3
+17
+15
+15
+14
+---
+6 2
+3
+15
+3
+15
+13
+1
+24
+---
+5 2
+4
+5
+20
+18
+12
+16
+---
+2 1
+2
+6
+4
+---
+4 1
+12
+0
+3
+12
+12
+---
+5 2
+15
+18
+6
+13
+2
+10
+---
+6 1
+8
+18
+5
+13
+6
+11
+10
+---
+2 1
+0
+16
+16
+---
+8 2
+3
+15
+12
+8
+6
+20
+1
+6
+26
+---
+3 1
+6
+14
+12
+8
+---
+6 3
+4
+3
+19
+15
+4
+18
+30
+---
+7 3
+13
+16
+15
+10
+15
+15
+20
+13
+---
+4 1
+0
+10
+10
+10
+10
+---
+1 1
+8
+0
+---
+3 1
+18
+9
+15
+6
+---
+2 1
+16
+1
+0
+---
+2 1
+4
+1
+0
+---
+5 1
+14
+10
+5
+4
+20
+16
+---
+8 3
+16
+12
+16
+16
+1
+18
+2
+16
+35
+---
+2 1
+6
+9
+3
+---
+7 2
+12
+19
+18
+7
+0
+0
+5
+12
+---
+5 2
+10
+2
+15
+8
+9
+14
+---
+7 2
+12
+1
+5
+20
+4
+7
+9
+24
+---
+6 1
+1
+15
+13
+4
+15
+19
+18
+---
+2 1
+11
+13
+2
+---
+1 1
+12
+0
+---
+8 1
+3
+15
+4
+0
+1
+19
+19
+4
+19
+---
+6 1
+17
+20
+11
+6
+12
+15
+9
+---
+2 1
+19
+14
+0
+---
+6 3
+3
+19
+9
+4
+12
+9
+24
+---
+2 1
+1
+12
+11
+---
+8 3
+6
+14
+11
+20
+2
+1
+1
+15
+31
+---
+5 1
+16
+18
+18
+6
+7
+2
+---
+2 1
+16
+9
+0
+---
+2 1
+13
+18
+5
+---
+7 1
+3
+13
+2
+3
+13
+4
+0
+11
+---
+8 4
+13
+0
+15
+10
+8
+2
+11
+2
+24
+---
+2 1
+0
+11
+11
+---
+6 1
+0
+7
+11
+2
+19
+4
+19
+---
+4 1
+6
+3
+0
+9
+9
+---
+6 3
+0
+19
+7
+4
+5
+14
+29
+---
+2 1
+11
+8
+0
+---
+3 1
+6
+11
+10
+5
+---
+8 3
+9
+17
+20
+10
+5
+18
+2
+3
+25
+`
+
+type testCase struct {
+	n      int
+	k      int
+	prices []int64
+	expect int64
+}
+
+func loadTestcases() ([]testCase, error) {
+	blocks := strings.Split(rawTestcasesF1, "---")
+	var cases []testCase
+	for bIdx, blk := range blocks {
+		blk = strings.TrimSpace(blk)
+		if blk == "" {
+			continue
+		}
+		lines := strings.Fields(blk)
+		if len(lines) < 3 {
+			return nil, fmt.Errorf("block %d: not enough tokens", bIdx+1)
+		}
+		n, err := strconv.Atoi(lines[0])
+		if err != nil {
+			return nil, fmt.Errorf("block %d: parse n: %w", bIdx+1, err)
+		}
+		k, err := strconv.Atoi(lines[1])
+		if err != nil {
+			return nil, fmt.Errorf("block %d: parse k: %w", bIdx+1, err)
+		}
+		if len(lines) < 2+n+1 {
+			return nil, fmt.Errorf("block %d: expected at least %d price tokens got %d", bIdx+1, n, len(lines)-2)
+		}
+		prices := make([]int64, n)
+		for i := 0; i < n; i++ {
+			v, err := strconv.ParseInt(lines[2+i], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("block %d: parse price %d: %w", bIdx+1, i+1, err)
+			}
+			prices[i] = v
+		}
+		var expect int64
+		if len(lines) > 2+n {
+			expect, err = strconv.ParseInt(lines[2+n], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("block %d: parse expected: %w", bIdx+1, err)
+			}
+		} else {
+			expect = solve391F1(n, k, prices)
+		}
+		cases = append(cases, testCase{
+			n:      n,
+			k:      k,
+			prices: prices,
+			expect: expect,
+		})
+	}
+	return cases, nil
+}
+
+// solve391F1 mirrors 391F1.go to compute expected profit.
+func solve391F1(n, k int, prices []int64) int64 {
+	if k >= n/2 {
+		var profit int64
+		for i := 1; i < n; i++ {
+			if diff := prices[i] - prices[i-1]; diff > 0 {
+				profit += diff
+			}
+		}
+		return profit
+	}
+	prev := make([]int64, n)
+	curr := make([]int64, n)
+	for t := 1; t <= k; t++ {
+		maxDiff := prev[0] - prices[0]
+		curr[0] = 0
+		for i := 1; i < n; i++ {
+			sell := prices[i] + maxDiff
+			if sell > curr[i-1] {
+				curr[i] = sell
+			} else {
+				curr[i] = curr[i-1]
+			}
+			if candidate := prev[i] - prices[i]; candidate > maxDiff {
+				maxDiff = candidate
+			}
+		}
+		prev, curr = curr, prev
+	}
+	return prev[n-1]
+}
 
 func main() {
 	if len(os.Args) != 2 {
@@ -14,35 +834,51 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	data, err := ioutil.ReadFile("testcasesF1.txt")
+
+	testcases, err := loadTestcases()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to open problemF1.txt:", err)
+		fmt.Fprintln(os.Stderr, "failed to parse embedded testcases:", err)
 		os.Exit(1)
 	}
-	cases := strings.Split(string(data), "\n---\n")
-	total := len(cases)
-	passed := 0
-	for i, c := range cases {
-		lines := strings.Split(strings.TrimSpace(c), "\n")
-		if len(lines) == 0 {
-			continue
+
+	for idx, tc := range testcases {
+		expect := solve391F1(tc.n, tc.k, tc.prices)
+		// optional: if embedded expected present, ensure consistency
+		if tc.expect != expect {
+			fmt.Fprintf(os.Stderr, "embedded expected mismatch in case %d: got %d computed %d\n", idx+1, tc.expect, expect)
+			os.Exit(1)
 		}
-		input := strings.Join(lines[:len(lines)-1], "\n") + "\n"
-		expected := strings.TrimSpace(lines[len(lines)-1])
+
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.k))
+		for i, v := range tc.prices {
+			if i > 0 {
+				sb.WriteByte('\n')
+			}
+			sb.WriteString(fmt.Sprint(v))
+		}
+		sb.WriteByte('\n')
+
 		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		out, err := cmd.CombinedOutput()
-		result := strings.TrimSpace(string(out))
-		if err != nil {
-			fmt.Printf("Case %d: runtime error: %v\n", i+1, err)
-			fmt.Printf("Output: %s\n", result)
-			continue
+		cmd.Stdin = strings.NewReader(sb.String())
+		var out bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("case %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr.String())
+			os.Exit(1)
 		}
-		if result == expected {
-			passed++
-		} else {
-			fmt.Printf("Case %d failed: expected %s got %s\n", i+1, expected, result)
+		gotStr := strings.TrimSpace(out.String())
+		got, err := strconv.ParseInt(gotStr, 10, 64)
+		if err != nil {
+			fmt.Printf("case %d: failed to parse output %q\n", idx+1, gotStr)
+			os.Exit(1)
+		}
+		if got != expect {
+			fmt.Printf("case %d failed: expected %d got %d\n", idx+1, expect, got)
+			os.Exit(1)
 		}
 	}
-	fmt.Printf("%d/%d cases passed\n", passed, total)
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

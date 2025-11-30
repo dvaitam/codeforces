@@ -1,14 +1,587 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 )
+
+var rawTestcases = []string{
+	"5",
+	"1 1 2 4",
+	"1 2 2 3",
+	"2",
+	"",
+	"6",
+	"1 2 1 1 5",
+	"1 1 2 1 1",
+	"3",
+	"",
+	"5",
+	"1 2 2 3",
+	"1 2 2 3",
+	"1",
+	"",
+	"6",
+	"1 1 3 4 1",
+	"1 2 1 3 1",
+	"2",
+	"",
+	"6",
+	"1 1 1 4 1",
+	"1 2 3 4 1",
+	"3",
+	"",
+	"6",
+	"1 1 3 3 5",
+	"1 2 2 1 5",
+	"4",
+	"",
+	"4",
+	"1 2 1",
+	"1 1 1",
+	"3",
+	"",
+	"4",
+	"1 1 1",
+	"1 1 1",
+	"1",
+	"",
+	"6",
+	"1 2 3 2 2",
+	"1 2 2 4 3",
+	"1",
+	"",
+	"4",
+	"1 2 3",
+	"1 1 1",
+	"1",
+	"",
+	"4",
+	"1 1 2",
+	"1 2 2",
+	"1",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"6",
+	"1 1 1 2 5",
+	"1 2 1 3 1",
+	"1",
+	"",
+	"6",
+	"1 1 1 1 4",
+	"1 1 3 1 5",
+	"4",
+	"",
+	"6",
+	"1 2 1 2 1",
+	"1 2 2 2 1",
+	"5",
+	"",
+	"5",
+	"1 1 3 4",
+	"1 2 2 4",
+	"2",
+	"",
+	"3",
+	"1 1",
+	"1 2",
+	"2",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"5",
+	"1 2 3 3",
+	"1 2 1 1",
+	"4",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"3",
+	"1 2",
+	"1 2",
+	"2",
+	"",
+	"6",
+	"1 2 2 4 1",
+	"1 1 3 3 2",
+	"2",
+	"",
+	"3",
+	"1 2",
+	"1 1",
+	"2",
+	"",
+	"6",
+	"1 1 1 4 1",
+	"1 1 2 4 5",
+	"5",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"4",
+	"1 1 2",
+	"1 1 3",
+	"1",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"6",
+	"1 1 1 2 3",
+	"1 1 1 4 4",
+	"1",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"4",
+	"1 2 1",
+	"1 2 1",
+	"1",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"4",
+	"1 2 3",
+	"1 2 2",
+	"3",
+	"",
+	"3",
+	"1 2",
+	"1 1",
+	"1",
+	"",
+	"3",
+	"1 2",
+	"1 2",
+	"1",
+	"",
+	"4",
+	"1 1 2",
+	"1 1 3",
+	"2",
+	"",
+	"4",
+	"1 1 2",
+	"1 2 3",
+	"1",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"4",
+	"1 2 2",
+	"1 1 1",
+	"3",
+	"",
+	"5",
+	"1 2 2 1",
+	"1 1 3 4",
+	"4",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"3",
+	"1 1",
+	"1 1",
+	"1",
+	"",
+	"3",
+	"1 2",
+	"1 1",
+	"2",
+	"",
+	"6",
+	"1 2 2 2 4",
+	"1 2 1 3 5",
+	"2",
+	"",
+	"5",
+	"1 2 1 1",
+	"1 2 3 2",
+	"1",
+	"",
+	"5",
+	"1 2 1 1",
+	"1 1 1 2",
+	"4",
+	"",
+	"5",
+	"1 1 1 4",
+	"1 2 3 4",
+	"4",
+	"",
+	"4",
+	"1 2 3",
+	"1 1 1",
+	"2",
+	"",
+	"4",
+	"1 1 3",
+	"1 2 3",
+	"1",
+	"",
+	"5",
+	"1 2 1 1",
+	"1 1 1 2",
+	"1",
+	"",
+	"4",
+	"1 2 2",
+	"1 1 3",
+	"2",
+	"",
+	"4",
+	"1 1 3",
+	"1 1 3",
+	"2",
+	"",
+	"3",
+	"1 2",
+	"1 2",
+	"1",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"6",
+	"1 2 1 4 3",
+	"1 2 2 4 1",
+	"2",
+	"",
+	"3",
+	"1 2",
+	"1 1",
+	"1",
+	"",
+	"5",
+	"1 1 2 1",
+	"1 2 2 1",
+	"4",
+	"",
+	"5",
+	"1 1 1 4",
+	"1 1 1 2",
+	"3",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"5",
+	"1 1 3 4",
+	"1 1 3 3",
+	"2",
+	"",
+	"5",
+	"1 1 3 2",
+	"1 2 2 3",
+	"2",
+	"",
+	"5",
+	"1 1 1 1",
+	"1 2 1 2",
+	"2",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"3",
+	"1 2",
+	"1 1",
+	"2",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"4",
+	"1 2 2",
+	"1 1 1",
+	"2",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"3",
+	"1 1",
+	"1 2",
+	"1",
+	"",
+	"6",
+	"1 1 1 4 1",
+	"1 2 3 3 2",
+	"1",
+	"",
+	"3",
+	"1 2",
+	"1 2",
+	"2",
+	"",
+	"6",
+	"1 1 3 1 1",
+	"1 1 2 2 2",
+	"2",
+	"",
+	"4",
+	"1 1 1",
+	"1 2 2",
+	"3",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"4",
+	"1 1 3",
+	"1 2 3",
+	"2",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"6",
+	"1 2 2 1 4",
+	"1 2 1 3 3",
+	"4",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"3",
+	"1 2",
+	"1 1",
+	"2",
+	"",
+	"4",
+	"1 2 2",
+	"1 2 1",
+	"2",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"3",
+	"1 1",
+	"1 1",
+	"2",
+	"",
+	"5",
+	"1 2 1 4",
+	"1 1 1 3",
+	"1",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"5",
+	"1 2 2 3",
+	"1 1 1 1",
+	"3",
+	"",
+	"4",
+	"1 1 3",
+	"1 1 1",
+	"2",
+	"",
+	"4",
+	"1 1 3",
+	"1 1 2",
+	"3",
+	"",
+	"6",
+	"1 2 2 4 3",
+	"1 1 1 1 4",
+	"4",
+	"",
+	"6",
+	"1 1 3 3 3",
+	"1 2 1 4 4",
+	"5",
+	"",
+	"4",
+	"1 1 2",
+	"1 1 3",
+	"2",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"5",
+	"1 1 3 1",
+	"1 2 1 3",
+	"1",
+	"",
+	"2",
+	"1",
+	"1",
+	"1",
+	"",
+	"3",
+	"1 2",
+	"1 1",
+	"2",
+	"",
+	"5",
+	"1 2 1 3",
+	"1 2 1 4",
+	"2",
+	"",
+	"6",
+	"1 1 1 2 4",
+	"1 2 2 4 4",
+	"2",
+	"",
+}
+
+type testcase struct {
+	n     int
+	a     []int
+	b     []int
+	idx   int
+	input string
+}
+
+func parseInts(line string) []int {
+	if strings.TrimSpace(line) == "" {
+		return nil
+	}
+	fields := strings.Fields(line)
+	res := make([]int, len(fields))
+	for i, f := range fields {
+		val, _ := strconv.Atoi(f)
+		res[i] = val
+	}
+	return res
+}
+
+func parseCases() []testcase {
+	var cases []testcase
+	for pos := 0; pos < len(rawTestcases); {
+		for pos < len(rawTestcases) && strings.TrimSpace(rawTestcases[pos]) == "" {
+			pos++
+		}
+		if pos >= len(rawTestcases) {
+			break
+		}
+		n, _ := strconv.Atoi(strings.TrimSpace(rawTestcases[pos]))
+		pos++
+		if pos+2 >= len(rawTestcases) {
+			break
+		}
+		lineA := rawTestcases[pos]
+		lineB := rawTestcases[pos+1]
+		lineIdx := rawTestcases[pos+2]
+		pos += 3
+
+		aParents := parseInts(lineA)
+		bParents := parseInts(lineB)
+		idxVal, _ := strconv.Atoi(strings.TrimSpace(lineIdx))
+
+		a := make([]int, n+1)
+		b := make([]int, n+1)
+		for i := 0; i < len(aParents) && i+2 <= n; i++ {
+			a[i+2] = aParents[i]
+		}
+		for i := 0; i < len(bParents) && i+2 <= n; i++ {
+			b[i+2] = bParents[i]
+		}
+
+		var sb strings.Builder
+		fmt.Fprintln(&sb, n)
+		fmt.Fprintln(&sb, strings.TrimSpace(lineA))
+		fmt.Fprintln(&sb, strings.TrimSpace(lineB))
+		fmt.Fprintln(&sb, strings.TrimSpace(lineIdx))
+
+		cases = append(cases, testcase{
+			n:     n,
+			a:     a,
+			b:     b,
+			idx:   idxVal,
+			input: sb.String(),
+		})
+	}
+	return cases
+}
 
 // --- begin solution from 403E.go adapted as function ---
 type SegMax struct {
@@ -377,92 +950,36 @@ func solve(n int, a, b []int, idx0 int) string {
 
 // --- end adapted solution ---
 
-func runCase(bin string, n int, a, b []int, idx int) error {
-	in := fmt.Sprintf("%d\n%s\n%s\n%d\n", n, joinInts(a[2:n+1]), joinInts(b[2:n+1]), idx)
+func runSolution(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(in)
+	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	got := strings.TrimSpace(out.String())
-	exp := solve(n, a, b, idx)
-	if got != exp {
-		return fmt.Errorf("expected\n%s\n\ngot\n%s", exp, out.String())
-	}
-	return nil
-}
-
-func joinInts(vals []int) string {
-	if len(vals) == 0 {
-		return ""
-	}
-	sb := strings.Builder{}
-	for i, v := range vals {
-		if i > 0 {
-			sb.WriteByte(' ')
-		}
-		fmt.Fprint(&sb, v)
-	}
-	return sb.String()
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierE.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: verifierE <solution-binary>")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesE.txt")
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for {
-		if !scanner.Scan() {
-			break
+	cases := parseCases()
+	for i, tc := range cases {
+		expected := solve(tc.n, tc.a, tc.b, tc.idx)
+		got, err := runSolution(bin, tc.input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
+			os.Exit(1)
 		}
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		n := 0
-		fmt.Sscan(line, &n)
-		if !scanner.Scan() {
-			break
-		}
-		lineA := strings.TrimSpace(scanner.Text())
-		if !scanner.Scan() {
-			break
-		}
-		lineB := strings.TrimSpace(scanner.Text())
-		if !scanner.Scan() {
-			break
-		}
-		lineIdx := strings.TrimSpace(scanner.Text())
-		var idx0 int
-		fmt.Sscan(lineIdx, &idx0)
-		idx++
-		a := make([]int, n+1)
-		b := make([]int, n+1)
-		if len(lineA) > 0 {
-			for i, fs := range strings.Fields(lineA) {
-				fmt.Sscan(fs, &a[i+2])
-			}
-		}
-		if len(lineB) > 0 {
-			for i, fs := range strings.Fields(lineB) {
-				fmt.Sscan(fs, &b[i+2])
-			}
-		}
-		if err := runCase(bin, n, a, b, idx0); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
+		if got != expected {
+			fmt.Fprintf(os.Stderr, "case %d mismatch:\nexpected:\n%s\n\ngot:\n%s\n", i+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

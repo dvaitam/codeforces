@@ -6,22 +6,241 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
+const testcasesB = `1 1 4 0
+3 3 1 1 0 1 0 0 0 1 0 1
+2 3 3 2 3 1 3 1 0
+3 3 2 2 2 0 1 0 0 2 1 2
+1 2 2 2 1
+3 1 4 4 0 4
+1 3 3 0 0 0
+2 3 3 3 2 3 2 0 1
+2 1 2 2 0
+1 2 2 0 1
+3 1 3 3 0 1
+2 1 4 0 3
+2 3 3 2 3 3 1 0 3
+2 1 4 0 2
+1 1 1 1
+1 1 4 4
+3 3 1 1 1 1 1 0 0 1 1 0
+3 3 1 0 1 1 0 1 0 0 1 0
+1 2 3 1 1
+1 1 2 2
+3 1 3 0 3 3
+1 1 2 2
+2 2 2 0 1 0 0
+2 2 3 1 3 0 1
+3 1 4 1 1 0
+1 2 1 0 0
+1 3 2 0 2 1
+1 2 4 4 2
+3 1 2 1 2 0
+3 2 1 0 1 1 0 1 1
+1 2 4 1 3
+1 3 4 3 4 0
+2 2 3 0 3 1 2
+1 3 3 3 0 0
+1 3 4 0 3 3
+2 1 4 4 3
+1 1 3 3
+2 1 3 0 2
+2 1 3 3 0
+1 2 2 2 2
+2 2 4 0 2 4 3
+1 3 4 2 3 1
+2 1 2 0 2
+2 1 1 1 1
+2 1 1 1 0
+1 1 2 0
+1 1 2 1
+2 3 3 2 0 3 2 1 2
+3 3 3 1 3 2 1 3 2 3 3 2
+2 2 1 0 0 0 0
+3 3 2 2 2 2 2 0 1 2 2 2
+1 2 1 0 0
+1 2 4 2 0
+3 2 3 2 3 1 1 0 1
+1 3 2 2 1 2
+3 1 4 3 2 0
+3 1 4 1 3 4
+1 2 1 1 1
+1 3 4 0 3 4
+1 2 4 4 3
+2 2 2 0 2 1 0
+2 3 2 1 0 0 1 1 2
+2 3 1 1 1 0 0 1 0
+2 1 2 2 0
+3 1 2 0 0 1
+3 3 4 0 3 4 2 2 0 0 1 1
+2 2 3 1 0 3 2
+3 2 1 0 1 1 0 1 1
+1 1 3 1
+3 2 3 2 3 1 0 3 2
+3 2 2 2 2 1 2 1 1
+2 2 4 2 0 3 2
+1 2 2 1 0
+3 1 3 3 1 0
+3 2 4 3 4 3 4 4 1
+3 2 3 3 1 2 0 0 3
+2 2 2 1 0 2 0
+2 1 3 1 2
+1 1 2 2
+2 1 2 0 0
+2 3 1 0 0 0 0 1 0
+1 3 4 0 4 1
+1 1 4 3
+2 1 4 1 3
+1 3 3 0 2 2
+2 3 4 1 4 4 0 2 0
+3 1 3 0 1 1
+2 1 3 1 3
+3 3 1 0 1 0 1 1 0 1 1 0
+2 2 4 0 4 4 2
+1 2 2 1 1
+2 1 4 0 4
+2 2 2 1 0 1 1
+2 1 2 1 1
+2 3 4 4 1 4 0 1 2
+3 3 1 0 0 1 0 1 0 1 1 0
+2 2 2 0 1 0 1
+3 3 2 2 1 0 2 2 2 2 2 1
+1 3 4 4 1 4
+2 1 2 1 2`
+
+const mod = 1000000007
+
+func expected(n, m, k int, board [][]int) int {
+	coords := make([][2]int, 0, n*m)
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			coords = append(coords, [2]int{i, j})
+		}
+	}
+	N := len(coords)
+	prevList := make([][]int, N)
+	for i := 0; i < N; i++ {
+		x1, y1 := coords[i][0], coords[i][1]
+		for j := 0; j < i; j++ {
+			x2, y2 := coords[j][0], coords[j][1]
+			if (x1 <= x2 && y1 <= y2) || (x2 <= x1 && y2 <= y1) {
+				prevList[i] = append(prevList[i], j)
+			}
+		}
+	}
+	color := make([]int, N)
+	var dfs func(int) int
+	dfs = func(pos int) int {
+		if pos == N {
+			return 1
+		}
+		x, y := coords[pos][0], coords[pos][1]
+		if board[x][y] != 0 {
+			c := board[x][y]
+			for _, v := range prevList[pos] {
+				if color[v] == c {
+					return 0
+				}
+			}
+			color[pos] = c
+			res := dfs(pos + 1)
+			color[pos] = 0
+			return res
+		}
+		total := 0
+		for c := 1; c <= k; c++ {
+			ok := true
+			for _, v := range prevList[pos] {
+				if color[v] == c {
+					ok = false
+					break
+				}
+			}
+			if !ok {
+				continue
+			}
+			color[pos] = c
+			total += dfs(pos + 1)
+			if total >= mod {
+				total -= mod
+			}
+			color[pos] = 0
+		}
+		return total
+	}
+
+	if n > k || m > k || n+m-1 > k {
+		return 0
+	}
+	return dfs(0) % mod
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errb bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func parseCase(line string) (int, int, int, [][]int, error) {
+	fields := strings.Fields(line)
+	if len(fields) < 3 {
+		return 0, 0, 0, nil, fmt.Errorf("invalid line")
+	}
+	n, err := strconv.Atoi(fields[0])
 	if err != nil {
-		return "", err
+		return 0, 0, 0, nil, err
 	}
-	oracle := filepath.Join(dir, "oracleB")
-	cmd := exec.Command("go", "build", "-o", oracle, "293B.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	m, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return 0, 0, 0, nil, err
 	}
-	return oracle, nil
+	k, err := strconv.Atoi(fields[2])
+	if err != nil {
+		return 0, 0, 0, nil, err
+	}
+	expectedCells := n * m
+	if len(fields)-3 != expectedCells {
+		return 0, 0, 0, nil, fmt.Errorf("expected %d cells got %d", expectedCells, len(fields)-3)
+	}
+	board := make([][]int, n)
+	idx := 3
+	for i := 0; i < n; i++ {
+		board[i] = make([]int, m)
+		for j := 0; j < m; j++ {
+			val, convErr := strconv.Atoi(fields[idx])
+			if convErr != nil {
+				return 0, 0, 0, nil, convErr
+			}
+			board[i][j] = val
+			idx++
+		}
+	}
+	return n, m, k, board, nil
+}
+
+func buildInput(n, m, k int, board [][]int) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d %d %d\n", n, m, k))
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			if j > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.Itoa(board[i][j]))
+		}
+		sb.WriteByte('\n')
+	}
+	return sb.String()
 }
 
 func main() {
@@ -30,21 +249,9 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesB))
+	scanner.Buffer(make([]byte, 0, 1024), 1<<20)
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -52,51 +259,18 @@ func main() {
 			continue
 		}
 		idx++
-		fields := strings.Fields(line)
-		if len(fields) < 3 {
-			fmt.Printf("test %d: invalid line\n", idx)
+		n, m, k, board, err := parseCase(line)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d parse error: %v\n", idx, err)
 			os.Exit(1)
 		}
-		n, _ := strconv.Atoi(fields[0])
-		m, _ := strconv.Atoi(fields[1])
-		k, _ := strconv.Atoi(fields[2])
-		cells := fields[3:]
-		if len(cells) != n*m {
-			fmt.Printf("test %d: expected %d cells got %d\n", idx, n*m, len(cells))
+		input := buildInput(n, m, k, board)
+		expected := strconv.Itoa(expected(n, m, k, board))
+		got, err := run(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d failed: %v\n", idx, err)
 			os.Exit(1)
 		}
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d %d %d\n", n, m, k))
-		pos := 0
-		for i := 0; i < n; i++ {
-			row := strings.Join(cells[pos:pos+m], " ")
-			pos += m
-			sb.WriteString(row)
-			sb.WriteByte('\n')
-		}
-		input := sb.String()
-
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(input)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error: %v\n", err)
-			os.Exit(1)
-		}
-		expected := strings.TrimSpace(outO.String())
-
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
-			os.Exit(1)
-		}
-		got := strings.TrimSpace(out.String())
 		if got != expected {
 			fmt.Printf("test %d failed. Expected %s got %s\n", idx, expected, got)
 			os.Exit(1)

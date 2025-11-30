@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,6 +8,109 @@ import (
 	"strconv"
 	"strings"
 )
+
+// Embedded copy of testcasesC.txt so the verifier is self-contained.
+const testcasesRaw = `100
+cclf
+zvjitgtbsvfnumzxqlroqibalokmnqfrfhhafkfeqqlqvrfo
+xqylzsllofymwxouqhpipqqzlvo
+lsxrxopvhkwftiypjjzwqrqqutsnjx
+pqlvtczkxagxdb
+ubishvdyqeihgbnwybbllfhvacdcabxaliefx
+qwamsbzhebal
+uxxdjkpajorytxbiymtwephcvvkdaozeqsympqke
+iitnuawrevbibeffdouhqw
+hhw
+cicshtzztwlivniqyaebmnfdqxchd
+afyhdga
+voojrumgvygxznnqassbnqsfdvzplaqdtl
+wljavnddjgyvazobnup
+gstcajaljxchypgdslmwoeylmdiddc
+kumgwdatvpybxwpjloezlipqpxxznpvjmhfptirn
+vwcsxsdclfreznczcvzubejmhwvvkofqjderyndkqhwqi
+fowhmlzysxe
+oxaztmxfmqbpimiwxnwuplrkwxvcyx
+rtgmvmuakoqwouf
+amgxstm
+dmryzgixssgpzt
+atvnpiqsf
+wgyclaprvvcyspvkoiqoactylfyyzm
+vuzxebfpmovjeajro
+l
+rms
+gvjpuepwrwjcikjkuzjuumqcqugmt
+ezqucjbhorhqibddvzmlgklckolfpojoew
+ugikfdhpgyvlflezehizrummzxkix
+qswxkxmywwuywjrtuvcljmpfilopcfkmeadlflc
+yunarkhtmrjpuelkgpdezgkienlickghwhxtbkluytbefcn
+yiekqsdkuywtmhbmypptkrttcsqrv
+mwofnmqobdosedvqfcmjozwaidvlhfae
+vckuobphcperaewqrbbgraqkvqhe
+paerdhdogzbtgumktumwqqyv
+qdeugfmgjkn
+nemkzjzdrd
+ijqypihnwewrvdatrygggmsbueuaxiw
+prbxyhetkbwgdeuwrfycvoujgfkwiqscnnvxbojvduwxiag
+kirxmsqxgnyewfzoolmptitgspo
+ypskjcfltuphy
+uvsevjgrjdazagkbkrizxvkocnpwajssegeftymx
+usoiu
+ppzzhe
+jhgtwkstwmqnhugrbivhetxmndommpmjghhbr
+ctrvabmwnmhqidlqlqzpscwoxwhiaapbeu
+gkhrbteujy
+urrcvve
+webjqvipbrlykvdtldtzllzuizpj
+teabknualvrwbvcwrqtynnnhzfftbasyx
+vfjabhszhmcldtchhrgdawm
+qisuhb
+qqmnzeeneoxlbsfqontzuofpteleaiwfeu
+suiopognniyhlyubmtanjarpsiv
+howolqtovhrrfojyln
+qvhxuvmd
+totqocxmotywwxlzrlfehvufnopw
+zfniksmjuwzivkvamsbgoddalktkxmfxkzcqtpmthodtala
+pewwbakmputapusghxtk
+kjymstxpoyi
+qgslhl
+zfhrzuxthgsohmisgqfamypx
+ufvgxwtfptazxegwgatcoyug
+fimtaaldjbslpmdcofezyoucieprczqwzjjarrgcnefsjogb
+kozbehtlujzwudgehakdidlycqzwtelenxxgjryayakue
+crybexpnvlpvjjcuexdacelwejysvrechsxyxhzkcfvngnu
+bknpurlfqdvbevmenyyxhuitrwdcqsxtfgvtvwcrkeq
+hvovmodkhbldmasd
+zilrhknhbefexfmedujynoadnawdbgnagzmkefiizishqjjs
+ppmyjmfuznjzsoqnswkrcsainso
+cqrpquifgldxhgneqgqmfcjoeyqcxlvfhzrbnrbmryjhfxm
+gshqiritifautmq
+bbzpgrkjxubokfobglixoivqibxkanuhfmwvpenwjcvfyz
+ncrs
+aalgvusyrp
+vytwskdacgaxqyqaeajidausalid
+vvuvfnahgftwnrbsidhshbgvh
+ftafdsguhjkwcugueszhdlpwfggmjachsjuljryjvbyj
+pqvets
+jtntnudrfuthtuecoctepae
+gplquengdkkjnehsipzkaxbad
+jbzoqyhghcbadm
+nssnuqay
+afdghcwiqridyzfytjgxtcfvaavduzooausahwkvchwizydf
+cnipdittekmhs
+gpodpmukwbobnox
+wwhzrnruybzvzqmidojjxnhyvyfwhdyairwemnsxbvv
+wubbgbwir
+ffplvcwnrtfdnjhaugyibhgvpqxpoyabjnqtuqgndooqvfrfj
+ewrdqfakxzbtxtiuzmkttsuecsheskwkbzgtbglb
+y
+pmtewbtunckfqqhdizikpxvioxzgkrataxtxsdnnntos
+nyaiaaftulggcrljkb
+kvxjfvei
+pqryrijskqysronzm
+mcqedk
+pyvscxnmotiparprlunxgtcafv
+wajbvnyjmwhvnzqit
+miaifjagagfkzisgyvwkmseab`
 
 func runExe(path, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -44,30 +146,37 @@ func expected(s string) string {
 	return string(b)
 }
 
+func parseTestcases() ([]string, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
+	if len(lines) == 0 {
+		return nil, fmt.Errorf("no testcases found")
+	}
+	t, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+	if err != nil {
+		return nil, fmt.Errorf("parse t: %w", err)
+	}
+	if len(lines)-1 < t {
+		return nil, fmt.Errorf("expected %d cases, found %d", t, len(lines)-1)
+	}
+	cases := make([]string, 0, t)
+	for i := 0; i < t; i++ {
+		cases = append(cases, strings.TrimSpace(lines[i+1]))
+	}
+	return cases, nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("Usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	data, err := os.ReadFile("testcasesC.txt")
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Println("could not read testcasesC.txt:", err)
+		fmt.Println("failed to load embedded testcases:", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanLines)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(strings.TrimSpace(scan.Text()))
-	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Println("bad test file")
-			os.Exit(1)
-		}
-		s := strings.TrimSpace(scan.Text())
+	for i, s := range cases {
 		input := s + "\n"
 		exp := expected(s)
 		got, err := runExe(bin, input)
@@ -80,5 +189,5 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

@@ -6,17 +6,118 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 )
 
-func sumDigits(n int) int {
-	s := 0
-	for n > 0 {
-		s += n % 10
-		n /= 10
+// Embedded testcases (one number per line).
+const embeddedTestcases = `58716
+11955
+10544
+41950
+66576
+64131
+14294
+39511
+72255
+38153
+92610
+16359
+71754
+43614
+70816
+26634
+79060
+71726
+77020
+37703
+58325
+12010
+78156
+50449
+41555
+75451
+31733
+38054
+24100
+24823
+24475
+4321
+80317
+86069
+34086
+62459
+9055
+11773
+88961
+99300
+17068
+19601
+5064
+10518
+91661
+70857
+89587
+51287
+92442
+68756
+36127
+68392
+30867
+28206
+89060
+77306
+54974
+75981
+36072
+59056
+64573
+86539
+84042
+91779
+46840
+10796
+42509
+80318
+15119
+63759
+76949
+82594
+43944
+24953
+31855
+2124
+95877
+35525
+15353
+92449
+28896
+48766
+22345
+43586
+55853
+8151
+13186
+19183
+91445
+28675
+5928
+75217
+83126
+70018
+78927
+89206
+9698
+3499
+16311
+83230`
+
+// Embedded reference solution (from 971B.go).
+func solveString(s string) string {
+	sum := 0
+	for _, ch := range s {
+		sum += int(ch - '0')
 	}
-	return s
+	return fmt.Sprint(sum)
 }
 
 func run(bin string, input string) (string, error) {
@@ -43,13 +144,8 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "cannot open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
+
+	scanner := bufio.NewScanner(strings.NewReader(embeddedTestcases))
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -57,9 +153,9 @@ func main() {
 			continue
 		}
 		idx++
-		n, _ := strconv.Atoi(line)
-		input := fmt.Sprintf("%d\n", n)
-		expected := strconv.Itoa(sumDigits(n))
+		s := line
+		input := s + "\n"
+		expected := solveString(s)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)

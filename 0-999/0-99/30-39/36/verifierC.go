@@ -1,14 +1,14 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
+// heightIntersect computes intersection height between two truncated cones
 func heightIntersect(h0, r0, R0, h1, r1, R1 float64) float64 {
 	res1 := (r1 - r0) / (R0 - r0) * h0
 	res2 := (R0 - r1) / (R1 - r1) * h1
@@ -87,70 +87,472 @@ func solveCase(h, r, R []float64) float64 {
 	return res
 }
 
+var testcasesRaw = `100
+1
+2 1 7
+2
+5 3 8
+4 5 6
+5
+3 4 10
+7 5 8
+9 4 9
+5 1 2
+6 4 7
+4
+7 5 7
+9 2 6
+4 1 4
+6 2 5
+5
+9 3 8
+9 2 10
+7 5 8
+10 3 6
+8 2 9
+4
+9 2 10
+5 4 9
+9 3 9
+8 4 7
+5
+9 4 8
+4 3 10
+3 5 8
+8 3 6
+9 5 10
+5
+10 5 9
+5 2 10
+9 3 9
+10 1 7
+1 2 4
+1
+10 1 6
+5
+4 1 10
+3 3 5
+4 1 8
+1 1 7
+6 2 6
+1
+2 1 3
+1
+1 1 7
+3
+3 2 5
+9 1 8
+10 1 5
+2
+1 1 7
+10 1 6
+3
+8 1 6
+8 5 10
+1 3 10
+4
+10 2 10
+4 1 7
+2 1 9
+3 5 10
+4
+8 5 8
+3 3 6
+5 5 9
+1 5 7
+1
+5 1 4
+2
+3 1 9
+4 5 6
+2
+4 4 5
+5 1 5
+5
+10 3 6
+7 3 8
+1 2 3
+7 4 6
+2 5 6
+2
+2 1 2
+3 2 4
+2
+1 5 9
+8 3 8
+4
+4 2 9
+7 5 6
+10 5 6
+7 5 10
+2
+2 4 7
+1 5 6
+5
+6 3 9
+6 3 4
+7 1 3
+5 2 3
+8 1 8
+4
+8 2 4
+1 3 4
+6 3 9
+2 2 10
+2
+2 5 8
+7 4 6
+3
+7 1 6
+2 1 3
+10 3 9
+4
+4 1 2
+10 4 5
+8 3 6
+8 2 8
+3
+8 5 9
+7 4 10
+5 4 6
+2
+8 5 8
+9 4 10
+1
+10 5 6
+1
+6 2 5
+4
+2 1 2
+3 3 7
+4 3 7
+3 5 8
+1
+3 5 9
+1
+6 5 7
+5
+5 2 5
+8 2 9
+6 5 7
+8 4 10
+1 5 9
+2
+7 5 6
+8 3 7
+3
+7 4 7
+9 3 9
+2 2 6
+4
+7 1 7
+8 5 9
+3 1 2
+7 2 9
+2
+2 4 9
+4 3 9
+5
+10 2 10
+10 2 3
+10 4 8
+5 5 10
+3 4 10
+2
+2 3 4
+8 5 6
+5
+8 3 7
+5 5 9
+1 1 7
+3 4 7
+3 1 4
+4
+7 4 10
+5 2 3
+5 5 9
+1 3 4
+5
+7 5 9
+4 3 7
+3 4 10
+9 3 4
+5 3 6
+3
+5 4 9
+2 5 7
+7 5 10
+2
+9 1 6
+1 2 10
+5
+4 5 8
+1 1 3
+7 3 5
+6 3 4
+6 4 7
+2
+8 4 7
+8 2 10
+2
+5 3 5
+2 2 10
+2
+6 2 8
+3 2 6
+3
+9 4 8
+6 3 9
+10 5 10
+3
+7 3 8
+10 1 7
+5 4 8
+2
+5 3 7
+8 1 4
+3
+7 2 3
+2 3 5
+6 1 8
+1
+9 3 5
+5
+7 5 8
+8 2 8
+6 2 10
+2 2 6
+6 3 5
+4
+6 3 4
+6 2 6
+4 5 6
+6 3 9
+5
+1 2 5
+2 4 8
+5 2 8
+9 5 6
+6 5 9
+2
+1 4 8
+8 5 8
+5
+10 5 6
+10 5 10
+8 4 10
+8 2 9
+7 5 9
+1
+2 4 9
+2
+2 5 7
+2 4 7
+4
+1 3 4
+6 2 5
+1 2 9
+2 3 10
+4
+1 4 6
+2 4 6
+9 1 4
+9 5 6
+1
+4 5 6
+5
+6 5 7
+3 3 7
+1 2 4
+4 1 9
+4 1 5
+4
+6 5 9
+9 5 7
+9 1 4
+4 2 9
+2
+5 3 7
+3 4 6
+4
+6 3 10
+2 5 6
+8 3 6
+9 4 7
+2
+7 2 4
+1 5 10
+2
+4 2 9
+10 1 4
+1
+5 4 9
+1
+4 2 8
+1
+4 1 4
+5
+3 1 9
+5 2 5
+6 3 10
+9 5 6
+7 4 10
+1
+8 3 9
+1
+5 1 5
+4
+6 3 8
+7 5 10
+4 4 6
+3 4 8
+3
+7 4 9
+5 5 7
+10 4 8
+2
+8 5 8
+5 1 4
+3
+10 4 6
+10 5 7
+5 2 7
+1
+1 1 5
+3
+1 3 8
+5 3 10
+8 1 8
+4
+1 3 8
+10 2 6
+3 2 9
+2 5 9
+3
+2 4 8
+4 2 7
+4 2 8
+5
+10 4 9
+7 2 6
+9 1 6
+4 2 9
+7 1 9
+4
+7 4 8
+5 2 6
+4 1 10
+9 1 10
+1
+1 4 10
+4
+7 2 7
+2 3 8
+6 5 9
+10 1 9
+2
+5 1 2
+8 1 4
+2
+4 3 5
+9 1 4
+3
+2 5 10
+2 2 9
+3 1 6
+5
+5 4 5
+9 3 10
+6 1 7
+2 5 8
+6 3 10
+4
+5 5 10
+3 1 2
+6 4 10
+1 3 9
+5
+1 1 10
+9 5 9
+7 4 6
+3 2 3
+1 5 8
+2
+5 1 2
+4 5 7
+4
+2 3 4
+10 1 5
+4 5 7
+2 1 8`
+
+type testcase struct {
+	n int
+	h []float64
+	r []float64
+	R []float64
+}
+
+func parseTestcases() ([]testcase, error) {
+	r := strings.NewReader(testcasesRaw)
+	var t int
+	if _, err := fmt.Fscan(r, &t); err != nil {
+		return nil, err
+	}
+	cases := make([]testcase, 0, t)
+	for i := 0; i < t; i++ {
+		var n int
+		if _, err := fmt.Fscan(r, &n); err != nil {
+			return nil, err
+		}
+		tc := testcase{n: n, h: make([]float64, n), r: make([]float64, n), R: make([]float64, n)}
+		for j := 0; j < n; j++ {
+			if _, err := fmt.Fscan(r, &tc.h[j], &tc.r[j], &tc.R[j]); err != nil {
+				return nil, err
+			}
+		}
+		cases = append(cases, tc)
+	}
+	return cases, nil
+}
+
 func main() {
-	if len(os.Args) < 2 {
+	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesC.txt")
+	bin := os.Args[1]
+
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Println("could not read testcasesC.txt:", err)
+		fmt.Fprintf(os.Stderr, "failed to parse embedded testcases: %v\n", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("bad file")
-		os.Exit(1)
-	}
-	var t int
-	fmt.Sscan(scan.Text(), &t)
-	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Println("bad file")
-			os.Exit(1)
+
+	for idx, tc := range cases {
+		expected := fmt.Sprintf("%.12f", solveCase(tc.h, tc.r, tc.R))
+
+		var sb strings.Builder
+		sb.WriteString(strconv.Itoa(tc.n))
+		sb.WriteByte('\n')
+		for i := 0; i < tc.n; i++ {
+			sb.WriteString(fmt.Sprintf("%.0f %.0f %.0f\n", tc.h[i], tc.r[i], tc.R[i]))
 		}
-		var n int
-		fmt.Sscan(scan.Text(), &n)
-		h := make([]float64, n)
-		r := make([]float64, n)
-		R := make([]float64, n)
-		for j := 0; j < n; j++ {
-			if !scan.Scan() {
-				fmt.Println("bad file")
-				os.Exit(1)
-			}
-			fmt.Sscan(scan.Text(), &h[j])
-			if !scan.Scan() {
-				fmt.Println("bad file")
-				os.Exit(1)
-			}
-			fmt.Sscan(scan.Text(), &r[j])
-			if !scan.Scan() {
-				fmt.Println("bad file")
-				os.Exit(1)
-			}
-			fmt.Sscan(scan.Text(), &R[j])
-		}
-		expected := solveCase(h, r, R)
-		var input bytes.Buffer
-		fmt.Fprintf(&input, "%d\n", n)
-		for j := 0; j < n; j++ {
-			fmt.Fprintf(&input, "%g %g %g\n", h[j], r[j], R[j])
-		}
-		cmd := exec.Command(os.Args[1])
-		cmd.Stdin = bytes.NewReader(input.Bytes())
+
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(sb.String())
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			fmt.Printf("case %d: runtime error: %v\n", i+1, err)
+			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n%s", idx+1, err, string(out))
 			os.Exit(1)
 		}
-		var got float64
-		fmt.Sscan(strings.TrimSpace(string(out)), &got)
-		if diff := got - expected; diff < -1e-6 || diff > 1e-6 {
-			fmt.Printf("case %d failed: expected %.6f got %.6f\n", i+1, expected, got)
+
+		got := strings.TrimSpace(string(out))
+		if got != expected {
+			fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %s\n got: %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All tests passed!")
+
+	fmt.Printf("All %d tests passed\n", len(cases))
 }

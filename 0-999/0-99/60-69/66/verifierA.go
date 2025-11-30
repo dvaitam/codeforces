@@ -1,13 +1,114 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 )
+
+// Embedded testcases from testcasesA.txt.
+const testcasesRaw = `1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+127
+128
+32767
+32768
+2147483647
+2147483648
+9223372036854775807
+9223372036854775808
+5067523490354681032035500
+365
+718690169926508176630252120915296
+31038598073371803245785
+7971063407584108847
+5202798
+26409840820539374882842100146395403
+40161486228149169279684837422068276390711576754
+5385579175110521627877242303262
+763466782795354384200
+3655835253766570029452520348179
+9989
+2
+81709286795782845715833064422958104872504801233
+4626297402833248161118565297818652531963690
+7479827284137355777085084610980718843595797480
+260438363928530
+60086389190558000238258844651631243
+827673762258309731594905787971201795
+6108313869148414338670
+87015649247122
+42223263988307385590895750989559282696
+770156513628
+8567910405966190929200150736412177631218483
+9825484536197274551881989037017386196375539442603
+833293
+84862633336012880785662047053369921
+67978640486906128586449528596688
+440079
+4617251697464633312586339474703739490207
+1284511671597
+43985411210388579473101586170735296432197254783
+67262806749
+2648
+1939625287
+6680567184118485442983935510153222653
+822910737941686617594408713259417540332
+3107007674143
+15631387278007405025371041
+430309343698002362260919714708850342007
+7214069854102895912365339271641856582587990630
+9278378931351942286360421338`
 
 func fits(s, lim string) bool {
 	if len(s) != len(lim) {
@@ -34,17 +135,23 @@ func expectedType(s string) string {
 	return "BigInteger"
 }
 
-func run(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var errb bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
+// Embedded solver logic from 66A.go.
+func solve(s string) string {
+	limits := []struct {
+		lim  string
+		name string
+	}{
+		{"127", "byte"},
+		{"32767", "short"},
+		{"2147483647", "int"},
+		{"9223372036854775807", "long"},
 	}
-	return strings.TrimSpace(out.String()), nil
+	for _, lt := range limits {
+		if fits(s, lt.lim) {
+			return lt.name
+		}
+	}
+	return "BigInteger"
 }
 
 func main() {
@@ -53,34 +160,32 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
+
+	lines := strings.Split(testcasesRaw, "\n")
 	idx := 0
-	for scanner.Scan() {
-		s := strings.TrimSpace(scanner.Text())
+	for _, line := range lines {
+		s := strings.TrimSpace(line)
 		if s == "" {
 			continue
 		}
 		idx++
-		expect := expectedType(s)
-		got, err := run(bin, s+"\n")
-		if err != nil {
+		expect := solve(s)
+
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(s + "\n")
+		var out bytes.Buffer
+		var errb bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &errb
+		if err := cmd.Run(); err != nil {
 			fmt.Printf("test %d failed: %v\n", idx, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != expect {
+		got := strings.TrimSpace(out.String())
+		if got != expect {
 			fmt.Printf("test %d failed: expected %s got %s\n", idx, expect, got)
 			os.Exit(1)
 		}
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
 	}
 	fmt.Printf("All %d tests passed\n", idx)
 }

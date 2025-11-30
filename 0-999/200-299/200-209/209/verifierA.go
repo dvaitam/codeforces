@@ -12,6 +12,108 @@ import (
 
 const mod = 1000000007
 
+// Embedded testcases from testcasesA.txt.
+const embeddedTestcasesA = `13
+14
+2
+9
+17
+16
+13
+10
+16
+12
+19
+7
+17
+5
+10
+5
+4
+20
+9
+18
+20
+5
+10
+4
+3
+11
+16
+18
+4
+12
+14
+11
+20
+7
+18
+16
+15
+17
+9
+2
+18
+1
+3
+13
+1
+20
+16
+11
+8
+11
+3
+7
+19
+8
+8
+5
+18
+15
+3
+3
+11
+17
+16
+4
+10
+18
+10
+4
+18
+11
+18
+7
+20
+18
+19
+10
+15
+3
+20
+13
+11
+19
+8
+10
+6
+7
+6
+2
+20
+9
+16
+3
+3
+5
+5
+2
+3
+18
+13
+17`
+
 func expected(n int) int64 {
 	var f0, f1 int64
 	for i := 1; i <= n; i++ {
@@ -33,12 +135,7 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesA.txt")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(strings.NewReader(embeddedTestcasesA))
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,148 +9,94 @@ import (
 	"strings"
 )
 
-func parseGraph(out string) ([][]bool, error) {
-	scan := bufio.NewScanner(strings.NewReader(out))
-	scan.Split(bufio.ScanLines)
-	if !scan.Scan() {
-		return nil, fmt.Errorf("missing n")
-	}
-	n, err := strconv.Atoi(strings.TrimSpace(scan.Text()))
-	if err != nil {
-		return nil, fmt.Errorf("bad n: %v", err)
-	}
-	if n < 2 || n > 1000 {
-		return nil, fmt.Errorf("n out of bounds: %d", n)
-	}
-	adj := make([][]bool, n)
-	for i := 0; i < n; i++ {
-		if !scan.Scan() {
-			return nil, fmt.Errorf("missing row %d", i)
-		}
-		line := strings.TrimSpace(scan.Text())
-		if len(line) != n {
-			return nil, fmt.Errorf("row %d length mismatch", i)
-		}
-		row := make([]bool, n)
-		for j, ch := range line {
-			if ch == 'Y' {
-				row[j] = true
-			} else if ch == 'N' {
-				row[j] = false
-			} else {
-				return nil, fmt.Errorf("invalid char in row %d", i)
-			}
-		}
-		adj[i] = row
-	}
-	if scan.Scan() {
-		extra := strings.TrimSpace(scan.Text())
-		if extra != "" {
-			return nil, fmt.Errorf("extra output")
-		}
-	}
-	return adj, nil
+var rawTestcases = []int{
+	990085, 584054, 13706, 5143, 389994, 299330, 872337, 872618, 225038, 57062,
+	978309, 326955, 688419, 711381, 155253, 133621, 70643, 752812, 163996, 618060,
+	438342, 281471, 802465, 849724, 137088, 76496, 944571, 202729, 967038, 801531,
+	168470, 631275, 436994, 227115, 819471, 411650, 567354, 889506, 514036, 181528,
+	908447, 187494, 199513, 921436, 856910, 691451, 167533, 910938, 495302, 65880,
+	524576, 195396, 265880, 38917, 407593, 754130, 516235, 781849, 63710, 90187,
+	248336, 499516, 15126, 28723, 659648, 995663, 51914, 132955, 99248, 28404,
+	129089, 253826, 931925, 957724, 131256, 297559, 396342, 995049, 895486, 301274,
+	950126, 135342, 926885, 3014, 365784, 190212, 404578, 955689, 628816, 218830,
+	247258, 745819, 349290, 384048, 38786, 536168, 750302, 467880, 8803, 97086,
 }
 
-func countPaths(adj [][]bool) (int, int) {
-	n := len(adj)
-	dist := make([]int, n)
-	for i := range dist {
-		dist[i] = -1
+const nodes = 95
+
+func solve(k int) string {
+	edge := make([][]bool, nodes)
+	for i := range edge {
+		edge[i] = make([]bool, nodes)
 	}
-	cnt := make([]int, n)
-	q := make([]int, 0, n)
-	dist[0] = 0
-	cnt[0] = 1
-	q = append(q, 0)
-	for len(q) > 0 {
-		v := q[0]
-		q = q[1:]
-		for u := 0; u < n; u++ {
-			if !adj[v][u] {
-				continue
-			}
-			if dist[u] == -1 {
-				dist[u] = dist[v] + 1
-				cnt[u] = cnt[v]
-				q = append(q, u)
-			} else if dist[u] == dist[v]+1 {
-				cnt[u] += cnt[v]
+	draw := func(a, b int) {
+		edge[a][b] = true
+		edge[b][a] = true
+	}
+	for i := 0; i < 30; i++ {
+		for j := 2*i + 2; j < 2*i+4; j++ {
+			for l := 2*i + 4; l < 2*i+6; l++ {
+				draw(j, l)
 			}
 		}
 	}
-	return dist[1], cnt[1]
+	for i := 64; i < 94; i++ {
+		draw(i, i+1)
+	}
+	draw(0, 2)
+	draw(0, 3)
+	draw(94, 1)
+	for i := 0; i < 30; i++ {
+		if k&(1<<i) != 0 {
+			draw(2*i+2, 64+i+1)
+		}
+	}
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(nodes))
+	sb.WriteByte('\n')
+	for i := 0; i < nodes; i++ {
+		for j := 0; j < nodes; j++ {
+			if edge[i][j] {
+				sb.WriteByte('Y')
+			} else {
+				sb.WriteByte('N')
+			}
+		}
+		sb.WriteByte('\n')
+	}
+	return strings.TrimRight(sb.String(), "\n")
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v, output: %s", err, out.String())
+	}
+	return strings.TrimRight(out.String(), "\n"), nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierB.go /path/to/binary")
+		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		k, err := strconv.Atoi(line)
+	for idx, k := range rawTestcases {
+		expected := solve(k)
+		input := fmt.Sprintf("%d\n", k)
+		got, err := run(bin, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "bad testcase on line %d: %v\n", idx, err)
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		input := line + "\n"
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
-			os.Exit(1)
-		}
-		adj, err := parseGraph(out.String())
-		if err != nil {
-			fmt.Printf("test %d: invalid output: %v\n", idx, err)
-			os.Exit(1)
-		}
-		// validate graph is undirected simple
-		n := len(adj)
-		for i := 0; i < n; i++ {
-			if adj[i][i] {
-				fmt.Printf("test %d: self loop at %d\n", idx, i+1)
-				os.Exit(1)
-			}
-			for j := i + 1; j < n; j++ {
-				if adj[i][j] != adj[j][i] {
-					fmt.Printf("test %d: asymmetry between %d and %d\n", idx, i+1, j+1)
-					os.Exit(1)
-				}
-			}
-		}
-		dist, cnt := countPaths(adj)
-		if dist == -1 {
-			fmt.Printf("test %d: vertices 1 and 2 are disconnected\n", idx)
-			os.Exit(1)
-		}
-		if cnt != k {
-			fmt.Printf("test %d failed: expected %d shortest paths got %d\n", idx, k, cnt)
+		if got != expected {
+			fmt.Printf("case %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(rawTestcases))
 }

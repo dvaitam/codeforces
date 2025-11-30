@@ -1,13 +1,114 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 )
+
+// Embedded testcases (one "a b" per line).
+const embeddedTestcases = `6 6
+0 4
+8 7
+6 4
+7 5
+9 3
+8 2
+4 2
+1 9
+4 8
+9 2
+4 1
+1 10
+5 7
+8 1
+5 6
+5 9
+10 3
+8 7
+7 8
+4 0
+8 0
+1 6
+10 10
+0 9
+7 5
+3 5
+1 3
+9 3
+3 2
+8 7
+1 1
+5 8
+7 1
+4 8
+4 1
+8 5
+8 3
+9 8
+9 4
+7 1
+9 6
+5 9
+3 4
+2 3
+2 0
+9 10
+4 7
+1 1
+10 2
+2 0
+1 8
+10 6
+8 4
+8 3
+3 10
+9 6
+9 4
+7 7
+10 10
+5 1
+5 9
+1 7
+9 10
+5 3
+3 0
+4 1
+3 5
+2 5
+6 0
+1 2
+3 0
+9 10
+8 9
+10 1
+0 1
+10 3
+9 9
+1 6
+1 5
+1 0
+9 0
+3 2
+1 7
+3 0
+10 0
+8 6
+9 1
+4 1
+3 1
+10 4
+5 6
+2 0
+8 7
+0 9
+1 6
+3 4
+5 7
+9 2
+10 3`
 
 func bestScore(a, b int) (int64, string) {
 	if a == 0 {
@@ -80,29 +181,28 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Println("could not open testcasesA.txt:", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
+	lines := strings.Split(strings.TrimSpace(embeddedTestcases), "\n")
 	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 		idx++
-		var a, b int
-		fmt.Sscan(line, &a, &b)
+		parts := strings.Fields(line)
+		if len(parts) != 2 {
+			fmt.Printf("Test %d invalid input line\n", idx)
+			os.Exit(1)
+		}
+		a, _ := strconv.Atoi(parts[0])
+		b, _ := strconv.Atoi(parts[1])
 		expScore, expStr := bestScore(a, b)
 		input := fmt.Sprintf("%d %d\n", a, b)
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(input)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			fmt.Printf("Test %d runtime error: %v\n", idx, err)
+			fmt.Printf("Test %d runtime error: %v\nstderr: %s\n", idx, err, string(out))
 			os.Exit(1)
 		}
 		outs := strings.Split(strings.TrimSpace(string(out)), "\n")
@@ -120,10 +220,6 @@ func main() {
 			fmt.Printf("Test %d failed\nexpected:\n%d\n%s\n\ngot:\n%s", idx, expScore, expStr, string(out))
 			os.Exit(1)
 		}
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Println("scanner error:", err)
-		os.Exit(1)
 	}
 	fmt.Printf("All %d tests passed\n", idx)
 }

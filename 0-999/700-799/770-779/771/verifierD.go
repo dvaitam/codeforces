@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,6 +9,214 @@ import (
 	"strings"
 )
 
+type testcase struct {
+	n int
+	s string
+}
+
+// Embedded testcases from testcasesD.txt.
+const testcasesRaw = `100
+7
+KBVAACB
+9
+KAKVBVVCK
+2
+BV
+9
+ACKAVBAKV
+2
+VC
+9
+BVCBCVKAA
+7
+BAKVVBC
+2
+BA
+8
+CBKCKKKB
+8
+KKBBKABV
+4
+KBBC
+8
+VBVVACCC
+5
+BBVCV
+7
+ACCVCAV
+9
+KVKABAAKA
+8
+BAKVKBVV
+6
+CAKVBA
+9
+BAVBVBBAA
+6
+BVKVVV
+2
+VK
+2
+BC
+4
+VACK
+9
+KBVKBCKBC
+9
+KBBCCKBBV
+2
+BB
+5
+VCBCC
+7
+VKKCVKA
+4
+CCCC
+7
+AVAABKA
+3
+BKC
+2
+BK
+2
+KA
+3
+KKB
+2
+CB
+6
+VAAAKA
+7
+CKKKBCC
+2
+KV
+2
+VK
+5
+VAKAK
+9
+KAAACAVVC
+3
+AVA
+4
+AKCC
+4
+KBKK
+6
+CVVBAC
+6
+VVVVVC
+8
+KACBBAKA
+3
+CKA
+5
+VCCAA
+3
+BVV
+8
+AVBKAVVB
+4
+CCAB
+9
+AKCCKBCBK
+6
+AKAAKK
+7
+KAAKCCB
+5
+BKKBA
+5
+CKCBV
+3
+BBK
+6
+CCBKAA
+9
+KAVKBBKCK
+3
+KVA
+6
+BAACBV
+4
+CCKB
+5
+VCKAA
+3
+AVB
+2
+CA
+4
+VVAV
+4
+BKCA
+8
+BCAVVKBC
+7
+ABKBAAV
+4
+KCAV
+6
+CKCVVK
+9
+CVABKCAKV
+6
+BCKBCK
+6
+KKKCAC
+2
+CV
+9
+KVAAKBCVV
+2
+KV
+8
+CKCVBBVB
+8
+KBABKCAB
+7
+VBBVBAK
+2
+AA
+2
+AV
+3
+CBK
+9
+BVACBBBAB
+4
+KVCC
+7
+KCBKVCA
+4
+AAKB
+6
+CKBKCK
+8
+BVAVAKVV
+5
+KAVVV
+9
+AKKBAVKCC
+7
+BVCCCAK
+4
+VKAB
+3
+BVC
+2
+BC
+6
+CBVVKB
+6
+CCVVVC
+2
+BV
+4
+AKKA
+4
+CKAA`
+
 func min(a, b int) int {
 	if a < b {
 		return a
@@ -17,6 +224,7 @@ func min(a, b int) int {
 	return b
 }
 
+// Embedded solver logic from 771D.go.
 func solveCase(n int, s string) int {
 	pos := make([][]int, 3)
 	prefix := make([][]int, 3)
@@ -119,31 +327,51 @@ func runCandidate(bin string, input []byte) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+func parseTestcases() ([]testcase, error) {
+	scan := bufio.NewScanner(strings.NewReader(testcasesRaw))
+	scan.Split(bufio.ScanWords)
+	if !scan.Scan() {
+		return nil, fmt.Errorf("missing test count")
+	}
+	t, err := strconv.Atoi(scan.Text())
+	if err != nil {
+		return nil, fmt.Errorf("bad test count: %v", err)
+	}
+	var cases []testcase
+	for i := 0; i < t; i++ {
+		if !scan.Scan() {
+			return nil, fmt.Errorf("case %d missing n", i+1)
+		}
+		n, err := strconv.Atoi(scan.Text())
+		if err != nil {
+			return nil, fmt.Errorf("case %d bad n: %v", i+1, err)
+		}
+		if !scan.Scan() {
+			return nil, fmt.Errorf("case %d missing string", i+1)
+		}
+		s := scan.Text()
+		cases = append(cases, testcase{n: n, s: s})
+	}
+	return cases, nil
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("usage: go run verifierD.go /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesD.txt")
+	exe := os.Args[1]
+
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Println("could not read testcasesD.txt:", err)
+		fmt.Println("failed to parse embedded testcases:", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	for caseIdx := 0; caseIdx < t; caseIdx++ {
-		scan.Scan()
-		n, _ := strconv.Atoi(scan.Text())
-		scan.Scan()
-		s := scan.Text()
-		expected := solveCase(n, s)
-		input := fmt.Sprintf("%d\n%s\n", n, s)
-		out, err := runCandidate(os.Args[1], []byte(input))
+
+	for caseIdx, tc := range cases {
+		expected := solveCase(tc.n, tc.s)
+		input := fmt.Sprintf("%d\n%s\n", tc.n, tc.s)
+		out, err := runCandidate(exe, []byte(input))
 		if err != nil {
 			fmt.Printf("case %d failed: %v\n", caseIdx+1, err)
 			os.Exit(1)

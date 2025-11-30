@@ -1,13 +1,116 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
+
+// Embedded copy of testcasesA.txt so the verifier is self-contained.
+const testcasesRaw = `100
+NLTHUGXBPQBT
+LQRCFO
+SHOTHNLCXVJ
+FPENLWQTT
+HRMUVA
+WAVASL
+PEWBGXI
+GLHJITBOWDPZDEMD
+K
+NZZJKGUAZHRWWMLISH
+PAOLJL
+AFKOXFK
+EJRLUFXRZAFRYEVCB
+OQUGMIVJWCKBTEPTYP
+DBZUNXKNFM
+NJCEENQN
+FNN
+MGSYVQABFRQUC
+PETSUMHJCJXGWR
+FARWLGS
+ZLFJXZQDGNOEXOS
+JOCQEDPG
+YLSIUDZSKHIPEXPL
+WUUKXFXDTSDGYSWAAV
+CIXSKLLLOPITDW
+FEEZFPGPKMUEYNPQ
+CYLXMVQAC
+YLNCNTGKJGD
+RHVZALFYGAMYHHQKYXHI
+MAESXASNVSKA
+HKZRAJHYHLXNPVR
+CFULLSGZHANSJBSF
+SLTF
+KH
+TXYHNE
+GVHGGRLYI
+JOTFWGQAWICHY
+NF
+XQZF
+DBCHSESPPU
+IBDKC
+UYGKZQQHTRBGSPIXQTE
+XMM
+VBQQNFRV
+QLRYOMQEQTJMMWG
+JZVYFFVWVXIDJSODBJP
+SRNFSCOGK
+CJHEOZACCLMWDPVDTQ
+BCNVFWSCAFHLEORRRMNN
+TLSFSUZMPFNWLUPOK
+VQTHRKLXISIXDIPSRYGV
+UHXVW
+WWRZQKKNZJQI
+N
+KU
+PGBSS
+QIGDGFOLHNROSNLLDFK
+RSGIFBCMJAFB
+AZPQQMDVXVX
+H
+GQSGCUANSNSFCGWARKT
+XAQRVRJQJA
+ULNDFXRPNN
+YY
+ABB
+EXGMXJEPTE
+NWMVCWRIBZERSJVUEDRT
+URQRER
+QRHZZGWZG
+UQIFSFNW
+ILMERV
+WYBERHPZLTPWZLF
+ZDIHVHVWM
+EE
+BGA
+M
+IOKOFRB
+MYXILTMNYIEBKVCAOLIA
+DYXYKYAEYJPONZULA
+FU
+PV
+VHGKQBXVWIPOMFUH
+HXX
+L
+UQXAZPUHAASZVCYISV
+HOQADLITQA
+QEDZJQMMULMC
+XDDZNXXKEMZSFNOCXBRJ
+CLXVT
+NTDWNGFCVNNBHNCSHRR
+ICDQ
+DSTDPQFSVXKZAJN
+OIWFPMZSNWUYVK
+YUAKCNQWFHGZMBBWTX
+VLYIZFCVZSKKYBOMCBB
+INVCHRORDERETWRGQGM
+HVTNVHTADIPPBW
+FTPYDQNWDFQDZR
+THLBZROJKTWOUGZK
+RABLIQGZHFYQEJX`
 
 func solveCase(s string) string {
 	vowels := map[byte]bool{'A': true, 'E': true, 'I': true, 'O': true, 'U': true, 'Y': true}
@@ -45,30 +148,37 @@ func runCase(exe string, input string, expected string) error {
 	return nil
 }
 
+func parseTestcases() ([]string, error) {
+	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
+	if len(lines) == 0 {
+		return nil, fmt.Errorf("no testcases found")
+	}
+	t, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+	if err != nil {
+		return nil, fmt.Errorf("parse t: %w", err)
+	}
+	if len(lines)-1 < t {
+		return nil, fmt.Errorf("expected %d cases, found %d", t, len(lines)-1)
+	}
+	cases := make([]string, 0, t)
+	for i := 0; i < t; i++ {
+		cases = append(cases, strings.TrimSpace(lines[i+1]))
+	}
+	return cases, nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("Usage: go run verifierA.go /path/to/binary")
 		os.Exit(1)
 	}
 	exe := os.Args[1]
-	data, err := os.ReadFile("testcasesA.txt")
+	cases, err := parseTestcases()
 	if err != nil {
-		fmt.Println("could not read testcasesA.txt:", err)
+		fmt.Println("failed to load embedded testcases:", err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t := 0
-	fmt.Sscan(scan.Text(), &t)
-	for i := 0; i < t; i++ {
-		if !scan.Scan() {
-			fmt.Println("unexpected EOF")
-			os.Exit(1)
-		}
-		s := scan.Text()
+	for i, s := range cases {
 		input := fmt.Sprintf("%s\n", s)
 		exp := solveCase(s)
 		if err := runCase(exe, input, exp); err != nil {

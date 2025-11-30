@@ -7,7 +7,7 @@ import (
 
 func main() {
 	var s string
-	if err := fmt.Fscan(os.Stdin, &s); err != nil {
+	if _, err := fmt.Fscan(os.Stdin, &s); err != nil {
 		return
 	}
 	res, num, op := 0, 0, 1

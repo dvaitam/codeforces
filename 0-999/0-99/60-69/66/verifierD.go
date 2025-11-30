@@ -4,11 +4,112 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"math/big"
 	"os"
 	"os/exec"
 	"strings"
 )
+
+// Embedded testcases (one n per line).
+const embeddedTestcases = `17
+39
+36
+10
+25
+40
+32
+42
+39
+6
+40
+2
+32
+18
+37
+16
+14
+47
+32
+36
+37
+32
+27
+42
+11
+16
+42
+11
+35
+26
+49
+2
+44
+6
+12
+50
+39
+4
+21
+3
+19
+32
+40
+48
+26
+47
+29
+27
+48
+38
+30
+10
+25
+8
+4
+10
+33
+15
+18
+45
+29
+42
+21
+28
+34
+26
+38
+24
+36
+39
+28
+39
+16
+23
+45
+3
+19
+40
+44
+46
+12
+46
+22
+36
+38
+38
+8
+47
+43
+15
+42
+38
+19
+20
+9
+6
+32
+42
+32
+7`
 
 func run(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
@@ -23,55 +124,18 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func gcd(a, b *big.Int) *big.Int {
-	var g big.Int
-	return g.GCD(nil, nil, a, b)
-}
-
-func checkSolution(n int, tokens []string) error {
+// Embedded reference solution (adapted from 66D.go).
+func solve(n int) []string {
 	if n == 2 {
-		if len(tokens) != 1 || strings.TrimSpace(tokens[0]) != "-1" {
-			return fmt.Errorf("expected -1 for n=2")
-		}
-		return nil
+		return []string{"-1"}
 	}
-	if len(tokens) != n {
-		return fmt.Errorf("expected %d numbers, got %d", n, len(tokens))
+	res := make([]string, 0, n)
+	res = append(res, "10")
+	res = append(res, "15")
+	for i := 2; i < n; i++ {
+		res = append(res, fmt.Sprint(i*6-6))
 	}
-	nums := make([]*big.Int, n)
-	seen := make(map[string]struct{})
-	for i, t := range tokens {
-		if len(t) > 100 {
-			return fmt.Errorf("number %d too long", i+1)
-		}
-		if strings.HasPrefix(t, "0") && t != "0" {
-			return fmt.Errorf("number %d has leading zeros", i+1)
-		}
-		z, ok := new(big.Int).SetString(t, 10)
-		if !ok || z.Sign() <= 0 {
-			return fmt.Errorf("invalid integer %q", t)
-		}
-		nums[i] = z
-		if _, ok := seen[z.String()]; ok {
-			return fmt.Errorf("numbers not distinct")
-		}
-		seen[z.String()] = struct{}{}
-	}
-	totalGCD := new(big.Int).Set(nums[0])
-	for i := 1; i < n; i++ {
-		totalGCD = gcd(totalGCD, nums[i])
-	}
-	if totalGCD.Cmp(big.NewInt(1)) != 0 {
-		return fmt.Errorf("gcd of all numbers not 1")
-	}
-	for i := 0; i < n; i++ {
-		for j := i + 1; j < n; j++ {
-			if gcd(new(big.Int).Set(nums[i]), nums[j]).Cmp(big.NewInt(1)) == 0 {
-				return fmt.Errorf("gcd of pair %d,%d is 1", i+1, j+1)
-			}
-		}
-	}
-	return nil
+	return res
 }
 
 func main() {
@@ -80,13 +144,8 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesD.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
+
+	scanner := bufio.NewScanner(strings.NewReader(embeddedTestcases))
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -103,8 +162,20 @@ func main() {
 			os.Exit(1)
 		}
 		outTokens := strings.Fields(got)
-		if err := checkSolution(n, outTokens); err != nil {
-			fmt.Printf("case %d failed: %v\n", idx, err)
+		expect := solve(n)
+		if len(outTokens) != len(expect) {
+			fmt.Printf("case %d failed: expected %d numbers got %d\n", idx, len(expect), len(outTokens))
+			os.Exit(1)
+		}
+		ok := true
+		for i := range expect {
+			if outTokens[i] != expect[i] {
+				ok = false
+				break
+			}
+		}
+		if !ok {
+			fmt.Printf("case %d failed: expected %v got %v\n", idx, expect, outTokens)
 			os.Exit(1)
 		}
 	}
