@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -111,39 +113,24 @@ var rawTestcases = []string{
 	"5\n0 0 0\n1 0 0\n1 0 0\n0 0 1\n0 1 1",
 }
 
-func solveCaseA(n int, tri [][3]int) int {
-	cnt := 0
-	for _, t := range tri {
-		if t[0]+t[1]+t[2] >= 2 {
-			cnt++
+// solve231A mirrors the reference solution from 231A.go using an in-memory reader.
+func solve231A(input string) (string, error) {
+	reader := bufio.NewReader(strings.NewReader(input))
+	var n int
+	if _, err := fmt.Fscan(reader, &n); err != nil {
+		return "", err
+	}
+	ans := 0
+	for i := 0; i < n; i++ {
+		var a, b, c int
+		if _, err := fmt.Fscan(reader, &a, &b, &c); err != nil {
+			return "", err
+		}
+		if a+b+c >= 2 {
+			ans++
 		}
 	}
-	return cnt
-}
-
-func parseCase(input string) (int, [][3]int, error) {
-	fields := strings.Fields(input)
-	if len(fields) == 0 {
-		return 0, nil, fmt.Errorf("empty case")
-	}
-	idx := 0
-	n, err := strconv.Atoi(fields[idx])
-	if err != nil {
-		return 0, nil, fmt.Errorf("invalid n: %v", err)
-	}
-	idx++
-	if len(fields) != 1+3*n {
-		return 0, nil, fmt.Errorf("expected %d numbers, got %d", 1+3*n, len(fields))
-	}
-	tri := make([][3]int, n)
-	for i := 0; i < n; i++ {
-		a, _ := strconv.Atoi(fields[idx])
-		b, _ := strconv.Atoi(fields[idx+1])
-		c, _ := strconv.Atoi(fields[idx+2])
-		idx += 3
-		tri[i] = [3]int{a, b, c}
-	}
-	return n, tri, nil
+	return strconv.Itoa(ans), nil
 }
 
 func runCase(bin string, input string) (string, error) {
@@ -152,29 +139,27 @@ func runCase(bin string, input string) (string, error) {
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		return "", err
 	}
 	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("usage: go run verifierA.go /path/to/binary")
+	if len(os.Args) != 2 {
+		fmt.Println("usage: verifierA /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	for idx, tcStr := range rawTestcases {
-		n, tri, err := parseCase(tcStr)
+	for idx, tc := range rawTestcases {
+		expected, err := solve231A(tc)
 		if err != nil {
-			fmt.Printf("case %d invalid: %v\n", idx+1, err)
+			fmt.Printf("case %d parse error: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		expected := fmt.Sprintf("%d", solveCaseA(n, tri))
-		got, err := runCase(bin, tcStr+"\n")
+		got, err := runCase(bin, tc+"\n")
 		if err != nil {
-			fmt.Printf("case %d failed: %v\n", idx+1, err)
+			fmt.Printf("case %d execution failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
 		if got != expected {

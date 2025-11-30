@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// Testcases are embedded directly so the verifier does not depend on external files.
 var rawTestcases = []string{
 	"WUBWUBBIQPWUBZJPLWUBQEWUBEYDWUB",
 	"WUBJDWUBVWUBPRDWUBNKWUBTWUBRPWUBWUB",
@@ -111,13 +112,18 @@ var rawTestcases = []string{
 	"WUBYOWUBBUWUBUQWUWUBBY",
 }
 
-func expectedOutput(s string) string {
+// remixSong is the embedded solution from 208A.go, adapted to work on a single line.
+func remixSong(input string) string {
+	s := strings.TrimSpace(input)
 	parts := strings.Split(s, "WUB")
 	words := make([]string, 0, len(parts))
 	for _, p := range parts {
 		if p != "" {
 			words = append(words, p)
 		}
+	}
+	if len(words) == 0 {
+		return ""
 	}
 	return strings.Join(words, " ")
 }
@@ -129,7 +135,7 @@ func main() {
 	}
 	bin := os.Args[1]
 	for idx, line := range rawTestcases {
-		expect := expectedOutput(line)
+		expect := remixSong(line)
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(line + "\n")
 		var out bytes.Buffer

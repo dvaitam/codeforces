@@ -112,14 +112,16 @@ var rawTestcases = []string{
 	"770220931 791417 793890 2166",
 }
 
-func maxT(l, r, k int64) int64 {
-	ans := int64(1)
+// solution embeds the logic from 226C.go so the verifier has no external dependencies.
+func solution(m, l, r, k int64) int64 {
+	var ans int64 = 1
 	t := int64(1)
 	lm1 := l - 1
 	for t <= r {
 		ur := r / t
 		ul := lm1 / t
 		cnt := ur - ul
+		// compute next change point
 		next1 := r/ur + 1
 		var next2 int64
 		if ul > 0 {
@@ -132,6 +134,7 @@ func maxT(l, r, k int64) int64 {
 			next = next2
 		}
 		if cnt >= k {
+			// any t' in [t, next-1] is valid, take the max
 			cand := next - 1
 			if cand > ans {
 				ans = cand
@@ -139,34 +142,33 @@ func maxT(l, r, k int64) int64 {
 		}
 		t = next
 	}
-	return ans
-}
-
-func fibMod(n, mod int64) int64 {
-	var rec func(n int64) (int64, int64)
-	rec = func(n int64) (int64, int64) {
+	// compute fibonacci(ans) mod m via fast doubling
+	var fib func(n int64) (int64, int64)
+	fib = func(n int64) (int64, int64) {
 		if n == 0 {
 			return 0, 1
 		}
-		a, b := rec(n >> 1)
-		t1 := (2*b - a) % mod
+		a, b := fib(n >> 1)
+		// c = F(2k) = F(k)*(2*F(k+1) - F(k))
+		t1 := (2*b - a) % m
 		if t1 < 0 {
-			t1 += mod
+			t1 += m
 		}
-		c := (a * t1) % mod
-		d := (a*a + b*b) % mod
+		c := (a * t1) % m
+		// d = F(2k+1) = F(k)^2 + F(k+1)^2
+		d := (a*a + b*b) % m
 		if n&1 == 0 {
 			return c, d
 		}
-		return d, (c + d) % mod
+		// for odd: F(n) = d, F(n+1) = c+d
+		return d, (c + d) % m
 	}
-	f, _ := rec(n)
-	return f % mod
+	res, _ := fib(ans)
+	return res % m
 }
 
 func expected(m, l, r, k int64) int64 {
-	t := maxT(l, r, k)
-	return fibMod(t, m)
+	return solution(m, l, r, k)
 }
 
 func runCase(bin string, m, l, r, k int64) error {

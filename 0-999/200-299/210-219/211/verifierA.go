@@ -1,116 +1,129 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 )
 
-var rawTestcases = []string{
-	"4 4 1 3 4 4",
-	"3 4 3 2 3 2 1 3 2 2",
-	"2 3 1 1 2 2",
-	"1 3 2 3 1 2 1 3",
-	"3 1 3 1 3 1 1 1 2 1",
-	"3 1 1 2 1 1",
-	"4 1 1 3 4 1",
-	"3 3 1 3 3 1",
-	"3 4 1 4 2 2",
-	"3 2 2 2 1 2 2 1",
-	"1 2 1 1 1 2",
-	"3 2 2 4 3 2 2 2",
-	"3 1 2 1 1 1 2 1",
-	"1 3 1 2 1 1",
-	"3 4 1 1 1 2",
-	"1 1 1 1 1 1",
-	"4 1 3 1 3 1 1 1 2 1",
-	"2 1 2 1 1 1 2 1",
-	"2 2 1 2 1 2",
-	"3 1 3 4 3 1 1 1 2 1",
-	"2 1 2 1 1 1 2 1",
-	"3 3 3 2 2 3 3 2 1 1",
-	"2 3 2 2 1 3 2 2",
-	"4 1 4 4 3 1 1 1 4 1 2 1",
-	"2 1 2 4 1 1 2 1",
-	"1 1 1 1 1 1",
-	"3 2 1 4 2 1",
-	"1 3 2 1 1 1 1 2",
-	"1 1 1 2 1 1",
-	"3 1 3 4 3 1 1 1 2 1",
-	"3 1 1 2 2 1",
-	"3 3 1 3 3 1",
-	"1 3 1 2 1 2",
-	"4 2 3 1 1 2 4 1 2 1",
-	"3 4 3 3 2 3 2 1 1 4",
-	"3 1 2 1 3 1 2 1",
-	"3 3 2 2 2 3 3 3",
-	"1 1 1 2 1 1",
-	"4 1 1 4 3 1",
-	"4 2 4 1 3 1 1 1 1 2 4 1",
-	"4 3 2 1 2 3 2 1",
-	"2 4 4 3 2 3 1 1 2 4 2 2",
-	"4 4 2 2 3 3 1 3",
-	"1 2 2 2 1 1 1 2",
-	"1 1 1 2 1 1",
-	"3 1 2 3 3 1 1 1",
-	"3 4 1 1 3 1",
-	"4 2 3 4 1 1 2 1 4 2",
-	"3 3 3 1 3 1 1 1 2 2",
-	"2 3 3 1 2 3 1 2 2 1",
-	"1 2 2 4 1 1 1 2",
-	"4 2 1 1 2 2",
-	"1 3 1 4 1 1",
-	"1 4 3 1 1 2 1 3 1 4",
-	"4 3 2 4 1 1 3 3",
-	"1 4 3 1 1 1 1 2 1 4",
-	"2 4 4 1 1 1 2 4 1 4 2 2",
-	"1 4 3 3 1 1 1 2 1 3",
-	"2 1 1 1 1 1",
-	"3 1 3 2 3 1 1 1 2 1",
-	"2 1 1 3 2 1",
-	"3 3 3 2 3 1 3 2 1 3",
-	"2 4 2 2 1 2 1 3",
-	"2 3 3 4 1 1 1 2 1 3",
-	"1 2 2 3 1 1 1 2",
-	"3 1 1 4 3 1",
-	"1 4 4 1 1 1 1 2 1 3 1 4",
-	"4 2 4 4 4 1 2 1 4 2 2 2",
-	"4 2 3 1 3 1 1 1 4 2",
-	"3 2 4 4 3 1 1 2 2 1 2 2",
-	"4 1 3 3 3 1 1 1 2 1",
-	"4 3 3 2 2 3 1 2 4 3",
-	"3 3 4 3 1 2 1 1 3 3 1 3",
-	"4 4 2 3 3 4 4 2",
-	"4 4 3 4 3 2 4 1 1 4",
-	"2 1 2 4 1 1 2 1",
-	"4 1 3 1 3 1 1 1 2 1",
-	"3 2 1 4 2 2",
-	"4 2 3 4 3 1 4 1 2 1",
-	"4 3 4 4 1 2 4 1 2 1 4 2",
-	"1 2 1 2 1 1",
-	"2 2 3 1 1 2 2 1 2 2",
-	"1 1 1 3 1 1",
-	"1 2 1 4 1 2",
-	"2 4 2 3 2 3 1 1",
-	"4 3 3 1 3 1 1 1 2 3",
-	"3 2 2 3 3 2 2 2",
-	"3 4 3 2 3 1 1 3 1 4",
-	"4 4 1 4 4 4",
-	"4 1 1 1 2 1",
-	"2 4 2 4 2 1 1 4",
-	"2 2 4 2 1 1 1 2 2 1 2 2",
-	"1 2 2 2 1 1 1 2",
-	"4 3 1 3 2 3",
-	"3 2 2 1 3 2 1 2",
-	"4 3 2 2 3 2 1 3",
-	"1 2 2 2 1 1 1 2",
-	"3 2 4 1 3 1 3 2 2 1 2 2",
-	"2 2 4 4 1 1 1 2 2 1 2 2",
-	"3 2 3 1 3 1 1 1 2 1",
-}
+const rawTestcasesData = `
+4 4 1 3 4 4
+3 4 3 2 3 2 1 3 2 2
+2 3 1 1 2 2
+1 3 2 3 1 2 1 3
+3 1 3 1 3 1 1 1 2 1
+3 1 1 2 1 1
+4 1 1 3 4 1
+3 3 1 3 3 1
+3 4 1 4 2 2
+3 2 2 2 1 2 2 1
+1 2 1 1 1 2
+3 2 2 4 3 2 2 2
+3 1 2 1 1 1 2 1
+1 3 1 2 1 1
+3 4 1 1 1 2
+1 1 1 1 1 1
+4 1 3 1 3 1 1 1 2 1
+2 1 2 1 1 1 2 1
+2 2 1 2 1 2
+3 1 3 4 3 1 1 1 2 1
+2 1 2 1 1 1 2 1
+3 3 3 2 2 3 3 2 1 1
+2 3 2 2 1 3 2 2
+4 1 4 4 3 1 1 1 4 1 2 1
+2 1 2 4 1 1 2 1
+1 1 1 1 1 1
+3 2 1 4 2 1
+1 3 2 1 1 1 1 2
+1 1 1 2 1 1
+3 1 3 4 3 1 1 1 2 1
+3 1 1 2 2 1
+3 3 1 3 3 1
+1 3 1 2 1 2
+4 2 3 1 1 2 4 1 2 1
+3 4 3 3 2 3 2 1 1 4
+3 1 2 1 3 1 2 1
+3 3 2 2 2 3 3 3
+1 1 1 2 1 1
+4 1 1 4 3 1
+4 2 4 1 3 1 1 1 1 2 4 1
+4 3 2 1 2 3 2 1
+2 4 4 3 2 3 1 1 2 4 2 2
+4 4 2 2 3 3 1 3
+1 2 2 2 1 1 1 2
+1 1 1 2 1 1
+3 1 2 3 3 1 1 1
+3 4 1 1 3 1
+4 2 3 4 1 1 2 1 4 2
+3 3 3 1 3 1 1 1 2 2
+2 3 3 1 2 3 1 2 2 1
+1 2 2 4 1 1 1 2
+4 2 1 1 2 2
+1 3 1 4 1 1
+1 4 3 1 1 2 1 3 1 4
+4 3 2 4 1 1 3 3
+1 4 3 1 1 1 1 2 1 4
+2 4 4 1 1 1 2 4 1 4 2 2
+1 4 3 3 1 1 1 2 1 3
+2 1 1 1 1 1
+3 1 3 2 3 1 1 1 2 1
+2 1 1 3 2 1
+3 3 3 2 3 1 3 2 1 3
+2 4 2 2 1 2 1 3
+2 3 3 4 1 1 1 2 1 3
+1 2 2 3 1 1 1 2
+3 1 1 4 3 1
+1 4 4 1 1 1 1 2 1 3 1 4
+4 2 4 4 4 1 2 1 4 2 2 2
+4 2 3 1 3 1 1 1 4 2
+3 2 4 4 3 1 1 2 2 1 2 2
+4 1 3 3 3 1 1 1 2 1
+4 3 3 2 2 3 1 2 4 3
+3 3 4 3 1 2 1 1 3 3 1 3
+4 4 2 3 3 4 4 2
+4 4 3 4 3 2 4 1 1 4
+2 1 2 4 1 1 2 1
+4 1 3 1 3 1 1 1 2 1
+3 2 1 4 2 2
+4 2 3 4 3 1 4 1 2 1
+4 3 4 4 1 2 4 1 2 1 4 2
+1 2 1 2 1 1
+2 2 3 1 1 2 2 1 2 2
+1 1 1 3 1 1
+1 2 1 4 1 2
+2 4 2 3 2 3 1 1
+4 3 3 1 3 1 1 1 2 3
+3 2 2 3 3 2 2 2
+3 4 3 2 3 1 1 3 1 4
+4 4 1 4 4 4
+4 1 1 1 2 1
+2 4 2 4 2 1 1 4
+2 2 4 2 1 1 1 2 2 1 2 2
+1 2 2 2 1 1 1 2
+4 3 1 3 2 3
+3 2 2 1 3 2 1 2
+4 3 2 2 3 2 1 3
+1 2 2 2 1 1 1 2
+3 2 4 1 3 1 3 2 2 1 2 2
+2 2 4 4 1 1 1 2 2 1 2 2
+3 2 3 1 3 1 1 1 2 1
+`
+
+var rawTestcases = func() []string {
+	lines := strings.Split(strings.TrimSpace(rawTestcasesData), "\n")
+	out := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		out = append(out, line)
+	}
+	return out
+}()
 
 // Dinic maxflow implementation (embedded from solution)
 type edge struct{ to, rev, cap int }
@@ -263,38 +276,23 @@ func roundMatrix(d []int, ksum []int, t int) [][]int {
 	return A
 }
 
-func solveCase(line string) (string, error) {
-	fields := strings.Fields(line)
-	if len(fields) < 4 {
-		return "", fmt.Errorf("invalid input")
-	}
-	idx := 0
-	n, _ := strconv.Atoi(fields[idx])
-	idx++
-	m, _ := strconv.Atoi(fields[idx])
-	idx++
-	k, _ := strconv.Atoi(fields[idx])
-	idx++
-	t, _ := strconv.Atoi(fields[idx])
-	idx++
-	if len(fields) != 4+2*k {
-		return "", fmt.Errorf("invalid edge count")
+func runReference(reader *bufio.Reader, writer *bufio.Writer) error {
+	var n, m, k, t int
+	if _, err := fmt.Fscan(reader, &n, &m, &k, &t); err != nil {
+		return fmt.Errorf("failed to read header: %w", err)
 	}
 	xs := make([]int, k)
 	ys := make([]int, k)
 	degL := make([]int, n)
 	degR := make([]int, m)
 	for i := 0; i < k; i++ {
-		x, _ := strconv.Atoi(fields[idx])
-		idx++
-		y, _ := strconv.Atoi(fields[idx])
-		idx++
-		x--
-		y--
-		xs[i] = x
-		ys[i] = y
-		degL[x]++
-		degR[y]++
+		if _, err := fmt.Fscan(reader, &xs[i], &ys[i]); err != nil {
+			return fmt.Errorf("failed to read edge %d: %w", i, err)
+		}
+		xs[i]--
+		ys[i]--
+		degL[xs[i]]++
+		degR[ys[i]]++
 	}
 	ksum := make([]int, t)
 	base := k / t
@@ -390,10 +388,19 @@ func solveCase(line string) (string, error) {
 			uneven = mx - mn
 		}
 	}
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d\n", uneven))
+	fmt.Fprintln(writer, uneven)
 	for i := 0; i < k; i++ {
-		sb.WriteString(fmt.Sprintf("%d ", col[i]))
+		fmt.Fprint(writer, col[i], " ")
+	}
+	return writer.Flush()
+}
+
+func solveCase(line string) (string, error) {
+	reader := bufio.NewReader(strings.NewReader(line))
+	var sb strings.Builder
+	writer := bufio.NewWriter(&sb)
+	if err := runReference(reader, writer); err != nil {
+		return "", err
 	}
 	return strings.TrimSpace(sb.String()), nil
 }
