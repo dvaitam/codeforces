@@ -10,7 +10,6 @@ import (
 )
 
 const mod = 1 << 30
-const maxN = 1000000
 
 var rawTestcases = []string{
 	"3 10 2",
@@ -115,24 +114,23 @@ var rawTestcases = []string{
 	"7 3 3",
 }
 
-var divisors []int
-
-func init() {
-	divisors = make([]int, maxN+1)
-	for i := 1; i <= maxN; i++ {
-		for j := i; j <= maxN; j += i {
-			divisors[j]++
+func solution(a, b, c int) int {
+	N := a * b * c
+	d := make([]int, N+1)
+	for i := 1; i <= N; i++ {
+		for j := i; j <= N; j += i {
+			d[j]++
 		}
 	}
-}
-
-func solve(a, b, c int) int {
 	var sum int64
 	for i := 1; i <= a; i++ {
 		for j := 1; j <= b; j++ {
 			ij := i * j
 			for k := 1; k <= c; k++ {
-				sum += int64(divisors[ij*k])
+				sum += int64(d[ij*k])
+				if sum >= mod {
+					sum %= mod
+				}
 			}
 		}
 	}
@@ -155,7 +153,7 @@ func main() {
 		a, _ := strconv.Atoi(fields[0])
 		b, _ := strconv.Atoi(fields[1])
 		c, _ := strconv.Atoi(fields[2])
-		want := solve(a, b, c)
+		want := solution(a, b, c)
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(fmt.Sprintf("%d %d %d\n", a, b, c))
 		var out bytes.Buffer

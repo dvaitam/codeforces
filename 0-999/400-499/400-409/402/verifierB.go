@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,7 +15,8 @@ type testcase struct {
 	arr []int
 }
 
-const testcasesRaw = `2 3
+// Testcases embedded from testcasesB.txt (one case per line, n k then n numbers).
+const rawTestcases = `2 3
 7 6
 5 4
 2 2 9 8 8
@@ -307,13 +309,15 @@ func main() {
 
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(sb.String())
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n%s", idx+1, err, string(out))
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n%s", idx+1, err, out.String())
 			os.Exit(1)
 		}
 
-		got := strings.TrimSpace(string(out))
+		got := strings.TrimSpace(out.String())
 		if got != expected {
 			fmt.Fprintf(os.Stderr, "test %d failed\nexpected:\n%s\n got:\n%s\n", idx+1, expected, got)
 			os.Exit(1)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -10,108 +11,264 @@ import (
 	"strings"
 )
 
-var rawTestcases = []string{
-	"2 1 1 2",
-	"3 3 1 2 1 3 2 3",
-	"4 4 2 4 1 2 1 3 3 4",
-	"6 7 1 6 2 3 3 5 1 4 2 4 4 5 3 4",
-	"4 6 1 3 2 3 1 2 2 4 3 4 1 4",
-	"3 3 1 2 1 3 2 3",
-	"5 7 1 2 1 3 2 5 4 5 2 4 3 5 1 5",
-	"6 9 5 6 1 2 4 6 2 3 1 4 1 3 2 5 4 5 1 5",
-	"6 7 1 3 3 4 3 6 1 2 2 4 1 4 1 5",
-	"5 8 4 5 2 5 3 4 2 4 1 4 3 5 2 3 1 5",
-	"3 3 1 2 1 3 2 3",
-	"2 1 1 2",
-	"2 1 1 2",
-	"4 5 1 2 3 4 1 4 2 4 2 3",
-	"2 1 1 2",
-	"2 1 1 2",
-	"3 3 2 3 1 3 1 2",
-	"3 3 2 3 1 2 1 3",
-	"3 2 2 3 1 3",
-	"6 8 4 5 2 3 1 4 1 3 2 5 1 6 3 6 4 6",
-	"4 5 2 3 1 2 3 4 1 3 2 4",
-	"3 3 1 2 2 3 1 3",
-	"5 8 1 4 3 4 2 5 1 3 1 5 1 2 3 5 2 3",
-	"5 8 3 5 1 4 1 2 1 5 2 3 1 3 2 4 2 5",
-	"2 1 1 2",
-	"5 4 3 5 4 5 1 5 2 4",
-	"2 1 1 2",
-	"3 3 2 3 1 3 1 2",
-	"5 7 2 3 3 4 2 5 1 3 1 5 3 5 4 5",
-	"2 1 1 2",
-	"6 6 3 6 2 5 5 6 1 3 3 5 1 5",
-	"6 5 2 4 2 3 5 6 3 5 1 2",
-	"4 3 1 4 2 3 1 2",
-	"4 4 2 4 3 4 2 3 1 2",
-	"4 3 2 4 1 2 1 3",
-	"4 6 1 2 1 3 1 4 2 4 3 4 2 3",
-	"6 5 2 5 4 6 1 6 3 6 3 4",
-	"6 6 1 2 1 3 1 4 1 5 4 5 2 6",
-	"6 9 4 5 1 4 1 3 3 5 2 5 3 4 1 6 1 5 5 6",
-	"3 2 1 3 1 2",
-	"2 1 1 2",
-	"2 1 1 2",
-	"3 3 1 2 2 3 1 3",
-	"5 4 1 3 3 5 2 3 1 4",
-	"5 7 1 3 3 4 1 2 1 5 2 3 4 5 2 4",
-	"6 7 3 6 1 2 4 5 2 4 1 3 1 6 1 5",
-	"5 8 3 4 1 2 2 4 2 5 4 5 1 3 1 4 3 5",
-	"4 5 3 4 2 3 1 2 1 4 1 3",
-	"6 5 1 6 1 2 1 5 5 6 2 4",
-	"6 6 1 3 3 5 5 6 1 2 1 4 3 4",
-	"6 5 1 2 3 5 3 6 5 6 2 4",
-	"2 1 1 2",
-	"4 6 1 2 2 4 3 4 2 3 1 4 1 3",
-	"4 3 3 4 2 3 1 4",
-	"6 6 5 6 3 5 1 6 4 6 1 4 2 4",
-	"6 8 2 5 3 6 1 2 2 4 2 3 1 3 4 6 4 5",
-	"4 4 3 4 2 3 1 2 1 4",
-	"5 4 3 4 2 4 2 5 1 3",
-	"6 8 1 3 2 6 2 4 2 5 5 6 4 5 2 3 3 5",
-	"6 5 1 6 5 6 2 4 3 4 1 3",
-	"4 4 1 2 1 3 3 4 2 4",
-	"4 3 1 4 1 3 3 4",
-	"6 7 1 5 3 4 1 2 4 5 1 6 2 3 3 6",
-	"5 4 2 3 3 4 3 5 1 3",
-	"4 4 1 4 1 3 1 2 3 4",
-	"5 5 2 4 1 4 3 4 3 5 1 5",
-	"3 3 2 3 1 3 1 2",
-	"2 1 1 2",
-	"6 7 1 2 2 3 4 5 3 5 2 4 3 4 1 6",
-	"5 8 2 5 2 3 1 5 3 4 3 5 1 3 1 4 2 4",
-	"3 2 1 3 2 3",
-	"5 4 1 2 4 5 3 5 1 5",
-	"6 7 1 4 1 6 1 2 3 6 4 5 2 6 2 4",
-	"3 2 1 2 1 3",
-	"2 1 1 2",
-	"4 5 1 3 2 3 2 4 1 4 1 2",
-	"6 9 3 4 2 3 1 6 1 3 2 5 2 6 1 5 1 4 1 2",
-	"5 5 4 5 2 5 1 2 1 3 3 4",
-	"5 6 1 3 2 4 2 3 1 5 3 4 1 2",
-	"2 1 1 2",
-	"5 8 4 5 1 4 1 3 2 5 2 3 2 4 3 4 1 2",
-	"4 3 1 3 1 4 1 2",
-	"6 9 3 5 4 6 5 6 2 4 1 6 2 3 1 3 3 4 1 2",
-	"6 5 5 6 3 5 2 3 2 4 1 2",
-	"4 5 2 4 1 2 1 3 2 3 3 4",
-	"3 2 1 3 2 3",
-	"3 3 1 3 1 2 2 3",
-	"4 5 1 3 3 4 2 4 2 3 1 4",
-	"6 6 3 6 4 5 1 2 4 6 1 4 2 3",
-	"5 5 2 3 3 5 1 3 1 5 1 4",
-	"2 1 1 2",
-	"2 1 1 2",
-	"4 4 1 2 1 4 3 4 2 4",
-	"6 7 3 4 4 5 1 3 5 6 3 5 2 4 2 6",
-	"6 8 3 5 3 4 1 2 1 6 2 6 2 5 5 6 4 5",
-	"5 8 3 5 1 4 4 5 3 4 1 5 2 3 1 2 1 3",
-	"5 8 1 4 1 3 2 3 3 5 1 2 4 5 2 4 2 5",
-	"3 2 1 2 2 3",
-	"6 9 2 5 1 6 3 4 2 6 1 5 4 6 2 4 4 5 1 3",
-	"5 6 1 3 3 4 2 4 4 5 1 2 2 5",
-}
+const embeddedSolutionSource = `package main
+
+import (
+   "bufio"
+   "fmt"
+   "os"
+   "sort"
+)
+
+type pair struct{ f, s int }
+
+func main() {
+   reader := bufio.NewReader(os.Stdin)
+   var n, m int
+   if _, err := fmt.Fscan(reader, &n, &m); err != nil {
+       return
+   }
+   v := make([][]int, n)
+   for i := 0; i < m; i++ {
+       var f, s int
+       fmt.Fscan(reader, &f, &s)
+       f--
+       s--
+       v[f] = append(v[f], s)
+       v[s] = append(v[s], f)
+   }
+   mod := 1 << 15
+   d1 := make([]int, n)
+   u1 := make([]bool, n)
+   for i := range d1 {
+       d1[i] = mod
+   }
+   d1[0], u1[0] = 0, true
+   queue1 := []int{0}
+   for len(queue1) > 0 {
+       p := queue1[0]
+       queue1 = queue1[1:]
+       for _, nei := range v[p] {
+           if !u1[nei] {
+               u1[nei] = true
+               d1[nei] = d1[p] + 1
+               queue1 = append(queue1, nei)
+           }
+       }
+   }
+   d2 := make([]int, n)
+   u2 := make([]bool, n)
+   for i := range d2 {
+       d2[i] = mod
+   }
+   d2[n-1], u2[n-1] = 0, true
+   queue2 := []int{n - 1}
+   for len(queue2) > 0 {
+       p := queue2[0]
+       queue2 = queue2[1:]
+       for _, nei := range v[p] {
+           if !u2[nei] {
+               u2[nei] = true
+               d2[nei] = d2[p] + 1
+               queue2 = append(queue2, nei)
+           }
+       }
+   }
+   d := make([][]int, n)
+   used := make([][]bool, n)
+   pf := make([][]int, n)
+   ps := make([][]int, n)
+   for i := 0; i < n; i++ {
+       d[i] = make([]int, n)
+       used[i] = make([]bool, n)
+       pf[i] = make([]int, n)
+       ps[i] = make([]int, n)
+       for j := 0; j < n; j++ {
+           d[i][j] = mod
+       }
+   }
+   queue := make([]pair, 0, n*n)
+   queue = append(queue, pair{0, n - 1})
+   used[0][n-1] = true
+   d[0][n-1] = 0
+   head := 0
+   found := false
+   for head < len(queue) && !found {
+       t := queue[head]
+       head++
+       t1, t2 := t.f, t.s
+       neigh1 := append([]int(nil), v[t1]...)
+       neigh2 := append([]int(nil), v[t2]...)
+       sort.Slice(neigh1, func(i, j int) bool { return d2[neigh1[i]] < d2[neigh1[j]] })
+       sort.Slice(neigh2, func(i, j int) bool { return d1[neigh2[i]] < d1[neigh2[j]] })
+       cnt1, cnt2 := 0, 0
+       i := 0
+       for cnt1 < 4 && i < len(neigh1) && !found {
+           j := 0
+           for cnt2 < 4 && j < len(neigh2) {
+               from, to := neigh1[i], neigh2[j]
+               if !used[from][to] && from != to {
+                   used[from][to] = true
+                   pf[from][to] = t1
+                   ps[from][to] = t2
+                   d[from][to] = d[t1][t2] + 1
+                   if from == n-1 && to == 0 {
+                       found = true
+                       break
+                   }
+                   queue = append(queue, pair{from, to})
+               }
+               j++
+               cnt2++
+           }
+           i++
+           cnt1++
+       }
+   }
+   if d[n-1][0] == mod {
+       fmt.Println(-1)
+       return
+   }
+   fmt.Println(d[n-1][0])
+   ansf := []int{}
+   anss := []int{}
+   curf, curs := n-1, 0
+   for curf != 0 || curs != 0 {
+       ansf = append(ansf, curf+1)
+       anss = append(anss, curs+1)
+       prevf, prevs := pf[curf][curs], ps[curf][curs]
+       curf, curs = prevf, prevs
+   }
+   for i := len(ansf) - 1; i >= 0; i-- {
+       fmt.Printf("%d ", ansf[i])
+   }
+   fmt.Println()
+   for i := len(anss) - 1; i >= 0; i-- {
+       fmt.Printf("%d ", anss[i])
+   }
+   fmt.Println()
+}`
+
+const testcasesRaw = `
+2 1 1 2
+3 3 1 2 1 3 2 3
+4 4 2 4 1 2 1 3 3 4
+6 7 1 6 2 3 3 5 1 4 2 4 4 5 3 4
+4 6 1 3 2 3 1 2 2 4 3 4 1 4
+3 3 1 2 1 3 2 3
+5 7 1 2 1 3 2 5 4 5 2 4 3 5 1 5
+6 9 5 6 1 2 4 6 2 3 1 4 1 3 2 5 4 5 1 5
+6 7 1 3 3 4 3 6 1 2 2 4 1 4 1 5
+5 8 4 5 2 5 3 4 2 4 1 4 3 5 2 3 1 5
+3 3 1 2 1 3 2 3
+2 1 1 2
+2 1 1 2
+4 5 1 2 3 4 1 4 2 4 2 3
+2 1 1 2
+2 1 1 2
+3 3 2 3 1 3 1 2
+3 3 2 3 1 2 1 3
+3 2 2 3 1 3
+6 8 4 5 2 3 1 4 1 3 2 5 1 6 3 6 4 6
+4 5 2 3 1 2 3 4 1 3 2 4
+3 3 1 2 2 3 1 3
+5 8 1 4 3 4 2 5 1 3 1 5 1 2 3 5 2 3
+5 8 3 5 1 4 1 2 1 5 2 3 1 3 2 4 2 5
+2 1 1 2
+5 4 3 5 4 5 1 5 2 4
+2 1 1 2
+3 3 2 3 1 3 1 2
+5 7 2 3 3 4 2 5 1 3 1 5 3 5 4 5
+2 1 1 2
+6 6 3 6 2 5 5 6 1 3 3 5 1 5
+6 5 2 4 2 3 5 6 3 5 1 2
+4 3 1 4 2 3 1 2
+4 4 2 4 3 4 2 3 1 2
+4 3 2 4 1 2 1 3
+4 6 1 2 1 3 1 4 2 4 3 4 2 3
+6 5 2 5 4 6 1 6 3 6 3 4
+6 6 1 2 1 3 1 4 1 5 4 5 2 6
+6 9 4 5 1 4 1 3 3 5 2 5 3 4 1 6 1 5 5 6
+3 2 1 3 1 2
+2 1 1 2
+2 1 1 2
+3 3 1 2 2 3 1 3
+5 4 1 3 3 5 2 3 1 4
+5 7 1 3 3 4 1 2 1 5 2 3 4 5 2 4
+6 7 3 6 1 2 4 5 2 4 1 3 1 6 1 5
+5 8 3 4 1 2 2 4 2 5 4 5 1 3 1 4 3 5
+4 5 3 4 2 3 1 2 1 4 1 3
+6 5 1 6 1 2 1 5 5 6 2 4
+6 6 1 3 3 5 5 6 1 2 1 4 3 4
+6 5 1 2 3 5 3 6 5 6 2 4
+2 1 1 2
+4 6 1 2 2 4 3 4 2 3 1 4 1 3
+4 3 3 4 2 3 1 4
+6 6 5 6 3 5 1 6 4 6 1 4 2 4
+6 8 2 5 3 6 1 2 2 4 2 3 1 3 4 6 4 5
+4 4 3 4 2 3 1 2 1 4
+5 4 3 4 2 4 2 5 1 3
+6 8 1 3 2 6 2 4 2 5 5 6 4 5 2 3 3 5
+6 5 1 6 5 6 2 4 3 4 1 3
+4 4 1 2 1 3 3 4 2 4
+4 3 1 4 1 3 3 4
+6 7 1 5 3 4 1 2 4 5 1 6 2 3 3 6
+5 4 2 3 3 4 3 5 1 3
+4 4 1 4 1 3 1 2 3 4
+5 5 2 4 1 4 3 4 3 5 1 5
+3 3 2 3 1 3 1 2
+2 1 1 2
+6 7 1 2 2 3 4 5 3 5 2 4 3 4 1 6
+5 8 2 5 2 3 1 5 3 4 3 5 1 3 1 4 2 4
+3 2 1 3 2 3
+5 4 1 2 4 5 3 5 1 5
+6 7 1 4 1 6 1 2 3 6 4 5 2 6 2 4
+3 2 1 2 1 3
+2 1 1 2
+4 5 1 3 2 3 2 4 1 4 1 2
+6 9 3 4 2 3 1 6 1 3 2 5 2 6 1 5 1 4 1 2
+5 5 4 5 2 5 1 2 1 3 3 4
+5 6 1 3 2 4 2 3 1 5 3 4 1 2
+2 1 1 2
+5 8 4 5 1 4 1 3 2 5 2 3 2 4 3 4 1 2
+4 3 1 3 1 4 1 2
+6 9 3 5 4 6 5 6 2 4 1 6 2 3 1 3 3 4 1 2
+6 5 5 6 3 5 2 3 2 4 1 2
+4 5 2 4 1 2 1 3 2 3 3 4
+3 2 1 3 2 3
+3 3 1 3 1 2 2 3
+4 5 1 3 3 4 2 4 2 3 1 4
+6 6 3 6 4 5 1 2 4 6 1 4 2 3
+5 5 2 3 3 5 1 3 1 5 1 4
+2 1 1 2
+2 1 1 2
+4 4 1 2 1 4 3 4 2 4
+6 7 3 4 4 5 1 3 5 6 3 5 2 4 2 6
+6 8 3 5 3 4 1 2 1 6 2 6 2 5 5 6 4 5
+5 8 3 5 1 4 4 5 3 4 1 5 2 3 1 2 1 3
+5 8 1 4 1 3 2 3 3 5 1 2 4 5 2 4 2 5
+3 2 1 2 2 3
+6 9 2 5 1 6 3 4 2 6 1 5 4 6 2 4 4 5 1 3
+5 6 1 3 3 4 2 4 4 5 1 2 2 5
+`
+
+var (
+	_            = embeddedSolutionSource
+	rawTestcases = func() []string {
+		scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
+		scanner.Buffer(make([]byte, 0, 1024), 1024*1024)
+		var cases []string
+		for scanner.Scan() {
+			if line := strings.TrimSpace(scanner.Text()); line != "" {
+				cases = append(cases, line)
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			panic(err)
+		}
+		return cases
+	}()
+)
 
 func solveCase(n int, m int, edges [][2]int) string {
 	adj := make([][]int, n)
@@ -230,7 +387,7 @@ func solveCase(n int, m int, edges [][2]int) string {
 		sb.WriteByte(' ')
 	}
 	sb.WriteByte('\n')
-	return sb.String()
+	return strings.TrimSpace(sb.String())
 }
 
 func parseCase(line string) (int, int, [][2]int, error) {

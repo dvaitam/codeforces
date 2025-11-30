@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"math/big"
 	"os"
@@ -9,8 +8,46 @@ import (
 	"strings"
 )
 
-// Embedded testcases from testcasesD.txt.
-const testcasesRaw = `2
+const embeddedSolutionSource = `package main
+
+import (
+   "bufio"
+   "fmt"
+   "math/big"
+   "os"
+)
+
+func main() {
+   in := bufio.NewReader(os.Stdin)
+   var s string
+   if _, err := fmt.Fscan(in, &s); err != nil {
+       return
+   }
+   A := new(big.Int)
+   A.SetString(s, 10)
+   two := big.NewInt(2)
+   thirteen := big.NewInt(13)
+   w := bufio.NewWriter(os.Stdout)
+   defer w.Flush()
+   if A.Cmp(two) == 0 {
+       fmt.Fprintln(w, "YES")
+       fmt.Fprintln(w, 1)
+       fmt.Fprintln(w, 1)
+       fmt.Fprintln(w, 1)
+       fmt.Fprintln(w, 13)
+   } else if A.Cmp(thirteen) == 0 {
+       fmt.Fprintln(w, "YES")
+       fmt.Fprintln(w, 1)
+       fmt.Fprintln(w, 2)
+       fmt.Fprintln(w, 1)
+       fmt.Fprintln(w, 2)
+   } else {
+       fmt.Fprintln(w, "NO")
+   }
+}`
+
+const testcasesRaw = `
+2
 13
 98259791
 7483378876232860129
@@ -109,33 +146,38 @@ const testcasesRaw = `2
 416150877
 4526650
 305596840
-64617`
+64617
+`
 
-func parseTestcases() []string {
-	lines := strings.Split(testcasesRaw, "\n")
-	var res []string
-	for _, ln := range lines {
-		ln = strings.TrimSpace(ln)
-		if ln != "" {
-			res = append(res, ln)
-		}
-	}
-	return res
-}
+var (
+	_            = embeddedSolutionSource
+	rawTestcases = strings.Fields(testcasesRaw)
+)
 
-// Embedded solver logic from 40D.go (big integer comparisons against 2 and 13).
-func solve(input string) string {
+func solveCase(s string) string {
 	A := new(big.Int)
-	A.SetString(input, 10)
+	A.SetString(s, 10)
 	two := big.NewInt(2)
 	thirteen := big.NewInt(13)
-	if A.Cmp(two) == 0 {
+
+	switch {
+	case A.Cmp(two) == 0:
 		return "YES\n1\n1\n1\n13"
-	}
-	if A.Cmp(thirteen) == 0 {
+	case A.Cmp(thirteen) == 0:
 		return "YES\n1\n2\n1\n2"
+	default:
+		return "NO"
 	}
-	return "NO"
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, string(out))
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 func main() {
@@ -145,22 +187,18 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	cases := parseTestcases()
-	for idx, input := range cases {
-		exp := solve(input)
-
-		cmd := exec.Command(bin)
-		cmd.Stdin = bytes.NewBufferString(input + "\n")
-		out, err := cmd.CombinedOutput()
+	for idx, tc := range rawTestcases {
+		expected := solveCase(tc)
+		got, err := run(bin, tc+"\n")
 		if err != nil {
-			fmt.Printf("Test %d: runtime error: %v\n%s", idx+1, err, string(out))
+			fmt.Fprintf(os.Stderr, "test %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(string(out))
-		if got != exp {
-			fmt.Printf("Test %d failed:\nexpected:\n%s\n\ngot:\n%s\n", idx+1, exp, got)
+		if got != expected {
+			fmt.Fprintf(os.Stderr, "test %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(cases))
+
+	fmt.Printf("All %d tests passed\n", len(rawTestcases))
 }

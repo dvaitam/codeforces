@@ -1,32 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 )
 
-func solve(input string) (string, error) {
-	s := strings.TrimSpace(input)
-	seen := [26]bool{}
-	distinct := 0
-	for _, ch := range s {
-		idx := ch - 'a'
-		if idx >= 0 && idx < 26 {
-			if !seen[idx] {
-				seen[idx] = true
-				distinct++
-			}
-		}
-	}
-	if distinct%2 == 1 {
-		return "IGNORE HIM!", nil
-	}
-	return "CHAT WITH HER!", nil
-}
-
-var testcases = []string{
+// rawTestcases embeds the contents of testcasesA.txt.
+var rawTestcases = []string{
 	"ynbiqpmzjplsgqejeydtzirwztejdxcvkprdlnktugrpoqibzr",
 	"cx",
 	"wzvuatpkhxkwcgshhzezrocckqpdjrjwdrkrgztrsjoctzmkshjf",
@@ -129,17 +112,39 @@ var testcases = []string{
 	"txhsao",
 }
 
+// solve236A replicates the reference solution from 236A.go using in-memory I/O.
+func solve236A(input string) (string, error) {
+	reader := bufio.NewReader(strings.NewReader(input))
+	var s string
+	if _, err := fmt.Fscan(reader, &s); err != nil {
+		return "", err
+	}
+	seen := make([]bool, 26)
+	distinct := 0
+	for _, ch := range s {
+		idx := ch - 'a'
+		if idx >= 0 && idx < 26 && !seen[idx] {
+			seen[idx] = true
+			distinct++
+		}
+	}
+	if distinct%2 == 1 {
+		return "IGNORE HIM!", nil
+	}
+	return "CHAT WITH HER!", nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierA.go /path/to/binary")
+		fmt.Println("usage: verifierA /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
 
-	for idx, tc := range testcases {
-		input := strings.TrimSpace(tc) + "\n"
+	for idx, tc := range rawTestcases {
+		input := tc + "\n"
 
-		expected, err := solve(input)
+		expected, err := solve236A(input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "test %d: oracle error: %v\n", idx+1, err)
 			os.Exit(1)
@@ -160,5 +165,5 @@ func main() {
 		}
 	}
 
-	fmt.Printf("All %d tests passed\n", len(testcases))
+	fmt.Printf("All %d tests passed\n", len(rawTestcases))
 }

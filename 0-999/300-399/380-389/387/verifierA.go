@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,6 +8,109 @@ import (
 	"strconv"
 	"strings"
 )
+
+var testcases = []string{
+	"12:48 13:02",
+	"08:32 15:25",
+	"09:30 11:37",
+	"06:32 04:18",
+	"04:48 03:39",
+	"08:58 17:45",
+	"19:57 04:19",
+	"03:46 02:57",
+	"21:21 15:35",
+	"03:22 13:20",
+	"19:40 06:35",
+	"15:28 16:16",
+	"01:51 17:58",
+	"00:05 23:53",
+	"12:45 21:40",
+	"00:39 15:52",
+	"10:15 23:20",
+	"22:55 02:12",
+	"18:14 07:51",
+	"04:51 17:28",
+	"02:05 10:56",
+	"16:59 15:06",
+	"09:35 09:45",
+	"03:35 10:52",
+	"17:13 19:35",
+	"18:18 14:05",
+	"19:51 12:20",
+	"18:15 09:11",
+	"06:52 05:02",
+	"19:42 08:30",
+	"02:05 21:48",
+	"04:56 04:59",
+	"01:53 02:57",
+	"22:59 17:43",
+	"12:53 22:33",
+	"08:33 07:54",
+	"06:57 21:37",
+	"13:37 08:28",
+	"15:42 20:44",
+	"11:05 10:39",
+	"03:31 18:40",
+	"10:54 06:15",
+	"00:46 08:07",
+	"22:14 11:50",
+	"05:21 13:52",
+	"01:06 04:54",
+	"22:14 01:52",
+	"18:40 17:38",
+	"21:04 00:07",
+	"20:12 19:53",
+	"18:07 12:05",
+	"11:53 03:02",
+	"19:01 06:11",
+	"22:07 15:13",
+	"23:51 01:59",
+	"21:01 17:27",
+	"19:06 08:04",
+	"07:04 20:19",
+	"11:27 05:03",
+	"16:29 01:38",
+	"03:44 12:12",
+	"08:22 23:30",
+	"18:10 22:43",
+	"06:49 01:50",
+	"21:10 05:21",
+	"16:16 03:38",
+	"14:42 05:00",
+	"15:43 13:57",
+	"18:55 16:58",
+	"09:41 11:24",
+	"21:16 04:35",
+	"22:00 14:47",
+	"02:21 23:02",
+	"17:17 04:15",
+	"15:22 19:18",
+	"21:22 18:57",
+	"20:54 19:08",
+	"22:19 12:47",
+	"13:53 20:05",
+	"00:38 06:44",
+	"10:10 07:14",
+	"20:28 12:45",
+	"21:36 13:02",
+	"12:55 22:36",
+	"13:49 21:45",
+	"01:10 14:04",
+	"08:44 05:28",
+	"16:56 15:58",
+	"17:38 00:56",
+	"01:31 10:19",
+	"14:03 13:12",
+	"17:40 02:53",
+	"23:08 00:25",
+	"21:26 10:00",
+	"06:00 22:48",
+	"00:52 21:33",
+	"19:06 06:07",
+	"19:41 06:55",
+	"09:17 22:11",
+	"03:30 12:40",
+}
 
 func expectedBedtime(s, t string) string {
 	shh, _ := strconv.Atoi(s[:2])
@@ -46,39 +148,16 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	scanner.Split(bufio.ScanWords)
-	if !scanner.Scan() {
-		fmt.Fprintln(os.Stderr, "bad test file")
-		os.Exit(1)
-	}
-	tcases, _ := strconv.Atoi(scanner.Text())
-	for i := 0; i < tcases; i++ {
-		if !scanner.Scan() {
-			fmt.Fprintf(os.Stderr, "test %d: missing s\n", i+1)
+	for i, tc := range testcases {
+		parts := strings.Fields(tc)
+		if len(parts) != 2 {
+			fmt.Fprintf(os.Stderr, "test %d invalid\n", i+1)
 			os.Exit(1)
 		}
-		s := scanner.Text()
-		if !scanner.Scan() {
-			fmt.Fprintf(os.Stderr, "test %d: missing t\n", i+1)
-			os.Exit(1)
-		}
-		tt := scanner.Text()
-		if err := runCase(bin, s, tt); err != nil {
+		if err := runCase(bin, parts[0], parts[1]); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
 	}
-	if scanner.Scan() {
-		fmt.Fprintln(os.Stderr, "extra data in test file")
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", tcases)
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

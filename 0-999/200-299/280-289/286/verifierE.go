@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,108 +10,221 @@ import (
 	"strings"
 )
 
-var rawTestcases = []string{
-	"3 19 1 3 18",
-	"1 20 1",
-	"2 5 4 5",
-	"4 4 1 2 3 4",
-	"4 11 1 4 7 11",
-	"1 20 13",
-	"2 19 10 14",
-	"4 5 1 2 3 4",
-	"2 20 3 6",
-	"5 20 7 9 10 13 19",
-	"1 2 1",
-	"1 10 3",
-	"2 18 4 5",
-	"3 3 1 2 3",
-	"3 5 1 3 5",
-	"3 17 8 11 16",
-	"5 7 1 2 3 4 5",
-	"5 20 3 8 14 17 18",
-	"2 14 9 14",
-	"3 7 1 2 6",
-	"1 13 11",
-	"5 8 2 3 5 6 7",
-	"3 18 11 13 15",
-	"5 16 1 8 9 12 13",
-	"4 15 1 6 9 13",
-	"2 20 3 16",
-	"1 12 7",
-	"5 12 1 2 9 10 12",
-	"1 19 12",
-	"1 12 3",
-	"3 11 7 8 11",
-	"1 8 8",
-	"3 8 1 6 7",
-	"4 20 6 10 13 16",
-	"2 2 1 2",
-	"5 19 5 9 11 14 19",
-	"4 16 5 6 7 8",
-	"2 8 2 5",
-	"5 16 4 6 10 14 15",
-	"2 12 3 4",
-	"3 20 4 6 18",
-	"4 19 6 7 8 12",
-	"1 18 16",
-	"2 11 5 7",
-	"5 11 1 6 7 8 11",
-	"2 8 3 7",
-	"5 19 3 9 10 12 17",
-	"4 17 1 11 13 14",
-	"1 2 2",
-	"2 10 9 10",
-	"4 13 6 7 8 9",
-	"2 4 1 3",
-	"1 17 1",
-	"5 15 2 10 12 13 14",
-	"2 2 1 2",
-	"3 5 3 4 5",
-	"2 20 17 20",
-	"2 10 3 5",
-	"2 20 5 8",
-	"2 9 5 8",
-	"3 7 3 5 6",
-	"2 4 2 3",
-	"4 9 1 3 4 5",
-	"4 8 1 5 6 8",
-	"3 10 1 3 4",
-	"5 5 1 2 3 4 5",
-	"5 15 3 4 6 8 11",
-	"4 11 2 4 5 11",
-	"3 18 9 10 12",
-	"2 11 7 9",
-	"1 6 4",
-	"1 19 4",
-	"5 9 3 4 5 8 9",
-	"2 7 1 6",
-	"3 17 9 11 13",
-	"1 12 7",
-	"4 8 1 3 6 8",
-	"5 19 4 7 14 15 17",
-	"4 6 1 4 5 6",
-	"5 19 2 4 6 7 8",
-	"1 20 13",
-	"4 6 1 2 5 6",
-	"4 6 1 2 3 6",
-	"2 19 17 19",
-	"5 18 9 11 13 15 16",
-	"5 5 1 2 3 4 5",
-	"4 10 1 2 4 9",
-	"2 16 2 16",
-	"5 13 5 6 7 11 12",
-	"1 20 4",
-	"4 15 2 10 11 15",
-	"2 6 2 4",
-	"1 16 10",
-	"2 18 5 12",
-	"1 17 11",
-	"3 5 1 2 3",
-	"3 19 13 14 18",
-	"1 5 4",
-	"1 10 3",
-	"5 11 3 5 6 8 10",
+const embeddedSolutionSource = `package main
+
+import (
+   "bufio"
+   "fmt"
+   "os"
+   "strconv"
+)
+
+func main() {
+   reader := bufio.NewReader(os.Stdin)
+   writer := bufio.NewWriter(os.Stdout)
+   defer writer.Flush()
+
+   line, _ := reader.ReadString('\n')
+   parts := splitInts(line)
+   if len(parts) < 2 {
+       return
+   }
+   n, m := parts[0], parts[1]
+   line, _ = reader.ReadString('\n')
+   a := splitInts(line)
+   if len(a) != n {
+       return
+   }
+   if a[n-1] != m {
+       fmt.Fprintln(writer, "NO")
+       return
+   }
+   size := (m>>6) + 1
+   dp := make([]uint64, size)
+   dp[0] = 1
+   var P []int
+   for _, v := range a {
+       idx := v >> 6
+       off := uint(v & 63)
+       if (dp[idx]>>off)&1 == 1 {
+           continue
+       }
+       P = append(P, v)
+       shiftWords := v >> 6
+       shiftBits := uint(v & 63)
+       for i := len(dp) - 1; i >= int(shiftWords); i-- {
+           word := dp[i-int(shiftWords)] << shiftBits
+           if shiftBits != 0 && i-int(shiftWords)-1 >= 0 {
+               word |= dp[i-int(shiftWords)-1] >> (64 - shiftBits)
+           }
+           dp[i] |= word
+       }
+   }
+   fmt.Fprintln(writer, "YES")
+   fmt.Fprintln(writer, len(P))
+   for i, v := range P {
+       if i > 0 {
+           writer.WriteByte(' ')
+       }
+       writer.WriteString(strconv.Itoa(v))
+   }
+   writer.WriteByte('\n')
 }
+
+func splitInts(s string) []int {
+   var res []int
+   num := 0
+   neg := false
+   started := false
+   for i := 0; i < len(s); i++ {
+       c := s[i]
+       if c == '-' {
+           neg = true
+       } else if c >= '0' && c <= '9' {
+           started = true
+           num = num*10 + int(c-'0')
+       } else {
+           if started {
+               if neg {
+                   num = -num
+               }
+               res = append(res, num)
+               num = 0
+               neg = false
+               started = false
+           }
+       }
+   }
+   if started {
+       if neg {
+           num = -num
+       }
+       res = append(res, num)
+   }
+   return res
+}`
+
+const testcasesRaw = `
+3 19 1 3 18
+1 20 1
+2 5 4 5
+4 4 1 2 3 4
+4 11 1 4 7 11
+1 20 13
+2 19 10 14
+4 5 1 2 3 4
+2 20 3 6
+5 20 7 9 10 13 19
+1 2 1
+1 10 3
+2 18 4 5
+3 3 1 2 3
+3 5 1 3 5
+3 17 8 11 16
+5 7 1 2 3 4 5
+5 20 3 8 14 17 18
+2 14 9 14
+3 7 1 2 6
+1 13 11
+5 8 2 3 5 6 7
+3 18 11 13 15
+5 16 1 8 9 12 13
+4 15 1 6 9 13
+2 20 3 16
+1 12 7
+5 12 1 2 9 10 12
+1 19 12
+1 12 3
+3 11 7 8 11
+1 8 8
+3 8 1 6 7
+4 20 6 10 13 16
+2 2 1 2
+5 19 5 9 11 14 19
+4 16 5 6 7 8
+2 8 2 5
+5 16 4 6 10 14 15
+2 12 3 4
+3 20 4 6 18
+4 19 6 7 8 12
+1 18 16
+2 11 5 7
+5 11 1 6 7 8 11
+2 8 3 7
+5 19 3 9 10 12 17
+4 17 1 11 13 14
+1 2 2
+2 10 9 10
+4 13 6 7 8 9
+2 4 1 3
+1 17 1
+5 15 2 10 12 13 14
+2 2 1 2
+3 5 3 4 5
+2 20 17 20
+2 10 3 5
+2 20 5 8
+2 9 5 8
+3 7 3 5 6
+2 4 2 3
+4 9 1 3 4 5
+4 8 1 5 6 8
+3 10 1 3 4
+5 5 1 2 3 4 5
+5 15 3 4 6 8 11
+4 11 2 4 5 11
+3 18 9 10 12
+2 11 7 9
+1 6 4
+1 19 4
+5 9 3 4 5 8 9
+2 7 1 6
+3 17 9 11 13
+1 12 7
+4 8 1 3 6 8
+5 19 4 7 14 15 17
+4 6 1 4 5 6
+5 19 2 4 6 7 8
+1 20 13
+4 6 1 2 5 6
+4 6 1 2 3 6
+2 19 17 19
+5 18 9 11 13 15 16
+5 5 1 2 3 4 5
+4 10 1 2 4 9
+2 16 2 16
+5 13 5 6 7 11 12
+1 20 4
+4 15 2 10 11 15
+2 6 2 4
+1 16 10
+2 18 5 12
+1 17 11
+3 5 1 2 3
+3 19 13 14 18
+1 5 4
+1 10 3
+5 11 3 5 6 8 10
+`
+
+var (
+	_            = embeddedSolutionSource
+	rawTestcases = func() []string {
+		scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
+		scanner.Buffer(make([]byte, 0, 1024), 1024*1024)
+		var cases []string
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line != "" {
+				cases = append(cases, line)
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			panic(err)
+		}
+		return cases
+	}()
+)
 
 func splitInts(s string) []int {
 	var res []int

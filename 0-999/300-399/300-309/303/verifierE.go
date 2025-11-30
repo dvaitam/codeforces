@@ -161,7 +161,8 @@ func solve(input string) (string, error) {
 	return sb.String(), nil
 }
 
-var testcasesRaw = `100
+// Embedded testcases (originally from testcasesE.txt).
+const rawTestcasesData = `100
 1
 26 32
 3
@@ -561,7 +562,7 @@ var testcasesRaw = `100
 37 65`
 
 func parseTestcases() ([]string, error) {
-	r := strings.NewReader(testcasesRaw)
+	r := strings.NewReader(strings.TrimSpace(rawTestcasesData))
 	var t int
 	if _, err := fmt.Fscan(r, &t); err != nil {
 		return nil, err

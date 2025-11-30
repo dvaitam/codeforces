@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
@@ -9,108 +10,228 @@ import (
 	"strings"
 )
 
-var rawTestcases = []string{
-	"5 2 4 3 1 2 5",
-	"4 2 3 1 4 2",
-	"3 2 1 2 3",
-	"5 2 3 1 5 4 2",
-	"3 2 3 1 2",
-	"4 2 3 4 1 2",
-	"3 2 3 2 1",
-	"1 2 1",
-	"3 2 1 3 2",
-	"4 2 4 1 3 2",
-	"3 2 1 3 2",
-	"4 2 1 2 3 4",
-	"5 2 2 4 5 3 1",
-	"4 2 4 3 1 2",
-	"5 2 3 2 1 5 4",
-	"3 2 1 3 2",
-	"5 2 1 2 5 4 3",
-	"2 2 1 2",
-	"2 2 2 1",
-	"4 2 2 1 4 3",
-	"4 2 4 1 2 3",
-	"1 2 1",
-	"1 2 1",
-	"1 2 1",
-	"2 2 2 1",
-	"3 2 2 3 1",
-	"3 2 3 1 2",
-	"5 2 2 5 1 3 4",
-	"4 2 2 4 1 3",
-	"1 2 1",
-	"3 2 3 2 1",
-	"3 2 3 2 1",
-	"1 2 1",
-	"2 2 2 1",
-	"4 2 3 2 1 4",
-	"3 2 3 2 1",
-	"5 2 4 5 3 2 1",
-	"5 2 2 5 4 1 3",
-	"5 2 2 5 3 4 1",
-	"3 2 2 3 1",
-	"5 2 1 2 4 3 5",
-	"1 2 1",
-	"5 2 1 3 5 4 2",
-	"5 2 2 3 4 5 1",
-	"1 2 1",
-	"5 2 2 3 1 5 4",
-	"3 2 2 1 3",
-	"1 2 1",
-	"2 2 1 2",
-	"3 2 3 1 2",
-	"2 2 2 1",
-	"2 2 2 1",
-	"5 2 5 4 3 1 2",
-	"1 2 1",
-	"5 2 1 2 3 5 4",
-	"3 2 2 1 3",
-	"3 2 1 2 3",
-	"4 2 4 3 2 1",
-	"1 2 1",
-	"2 2 1 2",
-	"5 2 4 5 2 1 3",
-	"2 2 1 2",
-	"2 2 2 1",
-	"1 2 1",
-	"3 2 2 1 3",
-	"5 2 5 1 4 3 2",
-	"2 2 1 2",
-	"4 2 4 1 2 3",
-	"1 2 1",
-	"5 2 2 1 4 5 3",
-	"1 2 1",
-	"2 2 2 1",
-	"4 2 1 3 2 4",
-	"5 2 2 5 3 1 4",
-	"5 2 4 3 2 5 1",
-	"4 2 1 3 4 2",
-	"1 2 1",
-	"2 2 1 2",
-	"1 2 1",
-	"1 2 1",
-	"2 2 2 1",
-	"1 2 1",
-	"2 2 2 1",
-	"3 2 3 2 1",
-	"5 2 5 1 4 2 3",
-	"4 2 4 3 2 1",
-	"5 2 1 2 5 4 3",
-	"2 2 1 2",
-	"2 2 1 2",
-	"5 2 1 5 3 2 4",
-	"3 2 3 2 1",
-	"5 2 3 4 5 2 1",
-	"5 2 1 4 2 3 5",
-	"2 2 1 2",
-	"1 2 1",
-	"4 2 2 3 1 4",
-	"1 2 1",
-	"1 2 1",
-	"2 2 2 1",
-	"4 2 4 2 1 3",
-}
+const embeddedSolutionSource = `package main
+
+import (
+   "bufio"
+   "fmt"
+   "os"
+)
+
+func main() {
+   in := bufio.NewReader(os.Stdin)
+   var n, p int
+   if _, err := fmt.Fscan(in, &n, &p); err != nil {
+       return
+   }
+   xs := make([]int, n)
+   for i := 0; i < n; i++ {
+       fmt.Fscan(in, &xs[i])
+   }
+   const maxT = 32
+   f := make([][][]bool, maxT)
+   g := make([][][]bool, maxT)
+   for i := 0; i < maxT; i++ {
+       f[i] = make([][]bool, maxT)
+       g[i] = make([][]bool, maxT)
+       for j := 0; j < maxT; j++ {
+           f[i][j] = make([]bool, p)
+           g[i][j] = make([]bool, p)
+       }
+   }
+   add := func(cur, y int) int {
+       v := cur * 10
+       if y > 9 {
+           v *= 10
+       }
+       return (v + y) % p
+   }
+   findPrev := func(y, curMod, curXor, idx int) int {
+       for t := 0; t < p; t++ {
+           if f[idx][curXor][t] && add(t, y) == curMod {
+               return t
+           }
+       }
+       return 0
+   }
+   f[0][0][0] = true
+   num := make([]int, maxT)
+   pos := make([]int, maxT)
+   tot := 0
+   found := false
+   for i, x := range xs {
+       if x < maxT {
+           tot++
+           num[tot] = x
+           pos[tot] = i + 1
+           for j := 0; j < maxT && !found; j++ {
+               for k := 0; k < p; k++ {
+                   if f[tot-1][j][k] {
+                       f[tot][j][k] = true
+                       t := add(k, x)
+                       nx := j ^ x
+                       f[tot][nx][t] = true
+                       g[tot][nx][t] = true
+                       if j == x && t == 0 {
+                           found = true
+                           break
+                       }
+                   }
+               }
+           }
+       }
+       if found {
+           break
+       }
+   }
+   out := bufio.NewWriter(os.Stdout)
+   defer out.Flush()
+   if !found {
+       fmt.Fprintln(out, "No")
+       return
+   }
+   fmt.Fprintln(out, "Yes")
+   curXor, curMod := 0, 0
+   var ansPos []int
+   for i := tot; i > 0; i-- {
+       if g[i][curXor][curMod] {
+           ansPos = append(ansPos, pos[i])
+           y := num[i]
+           curXor ^= y
+           curMod = findPrev(y, curMod, curXor, i-1)
+       }
+   }
+   fmt.Fprintln(out, len(ansPos))
+   for i := len(ansPos) - 1; i >= 0; i-- {
+       if i < len(ansPos)-1 {
+           out.WriteByte(' ')
+       }
+       fmt.Fprint(out, ansPos[i])
+   }
+   fmt.Fprintln(out)
+}`
+
+const testcasesRaw = `
+5 2 4 3 1 2 5
+4 2 3 1 4 2
+3 2 1 2 3
+5 2 3 1 5 4 2
+3 2 3 1 2
+4 2 3 4 1 2
+3 2 3 2 1
+1 2 1
+3 2 1 3 2
+4 2 4 1 3 2
+3 2 1 3 2
+4 2 1 2 3 4
+5 2 2 4 5 3 1
+4 2 4 3 1 2
+5 2 3 2 1 5 4
+3 2 1 3 2
+5 2 1 2 5 4 3
+2 2 1 2
+2 2 2 1
+4 2 2 1 4 3
+4 2 4 1 2 3
+1 2 1
+1 2 1
+1 2 1
+2 2 2 1
+3 2 2 3 1
+3 2 3 1 2
+5 2 2 5 1 3 4
+4 2 2 4 1 3
+1 2 1
+3 2 3 2 1
+3 2 3 2 1
+1 2 1
+2 2 2 1
+4 2 3 2 1 4
+3 2 3 2 1
+5 2 4 5 3 2 1
+5 2 2 5 4 1 3
+5 2 2 5 3 4 1
+3 2 2 3 1
+5 2 1 2 4 3 5
+1 2 1
+5 2 1 3 5 4 2
+5 2 2 3 4 5 1
+1 2 1
+5 2 2 3 1 5 4
+3 2 2 1 3
+1 2 1
+2 2 1 2
+3 2 3 1 2
+2 2 2 1
+2 2 2 1
+5 2 5 4 3 1 2
+1 2 1
+5 2 1 2 3 5 4
+3 2 2 1 3
+3 2 1 2 3
+4 2 4 3 2 1
+1 2 1
+2 2 1 2
+5 2 4 5 2 1 3
+2 2 1 2
+2 2 2 1
+1 2 1
+3 2 2 1 3
+5 2 5 1 4 3 2
+2 2 1 2
+4 2 4 1 2 3
+1 2 1
+5 2 2 1 4 5 3
+1 2 1
+2 2 2 1
+4 2 1 3 2 4
+5 2 2 5 3 1 4
+5 2 4 3 2 5 1
+4 2 1 3 4 2
+1 2 1
+2 2 1 2
+1 2 1
+1 2 1
+2 2 2 1
+1 2 1
+2 2 2 1
+3 2 3 2 1
+5 2 5 1 4 2 3
+4 2 4 3 2 1
+5 2 1 2 5 4 3
+2 2 1 2
+2 2 1 2
+5 2 1 5 3 2 4
+3 2 3 2 1
+5 2 3 4 5 2 1
+5 2 1 4 2 3 5
+2 2 1 2
+1 2 1
+4 2 2 3 1 4
+1 2 1
+1 2 1
+2 2 2 1
+4 2 4 2 1 3
+`
+
+var (
+	_            = embeddedSolutionSource
+	rawTestcases = func() []string {
+		scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
+		scanner.Buffer(make([]byte, 0, 1024), 1024*1024)
+		var cases []string
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line != "" {
+				cases = append(cases, line)
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			panic(err)
+		}
+		return cases
+	}()
+)
 
 const maxT = 32
 

@@ -1,115 +1,398 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 )
 
-var rawTestcases = []string{
-	"2 3\n.*\n.*",
-	"3 2\n*..\n*.*\n*.*",
-	"3 3\n..*\n...\n.*.",
-	"3 3\n..*\n*.*\n..*",
-	"3 1\n*..\n*.*\n*.*",
-	"3 3\n**.\n*.*\n*.*",
-	"3 1\n*..\n***\n.*.",
-	"3 3\n*..\n...\n.**",
-	"3 2\n*.*\n..*\n.**",
-	"2 3\n*.\n**",
-	"2 1\n..\n.*",
-	"2 3\n..\n.*",
-	"2 2\n.*\n..",
-	"3 2\n...\n*.*\n***",
-	"3 2\n..*\n***\n.*.",
-	"3 3\n.*.\n..*\n...",
-	"3 3\n*.*\n..*\n**.",
-	"3 1\n..*\n..*\n*.*",
-	"3 1\n...\n*..\n*.*",
-	"2 1\n*.\n*.",
-	"3 2\n*.*\n**.\n..*",
-	"2 2\n*.\n*.",
-	"3 3\n**.\n...\n...",
-	"2 2\n*.\n*.",
-	"3 1\n.*.\n*.*\n..*",
-	"2 3\n*.\n..",
-	"3 2\n*.*\n*..\n*..",
-	"2 2\n..\n..",
-	"3 1\n.*.\n...\n***",
-	"3 3\n**.\n.*.\n..*",
-	"3 2\n***\n..*\n*.*",
-	"2 3\n**\n*.",
-	"2 2\n..\n*.",
-	"3 1\n*.*\n.**\n.*.",
-	"3 3\n*.*\n...\n...",
-	"3 1\n*..\n..*\n***",
-	"2 1\n*.\n..",
-	"2 1\n**\n.*",
-	"2 1\n..\n*.",
-	"2 2\n*.\n..",
-	"3 1\n***\n**.\n**.",
-	"3 2\n.*.\n.*.\n..*",
-	"3 2\n*..\n.*.\n.**",
-	"2 1\n**\n*.",
-	"3 2\n*..\n.*.\n.**",
-	"3 3\n*.*\n..*\n..*",
-	"3 1\n.**\n**.\n..*",
-	"2 2\n..\n.*",
-	"2 2\n**\n.*",
-	"3 1\n*..\n**.\n**.",
-	"3 3\n..*\n...\n*..",
-	"3 1\n.**\n**.\n***",
-	"2 1\n*.\n*.",
-	"2 1\n.*\n..",
-	"3 3\n***\n*..\n***",
-	"3 3\n***\n.**\n..*",
-	"2 2\n**\n.*",
-	"2 2\n.*\n**",
-	"3 3\n.*.\n*.*\n.**",
-	"2 1\n.*\n**",
-	"3 1\n***\n.*.\n*.*",
-	"2 2\n.*\n..",
-	"2 3\n.*\n**",
-	"2 3\n..\n**",
-	"2 1\n**\n..",
-	"3 3\n**.\n**.\n***",
-	"2 2\n..\n**",
-	"3 1\n*..\n.*.\n**.",
-	"2 1\n..\n.*",
-	"2 1\n.*\n**",
-	"2 1\n..\n..",
-	"2 2\n**\n*.",
-	"2 1\n.*\n.*",
-	"3 2\n...\n***\n.**",
-	"3 2\n...\n...\n***",
-	"3 1\n*..\n..*\n..*",
-	"3 1\n.**\n...\n..*",
-	"2 2\n..\n.*",
-	"2 3\n*.\n**",
-	"3 3\n**.\n...\n**.",
-	"3 3\n*.*\n.*.\n*..",
-	"2 1\n.*\n..",
-	"2 3\n**\n.*",
-	"2 1\n.*\n.*",
-	"3 1\n*.*\n*.*\n.*.",
-	"3 2\n.**\n.*.\n*..",
-	"3 2\n**.\n.*.\n*..",
-	"3 2\n*.*\n*..\n.**",
-	"3 2\n***\n*..\n.**",
-	"3 3\n.**\n***\n*..",
-	"2 1\n**\n.*",
-	"3 3\n***\n**.\n..*",
-	"2 3\n..\n.*",
-	"2 1\n*.\n.*",
-	"2 3\n..\n..",
-	"3 1\n***\n..*\n.**",
-	"3 3\n.*.\n**.\n.**",
-	"2 2\n*.\n**",
-	"2 1\n*.\n.*",
-	"3 3\n***\n***\n.*.",
+// Testcases embedded from testcasesB.txt (count + cases).
+const rawTestcases = `100
+2 3
+.*
+.*
+3 2
+*..
+*.*
+*.*
+3 3
+..*
+...
+.*.
+3 3
+..*
+*.*
+..*
+3 1
+*..
+*.*
+*.*
+3 3
+**.
+*.*
+*.*
+3 1
+*..
+***
+.*.
+3 3
+*..
+...
+.**
+3 2
+*.*
+..*
+.**
+2 3
+*.
+**
+2 1
+..
+.*
+2 3
+..
+.*
+2 2
+.*
+..
+3 2
+...
+*.*
+***
+3 2
+..*
+***
+.*.
+3 3
+.*.
+..*
+...
+3 3
+*.*
+..*
+**.
+3 1
+..*
+..*
+*.*
+3 1
+...
+*..
+*.*
+2 1
+*.
+*.
+3 2
+*.*
+**.
+..*
+2 2
+*.
+*.
+3 3
+**.
+...
+...
+2 2
+*.
+*.
+3 1
+.*.
+*.*
+..*
+2 3
+*.
+..
+3 2
+*.*
+*..
+*..
+2 2
+..
+..
+3 1
+.*.
+...
+***
+3 3
+**.
+.*.
+..*
+3 2
+***
+..*
+*.*
+2 3
+**
+*.
+2 2
+..
+*.
+3 1
+*.*
+.**
+.*.
+3 3
+*.*
+...
+...
+3 1
+*..
+..*
+***
+2 1
+*.
+..
+2 1
+**
+.*
+2 1
+..
+*.
+2 2
+*.
+..
+3 1
+***
+**.
+**.
+3 2
+.*.
+.*.
+..*
+3 2
+*..
+.*.
+.**
+2 1
+**
+*.
+3 2
+*..
+.*.
+.**
+3 3
+*.*
+..*
+..*
+3 1
+.**
+**.
+..*
+2 2
+..
+.*
+2 2
+**
+.*
+3 1
+*..
+**.
+**.
+3 3
+..*
+...
+*..
+3 1
+.**
+**.
+***
+2 1
+*.
+*.
+2 1
+.*
+..
+3 3
+***
+*..
+***
+3 3
+***
+.**
+..*
+2 2
+**
+.*
+2 2
+.*
+**
+3 3
+.*.
+*.*
+.**
+2 1
+.*
+**
+3 1
+***
+.*.
+*.*
+2 2
+.*
+..
+2 3
+.*
+**
+2 3
+..
+**
+2 1
+**
+..
+3 3
+**.
+**.
+***
+2 2
+..
+**
+3 1
+*..
+.*.
+**.
+2 1
+..
+.*
+2 1
+.*
+**
+2 1
+..
+..
+2 2
+**
+*.
+2 1
+.*
+.*
+3 2
+...
+***
+.**
+3 2
+...
+...
+***
+3 1
+*..
+..*
+..*
+3 1
+.**
+...
+..*
+2 2
+..
+.*
+2 3
+*.
+**
+3 3
+**.
+...
+**.
+3 3
+*.*
+.*.
+*..
+2 1
+.*
+..
+2 3
+**
+.*
+2 1
+.*
+.*
+3 1
+*.*
+*.*
+.*.
+3 2
+.**
+.*.
+*..
+3 2
+**.
+.*.
+*..
+3 2
+*.*
+*..
+.**
+3 2
+***
+*..
+.**
+3 3
+.**
+***
+*..
+2 1
+**
+.*
+3 3
+***
+**.
+..*
+2 3
+..
+.*
+2 1
+*.
+.*
+2 3
+..
+..
+3 1
+***
+..*
+.**
+3 3
+.*.
+**.
+.**
+2 2
+*.
+**
+2 1
+*.
+.*
+3 3
+***
+***
+.*.`
+
+type testCase struct {
+	n, k int
+	model []string
+}
+
+func loadTestcases() ([]testCase, error) {
+	reader := bufio.NewReader(strings.NewReader(rawTestcases))
+	var t int
+	if _, err := fmt.Fscan(reader, &t); err != nil {
+		return nil, fmt.Errorf("read count: %w", err)
+	}
+	cases := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		var n, k int
+		if _, err := fmt.Fscan(reader, &n, &k); err != nil {
+			return nil, fmt.Errorf("case %d header: %w", i+1, err)
+		}
+		model := make([]string, n)
+		for r := 0; r < n; r++ {
+			if _, err := fmt.Fscan(reader, &model[r]); err != nil {
+				return nil, fmt.Errorf("case %d row %d: %w", i+1, r+1, err)
+			}
+		}
+		cases = append(cases, testCase{n: n, k: k, model: model})
+	}
+	return cases, nil
 }
 
 func solveCase(n, k int, model []string) []string {
@@ -154,23 +437,6 @@ func solveCase(n, k int, model []string) []string {
 	return res
 }
 
-func parseCase(raw string) (int, int, []string, error) {
-	lines := strings.Split(strings.TrimSpace(raw), "\n")
-	if len(lines) < 2 {
-		return 0, 0, nil, fmt.Errorf("invalid case")
-	}
-	var n, k int
-	if _, err := fmt.Sscan(lines[0], &n, &k); err != nil {
-		return 0, 0, nil, err
-	}
-	if len(lines)-1 != n {
-		return 0, 0, nil, fmt.Errorf("expected %d rows, got %d", n, len(lines)-1)
-	}
-	model := make([]string, n)
-	copy(model, lines[1:])
-	return n, k, model, nil
-}
-
 func run(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
@@ -189,12 +455,13 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	for idx, raw := range rawTestcases {
-		n, k, model, err := parseCase(raw)
-		if err != nil {
-			fmt.Printf("case %d invalid: %v\n", idx+1, err)
-			os.Exit(1)
-		}
+	testcases, err := loadTestcases()
+	if err != nil {
+		fmt.Printf("failed to load testcases: %v\n", err)
+		os.Exit(1)
+	}
+	for idx, tc := range testcases {
+		n, k, model := tc.n, tc.k, tc.model
 		expectedLines := solveCase(n, k, model)
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d %d\n", n, k))

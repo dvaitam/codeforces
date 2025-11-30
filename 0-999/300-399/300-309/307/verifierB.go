@@ -1,11 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 )
 
@@ -112,31 +112,25 @@ var rawTestcases = []string{
 	"17 750",
 }
 
+// gcd mirrors the implementation in 307B.go.
 func gcd(a, b int64) int64 {
-	for b != 0 {
-		a, b = b, a%b
+	if b == 0 {
+		if a < 0 {
+			return -a
+		}
+		return a
 	}
-	if a < 0 {
-		return -a
-	}
-	return a
+	return gcd(b, a%b)
 }
 
-func solveCase(a, b int64) string {
-	return strconv.FormatInt(gcd(a, b), 10)
-}
-
-func parseCase(line string) (int64, int64, error) {
-	fields := strings.Fields(strings.TrimSpace(line))
-	if len(fields) != 2 {
-		return 0, 0, fmt.Errorf("invalid line")
+// solve307B runs the embedded 307B solution against the provided input.
+func solve307B(input string) (string, error) {
+	reader := bufio.NewReader(strings.NewReader(input))
+	var a, b int64
+	if _, err := fmt.Fscan(reader, &a, &b); err != nil {
+		return "", err
 	}
-	a, err1 := strconv.ParseInt(fields[0], 10, 64)
-	b, err2 := strconv.ParseInt(fields[1], 10, 64)
-	if err1 != nil || err2 != nil {
-		return 0, 0, fmt.Errorf("invalid numbers")
-	}
-	return a, b, nil
+	return fmt.Sprint(gcd(a, b)), nil
 }
 
 func run(bin string, input string) (string, error) {
@@ -158,13 +152,12 @@ func main() {
 	}
 	bin := os.Args[1]
 	for idx, line := range rawTestcases {
-		a, b, err := parseCase(line)
+		input := strings.TrimSpace(line) + "\n"
+		expected, err := solve307B(input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d invalid: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		expected := solveCase(a, b)
-		input := fmt.Sprintf("%d %d\n", a, b)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)

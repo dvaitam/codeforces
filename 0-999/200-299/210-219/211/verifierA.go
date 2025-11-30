@@ -232,10 +232,16 @@ func roundMatrix(d []int, ksum []int, t int) [][]int {
 	SS := N
 	TT := N + 1
 	for i := 0; i < U; i++ {
-		dinic.AddEdge(S, 1+i, d[i])
+		l := d[i]
+		dinic.AddEdge(S, 1+i, 0)
+		demand[S] -= l
+		demand[1+i] += l
 	}
 	for j := 0; j < t; j++ {
-		dinic.AddEdge(1+U+j, T, ksum[j])
+		l := ksum[j]
+		dinic.AddEdge(1+U+j, T, 0)
+		demand[1+U+j] -= l
+		demand[T] += l
 	}
 	for i := 0; i < U; i++ {
 		for j := 0; j < t; j++ {
@@ -294,34 +300,65 @@ func runReference(reader *bufio.Reader, writer *bufio.Writer) error {
 		degL[xs[i]]++
 		degR[ys[i]]++
 	}
-	ksum := make([]int, t)
-	base := k / t
-	rem := k % t
-	for j := 0; j < t; j++ {
-		ksum[j] = base
-		if j < rem {
-			ksum[j]++
-		}
-	}
-	A := roundMatrix(degL, ksum, t)
-	B := roundMatrix(degR, ksum, t)
 	adj := make([][]int, n)
 	for i := 0; i < k; i++ {
 		adj[xs[i]] = append(adj[xs[i]], i)
 	}
 	col := make([]int, k)
 	used := make([]bool, k)
+	remL := append([]int(nil), degL...)
+	remR := append([]int(nil), degR...)
+	remaining := k
 	for j := 0; j < t; j++ {
-		N := 2 + n + m
+		colorsLeft := t - j
+		need := remaining / colorsLeft
+		if remaining%colorsLeft != 0 && j < remaining%colorsLeft {
+			need++
+		}
+		lowerL := make([]int, n)
+		upperL := make([]int, n)
+		for i := 0; i < n; i++ {
+			lowerL[i] = remL[i] / colorsLeft
+			upperL[i] = lowerL[i]
+			if remL[i]%colorsLeft != 0 {
+				upperL[i]++
+			}
+		}
+		lowerR := make([]int, m)
+		upperR := make([]int, m)
+		for i := 0; i < m; i++ {
+			lowerR[i] = remR[i] / colorsLeft
+			upperR[i] = lowerR[i]
+			if remR[i]%colorsLeft != 0 {
+				upperR[i]++
+			}
+		}
+		N := n + m + 2
 		S := n + m
 		T := n + m + 1
-		din := NewDinic(N)
-		type emap struct{ u, pos, idx int }
-		emaps := make([]emap, 0, k)
+		demand := make([]int, N)
+		din := NewDinic(N + 2)
+		SS := N
+		TT := N + 1
+		demand[S] -= need
+		demand[T] += need
 		for u := 0; u < n; u++ {
-			if A[u][j] > 0 {
-				din.AddEdge(S, u, A[u][j])
-			}
+			l := lowerL[u]
+			ucap := upperL[u]
+			din.AddEdge(S, u, ucap-l)
+			demand[S] -= l
+			demand[u] += l
+		}
+		for v := 0; v < m; v++ {
+			l := lowerR[v]
+			ucap := upperR[v]
+			din.AddEdge(n+v, T, ucap-l)
+			demand[n+v] -= l
+			demand[T] += l
+		}
+		type emap struct{ u, pos, idx int }
+		emaps := make([]emap, 0, need)
+		for u := 0; u < n; u++ {
 			for _, ei := range adj[u] {
 				if used[ei] {
 					continue
@@ -332,19 +369,34 @@ func runReference(reader *bufio.Reader, writer *bufio.Writer) error {
 				emaps = append(emaps, emap{u, pos, ei})
 			}
 		}
-		for v := 0; v < m; v++ {
-			if B[v][j] > 0 {
-				din.AddEdge(n+v, T, B[v][j])
+		din.AddEdge(T, S, 1e9)
+		totalDemand := 0
+		for v := 0; v < N; v++ {
+			if demand[v] > 0 {
+				din.AddEdge(SS, v, demand[v])
+				totalDemand += demand[v]
+			} else if demand[v] < 0 {
+				din.AddEdge(v, TT, -demand[v])
 			}
 		}
-		din.MaxFlow(S, T)
+		if din.MaxFlow(SS, TT) != totalDemand {
+			return fmt.Errorf("color %d infeasible", j+1)
+		}
+		assigned := 0
 		for _, em := range emaps {
 			e := din.G[em.u][em.pos]
 			if e.cap == 0 && !used[em.idx] {
 				col[em.idx] = j + 1
 				used[em.idx] = true
+				assigned++
+				remL[xs[em.idx]]--
+				remR[ys[em.idx]]--
 			}
 		}
+		if assigned != need {
+			return fmt.Errorf("color %d assigned %d edges, need %d", j+1, assigned, need)
+		}
+		remaining -= assigned
 	}
 	uneven := 0
 	cntL := make([][]int, n)
@@ -356,6 +408,9 @@ func runReference(reader *bufio.Reader, writer *bufio.Writer) error {
 		cntR[i] = make([]int, t)
 	}
 	for i := 0; i < k; i++ {
+		if col[i] == 0 {
+			return fmt.Errorf("edge %d was not assigned a color", i)
+		}
 		cj := col[i] - 1
 		cntL[xs[i]][cj]++
 		cntR[ys[i]][cj]++

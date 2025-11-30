@@ -1,11 +1,11 @@
 package main
 
 import (
-    "bufio"
-    "fmt"
-    "os"
-    "os/exec"
-    "strings"
+	"bufio"
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
 )
 
 // referenceSolutionSource embeds the original 217A solution for traceability.
@@ -770,88 +770,88 @@ const rawTestcases = `7
 var testcases = parseTestcases(rawTestcases)
 
 func parseTestcases(data string) []string {
-    blocks := strings.Split(data, "\n\n")
-    out := make([]string, 0, len(blocks))
-    for _, block := range blocks {
-        block = strings.TrimSpace(block)
-        if block == "" {
-            continue
-        }
-        out = append(out, block)
-    }
-    return out
+	blocks := strings.Split(data, "\n\n")
+	out := make([]string, 0, len(blocks))
+	for _, block := range blocks {
+		block = strings.TrimSpace(block)
+		if block == "" {
+			continue
+		}
+		out = append(out, block)
+	}
+	return out
 }
 
 func solve(input string) (string, error) {
-    reader := bufio.NewReader(strings.NewReader(strings.TrimSpace(input)))
-    var n int
-    if _, err := fmt.Fscan(reader, &n); err != nil {
-        return "", err
-    }
+	reader := bufio.NewReader(strings.NewReader(strings.TrimSpace(input)))
+	var n int
+	if _, err := fmt.Fscan(reader, &n); err != nil {
+		return "", err
+	}
 
-    xs := make([]int, n)
-    ys := make([]int, n)
-    for i := 0; i < n; i++ {
-        if _, err := fmt.Fscan(reader, &xs[i], &ys[i]); err != nil {
-            return "", err
-        }
-    }
+	xs := make([]int, n)
+	ys := make([]int, n)
+	for i := 0; i < n; i++ {
+		if _, err := fmt.Fscan(reader, &xs[i], &ys[i]); err != nil {
+			return "", err
+		}
+	}
 
-    visited := make([]bool, n)
-    var dfs func(int)
-    dfs = func(u int) {
-        visited[u] = true
-        for v := 0; v < n; v++ {
-            if visited[v] {
-                continue
-            }
-            if xs[u] == xs[v] || ys[u] == ys[v] {
-                dfs(v)
-            }
-        }
-    }
+	visited := make([]bool, n)
+	var dfs func(int)
+	dfs = func(u int) {
+		visited[u] = true
+		for v := 0; v < n; v++ {
+			if visited[v] {
+				continue
+			}
+			if xs[u] == xs[v] || ys[u] == ys[v] {
+				dfs(v)
+			}
+		}
+	}
 
-    components := 0
-    for i := 0; i < n; i++ {
-        if !visited[i] {
-            components++
-            dfs(i)
-        }
-    }
+	components := 0
+	for i := 0; i < n; i++ {
+		if !visited[i] {
+			components++
+			dfs(i)
+		}
+	}
 
-    return fmt.Sprint(components - 1), nil
+	return fmt.Sprint(components - 1), nil
 }
 
 func main() {
-    if len(os.Args) != 2 {
-        fmt.Println("usage: go run verifierA.go /path/to/binary")
-        os.Exit(1)
-    }
-    bin := os.Args[1]
+	if len(os.Args) != 2 {
+		fmt.Println("usage: go run verifierA.go /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
 
-    for idx, tc := range testcases {
-        input := strings.TrimSpace(tc) + "\n"
+	for idx, tc := range testcases {
+		input := strings.TrimSpace(tc) + "\n"
 
-        expect, err := solve(input)
-        if err != nil {
-            fmt.Fprintf(os.Stderr, "test %d: oracle error: %v\n", idx+1, err)
-            os.Exit(1)
-        }
+		expect, err := solve(input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: oracle error: %v\n", idx+1, err)
+			os.Exit(1)
+		}
 
-        cmd := exec.Command(bin)
-        cmd.Stdin = strings.NewReader(input)
-        out, err := cmd.CombinedOutput()
-        if err != nil {
-            fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n", idx+1, err)
-            os.Exit(1)
-        }
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(input)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n", idx+1, err)
+			os.Exit(1)
+		}
 
-        got := strings.TrimSpace(string(out))
-        if got != expect {
-            fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %s\n got: %s\n", idx+1, expect, got)
-            os.Exit(1)
-        }
-    }
+		got := strings.TrimSpace(string(out))
+		if got != expect {
+			fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %s\n got: %s\n", idx+1, expect, got)
+			os.Exit(1)
+		}
+	}
 
-    fmt.Printf("All %d tests passed\n", len(testcases))
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

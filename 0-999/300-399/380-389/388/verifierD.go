@@ -8,6 +8,89 @@ import (
 	"strings"
 )
 
+const embeddedSolutionSource = `package main
+
+import (
+   "bufio"
+   "fmt"
+   "os"
+)
+
+const MOD = 1000000007
+
+func main() {
+   reader := bufio.NewReader(os.Stdin)
+   var k int64
+   if _, err := fmt.Fscan(reader, &k); err != nil {
+       return
+   }
+   var L int
+   for i := 62; i >= 0; i-- {
+       if (k>>i)&1 == 1 {
+           L = i
+           break
+       }
+   }
+   maxn := L + 2
+   pow2 := make([]int64, maxn)
+   pow2[0] = 1
+   for i := 1; i < maxn; i++ {
+       pow2[i] = (pow2[i-1] * 2) % MOD
+   }
+   dp := make([][2]int64, maxn)
+   dp[0][1] = 1
+   for pos := L; pos >= 0; pos-- {
+       bit := (k >> pos) & 1
+       next := make([][2]int64, maxn)
+       for t := 0; t < maxn; t++ {
+           for tight := 0; tight <= 1; tight++ {
+               val := dp[t][tight]
+               if val == 0 {
+                   continue
+               }
+               if !(tight == 1 && bit == 0) {
+                   nt := 0
+                   if tight == 1 && bit == 1 {
+                       nt = 1
+                   }
+                   if t+1 < maxn {
+                       next[t+1][nt] = (next[t+1][nt] + val) % MOD
+                   }
+               }
+               mult0 := int64(1)
+               if t > 0 {
+                   mult0 = pow2[t-1]
+               }
+               nt0 := 0
+               if tight == 1 {
+                   if bit == 0 {
+                       nt0 = 1
+                   } else {
+                       nt0 = 0
+                   }
+               }
+               next[t][nt0] = (next[t][nt0] + val*mult0) % MOD
+               if t > 0 {
+                   mult1 := pow2[t-1]
+                   if !(tight == 1 && bit == 0) {
+                       nt1 := 0
+                       if tight == 1 && bit == 1 {
+                           nt1 = 1
+                       }
+                       next[t][nt1] = (next[t][nt1] + val*mult1) % MOD
+                   }
+               }
+           }
+       }
+       dp = next
+   }
+   var ans int64
+   for t := 0; t < maxn; t++ {
+       ans = (ans + dp[t][0] + dp[t][1]) % MOD
+   }
+   fmt.Println(ans)
+}`
+
 const mod = 1000000007
 
 func solve(k int64) int64 {
@@ -82,7 +165,9 @@ func solve(k int64) int64 {
 	return ans
 }
 
-var testcasesRaw = `887063
+var (
+	_             = embeddedSolutionSource
+	testcasesRaw = `887063
 172419
 431143
 475296
@@ -186,6 +271,7 @@ var testcasesRaw = `887063
 865215
 811720
 334809`
+)
 
 func parseTestcases() ([]int64, error) {
 	lines := strings.Fields(testcasesRaw)

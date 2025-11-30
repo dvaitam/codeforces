@@ -10,107 +10,341 @@ import (
 	"strings"
 )
 
-var rawTestcases = []string{
-	"1 3\n0\n0",
-	"4 4\n3 3 0 2\n0 2 3 0",
-	"6 2\n0 0 1 1 0 0\n0 1 1 1 0 1",
-	"7 8\n3 3 1 1 6 2 7\n7 2 0 1 0 7 2",
-	"4 4\n0 0 2 1\n2 2 3 0",
-	"7 7\n0 5 2 4 5 2 3\n4 2 3 5 2 0 6",
-	"1 5\n1\n0",
-	"1 3\n1\n0",
-	"2 7\n4 1\n5 1",
-	"5 5\n2 3 3 4 4\n3 1 1 0 1",
-	"6 7\n1 2 6 1 0 4\n3 3 4 2 1 1",
-	"5 2\n0 0 1 0 0\n0 0 0 0 0",
-	"3 5\n4 2 0\n3 0 1",
-	"1 8\n3\n2",
-	"1 6\n3\n2",
-	"5 6\n4 1 4 4 3\n2 0 1 0 4",
-	"3 5\n1 0 4\n0 2 1",
-	"2 4\n2 3\n3 1",
-	"5 7\n4 4 3 3 2\n3 1 4 4 3",
-	"2 5\n3 1\n0 2",
-	"4 7\n6 5 0 4\n5 0 0 5",
-	"7 4\n1 1 2 3 0 0 3\n3 2 2 3 2 3 1",
-	"3 2\n0 0 0\n1 1 1",
-	"7 8\n3 6 0 5 6 7 6\n4 1 2 4 2 6 4",
-	"3 7\n4 0 2\n3 2 6",
-	"7 6\n0 3 1 4 2 1 0\n4 5 4 2 0 3 5",
-	"6 7\n3 2 5 4 5 6\n3 6 1 2 0 0",
-	"2 6\n4 5\n5 5",
-	"7 2\n1 1 0 1 1 1 1\n0 1 1 0 1 1 1",
-	"5 3\n1 2 1 0 2\n0 0 1 1 2",
-	"3 8\n4 2 4\n0 0 3",
-	"6 4\n0 3 0 2 1 3\n1 1 2 0 0 2",
-	"8 5\n2 3 2 4 4 1 0 0\n1 3 2 0 4 4 2 4",
-	"3 7\n3 3 1\n2 2 2",
-	"6 3\n1 0 0 1 1 1\n1 1 2 0 2 0",
-	"4 3\n1 0 2 1\n1 0 0 0",
-	"6 5\n2 4 2 2 1 0\n4 2 1 0 3 3",
-	"2 5\n3 0\n0 3",
-	"7 3\n1 0 2 1 1 0 2\n1 2 1 2 1 1 1",
-	"8 4\n2 0 0 0 0 1 3 3\n0 3 0 1 1 3 2 1",
-	"6 3\n0 1 1 0 0 1\n0 1 0 2 0 1",
-	"1 8\n1\n4",
-	"5 8\n4 2 3 6 7\n0 4 6 1 4",
-	"6 6\n4 3 2 2 0 3\n5 1 2 3 0 1",
-	"1 2\n0\n1",
-	"7 3\n1 0 0 0 1 1 1\n2 0 1 1 1 1 1",
-	"7 6\n4 2 4 3 3 1 5\n5 1 5 3 2 1 0",
-	"3 3\n1 1 1\n0 1 0",
-	"1 3\n0\n2",
-	"6 6\n0 2 4 5 3 3\n0 1 2 5 5 1",
-	"4 6\n2 1 0 0\n0 1 0 5",
-	"1 5\n0\n2",
-	"4 6\n2 5 5 3\n1 1 5 4",
-	"3 5\n3 1 0\n4 4 4",
-	"7 6\n5 3 1 3 4 4 4\n5 0 1 4 1 2 4",
-	"3 6\n3 2 5\n4 3 5",
-	"7 4\n1 3 3 3 1 3 0\n0 3 0 2 2 2 3",
-	"5 8\n1 0 1 4 2\n4 3 1 1 3",
-	"1 4\n3\n2",
-	"2 6\n4 0\n0 5",
-	"3 7\n1 0 3\n1 5 6",
-	"6 2\n0 0 1 0 0 1\n0 1 1 0 0 0",
-	"5 5\n4 0 3 1 3\n3 4 1 3 0",
-	"1 6\n1\n4",
-	"6 2\n0 0 0 0 0 1\n1 0 0 1 0 0",
-	"4 5\n4 3 2 2\n1 2 2 3",
-	"6 3\n0 2 0 1 2 2\n0 1 1 0 0 0",
-	"6 7\n2 5 4 6 5 0\n2 1 6 3 1 5",
-	"1 7\n1\n4",
-	"4 4\n3 3 1 1\n1 3 1 0",
-	"1 5\n1\n0",
-	"4 7\n4 3 1 3\n0 6 3 4",
-	"2 4\n3 0\n2 3",
-	"1 5\n1\n1",
-	"6 5\n2 0 0 1 4 0\n0 3 2 1 0 2",
-	"4 4\n3 3 1 1\n3 0 3 3",
-	"1 5\n1\n0",
-	"4 3\n1 2 2 0\n0 1 2 1",
-	"7 3\n0 0 0 0 1 2 0\n0 0 1 1 1 0 2",
-	"8 6\n4 5 5 2 5 0 5 2\n2 0 2 0 5 0 3 2",
-	"1 5\n4\n2",
-	"3 3\n2 0 2\n2 2 0",
-	"5 7\n3 6 3 1 1\n2 6 1 5 0",
-	"4 3\n0 1 1 1\n1 2 0 0",
-	"4 4\n1 0 0 2\n1 0 3 2",
-	"6 6\n0 5 5 3 2 2\n3 2 3 2 2 1",
-	"5 7\n5 3 6 5 6\n1 0 0 2 6",
-	"6 8\n2 7 4 6 3 0\n2 4 2 6 4 4",
-	"1 7\n2\n0",
-	"6 7\n2 6 4 5 6 2\n5 4 1 5 5 6",
-	"4 4\n0 1 2 1\n2 2 1 3",
-	"6 8\n6 5 5 6 6 4\n3 1 4 1 5 7",
-	"3 6\n3 4 0\n2 1 1",
-	"2 4\n2 0\n2 0",
-	"3 4\n3 0 1\n3 1 2",
-	"1 2\n1\n1",
-	"6 2\n0 1 0 1 1 1\n0 1 0 0 0 1",
-	"2 8\n1 4\n1 5",
-	"3 5\n0 0 1\n0 1 1",
-	"4 6\n2 0 4 1\n5 5 2 5",
+// Testcases embedded from testcasesE.txt (count + cases).
+const rawTestcases = `100
+1 3
+0
+0
+4 4
+3 3 0 2
+0 2 3 0
+6 2
+0 0 1 1 0 0
+0 1 1 1 0 1
+7 8
+3 3 1 1 6 2 7
+7 2 0 1 0 7 2
+4 4
+0 0 2 1
+2 2 3 0
+7 7
+0 5 2 4 5 2 3
+4 2 3 5 2 0 6
+1 5
+1
+0
+1 3
+1
+0
+2 7
+4 1
+5 1
+5 5
+2 3 3 4 4
+3 1 1 0 1
+6 7
+1 2 6 1 0 4
+3 3 4 2 1 1
+5 2
+0 0 1 0 0
+0 0 0 0 0
+3 5
+4 2 0
+3 0 1
+1 8
+3
+2
+1 6
+3
+2
+5 6
+4 1 4 4 3
+2 0 1 0 4
+3 5
+1 0 4
+0 2 1
+2 4
+2 3
+3 1
+5 7
+4 4 3 3 2
+3 1 4 4 3
+2 5
+3 1
+0 2
+4 7
+6 5 0 4
+5 0 0 5
+7 4
+1 1 2 3 0 0 3
+3 2 2 3 2 3 1
+3 2
+0 0 0
+1 1 1
+7 8
+3 6 0 5 6 7 6
+4 1 2 4 2 6 4
+3 7
+4 0 2
+3 2 6
+7 6
+0 3 1 4 2 1 0
+4 5 4 2 0 3 5
+6 7
+3 2 5 4 5 6
+3 6 1 2 0 0
+2 6
+4 5
+5 5
+7 2
+1 1 0 1 1 1 1
+0 1 1 0 1 1 1
+5 3
+1 2 1 0 2
+0 0 1 1 2
+3 8
+4 2 4
+0 0 3
+6 4
+0 3 0 2 1 3
+1 1 2 0 0 2
+8 5
+2 3 2 4 4 1 0 0
+1 3 2 0 4 4 2 4
+3 7
+3 3 1
+2 2 2
+6 3
+1 0 0 1 1 1
+1 1 2 0 2 0
+4 3
+1 0 2 1
+1 0 0 0
+6 5
+2 4 2 2 1 0
+4 2 1 0 3 3
+2 5
+3 0
+0 3
+7 3
+1 0 2 1 1 0 2
+1 2 1 2 1 1 1
+8 4
+2 0 0 0 0 1 3 3
+0 3 0 1 1 3 2 1
+6 3
+0 1 1 0 0 1
+0 1 0 2 0 1
+1 8
+1
+4
+5 8
+4 2 3 6 7
+0 4 6 1 4
+6 6
+4 3 2 2 0 3
+5 1 2 3 0 1
+1 2
+0
+1
+7 3
+1 0 0 0 1 1 1
+2 0 1 1 1 1 1
+7 6
+4 2 4 3 3 1 5
+5 1 5 3 2 1 0
+3 3
+1 1 1
+0 1 0
+1 3
+0
+2
+6 6
+0 2 4 5 3 3
+0 1 2 5 5 1
+4 6
+2 1 0 0
+0 1 0 5
+1 5
+0
+2
+4 6
+2 5 5 3
+1 1 5 4
+3 5
+3 1 0
+4 4 4
+7 6
+5 3 1 3 4 4 4
+5 0 1 4 1 2 4
+3 6
+3 2 5
+4 3 5
+7 4
+1 3 3 3 1 3 0
+0 3 0 2 2 2 3
+5 8
+1 0 1 4 2
+4 3 1 1 3
+1 4
+3
+2
+2 6
+4 0
+0 5
+3 7
+1 0 3
+1 5 6
+6 2
+0 0 1 0 0 1
+0 1 1 0 0 0
+5 5
+4 0 3 1 3
+3 4 1 3 0
+1 6
+1
+4
+6 2
+0 0 0 0 0 1
+1 0 0 1 0 0
+4 5
+4 3 2 2
+1 2 2 3
+6 3
+0 2 0 1 2 2
+0 1 1 0 0 0
+6 7
+2 5 4 6 5 0
+2 1 6 3 1 5
+1 7
+1
+4
+4 4
+3 3 1 1
+1 3 1 0
+1 5
+1
+0
+4 7
+4 3 1 3
+0 6 3 4
+2 4
+3 0
+2 3
+1 5
+1
+1
+6 5
+2 0 0 1 4 0
+0 3 2 1 0 2
+4 4
+3 3 1 1
+3 0 3 3
+1 5
+1
+0
+4 3
+1 2 2 0
+0 1 2 1
+7 3
+0 0 0 0 1 2 0
+0 0 1 1 1 0 2
+8 6
+4 5 5 2 5 0 5 2
+2 0 2 0 5 0 3 2
+1 5
+4
+2
+3 3
+2 0 2
+2 2 0
+5 7
+3 6 3 1 1
+2 6 1 5 0
+4 3
+0 1 1 1
+1 2 0 0
+4 4
+1 0 0 2
+1 0 3 2
+6 6
+0 5 5 3 2 2
+3 2 3 2 2 1
+5 7
+5 3 6 5 6
+1 0 0 2 6
+6 8
+2 7 4 6 3 0
+2 4 2 6 4 4
+1 7
+2
+0
+6 7
+2 6 4 5 6 2
+5 4 1 5 5 6
+4 4
+0 1 2 1
+2 2 1 3
+6 8
+6 5 5 6 6 4
+3 1 4 1 5 7
+3 6
+3 4 0
+2 1 1
+2 4
+2 0
+2 0
+3 4
+3 0 1
+3 1 2
+1 2
+1
+1
+6 2
+0 1 0 1 1 1
+0 1 0 0 0 1
+2 8
+1 4
+1 5
+3 5
+0 0 1
+0 1 1
+4 6
+2 0 4 1
+5 5 2 5`
+
+type testCase struct {
+	n, m int
+	A, B []int
+}
+
+func loadTestcases() ([]testCase, error) {
+	reader := strings.NewReader(rawTestcases)
+	var t int
+	if _, err := fmt.Fscan(reader, &t); err != nil {
+		return nil, fmt.Errorf("read count: %w", err)
+	}
+	cases := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		var n, m int
+		if _, err := fmt.Fscan(reader, &n, &m); err != nil {
+			return nil, fmt.Errorf("case %d header: %w", i+1, err)
+		}
+		A := make([]int, n)
+		B := make([]int, n)
+		for j := 0; j < n; j++ {
+			if _, err := fmt.Fscan(reader, &A[j]); err != nil {
+				return nil, fmt.Errorf("case %d A[%d]: %w", i+1, j, err)
+			}
+		}
+		for j := 0; j < n; j++ {
+			if _, err := fmt.Fscan(reader, &B[j]); err != nil {
+				return nil, fmt.Errorf("case %d B[%d]: %w", i+1, j, err)
+			}
+		}
+		cases = append(cases, testCase{n: n, m: m, A: A, B: B})
+	}
+	return cases, nil
 }
 
 type BIT struct {
@@ -197,35 +431,6 @@ func solveCase(n, m int, A, B []int) string {
 	return sb.String()
 }
 
-func parseCase(raw string) (int, int, []int, []int, error) {
-	fields := strings.Fields(raw)
-	if len(fields) < 2 {
-		return 0, 0, nil, nil, fmt.Errorf("invalid case")
-	}
-	n, err := strconv.Atoi(fields[0])
-	if err != nil {
-		return 0, 0, nil, nil, err
-	}
-	m, err := strconv.Atoi(fields[1])
-	if err != nil {
-		return 0, 0, nil, nil, err
-	}
-	if len(fields) != 2+2*n {
-		return 0, 0, nil, nil, fmt.Errorf("expected %d numbers got %d", 2+2*n, len(fields))
-	}
-	A := make([]int, n)
-	B := make([]int, n)
-	for i := 0; i < n; i++ {
-		val, _ := strconv.Atoi(fields[2+i])
-		A[i] = val
-	}
-	for i := 0; i < n; i++ {
-		val, _ := strconv.Atoi(fields[2+n+i])
-		B[i] = val
-	}
-	return n, m, A, B, nil
-}
-
 func run(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
@@ -244,14 +449,14 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	for idx, tc := range rawTestcases {
-		n, m, A, B, err := parseCase(tc)
-		if err != nil {
-			fmt.Printf("case %d invalid: %v\n", idx+1, err)
-			os.Exit(1)
-		}
-		expected := solveCase(n, m, A, B)
-		input := fmt.Sprintf("%d %d\n%s\n%s\n", n, m, strings.Join(intSliceToStrings(A), " "), strings.Join(intSliceToStrings(B), " "))
+	testcases, err := loadTestcases()
+	if err != nil {
+		fmt.Printf("failed to load testcases: %v\n", err)
+		os.Exit(1)
+	}
+	for idx, tc := range testcases {
+		expected := solveCase(tc.n, tc.m, tc.A, tc.B)
+		input := fmt.Sprintf("%d %d\n%s\n%s\n", tc.n, tc.m, strings.Join(intSliceToStrings(tc.A), " "), strings.Join(intSliceToStrings(tc.B), " "))
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Printf("case %d failed: %v\n", idx+1, err)
@@ -262,7 +467,7 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(rawTestcases))
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }
 
 func intSliceToStrings(arr []int) []string {

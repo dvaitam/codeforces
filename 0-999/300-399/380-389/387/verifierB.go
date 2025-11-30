@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,22 +9,47 @@ import (
 	"strings"
 )
 
-func solve(a, b []int) int {
-	n, m := len(a), len(b)
-	i, j, matched := 0, 0, 0
-	for i < n && j < m {
-		if b[j] >= a[i] {
-			matched++
-			i++
-			j++
-		} else {
-			j++
-		}
-	}
-	return n - matched
-}
+// referenceSolutionSource embeds the original 387B solution for traceability.
+const referenceSolutionSource = `package main
 
-var testcasesRaw = `100
+import (
+   "bufio"
+   "fmt"
+   "os"
+)
+
+func main() {
+   reader := bufio.NewReader(os.Stdin)
+   var n, m int
+   if _, err := fmt.Fscan(reader, &n, &m); err != nil {
+       return
+   }
+   a := make([]int, n)
+   for i := 0; i < n; i++ {
+       fmt.Fscan(reader, &a[i])
+   }
+   b := make([]int, m)
+   for j := 0; j < m; j++ {
+       fmt.Fscan(reader, &b[j])
+   }
+   i, j, matched := 0, 0, 0
+   for i < n && j < m {
+       if b[j] >= a[i] {
+           matched++
+           i++
+           j++
+       } else {
+           j++
+       }
+   }
+   // need to come up with problems for unmatched requirements
+   fmt.Println(n - matched)
+}
+`
+
+var _ = referenceSolutionSource
+
+const rawTestcases = `100
 1 1 9 15
 1 7 9 4 5 12 17 21 23 24
 3 3 2 7 19 9 18 22
@@ -125,6 +151,8 @@ var testcasesRaw = `100
 3 7 10 16 18 2 9 15 18 19 23 24
 4 4 2 12 13 16 1 2 9 24`
 
+var testcases = mustParseTestcases(rawTestcases)
+
 type testcase struct {
 	n int
 	m int
@@ -132,17 +160,17 @@ type testcase struct {
 	b []int
 }
 
-func parseTestcases() ([]testcase, error) {
-	r := strings.NewReader(testcasesRaw)
+func mustParseTestcases(data string) []testcase {
+	r := strings.NewReader(strings.TrimSpace(data))
 	var t int
 	if _, err := fmt.Fscan(r, &t); err != nil {
-		return nil, err
+		panic(err)
 	}
-	cases := make([]testcase, 0, t)
+	out := make([]testcase, 0, t)
 	for i := 0; i < t; i++ {
 		var n, m int
 		if _, err := fmt.Fscan(r, &n, &m); err != nil {
-			return nil, err
+			panic(err)
 		}
 		a := make([]int, n)
 		for j := 0; j < n; j++ {
@@ -152,9 +180,36 @@ func parseTestcases() ([]testcase, error) {
 		for j := 0; j < m; j++ {
 			fmt.Fscan(r, &b[j])
 		}
-		cases = append(cases, testcase{n: n, m: m, a: a, b: b})
+		out = append(out, testcase{n: n, m: m, a: a, b: b})
 	}
-	return cases, nil
+	return out
+}
+
+func solve(a, b []int) int {
+	n, m := len(a), len(b)
+	i, j, matched := 0, 0, 0
+	for i < n && j < m {
+		if b[j] >= a[i] {
+			matched++
+			i++
+			j++
+		} else {
+			j++
+		}
+	}
+	return n - matched
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v, output: %s", err, out.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
@@ -164,13 +219,7 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	cases, err := parseTestcases()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to parse embedded testcases: %v\n", err)
-		os.Exit(1)
-	}
-
-	for idx, tc := range cases {
+	for idx, tc := range testcases {
 		expected := strconv.Itoa(solve(tc.a, tc.b))
 
 		var sb strings.Builder
@@ -190,20 +239,16 @@ func main() {
 		}
 		sb.WriteByte('\n')
 
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(sb.String())
-		out, err := cmd.CombinedOutput()
+		got, err := run(bin, sb.String())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n%s", idx+1, err, string(out))
+			fmt.Fprintf(os.Stderr, "test %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-
-		got := strings.TrimSpace(string(out))
 		if got != expected {
 			fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %s\n got: %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}
 
-	fmt.Printf("All %d tests passed\n", len(cases))
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

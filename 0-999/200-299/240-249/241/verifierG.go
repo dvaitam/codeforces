@@ -7,9 +7,20 @@ import (
 	"strings"
 )
 
-const testcaseRuns = 100
+// The original testcases file contained 100 blank lines; embed that directly.
+const rawTestcases = "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
 
-func solve() string {
+func parseTestcases() []string {
+	// rawTestcases has 100 newline-separated empty strings.
+	lines := strings.Split(strings.TrimRight(rawTestcases, "\n"), "\n")
+	if len(lines) == 1 && lines[0] == "" {
+		return make([]string, 0)
+	}
+	return lines
+}
+
+// solveCase is the embedded logic from 241G.go, adapted to return the output as a string.
+func solveCase() string {
 	var sb strings.Builder
 	sb.WriteString("302 ")
 	sb.WriteByte('\n')
@@ -31,9 +42,15 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	expected := strings.TrimSpace(solve())
+	expected := strings.TrimSpace(solveCase())
+	testcases := parseTestcases()
+	// If parsing trimmed away empties, default to 100 runs to match original file length.
+	runCount := len(testcases)
+	if runCount == 0 {
+		runCount = 100
+	}
 
-	for idx := 0; idx < testcaseRuns; idx++ {
+	for idx := 0; idx < runCount; idx++ {
 		cmd := exec.Command(bin)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -47,5 +64,5 @@ func main() {
 		}
 	}
 
-	fmt.Printf("All %d tests passed\n", testcaseRuns)
+	fmt.Printf("All %d tests passed\n", runCount)
 }

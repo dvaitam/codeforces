@@ -9,20 +9,126 @@ import (
 	"strings"
 )
 
-var rawTestcases = []int{
-	990085, 584054, 13706, 5143, 389994, 299330, 872337, 872618, 225038, 57062,
-	978309, 326955, 688419, 711381, 155253, 133621, 70643, 752812, 163996, 618060,
-	438342, 281471, 802465, 849724, 137088, 76496, 944571, 202729, 967038, 801531,
-	168470, 631275, 436994, 227115, 819471, 411650, 567354, 889506, 514036, 181528,
-	908447, 187494, 199513, 921436, 856910, 691451, 167533, 910938, 495302, 65880,
-	524576, 195396, 265880, 38917, 407593, 754130, 516235, 781849, 63710, 90187,
-	248336, 499516, 15126, 28723, 659648, 995663, 51914, 132955, 99248, 28404,
-	129089, 253826, 931925, 957724, 131256, 297559, 396342, 995049, 895486, 301274,
-	950126, 135342, 926885, 3014, 365784, 190212, 404578, 955689, 628816, 218830,
-	247258, 745819, 349290, 384048, 38786, 536168, 750302, 467880, 8803, 97086,
-}
+// Testcases embedded from testcasesB.txt (one k per line).
+const rawTestcases = `990085
+584054
+13706
+5143
+389994
+299330
+872337
+872618
+225038
+57062
+978309
+326955
+688419
+711381
+155253
+133621
+70643
+752812
+163996
+618060
+438342
+281471
+802465
+849724
+137088
+76496
+944571
+202729
+967038
+801531
+168470
+631275
+436994
+227115
+819471
+411650
+567354
+889506
+514036
+181528
+908447
+187494
+199513
+921436
+856910
+691451
+167533
+910938
+495302
+65880
+524576
+195396
+265880
+38917
+407593
+754130
+516235
+781849
+63710
+90187
+248336
+499516
+15126
+28723
+659648
+995663
+51914
+132955
+99248
+28404
+129089
+253826
+931925
+957724
+131256
+297559
+396342
+995049
+895486
+301274
+950126
+135342
+926885
+3014
+365784
+190212
+404578
+955689
+628816
+218830
+247258
+745819
+349290
+384048
+38786
+536168
+750302
+467880
+8803
+97086`
 
 const nodes = 95
+const testcaseCount = 100
+
+func loadTestcases() ([]int, error) {
+	lines := strings.Split(strings.TrimSpace(rawTestcases), "\n")
+	if len(lines) != testcaseCount {
+		return nil, fmt.Errorf("expected %d testcases got %d", testcaseCount, len(lines))
+	}
+	res := make([]int, 0, len(lines))
+	for i, l := range lines {
+		v, err := strconv.Atoi(strings.TrimSpace(l))
+		if err != nil {
+			return nil, fmt.Errorf("line %d: %w", i+1, err)
+		}
+		res = append(res, v)
+	}
+	return res, nil
+}
 
 func solve(k int) string {
 	edge := make([][]bool, nodes)
@@ -85,7 +191,12 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	for idx, k := range rawTestcases {
+	testcases, err := loadTestcases()
+	if err != nil {
+		fmt.Printf("failed to load testcases: %v\n", err)
+		os.Exit(1)
+	}
+	for idx, k := range testcases {
 		expected := solve(k)
 		input := fmt.Sprintf("%d\n", k)
 		got, err := run(bin, input)
@@ -98,5 +209,5 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(rawTestcases))
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

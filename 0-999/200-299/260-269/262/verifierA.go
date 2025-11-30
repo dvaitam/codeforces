@@ -125,6 +125,7 @@ func countLuckyDigits(x int) int {
 }
 
 func solveCase(n, k int, nums []int) int {
+	// Logic lifted from 262A.go: count numbers with at most k lucky digits.
 	ans := 0
 	for _, x := range nums {
 		if countLuckyDigits(x) <= k {
