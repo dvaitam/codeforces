@@ -43,7 +43,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\nInput:\n%s\n", idx+1, tc.input, err)
 			os.Exit(1)
 		}
-		refValid, refSeq, err := parseOutput(refOut, tc.n)
+		refValid, _, err := parseOutput(refOut, tc.n)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "reference output invalid on test %d: %v\nOutput:\n%s\n", idx+1, err, refOut)
 			os.Exit(1)

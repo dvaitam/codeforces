@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -136,9 +135,9 @@ const embeddedTestcasesE = `2 3 0 1 1 0 0 0
 2 4 0 0 0 0 0 1 1 1`
 
 type edge struct {
-	to  int
-	id  int
-	rev int
+	to   int
+	id   int
+	rev  int
 	used bool
 }
 

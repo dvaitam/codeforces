@@ -22,7 +22,6 @@ type testCaseF struct {
 }
 
 func solveCaseF(k int64, waves []wave) int64 {
-	n := len(waves)
 	var sumA int64
 	for _, w := range waves {
 		sumA += w.a

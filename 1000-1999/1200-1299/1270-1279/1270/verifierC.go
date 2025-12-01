@@ -207,7 +207,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d: oracle error: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		expCounts, expAppends, err := parseOutput(expOut, t)
+		expCounts, _, err := parseOutput(expOut, t)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d: oracle output invalid: %v\n", idx+1, err)
 			os.Exit(1)

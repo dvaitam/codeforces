@@ -31,7 +31,7 @@ type khayyamCase struct {
 var problemDir string
 
 func init() {
-	_, file, ok := runtime.Caller(0)
+	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		panic("failed to locate verifier")
 	}

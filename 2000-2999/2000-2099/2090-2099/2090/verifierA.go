@@ -79,7 +79,7 @@ func generateCase() testCase {
 		// One digs zero extra beyond first move.
 		a := r64(1, 1_000_000_000)
 		x := r64(1, 10)
-		y := 1
+		y := int64(1)
 		return testCase{x, y, a}
 	}
 }

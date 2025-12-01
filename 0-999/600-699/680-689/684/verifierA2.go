@@ -148,7 +148,12 @@ func runTest(bin string, tc testCase) error {
 		}
 	}
 
-	writer.Close()
+	if err := writer.Flush(); err != nil {
+		return fmt.Errorf("failed to flush writer: %w", err)
+	}
+	if err := stdin.Close(); err != nil {
+		return fmt.Errorf("failed to close stdin: %w", err)
+	}
 	if err := cmd.Wait(); err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
 			return fmt.Errorf("process timed out on %s", tc.name)

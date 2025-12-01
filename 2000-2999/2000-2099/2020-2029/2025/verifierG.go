@@ -28,7 +28,7 @@ func callerFile() (string, bool) {
 }
 
 func buildOracle() (string, func(), error) {
-	_, file, ok := callerFile()
+	file, ok := callerFile()
 	if !ok {
 		return "", nil, fmt.Errorf("cannot determine verifier path")
 	}

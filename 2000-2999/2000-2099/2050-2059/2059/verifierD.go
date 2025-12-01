@@ -23,6 +23,11 @@ type edge struct {
 	v int
 }
 
+type pair struct {
+	a int
+	b int
+}
+
 type testCase struct {
 	n  int
 	s1 int
@@ -174,7 +179,6 @@ func generateTests() []testCase {
 }
 
 func randomGraph(n int, rnd *rand.Rand) []edge {
-	type pair struct{ a, b int }
 	edges := make(map[pair]struct{})
 	// build a spanning tree
 	for v := 2; v <= n; v++ {
@@ -200,10 +204,10 @@ func randomGraph(n int, rnd *rand.Rand) []edge {
 	return res
 }
 
-func addEdge(u, v int, edges map[struct{ a, b int }]struct{}) {
+func addEdge(u, v int, edges map[pair]struct{}) {
 	if u > v {
 		u, v = v, u
 	}
-	key := struct{ a, b int }{u, v}
+	key := pair{a: u, b: v}
 	edges[key] = struct{}{}
 }

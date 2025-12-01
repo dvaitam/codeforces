@@ -80,7 +80,7 @@ func buildInput(cases []testCase) (string, []int) {
 			}
 			fmt.Fprint(&sb, v)
 		}
-		sb.WriteByte("\n")
+		sb.WriteByte('\n')
 		exp[i] = expectedRemovals(tc.arr)
 	}
 	return sb.String(), exp

@@ -240,7 +240,7 @@ func generateTests() []testCase {
 		),
 	}
 
-	rng := rand.New(rand.NewSource(958e3001))
+	rng := rand.New(rand.NewSource(9583001))
 	tests = append(tests, randomCase(rng, "random-5", 5))
 	tests = append(tests, randomCase(rng, "random-8", 8))
 	tests = append(tests, randomCase(rng, "random-12", 12))

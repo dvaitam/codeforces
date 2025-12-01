@@ -133,11 +133,11 @@ func buildTests() []testCase {
 	tests := []testCase{
 		buildSample(),
 		makeManual("all_small", []manualCase{
-			{c: 10, a: []int{1, 2}},
-			{c: 5, a: []int{5, 5, 5}},
+			{c: 10, a: []int64{1, 2}},
+			{c: 5, a: []int64{5, 5, 5}},
 		}),
 		makeManual("mix_zero_cost", []manualCase{
-			{c: 100, a: []int{1, 50, 2, 3}},
+			{c: 100, a: []int64{1, 50, 2, 3}},
 		}),
 	}
 

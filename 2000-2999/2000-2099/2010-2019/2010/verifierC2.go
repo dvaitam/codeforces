@@ -145,7 +145,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "reference runtime error: %v\noutput:\n%s\n", err, refOut)
 		os.Exit(1)
 	}
-	refVerdict, refWitness, err := parseOutput(refOut)
+	refVerdict, _, err := parseOutput(refOut)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to parse reference output: %v\noutput:\n%s\n", err, refOut)
 		os.Exit(1)

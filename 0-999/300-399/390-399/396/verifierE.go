@@ -526,7 +526,6 @@ func solve(tc testCase) string {
 		}
 		kh := new(big.Int).Sub(tc.k, big.NewInt(int64(h)))
 		nextE := make(map[int]*big.Int)
-		nextPr := make([]int, 0)
 
 		for _, p := range curr {
 			e0 := currE[p]

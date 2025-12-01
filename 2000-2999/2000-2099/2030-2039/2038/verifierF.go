@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"math/big"
 	"math/rand"
 	"os"
 	"os/exec"

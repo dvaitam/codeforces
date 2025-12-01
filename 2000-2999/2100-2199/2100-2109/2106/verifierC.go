@@ -19,7 +19,7 @@ type testCase struct {
 var problemDir string
 
 func init() {
-	_, file, ok := runtime.Caller(0)
+	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		panic("unable to locate verifier path")
 	}

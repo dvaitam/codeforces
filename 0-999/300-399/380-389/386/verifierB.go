@@ -75,8 +75,8 @@ func main() {
 
 	cases := []struct{ in, out string }{}
 	// simple case
-	cases = append(cases, "1\n5\n0\n", "1")
-	cases = append(cases, "3\n1 3 8\n4\n", "2")
+	cases = append(cases, struct{ in, out string }{"1\n5\n0\n", "1"})
+	cases = append(cases, struct{ in, out string }{"3\n1 3 8\n4\n", "2"})
 
 	for i := 0; i < 100; i++ {
 		in, out := generateCase(rng)

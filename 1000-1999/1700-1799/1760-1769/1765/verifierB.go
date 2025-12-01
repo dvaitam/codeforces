@@ -52,7 +52,7 @@ func solveRef(input string) (string, error) {
 			outputs = append(outputs, "NO")
 		}
 	}
-	return strings.Join(output, "\n"), nil
+	return strings.Join(outputs, "\n"), nil
 }
 
 func runCandidate(bin, input string) (string, error) {

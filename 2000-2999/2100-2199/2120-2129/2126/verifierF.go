@@ -130,8 +130,8 @@ func equalSlices(a, b []int64) bool {
 
 func buildTests() []testCase {
 	tests := []testCase{
-		buildSmall("line3", []int{1, 2, 1}, [][3]int{{1, 2, 3}, {2, 3, 4}}, [][2]int{{1, 2}, {2, 1}, {3, 2}}),
-		buildSmall("star4", []int{1, 1, 2, 2}, [][3]int{{1, 2, 5}, {1, 3, 2}, {1, 4, 3}}, [][2]int{{1, 2}, {4, 1}}),
+		buildSmall("line3", []int{1, 2, 1}, [][3]int64{{1, 2, 3}, {2, 3, 4}}, [][2]int{{1, 2}, {2, 1}, {3, 2}}),
+		buildSmall("star4", []int{1, 1, 2, 2}, [][3]int64{{1, 2, 5}, {1, 3, 2}, {1, 4, 3}}, [][2]int{{1, 2}, {4, 1}}),
 	}
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))

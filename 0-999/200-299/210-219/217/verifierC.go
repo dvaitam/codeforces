@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 )
 
@@ -111,6 +110,7 @@ const embeddedTestcasesC = `2 1
 3 1
 3 (((0|(1|1))&0)^(((0&0)&(?|?))|((1^?)&(1&0))))
 5 ((?&1)|(((0|0)^(1|1))^((0^0)|(1^1))))`
+
 func expected(line string) string {
 	parts := strings.Fields(line)
 	if len(parts) < 2 {

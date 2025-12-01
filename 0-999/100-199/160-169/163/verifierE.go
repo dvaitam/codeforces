@@ -43,7 +43,7 @@ func run(bin, input string) (string, error) {
 }
 
 func randString(rng *rand.Rand, n int) string {
-	letters := []byte{"a", "b", "c"}
+	letters := []byte{'a', 'b', 'c'}
 	b := make([]byte, n)
 	for i := 0; i < n; i++ {
 		b[i] = letters[rng.Intn(len(letters))]

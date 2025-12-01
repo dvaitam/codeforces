@@ -109,7 +109,7 @@ func buildLCA(n int, edges []edge) *lcaHelper {
 	adj := make([][]struct {
 		to int
 		w  int64
-	}), n + 1
+	}, n+1)
 	for _, e := range edges {
 		adj[e.u] = append(adj[e.u], struct {
 			to int

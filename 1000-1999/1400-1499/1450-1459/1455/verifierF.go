@@ -6,8 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
@@ -54,10 +52,10 @@ func brute(n, k int, s string) string {
 			rec(pos+1, tmp)
 		}
 		copy(tmp, cur)
-		tmp[j].ch = byte(int(tmp[j].ch-'a'-1+k)%k + 'a')
+		tmp[j].ch = byte((int(tmp[j].ch-'a')-1+k)%k + 'a')
 		rec(pos+1, tmp)
 		copy(tmp, cur)
-		tmp[j].ch = byte(int(tmp[j].ch-'a'+1)%k + 'a')
+		tmp[j].ch = byte((int(tmp[j].ch-'a')+1)%k + 'a')
 		rec(pos+1, tmp)
 	}
 	rec(0, arr)

@@ -294,7 +294,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	refYes, refDir, refOps, err := parseOutput(refOut)
+	refYes, _, refOps, err := parseOutput(refOut)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to parse reference output: %v\n", err)
 		os.Exit(1)

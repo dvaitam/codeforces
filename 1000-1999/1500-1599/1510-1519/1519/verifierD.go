@@ -1,11 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -1699,3 +1699,153 @@ const testcaseData = `
 9
 4 1 3 9 9 4 8 7 1
 3 7 3 3 6 6 7 8 8
+
+`
+
+func parseTestcases() ([]testCase, error) {
+	scanner := bufio.NewScanner(strings.NewReader(testcaseData))
+	scanner.Split(bufio.ScanWords)
+	scanner.Buffer(make([]byte, 1024), 1<<20)
+	nextInt := func() (int64, error) {
+		if !scanner.Scan() {
+			return 0, fmt.Errorf("unexpected EOF")
+		}
+		v, err := strconv.ParseInt(scanner.Text(), 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return v, nil
+	}
+
+	tVal, err := nextInt()
+	if err != nil {
+		return nil, fmt.Errorf("read test count: %v", err)
+	}
+	t := int(tVal)
+	cases := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		nVal, err := nextInt()
+		if err != nil {
+			return nil, fmt.Errorf("case %d: read n: %v", i+1, err)
+		}
+		n := int(nVal)
+		a := make([]int64, n)
+		b := make([]int64, n)
+		for j := 0; j < n; j++ {
+			v, err := nextInt()
+			if err != nil {
+				return nil, fmt.Errorf("case %d: read a[%d]: %v", i+1, j, err)
+			}
+			a[j] = v
+		}
+		for j := 0; j < n; j++ {
+			v, err := nextInt()
+			if err != nil {
+				return nil, fmt.Errorf("case %d: read b[%d]: %v", i+1, j, err)
+			}
+			b[j] = v
+		}
+		cases = append(cases, testCase{n: n, a: a, b: b})
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return cases, nil
+}
+
+func solve(tc testCase) int64 {
+	base := int64(0)
+	for i := 0; i < tc.n; i++ {
+		base += tc.a[i] * tc.b[i]
+	}
+	best := base
+
+	for center := 0; center < tc.n; center++ {
+		cur := base
+		for l, r := center-1, center+1; l >= 0 && r < tc.n; l, r = l-1, r+1 {
+			cur -= tc.a[l]*tc.b[l] + tc.a[r]*tc.b[r]
+			cur += tc.a[l]*tc.b[r] + tc.a[r]*tc.b[l]
+			if cur > best {
+				best = cur
+			}
+		}
+	}
+
+	for center := 0; center+1 < tc.n; center++ {
+		cur := base
+		for l, r := center, center+1; l >= 0 && r < tc.n; l, r = l-1, r+1 {
+			cur -= tc.a[l]*tc.b[l] + tc.a[r]*tc.b[r]
+			cur += tc.a[l]*tc.b[r] + tc.a[r]*tc.b[l]
+			if cur > best {
+				best = cur
+			}
+		}
+	}
+
+	return best
+}
+
+func buildInput(tc testCase) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d\n", tc.n)
+	for i, v := range tc.a {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.FormatInt(v, 10))
+	}
+	sb.WriteByte('\n')
+	for i, v := range tc.b {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.FormatInt(v, 10))
+	}
+	sb.WriteByte('\n')
+	return sb.String()
+}
+
+func runCandidate(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: go run verifierD.go /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
+	cases, err := parseTestcases()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
+		os.Exit(1)
+	}
+	for i, tc := range cases {
+		expect := strconv.FormatInt(solve(tc), 10)
+		input := buildInput(tc)
+		got, err := runCandidate(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
+			os.Exit(1)
+		}
+		if strings.TrimSpace(got) != expect {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, expect, got, input)
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", len(cases))
+}

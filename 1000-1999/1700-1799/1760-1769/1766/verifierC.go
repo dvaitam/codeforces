@@ -105,28 +105,29 @@ func genTestC(rng *rand.Rand) string {
 	for ; t > 0; t-- {
 		m := rng.Intn(20) + 1
 		fmt.Fprintf(&buf, "%d\n", m)
-		var r0, r1 strings.Builder
+		r0 := make([]byte, m)
+		r1 := make([]byte, m)
 		for i := 0; i < m; i++ {
 			if rng.Intn(2) == 0 {
-				r0.WriteByte('B')
+				r0[i] = 'B'
 			} else {
-				r0.WriteByte('W')
+				r0[i] = 'W'
 			}
 			if rng.Intn(2) == 0 {
-				r1.WriteByte('B')
+				r1[i] = 'B'
 			} else {
-				r1.WriteByte('W')
+				r1[i] = 'W'
 			}
 			// ensure at least one B per column
-			if r0.Bytes()[i] != 'B' && r1.Bytes()[i] != 'B' {
+			if r0[i] != 'B' && r1[i] != 'B' {
 				if rng.Intn(2) == 0 {
-					r0.Bytes()[i] = 'B'
+					r0[i] = 'B'
 				} else {
-					r1.Bytes()[i] = 'B'
+					r1[i] = 'B'
 				}
 			}
 		}
-		fmt.Fprintf(&buf, "%s\n%s\n", r0.String(), r1.String())
+		fmt.Fprintf(&buf, "%s\n%s\n", string(r0), string(r1))
 	}
 	return buf.String()
 }

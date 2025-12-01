@@ -178,10 +178,6 @@ func feasible(z int64, segs []segment, n int) bool {
 	return pq.Len() == 0
 }
 
-func (h minHeap) Len() int {
-	return len(h)
-}
-
 func upHeap(h *minHeap, i int) {
 	for i > 0 {
 		parent := (i - 1) / 2

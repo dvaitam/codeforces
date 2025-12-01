@@ -178,7 +178,7 @@ func validateOutput(ti testInput, expectExists []bool, output string) (bool, str
 			return false, "insufficient tokens in output"
 		}
 		if tok[pos] == "0" {
-			if expectExists {
+			if expectExists[caseIdx] {
 				return false, fmt.Sprintf("test case %d: output 0 despite existence of a valid quadruple", caseIdx+1)
 			}
 			pos++
@@ -206,7 +206,7 @@ func validateOutput(ti testInput, expectExists []bool, output string) (bool, str
 			if gcd(cs.a[vals[0]], cs.a[vals[1]]) != 1 || gcd(cs.a[vals[2]], cs.a[vals[3]]) != 1 {
 				return false, "gcd constraint violated"
 			}
-			if !expectExists {
+			if !expectExists[caseIdx] {
 				return false, fmt.Sprintf("test case %d: quadruple provided but none exists", caseIdx+1)
 			}
 		}

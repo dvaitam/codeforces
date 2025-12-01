@@ -97,7 +97,7 @@ func solveReference(p []int) int64 {
 	s := int64(0)
 	for _, val := range p {
 		pr := pval[val]
-		inv1 := modPow((1-pr+mod)%mod, mod-2)
+		inv1 := modPow(int((1-pr+mod)%mod), mod-2)
 		f := pr * H[val] % mod
 		t := (inv1 + pr*inv1%mod*s%mod - f) % mod
 		if t < 0 {

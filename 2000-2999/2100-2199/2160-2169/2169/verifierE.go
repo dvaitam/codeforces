@@ -147,6 +147,10 @@ type point struct {
 	c int64
 }
 
+func makeCase(points []point) testCase {
+	return singleCase(points)
+}
+
 func sampleTest() testCase {
 	return testCase{
 		input: "4\n" +

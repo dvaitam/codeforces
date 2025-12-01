@@ -15,6 +15,11 @@ type testCaseD struct {
 	s string
 }
 
+type state struct {
+	cost int
+	str  string
+}
+
 func generateCaseD(rng *rand.Rand) (string, testCaseD) {
 	n := rng.Intn(7) + 1 // length 1..7
 	b := make([]byte, n)
@@ -41,10 +46,6 @@ func isSorted(s string) bool {
 
 func minCost(s string) int64 {
 	const base = 1_000_000
-	type state struct {
-		cost int
-		str  string
-	}
 	pq := &statePQ{}
 	heap.Push(pq, state{0, s})
 	dist := map[string]int{s: 0}

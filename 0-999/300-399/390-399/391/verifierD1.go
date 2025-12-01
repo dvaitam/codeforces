@@ -1097,9 +1097,9 @@ const embeddedTestcasesD1 = `2 2
 0`
 
 type Edge struct {
-	to  int
-	id  int
-	rev int
+	to   int
+	id   int
+	rev  int
 	used bool
 }
 
@@ -1209,7 +1209,8 @@ func parseCase(block string) (string, string, error) {
 		}
 	}
 	expect = strings.TrimSpace(lines[len(lines)-1])
-	input := fmt.Sprintf("%d %d\n", n, m)
+	var input strings.Builder
+	fmt.Fprintf(&input, "%d %d\n", n, m)
 	for _, v := range vs {
 		fmt.Fprintf(&input, "%d %d %d\n", v[0], v[1], v[2])
 	}
@@ -1218,7 +1219,7 @@ func parseCase(block string) (string, string, error) {
 	}
 	want := solve391D1(vs, hs)
 	_ = expect
-	return input, want, nil
+	return input.String(), want, nil
 }
 
 func main() {

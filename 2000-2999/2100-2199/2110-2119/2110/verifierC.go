@@ -292,7 +292,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "reference runtime error: %v\n", err)
 		os.Exit(1)
 	}
-	wantSol, wantOk, err := parseSolutions(wantOut, tests)
+	_, wantOk, err := parseSolutions(wantOut, tests)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to parse reference output: %v\n", err)
 		os.Exit(1)

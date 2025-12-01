@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -243,7 +245,7 @@ func solveEdge(u, v int, w int64, dist [][]int64) float64 {
 
 // solve mirrors 266D.go for one test case.
 func solve(tc testCase) float64 {
-	n, m := tc.n, tc.m
+	n := tc.n
 	edges := tc.edges
 	dist := make([][]int64, n)
 	for i := 0; i < n; i++ {

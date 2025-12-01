@@ -12,6 +12,8 @@ import (
 	"strings"
 )
 
+const refSource = "2149C.go"
+
 type testCase struct {
 	n    int
 	perm []int

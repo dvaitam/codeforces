@@ -119,20 +119,20 @@ func generateTests() []testCase {
 	tests = append(tests, makeTestCase("simple_line", 4,
 		[][2]int{{2, 2}, {3, 3}, {4, 4}},
 		[][2]string{
-			{1, zeroString(3, 'B')},
-			{2, "RRB"},
-			{3, "RBR"},
+			{fmt.Sprint(1), zeroString(3, 'B')},
+			{fmt.Sprint(2), "RRB"},
+			{fmt.Sprint(3), "RBR"},
 		},
 	))
 
 	tests = append(tests, makeTestCase("branch", 5,
 		[][2]int{{2, 3}, {4, 5}, {5, 5}, {5, 5}},
 		[][2]string{
-			{1, "BBBB"},
-			{2, "RRRR"},
-			{3, "RBRB"},
-			{4, "BBRR"},
-			{2, "BRRB"},
+			{fmt.Sprint(1), "BBBB"},
+			{fmt.Sprint(2), "RRRR"},
+			{fmt.Sprint(3), "RBRB"},
+			{fmt.Sprint(4), "BBRR"},
+			{fmt.Sprint(2), "BRRB"},
 		},
 	))
 

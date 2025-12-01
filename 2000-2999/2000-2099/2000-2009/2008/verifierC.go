@@ -94,7 +94,8 @@ func buildReferenceBinary() (string, error) {
 func verifierDir() (string, error) {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
-		return "", fmt.Fprintf(os.Stderr, "unable to determine verifier directory")
+		fmt.Fprintf(os.Stderr, "unable to determine verifier directory")
+		return "", fmt.Errorf("unknown verifier directory")
 	}
 	return filepath.Dir(file), nil
 }

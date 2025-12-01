@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -41,7 +40,7 @@ func main() {
 
 	tests := deterministicTests()
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	tests = append(tests, randomTestsCases(rng, randomTests)...)
+	tests = append(tests, randomTestCases(rng, randomTests)...)
 
 	for idx, tc := range tests {
 		input := formatInput(tc)
@@ -212,4 +211,12 @@ func deterministicTests() []testCase {
 		{n: 5},
 		{n: 7},
 	}
+}
+
+func randomTestCases(rng *rand.Rand, count int) []testCase {
+	tests := make([]testCase, count)
+	for i := 0; i < count; i++ {
+		tests[i] = testCase{n: rng.Intn(maxN) + 1}
+	}
+	return tests
 }

@@ -36,6 +36,11 @@ type SegTree struct {
 	lazy []int
 }
 
+type testCase struct {
+	input    string
+	expected string
+}
+
 func NewSegTree(arr []int) *SegTree {
 	n := len(arr) - 1
 	size := 4 * n

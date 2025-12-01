@@ -8,4 +8,5 @@ nohup.out
 *.bin
 \~/
 nohup_backfill.log
+run.log
 codeForces-my-solutions/

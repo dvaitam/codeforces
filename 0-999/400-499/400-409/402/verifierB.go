@@ -218,7 +218,7 @@ const rawTestcases = `2 3
 4 4 5`
 
 func parseTestcases() ([]testcase, error) {
-	tokens := strings.Fields(testcasesRaw)
+	tokens := strings.Fields(rawTestcases)
 	pos := 0
 	var res []testcase
 	for pos < len(tokens) {

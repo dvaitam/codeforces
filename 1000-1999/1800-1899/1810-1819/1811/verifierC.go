@@ -90,7 +90,7 @@ func main() {
 	scanner := bufio.NewScanner(bytes.NewReader(out.Bytes()))
 	scanner.Split(bufio.ScanWords)
 	for i, expArr := range expected {
-		for j, exp := range expArr {
+		for _, exp := range expArr {
 			if !scanner.Scan() {
 				fmt.Fprintf(os.Stderr, "wrong output format on test %d\n", i+1)
 				os.Exit(1)

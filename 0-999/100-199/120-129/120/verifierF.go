@@ -126,7 +126,7 @@ func main() {
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for t := 0; t < 100; t++ {
-		input, expect := generateCase(rng)
+		input, _ := generateCase(rng)
 		candOut, cErr := runBinary(candidate, input)
 		refOut, rErr := runBinary(ref, input)
 		if cErr != nil {

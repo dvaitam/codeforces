@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
-	"math"
 	"math/rand"
 	"os"
 	"os/exec"

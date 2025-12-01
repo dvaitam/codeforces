@@ -57,7 +57,7 @@ func main() {
 			printInput(input)
 			os.Exit(1)
 		}
-		refAns, refMask, refSegments, err := parseOutput(refOut, tc)
+		refAns, _, _, err := parseOutput(refOut, tc)
 		if err != nil {
 			fmt.Printf("failed to parse reference output on test %d: %v\noutput:\n%s\n", idx+1, err, refOut)
 			printInput(input)

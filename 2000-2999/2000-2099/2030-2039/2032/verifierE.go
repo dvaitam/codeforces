@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -213,7 +212,7 @@ func main() {
 	}
 
 	for idx, tc := range tests {
-		refOps, refImpossible := checkLine(refLines[idx], tc.n)
+		_, refImpossible := checkLine(refLines[idx], tc.n)
 		userOps, userImpossible := checkLine(userLines[idx], tc.n)
 		if refImpossible {
 			if !userImpossible {

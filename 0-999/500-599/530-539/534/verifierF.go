@@ -36,7 +36,7 @@ func runBinary(bin, input string) (string, error) {
 
 func countSegments(line string) int {
 	cnt := 0
-	prev := '.'
+	prev := byte('.')
 	for i := 0; i < len(line); i++ {
 		if line[i] == '*' && prev != '*' {
 			cnt++

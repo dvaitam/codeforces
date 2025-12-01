@@ -17,6 +17,7 @@ const (
 	targetTests = 120
 	maxN        = 2000
 	maxM        = 2000
+	maxTotalN   = 20000
 	maxK        = 4000
 	mod         = 998244353
 )

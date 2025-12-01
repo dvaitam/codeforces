@@ -48,7 +48,7 @@ func main() {
 		if err != nil {
 			fail("reference failed on case %d: %v\ninput:\n%s", idx+1, err, input)
 		}
-		expVal, expPerm, err := parseOutput(expect, tc)
+		expVal, _, err := parseOutput(expect, tc)
 		if err != nil {
 			fail("reference output invalid on case %d: %v\noutput:\n%s", idx+1, err, expect)
 		}

@@ -62,6 +62,7 @@ func expected(c []int) *big.Rat {
 		n += v
 	}
 	res := big.NewRat(1, 1)
+	sum := big.NewRat(0, 1)
 	for i, cnt := range c {
 		pSel := new(big.Rat).SetFrac64(int64(cnt), int64(n))
 		// create new club

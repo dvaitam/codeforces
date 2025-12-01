@@ -79,14 +79,15 @@ func main() {
 	// some deterministic edge cases
 	cases := []struct{ in, out string }{}
 	// smallest
-	cases = append(cases, func() (string, string) {
+	inSmall, outSmall := func() (string, string) {
 		bids := []int{1, 2}
 		in := "2\n1 2\n"
 		idx, price := solveCase(bids)
 		return in, fmt.Sprintf("%d %d", idx, price)
-	}())
+	}()
+	cases = append(cases, struct{ in, out string }{inSmall, outSmall})
 	// large n
-	cases = append(cases, func() (string, string) {
+	inLarge, outLarge := func() (string, string) {
 		n := 1000
 		bids := make([]int, n)
 		for i := 0; i < n; i++ {
@@ -103,7 +104,8 @@ func main() {
 		sb.WriteByte('\n')
 		idx, price := solveCase(bids)
 		return sb.String(), fmt.Sprintf("%d %d", idx, price)
-	}())
+	}()
+	cases = append(cases, struct{ in, out string }{inLarge, outLarge})
 
 	for i := 0; i < 100; i++ {
 		in, out := generateCase(rng)

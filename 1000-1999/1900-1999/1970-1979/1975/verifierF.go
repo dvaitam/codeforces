@@ -74,25 +74,6 @@ func main() {
 	fmt.Println("Accepted")
 }
 
-func buildReferenceBinary() (string, error) {
-	tmp, err := os.CreateTemp("", "cf-1975F-ref-*")
-	if err != nil {
-		return "", err
-	}
-	tmp.Close()
-	os.Remove(tmp.Name())
-
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), "1975F.go")
-	cmd.Dir = problemDir
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("go build error: %v\n%s", err, stderr.String())
-	}
-	return tmp.Name(), nil
-}
-
 func runProgram(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)

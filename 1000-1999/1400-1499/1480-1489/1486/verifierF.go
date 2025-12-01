@@ -355,20 +355,33 @@ func parseTestcases() ([]testCase, error) {
 		if err != nil {
 			return nil, fmt.Errorf("line %d: bad n: %v", i+1, err)
 		}
-		m, err := strconv.Atoi(fields[1])
-		if err != nil {
-			return nil, fmt.Errorf("line %d: bad m: %v", i+1, err)
+		expectedTokens := 1 + 2*(n-1)
+		if len(fields) < expectedTokens+1 {
+			return nil, fmt.Errorf("line %d: not enough tokens", i+1)
 		}
-		if len(fields) != 2+3*m {
-			return nil, fmt.Errorf("line %d: expected %d edge tokens, got %d", i+1, 2+3*m, len(fields))
-		}
+		pos := 1
 		var input bytes.Buffer
-		fmt.Fprintln(&input, n, m)
+		fmt.Fprintln(&input, n)
+		for j := 0; j < n-1; j++ {
+			u := fields[pos]
+			v := fields[pos+1]
+			fmt.Fprintf(&input, "%s %s\n", u, v)
+			pos += 2
+		}
+		m, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: bad query count: %v", i+1, err)
+		}
+		pos++
+		if len(fields) != pos+2*m {
+			return nil, fmt.Errorf("line %d: expected %d query tokens, got %d", i+1, 2*m, len(fields)-pos)
+		}
+		fmt.Fprintln(&input, m)
 		for j := 0; j < m; j++ {
-			u := fields[2+3*j]
-			v := fields[2+3*j+1]
-			w := fields[2+3*j+2]
-			fmt.Fprintf(&input, "%s %s %s\n", u, v, w)
+			u := fields[pos]
+			v := fields[pos+1]
+			fmt.Fprintf(&input, "%s %s\n", u, v)
+			pos += 2
 		}
 		res = append(res, testCase{input: input.String()})
 	}
@@ -438,28 +451,52 @@ func referenceSolveFromInput(input string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	m, err := strconv.Atoi(fields[1])
+	if n < 1 {
+		return "", fmt.Errorf("invalid n")
+	}
+	pos := 1
+	edges := make([][2]int, 0, n-1)
+	for i := 0; i < n-1; i++ {
+		if pos+1 >= len(fields) {
+			return "", fmt.Errorf("not enough edge tokens")
+		}
+		u, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return "", err
+		}
+		v, err := strconv.Atoi(fields[pos+1])
+		if err != nil {
+			return "", err
+		}
+		edges = append(edges, [2]int{u, v})
+		pos += 2
+	}
+	if pos >= len(fields) {
+		return "", fmt.Errorf("missing query count")
+	}
+	m, err := strconv.Atoi(fields[pos])
 	if err != nil {
 		return "", err
 	}
-	if len(fields) != 2+3*m {
-		return "", fmt.Errorf("expected %d tokens, got %d", 2+3*m, len(fields))
-	}
-	edges := make([][3]int, m)
+	pos++
+	queries := make([][2]int, 0, m)
 	for i := 0; i < m; i++ {
-		u, err := strconv.Atoi(fields[2+3*i])
+		if pos+1 >= len(fields) {
+			return "", fmt.Errorf("not enough query tokens")
+		}
+		u, err := strconv.Atoi(fields[pos])
 		if err != nil {
 			return "", err
 		}
-		v, err := strconv.Atoi(fields[2+3*i+1])
+		v, err := strconv.Atoi(fields[pos+1])
 		if err != nil {
 			return "", err
 		}
-		w, err := strconv.Atoi(fields[2+3*i+2])
-		if err != nil {
-			return "", err
-		}
-		edges[i] = [3]int{u, v, w}
+		queries = append(queries, [2]int{u, v})
+		pos += 2
 	}
-	return referenceSolve(n, edges)
+	if pos != len(fields) {
+		return "", fmt.Errorf("extra tokens at end")
+	}
+	return referenceSolve(n, edges, queries)
 }

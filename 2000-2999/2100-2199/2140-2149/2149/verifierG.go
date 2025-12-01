@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -171,7 +170,7 @@ func main() {
 	r := rand.New(rand.NewSource(1))
 	for tc := 0; tc < testCount; tc++ {
 		input, arrays, queries := genCase(r)
-		expectStr, err := run(oracle, input)
+		_, err := run(oracle, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle failed on test %d: %v\n", tc+1, err)
 			os.Exit(1)

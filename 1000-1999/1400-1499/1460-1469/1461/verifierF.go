@@ -32,7 +32,7 @@ func genCase(r *rand.Rand) (string, []int, map[rune]bool) {
 	for i := 0; i < n; i++ {
 		nums[i] = r.Intn(10)
 	}
-	opsAll := []rune{"+", "-", "*"}
+	opsAll := []rune{'+', '-', '*'}
 	opsCount := r.Intn(3) + 1
 	ops := make([]rune, 0, opsCount)
 	used := make(map[rune]bool)

@@ -53,7 +53,7 @@ func solveCase(s string) string {
 func generateTests() []test {
 	rng := rand.New(rand.NewSource(44))
 	var tests []test
-	ops := []byte{"+-01"}
+	ops := []byte{'+', '-', '0', '1'}
 	for len(tests) < 100 {
 		n := rng.Intn(15) + 1
 		var sb strings.Builder

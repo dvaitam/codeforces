@@ -126,7 +126,6 @@ func feasible(n int, edges []edge, D int) bool {
 	if limit < 1 {
 		return false
 	}
-	dp := make([]int, n)
 	var dfs func(int, int) bool
 	dfs = func(idx, last int) bool {
 		if idx == n {

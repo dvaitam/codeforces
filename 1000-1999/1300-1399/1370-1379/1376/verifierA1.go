@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -113,8 +112,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "oracle failed on test %d: %v\n", t+1, err)
 			os.Exit(1)
 		}
-		expectVals, err := parseOutput(expectStr, len(arr))
-		if err != nil {
+		if _, err := parseOutput(expectStr, len(arr)); err != nil {
 			fmt.Fprintf(os.Stderr, "invalid oracle output on test %d: %v\n", t+1, err)
 			os.Exit(1)
 		}
@@ -131,7 +129,6 @@ func main() {
 		// verify sorted result and same multiset
 		sortedArr := append([]int(nil), arr...)
 		sort.Ints(sortedArr)
-		sortExpected := append([]int(nil), expectVals...)
 		sortGot := append([]int(nil), gotVals...)
 		if !isSortedSame(sortGot, sortedArr) {
 			fmt.Printf("test %d failed\ninput:\n%s\nexpected sorted:%v\ngot:%v\n", t+1, input, sortedArr, gotVals)

@@ -187,7 +187,8 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	for idx, line := range loadTestcases() {
+	tests := loadTestcases()
+	for idx, line := range tests {
 		fields := strings.Fields(strings.TrimSpace(line))
 		if len(fields) < 2 {
 			fmt.Printf("test %d: invalid line\n", idx+1)
@@ -228,5 +229,5 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(rawTestcases))
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

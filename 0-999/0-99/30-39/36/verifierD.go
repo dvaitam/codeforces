@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -116,7 +116,7 @@ const embeddedTestcasesD = `100 3
 func solve36DCase(n, m, k int64) string {
 	mod := k + 1
 	an, rn := n/mod, n%mod
-	bm, rm := m/mod, m%mod
+	_, rm := m/mod, m%mod
 	var win bool
 	if rn == rm {
 		if rn == k {

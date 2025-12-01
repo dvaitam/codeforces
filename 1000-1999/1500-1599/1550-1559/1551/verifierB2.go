@@ -204,7 +204,6 @@ func validateCase(candidate []int, reference []int) error {
 	if len(candidate) != len(reference) {
 		return fmt.Errorf("length mismatch")
 	}
-	n := len(candidate)
 	kk := 0
 	for _, v := range reference {
 		if v > kk {

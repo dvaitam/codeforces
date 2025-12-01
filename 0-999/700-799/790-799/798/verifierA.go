@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 )
 
@@ -173,7 +172,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to parse embedded testcases: %v\n", err)
 		os.Exit(1)
 	}
-
 
 	for idx, tc := range cases {
 		input := tc.s + "\n"

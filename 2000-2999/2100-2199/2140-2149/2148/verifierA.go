@@ -128,10 +128,7 @@ func main() {
 		}
 
 		for i := 0; i < tc.t; i++ {
-			expected := int64(0)
-			if tc.pairs[i][1]%2 == 1 {
-				expected = int64(tc.pairs[i][0])
-			}
+			expected := refVals[i]
 			if candVals[i] != expected {
 				fmt.Fprintf(os.Stderr, "test %d (%s) case %d failed: expected %d got %d\ninput:\n%sreference output:\n%s\ncandidate output:\n%s",
 					idx+1, tc.name, i+1, expected, candVals[i], tc.input, refOut, candOut)

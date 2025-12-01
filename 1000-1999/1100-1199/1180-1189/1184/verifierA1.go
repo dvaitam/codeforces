@@ -160,7 +160,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "oracle failed on test %d (r=%d): %v\n", idx+1, tc.r, err)
 			os.Exit(1)
 		}
-		expHas, expX, expY, err := parseAnswer(expOut)
+		expHas, _, _, err := parseAnswer(expOut)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "invalid oracle output on test %d: %v\noutput:\n%s\n", idx+1, err, expOut)
 			os.Exit(1)

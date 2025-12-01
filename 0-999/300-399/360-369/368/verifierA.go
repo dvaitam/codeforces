@@ -1,13 +1,13 @@
 package main
 
 import (
-    "bytes"
-    "fmt"
-    "os"
-    "os/exec"
-    "sort"
-    "strconv"
-    "strings"
+	"bytes"
+	"fmt"
+	"os"
+	"os/exec"
+	"sort"
+	"strconv"
+	"strings"
 )
 
 // Embedded copy of testcasesA.txt.
@@ -315,129 +315,121 @@ const testcasesAData = `100
 `
 
 type testCase struct {
-    n int
-    d int
-    costs []int
-    m int
+	n     int
+	d     int
+	costs []int
+	m     int
 }
 
 func parseTestcases() ([]testCase, error) {
-    fields := strings.Fields(testcasesAData)
-    if len(fields) == 0 {
-        return nil, fmt.Errorf("no test data")
-    }
-    t, err := strconv.Atoi(fields[0])
-    if err != nil {
-        return nil, fmt.Errorf("parse T: %w", err)
-    }
-    pos := 1
-    cases := make([]testCase, 0, t)
-    for i := 0; i < t; i++ {
-        if pos+1 >= len(fields) {
-            return nil, fmt.Errorf("case %d: incomplete n/d", i+1)
-        }
-        n, _ := strconv.Atoi(fields[pos])
-        d, _ := strconv.Atoi(fields[pos+1])
-        pos += 2
-        if pos+n > len(fields) {
-            return nil, fmt.Errorf("case %d: not enough costs", i+1)
-        }
-        costs := make([]int, n)
-        for j := 0; j < n; j++ {
-            val, err := strconv.Atoi(fields[pos+j])
-            if err != nil {
-                return nil, fmt.Errorf("case %d: cost %d: %w", i+1, j, err)
-            }
-            costs[j] = val
-        }
-        pos += n
-        if pos >= len(fields) {
-            return nil, fmt.Errorf("case %d: missing m", i+1)
-        }
-        mVal, _ := strconv.Atoi(fields[pos])
-        pos++
-        cases = append(cases, testCase{n: n, d: d, costs: costs, m: mVal})
-    }
-    return cases, nil
+	fields := strings.Fields(testcasesAData)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no test data")
+	}
+	t, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return nil, fmt.Errorf("parse T: %w", err)
+	}
+	pos := 1
+	cases := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		if pos+1 >= len(fields) {
+			return nil, fmt.Errorf("case %d: incomplete n/d", i+1)
+		}
+		n, _ := strconv.Atoi(fields[pos])
+		d, _ := strconv.Atoi(fields[pos+1])
+		pos += 2
+		if pos+n > len(fields) {
+			return nil, fmt.Errorf("case %d: not enough costs", i+1)
+		}
+		costs := make([]int, n)
+		for j := 0; j < n; j++ {
+			val, err := strconv.Atoi(fields[pos+j])
+			if err != nil {
+				return nil, fmt.Errorf("case %d: cost %d: %w", i+1, j, err)
+			}
+			costs[j] = val
+		}
+		pos += n
+		if pos >= len(fields) {
+			return nil, fmt.Errorf("case %d: missing m", i+1)
+		}
+		mVal, _ := strconv.Atoi(fields[pos])
+		pos++
+		cases = append(cases, testCase{n: n, d: d, costs: costs, m: mVal})
+	}
+	return cases, nil
 }
 
 func expectedProfit(n, d int, costs []int, m int) int {
-    sort.Ints(costs)
-    used := m
-    if used > n {
-        used = n
-    }
-    sum := 0
-    for i := 0; i < used; i++ {
-        sum += costs[i]
-    }
-    if m > n {
-        sum -= (m - n) * d
-    }
-    return sum
+	sort.Ints(costs)
+	used := m
+	if used > n {
+		used = n
+	}
+	sum := 0
+	for i := 0; i < used; i++ {
+		sum += costs[i]
+	}
+	if m > n {
+		sum -= (m - n) * d
+	}
+	return sum
 }
 
 func runCase(bin string, input string) (string, error) {
-    var cmd *exec.Cmd
-    if strings.HasSuffix(bin, ".go") {
-        cmd = exec.Command("go", "run", bin)
-    } else {
-        cmd = exec.Command(bin)
-    }
-    cmd.Stdin = strings.NewReader(input)
-    var out bytes.Buffer
-    var errBuf bytes.Buffer
-    cmd.Stdout = &out
-    cmd.Stderr = &errBuf
-    if err := cmd.Run(); err != nil {
-        return "", fmt.Errorf("runtime error: %v
-%s", err, errBuf.String())
-    }
-    return strings.TrimSpace(out.String()), nil
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
-    if len(os.Args) != 2 {
-        fmt.Fprintln(os.Stderr, "usage: go run verifierA.go /path/to/binary")
-        os.Exit(1)
-    }
-    bin := os.Args[1]
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: go run verifierA.go /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
 
-    tests, err := parseTestcases()
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "failed to parse testcases: %v
-", err)
-        os.Exit(1)
-    }
+	tests, err := parseTestcases()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
+		os.Exit(1)
+	}
 
-    for caseNum, tc := range tests {
-        var sb strings.Builder
-        fmt.Fprintf(&sb, "%d %d
-", tc.n, tc.d)
-        for i, v := range tc.costs {
-            if i > 0 {
-                sb.WriteByte(' ')
-            }
-            sb.WriteString(strconv.Itoa(v))
-        }
-        sb.WriteByte('
-')
-        fmt.Fprintf(&sb, "%d
-", tc.m)
+	for caseNum, tc := range tests {
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "%d %d\n", tc.n, tc.d)
+		for i, v := range tc.costs {
+			if i > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.Itoa(v))
+		}
+		sb.WriteByte('\n')
+		fmt.Fprintf(&sb, "%d\n", tc.m)
 
-        want := strconv.Itoa(expectedProfit(tc.n, tc.d, append([]int(nil), tc.costs...), tc.m))
-        got, err := runCase(bin, sb.String())
-        if err != nil {
-            fmt.Fprintf(os.Stderr, "case %d failed: %v
-", caseNum+1, err)
-            os.Exit(1)
-        }
-        if strings.TrimSpace(got) != want {
-            fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s
-", caseNum+1, want, got)
-            os.Exit(1)
-        }
-    }
-    fmt.Printf("All %d tests passed
-", len(tests))
+		want := strconv.Itoa(expectedProfit(tc.n, tc.d, append([]int(nil), tc.costs...), tc.m))
+		got, err := runCase(bin, sb.String())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", caseNum+1, err)
+			os.Exit(1)
+		}
+		if strings.TrimSpace(got) != want {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", caseNum+1, want, got)
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

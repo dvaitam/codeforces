@@ -3,10 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"math"
 	"os"
 	"os/exec"
-	"sort"
 	"strconv"
 	"strings"
 )

@@ -229,9 +229,8 @@ func solveCase(n, m int, cells []int) string {
 		return "-1"
 	}
 
-	isCycle := false
 	if len(endpoints) == 0 {
-		isCycle = true
+		// cycle; keep existing start
 	} else if len(endpoints) == 2 {
 		start = endpoints[0]
 	} else {
@@ -331,7 +330,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d: parse error\n", idx+1)
 			os.Exit(1)
 		}
-		expectVals := n*m
+		expectVals := n * m
 		if len(fields)-2 != expectVals {
 			fmt.Fprintf(os.Stderr, "case %d: expected %d values got %d\n", idx+1, expectVals, len(fields)-2)
 			os.Exit(1)

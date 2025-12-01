@@ -1,15 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"math/rand"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (

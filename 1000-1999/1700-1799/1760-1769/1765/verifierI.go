@@ -2,9 +2,7 @@ package main
 
 import (
 	"bytes"
-	"container/heap"
 	"fmt"
-	"math"
 	"math/rand"
 	"os"
 	"os/exec"

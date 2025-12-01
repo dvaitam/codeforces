@@ -46,7 +46,7 @@ func main() {
 
 	for idx, tc := range tests {
 		input := formatInput(tc)
-		expOut, err := runProgram(oracle, input)
+		_, err := runProgram(oracle, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle runtime error on test %d: %v\n", idx+1, err)
 			fmt.Println("Input:")

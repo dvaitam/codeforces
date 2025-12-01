@@ -167,38 +167,3 @@ func main() {
 	}
 	fmt.Printf("All %d tests passed\n", len(lines))
 }
-
-func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierC.go /path/to/binary")
-		os.Exit(1)
-	}
-	bin := os.Args[1]
-
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	for i := 1; i <= 100; i++ {
-		n := rng.Intn(50) + 1
-		m := n
-		// 10% chance of different lengths
-		if rng.Intn(10) == 0 {
-			m = rng.Intn(50) + 1
-			if m == n {
-				m++
-			}
-		}
-
-		// Generate A and B with some probability of being all zeros
-		isZeroA := rng.Intn(5) == 0
-		a := generateString(rng, n, isZeroA)
-
-		isZeroB := rng.Intn(5) == 0
-		b := generateString(rng, m, isZeroB)
-
-		if err := runCase(bin, a, b, i); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\nInput:\n%s\n%s\n", i, err, a, b)
-			os.Exit(1)
-		}
-	}
-	fmt.Println("All 100 tests passed")
-}

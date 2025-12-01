@@ -26,11 +26,7 @@ type testCase struct {
 }
 
 func buildOracle() (string, func(), error) {
-	_, file, ok := callerFile()
-	if !ok {
-		return "", nil, fmt.Errorf("cannot determine verifier path")
-	}
-	dir := filepath.Dir(file)
+	dir := filepath.Dir(callerFile())
 	tmpDir, err := os.MkdirTemp("", "oracle-1912F-")
 	if err != nil {
 		return "", nil, err
@@ -48,9 +44,9 @@ func buildOracle() (string, func(), error) {
 	return outPath, cleanup, nil
 }
 
-func callerFile() (string, bool) {
-	_, file, _, ok := runtime.Caller(0)
-	return file, ok
+func callerFile() string {
+	_, file, _, _ := runtime.Caller(0)
+	return file
 }
 
 func runBinary(bin, input string) (string, error) {

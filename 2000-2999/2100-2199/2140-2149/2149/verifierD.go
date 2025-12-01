@@ -154,11 +154,11 @@ func generateTests() []testCase {
 	return tests
 }
 
-func buildTest(strings []string, lengths []int) testCase {
+func buildTest(strs []string, lengths []int) testCase {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("%d\n", len(strings)))
-	for i := range strings {
-		b.WriteString(fmt.Sprintf("%d\n%s\n", lengths[i], strings[i]))
+	b.WriteString(fmt.Sprintf("%d\n", len(strs)))
+	for i := range strs {
+		b.WriteString(fmt.Sprintf("%d\n%s\n", lengths[i], strs[i]))
 	}
 	return testCase{input: b.String()}
 }

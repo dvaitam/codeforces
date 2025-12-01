@@ -160,15 +160,12 @@ func checkSegment(segment []int) error {
 }
 
 func compareOutputs(expect, got string, t int, ns []int) error {
-	expectFreqs, err := parseFrequencies(expect, t, ns)
-	if err != nil {
+	if _, err := parseFrequencies(expect, t, ns); err != nil {
 		return fmt.Errorf("oracle output invalid: %v", err)
 	}
-	gotFreqs, err := parseFrequencies(got, t, ns)
-	if err != nil {
+	if _, err := parseFrequencies(got, t, ns); err != nil {
 		return err
 	}
-	_ = expectFreqs // just to ensure oracle is well-formed
 	return nil
 }
 

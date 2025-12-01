@@ -200,7 +200,7 @@ func solve351(n int, nums []string) string {
 	} else if c > R {
 		c = R
 	}
-	diff := c*1000 - int64(sum)
+	diff := int64(c*1000 - sum)
 	if diff < 0 {
 		diff = -diff
 	}
