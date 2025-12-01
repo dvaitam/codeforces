@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const refSourceF = "0-999/500-599/530-539/533/533F.go"
+const refSourceF = "./533F.go"
 
 type result struct {
 	count     int

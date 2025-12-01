@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const refSource2044G2 = "2000-2999/2000-2099/2040-2049/2044/2044G2.go"
+const refSource2044G2 = "./2044G2.go"
 
 type caseData struct {
 	n int

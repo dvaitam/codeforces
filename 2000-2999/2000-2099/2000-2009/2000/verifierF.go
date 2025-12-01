@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const referenceSource = "2000-2999/2000-2099/2000-2009/2000/2000F.go"
+const referenceSource = "./2000F.go"
 
 func main() {
 	if len(os.Args) != 2 {

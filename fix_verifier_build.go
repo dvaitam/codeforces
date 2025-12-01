@@ -80,26 +80,27 @@ func main() {
 	fmt.Println("all fix tasks dispatched")
 }
 
-// Regex captures the fail line and its indented build output.
-var failRe = regexp.MustCompile(`(?m)^\[FAIL\]\s+(\S+problem([A-Z0-9]+)\.txt)\s+\(build verifier\):[^\n]*\n((?:    .*\n)*)`)
-
 func collectTasks(log string, logDir string) []fixTask {
 	seen := make(map[string]bool)
 	var tasks []fixTask
 
-	matches := failRe.FindAllStringSubmatch(log, -1)
-	for _, m := range matches {
-		label := m[1]
-		suffix := m[2]
-		body := strings.ReplaceAll(m[3], "\r\n", "\n")
-		body = strings.TrimRight(body, "\n")
-		body = strings.ReplaceAll(body, "\n    ", "\n")
-		body = strings.TrimSpace(body)
-
-		dir := filepath.Dir(label)
+	lines := strings.Split(log, "\n")
+	for _, line := range lines {
+		if !strings.Contains(line, "is not in std") || !strings.Contains(line, "package") {
+			continue
+		}
+		path := extractPathFromStdLine(line)
+		if path == "" {
+			continue
+		}
+		dir := filepath.Dir(path)
+		base := strings.TrimSuffix(filepath.Base(path), ".go")
+		suffix := problemSuffix(base)
+		if suffix == "" {
+			continue
+		}
 		verifierPath := filepath.Join(dir, "verifier"+suffix+".go")
 		if _, err := os.Stat(verifierPath); err != nil {
-			// Skip if verifier is absent; nothing to fix automatically.
 			continue
 		}
 		if seen[verifierPath] {
@@ -108,12 +109,12 @@ func collectTasks(log string, logDir string) []fixTask {
 		seen[verifierPath] = true
 		logPath := filepath.Join(logDir, strings.ReplaceAll(dir, string(filepath.Separator), "_")+"_"+suffix+".log")
 		tasks = append(tasks, fixTask{
-			label:        label,
+			label:        filepath.Join(dir, "problem"+suffix+".txt"),
 			dir:          dir,
 			suffix:       suffix,
 			verifierPath: verifierPath,
 			logPath:      logPath,
-			errBody:      body,
+			errBody:      strings.TrimSpace(line),
 		})
 	}
 	return tasks
@@ -146,7 +147,7 @@ func buildPrompt(t fixTask) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "You are in %s. Verifier build fails for %s.\n", t.dir, t.verifierPath)
 	fmt.Fprintf(&b, "Build error:\n%s\n", t.errBody)
-	fmt.Fprintf(&b, "Fix only the verifier (do not touch statements or database). Remove unused imports, ensure package is main, and fix bad imports that point to paths like problem directories causing \"is not in std\" by using local code or copying needed helpers instead of imports. Keep the verifier behavior the same.\n")
+	fmt.Fprintf(&b, "Fix only the verifier (do not touch statements or database). Ensure package is main, and fix bad imports/paths that cause \"is not in std\" by making the verifier self-contained in this directory. Copy needed helper code locally instead of importing sibling problem paths.\n")
 	fmt.Fprintf(&b, "If the verifier shells out to build an oracle/solution, make sure it builds from the current directory (relative paths like ./oracleX.go) so it does not land under GOPATH and trigger \"package ... is not in std\" errors. Inline needed code instead of importing paths outside this directory.\n")
 	fmt.Fprintf(&b, "Make `go build %s` succeed when run inside %s. After edits run gofmt. Delete any stray verifier binaries (files named like verifier without extensions) when done.", filepath.Base(t.verifierPath), t.dir)
 	return b.String()
@@ -183,6 +184,35 @@ func extractSessionID(output []byte) string {
 		return ""
 	}
 	return string(m[1])
+}
+
+// extractPathFromStdLine pulls the source path from a line containing "package ... is not in std".
+func extractPathFromStdLine(line string) string {
+	const marker = "package "
+	pos := strings.Index(line, marker)
+	if pos < 0 {
+		return ""
+	}
+	pos += len(marker)
+	end := strings.Index(line[pos:], " is not in std")
+	if end < 0 {
+		return ""
+	}
+	path := strings.TrimSpace(line[pos : pos+end])
+	path = strings.TrimPrefix(path, "/usr/local/go/src/")
+	return path
+}
+
+// problemSuffix returns the portion of the file name after the numeric contest ID.
+func problemSuffix(base string) string {
+	i := 0
+	for i < len(base) && base[i] >= '0' && base[i] <= '9' {
+		i++
+	}
+	if i == 0 || i == len(base) {
+		return ""
+	}
+	return base[i:]
 }
 
 // removeVerifierBins deletes stray verifier binaries like verifierC/verifierD without extensions.

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSourceE  = "0-999/700-799/760-769/761/761E.go"
+	refSourceE  = "./761E.go"
 	randomCases = 200
 )
 

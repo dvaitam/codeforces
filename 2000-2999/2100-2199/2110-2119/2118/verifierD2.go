@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	refSource    = "2000-2999/2100-2199/2110-2119/2118/2118D2.go"
+	refSource    = "./2118D2.go"
 	randomTests  = 80
 	maxTotalSize = 180000 // sum of n+q to keep runtime comfortable (limit 2e5)
 	maxN         = 200000

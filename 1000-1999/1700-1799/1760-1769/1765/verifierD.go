@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	refSource  = "1000-1999/1700-1799/1760-1769/1765/1765D.go"
+	// refSource points to the local reference solution to avoid GOPATH resolution.
+	refSource  = "1765D.go"
 	totalTests = 80
 )
 

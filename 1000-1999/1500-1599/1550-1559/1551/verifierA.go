@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSourceA = "1000-1999/1500-1599/1550-1559/1551/1551A.go"
+	refSourceA = "./1551A.go"
 	randomSets = 120
 )
 

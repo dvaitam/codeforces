@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	refSource   = "2000-2999/2100-2199/2130-2139/2138/2138B.go"
+	refSource   = "./2138B.go"
 	totalNLimit = 500000
 	totalQLimit = 500000
 	defaultTime = 15 * time.Second

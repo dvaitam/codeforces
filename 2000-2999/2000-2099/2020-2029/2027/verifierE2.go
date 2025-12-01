@@ -11,7 +11,8 @@ import (
 	"strings"
 )
 
-const refSourceE2 = "2000-2999/2000-2099/2020-2029/2027/2027E2.go"
+// refSourceE2 points to the local reference solution to avoid GOPATH resolution.
+const refSourceE2 = "2027E2.go"
 
 func main() {
 	if len(os.Args) != 2 {

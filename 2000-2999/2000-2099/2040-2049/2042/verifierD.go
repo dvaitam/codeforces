@@ -11,7 +11,8 @@ import (
 	"strings"
 )
 
-const refSourceD = "2000-2999/2000-2099/2040-2049/2042/2042D.go"
+// refSourceD points to the local reference solution to avoid GOPATH resolution.
+const refSourceD = "2042D.go"
 
 type interval struct {
 	l int

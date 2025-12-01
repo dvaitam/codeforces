@@ -9,7 +9,8 @@ import (
 	"strings"
 )
 
-const refSourceC = "0-999/500-599/530-539/533/533C.go"
+// refSourceC points to the local reference implementation to avoid GOPATH resolution.
+const refSourceC = "533C.go"
 
 func main() {
 	if len(os.Args) != 2 {

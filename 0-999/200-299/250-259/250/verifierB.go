@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const referenceSolution = "0-999/200-299/250-259/250/250B.go"
+const referenceSolution = "./250B.go"
 
 type zeroRun struct {
 	start  int

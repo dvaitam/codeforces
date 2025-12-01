@@ -12,7 +12,9 @@ import (
 	"strings"
 )
 
-const refSource = "0-999/100-199/190-199/193/193C.go"
+// refSource points to the reference solution in this directory so Go does not
+// try to resolve a module-like path under GOPATH.
+const refSource = "193C.go"
 
 type testCase struct {
 	input string

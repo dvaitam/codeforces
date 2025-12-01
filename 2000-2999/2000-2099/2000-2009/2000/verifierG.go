@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSourcePath = "2000-2999/2000-2099/2000-2009/2000/2000G.go"
+	refSourcePath = "2000G.go"
 	totalTests    = 30
 )
 
@@ -81,7 +81,8 @@ func buildReference() (string, func(), error) {
 	tmpPath := tmp.Name()
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmpPath, refSourcePath)
+	source := filepath.Join(".", refSourcePath)
+	cmd := exec.Command("go", "build", "-o", tmpPath, source)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		os.Remove(tmpPath)
 		return "", nil, fmt.Errorf("go build failed: %v\n%s", err, string(out))

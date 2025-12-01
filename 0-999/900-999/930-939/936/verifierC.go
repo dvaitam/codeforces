@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const refSource = "0-999/900-999/930-939/936/936C.go"
+const refSource = "./936C.go"
 const maxOps = 6100
 
 type testCase struct {

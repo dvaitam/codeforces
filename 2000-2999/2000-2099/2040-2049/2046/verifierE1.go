@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2000-2099/2040-2049/2046/2046E1.go"
+const refSource = "./2046E1.go"
 
 type participant struct {
 	a, b int64

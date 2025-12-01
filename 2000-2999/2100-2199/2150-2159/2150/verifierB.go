@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSourceB   = "2000-2999/2100-2199/2150-2159/2150/2150B.go"
+	refSourceB   = "./2150B.go"
 	randomTrials = 200
 	maxNTotal    = 200000
 	mod          = 998244353

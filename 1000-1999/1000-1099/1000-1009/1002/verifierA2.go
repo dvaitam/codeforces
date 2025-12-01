@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	refSourceA2 = "1000-1999/1000-1099/1000-1009/1002/1002A2.go"
+	refSourceA2 = "./1002A2.go"
 	refBinaryA2 = "ref1002A2.bin"
 	totalTests  = 80
 )

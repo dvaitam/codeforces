@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource       = "2000-2999/2000-2099/2080-2089/2089/2089C2.go"
+	refSource       = "./2089C2.go"
 	mod             = 1000000007
 	randomTests     = 120
 	maxTotalLocks   = 5000

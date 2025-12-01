@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource1998E2 = "1000-1999/1900-1999/1990-1999/1998/1998E2.go"
+	refSource1998E2 = "./1998E2.go"
 	maxValue        = int64(1_000_000_000)
 )
 

@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const refSource = "2000-2999/2100-2199/2110-2119/2111/2111D.go"
+const refSource = "./2111D.go"
 const classesPerGroup = 6
 
 type testCase struct {

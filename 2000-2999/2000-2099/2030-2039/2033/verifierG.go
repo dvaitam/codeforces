@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource2033G = "2000-2999/2000-2099/2030-2039/2033/2033G.go"
+	refSource2033G = "./2033G.go"
 )
 
 type testCase struct {

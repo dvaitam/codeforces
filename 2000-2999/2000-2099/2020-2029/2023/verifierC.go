@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	refSource     = "2000-2999/2000-2099/2020-2029/2023/2023C.go"
+	// refSource points to the local reference solution to avoid GOPATH resolution.
+	refSource     = "2023C.go"
 	totalNLimit   = 200000
 	totalEdgesLim = 500000
 )

@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const refSource = "1000-1999/1100-1199/1180-1189/1184/1184C1.go"
+const refSource = "./1184C1.go"
 
 type point struct {
 	x int

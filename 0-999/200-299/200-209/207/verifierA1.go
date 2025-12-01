@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSourceA1 = "0-999/200-299/200-209/207/207A1.go"
+	refSourceA1 = "207A1.go"
 	orderLimit  = 200000
 )
 
@@ -158,7 +158,8 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSourceA1))
+	source := filepath.Join(".", refSourceA1)
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

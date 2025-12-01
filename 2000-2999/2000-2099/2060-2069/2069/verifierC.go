@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	refSourcePath = "2000-2999/2000-2099/2060-2069/2069/2069C.go"
+	refSourcePath = "./2069C.go"
 	mod           = 998244353
 )
 

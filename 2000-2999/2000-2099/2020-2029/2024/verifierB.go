@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const refSourceB = "2000-2999/2000-2099/2020-2029/2024/2024B.go"
+const refSourceB = "./2024B.go"
 
 type caseData struct {
 	n int

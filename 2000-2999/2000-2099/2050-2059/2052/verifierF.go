@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const refSource = "2000-2999/2000-2099/2050-2059/2052/2052F.go"
+const refSource = "./2052F.go"
 
 type grid struct {
 	n   int

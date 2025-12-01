@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const refSource = "2000-2999/2000-2099/2080-2089/2089/2089B2.go"
+const refSource = "2089B2.go"
 
 type testCase struct {
 	input string
@@ -82,7 +82,8 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	source := filepath.Join(".", refSource)
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	var buf bytes.Buffer
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf

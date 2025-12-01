@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSourceF2 = "1000-1999/1900-1999/1900-1909/1909/1909F2.go"
+	refSourceF2 = "./1909F2.go"
 	modF2       = 998244353
 )
 

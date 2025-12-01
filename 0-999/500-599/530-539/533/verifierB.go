@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const refSource = "0-999/500-599/530-539/533/533B.go"
+const refSource = "./533B.go"
 
 func main() {
 	if len(os.Args) != 2 {

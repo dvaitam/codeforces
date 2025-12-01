@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	refSource     = "2000-2999/2000-2099/2090-2099/2097/2097D.go"
+	// refSource points to the local reference solution to avoid GOPATH resolution.
+	refSource     = "2097D.go"
 	randomTests   = 120
 	totalLenLimit = 200000 // keep well below 1e6 for speed
 	maxNPerCase   = 50000

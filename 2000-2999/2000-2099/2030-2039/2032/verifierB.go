@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-const refSourceB = "2000-2999/2000-2099/2030-2039/2032/2032B.go"
+const refSourceB = "./2032B.go"
 
 type testCase struct {
 	n int

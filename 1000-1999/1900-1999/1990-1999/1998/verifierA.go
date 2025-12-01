@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	refSource      = "1000-1999/1900-1999/1990-1999/1998/1998A.go"
+	// refSource points to the local reference solution to avoid GOPATH resolution.
+	refSource      = "1998A.go"
 	coordLimit     = int64(1_000_000_000)
 	centerMin      = -100
 	centerMax      = 100

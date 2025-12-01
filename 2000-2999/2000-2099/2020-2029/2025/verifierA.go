@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2000-2099/2020-2029/2025/2025A.go"
+const refSource = "2025A.go"
 
 type testCase struct {
 	name  string
@@ -69,7 +69,8 @@ func buildBinary(path string) (string, func(), error) {
 			return "", nil, err
 		}
 		tmp.Close()
-		cmd := exec.Command("go", "build", "-o", tmp.Name(), cleanPath)
+		source := filepath.Join(".", cleanPath)
+		cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 		var out bytes.Buffer
 		cmd.Stdout = &out
 		cmd.Stderr = &out

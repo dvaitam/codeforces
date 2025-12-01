@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2000-2099/2090-2099/2094/2094H.go"
+const refSource = "./2094H.go"
 
 type testBatch struct {
 	text    string

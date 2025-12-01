@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const refSource = "2000-2999/2100-2199/2110-2119/2110/2110D.go"
+const refSource = "./2110D.go"
 
 type edge struct {
 	s int

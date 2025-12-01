@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSourceG   = "1000-1999/1400-1499/1430-1439/1431/1431G.go"
+	refSourceG   = "./1431G.go"
 	randomTrials = 200
 )
 

@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	refSource        = "2000-2999/2000-2099/2020-2029/2020/2020C.go"
+	// refSource points to the local reference solution to avoid GOPATH resolution.
+	refSource        = "2020C.go"
 	maxA      uint64 = 1 << 61
 )
 

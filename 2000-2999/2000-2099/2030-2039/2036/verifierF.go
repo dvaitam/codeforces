@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const refSource = "2000-2999/2000-2099/2030-2039/2036/2036F.go"
+const refSource = "./2036F.go"
 
 type query struct {
 	l, r int64

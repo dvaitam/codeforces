@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource   = "2000-2999/2000-2099/2060-2069/2065/2065H.go"
+	refSource   = "2065H.go"
 	mod         = 998244353
 	maxTotalN   = 180000
 	maxTotalQ   = 180000
@@ -89,7 +89,8 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	source := filepath.Join(".", refSource)
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

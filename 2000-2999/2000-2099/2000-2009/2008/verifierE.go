@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2000-2099/2000-2009/2008/2008E.go"
+const refSource = "2008E.go"
 const totalLimit = 200000
 
 type testCase struct {
@@ -70,7 +70,8 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	source := filepath.Join(".", refSource)
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

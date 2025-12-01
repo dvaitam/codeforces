@@ -9,7 +9,8 @@ import (
 	"strings"
 )
 
-const refSourceD8 = "0-999/200-299/200-209/207/207D8.go"
+// refSourceD8 points to the local reference solution to avoid GOPATH resolution.
+const refSourceD8 = "207D8.go"
 
 func main() {
 	if len(os.Args) != 2 {

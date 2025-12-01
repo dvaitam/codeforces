@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2000-2099/2000-2009/2008/2008D.go"
+const refSource = "./2008D.go"
 
 func main() {
 	if len(os.Args) != 2 {

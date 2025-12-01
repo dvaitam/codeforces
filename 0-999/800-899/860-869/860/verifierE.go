@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const refSource = "0-999/800-899/860-869/860/860E.go"
+const refSource = "./860E.go"
 
 type testCase struct {
 	name  string

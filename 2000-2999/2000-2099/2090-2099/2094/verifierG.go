@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	refSource    = "2000-2999/2000-2099/2090-2099/2094/2094G.go"
+	// refSource points to the local reference solution to avoid GOPATH resolution.
+	refSource    = "2094G.go"
 	totalQLimit  = 200000
 	defaultTime  = 20 * time.Second
 	maxAppendVal = 1_000_000

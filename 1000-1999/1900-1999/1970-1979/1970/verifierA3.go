@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const refSource = "1000-1999/1900-1999/1970-1979/1970/1970A3.go"
+const refSource = "1970A3.go"
 
 func main() {
 	if len(os.Args) != 2 {
@@ -52,7 +52,8 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	source := filepath.Join(".", refSource)
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	var buf bytes.Buffer
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf

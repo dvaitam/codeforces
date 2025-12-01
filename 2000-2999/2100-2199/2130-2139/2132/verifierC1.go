@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const refSource2132C1 = "2000-2999/2100-2199/2130-2139/2132/2132C1.go"
+const refSource2132C1 = "./2132C1.go"
 
 type testCase struct {
 	name  string

@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	refSource = "1000-1999/1600-1699/1660-1669/1666/1666F.go"
+	refSource = "./1666F.go"
 	mod       = 998244353
 )
 

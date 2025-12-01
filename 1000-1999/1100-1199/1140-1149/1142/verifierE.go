@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	refSourceE       = "1000-1999/1100-1199/1140-1149/1142/1142E.go"
+	refSourceE       = "./1142E.go"
 	randomCaseCount  = 40
 	queryLimitFactor = 2
 )

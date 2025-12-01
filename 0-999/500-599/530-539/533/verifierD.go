@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-const refSourceD = "0-999/500-599/530-539/533/533D.go"
+const refSourceD = "./533D.go"
 const tol = 1e-4
 
 func main() {

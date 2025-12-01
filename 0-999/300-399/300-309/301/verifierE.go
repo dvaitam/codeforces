@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const refSource = "0-999/300-399/300-309/301/301E.go"
+const refSource = "./301E.go"
 const mod = 1000000007
 
 type testCase struct {

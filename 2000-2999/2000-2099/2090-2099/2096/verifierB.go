@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource   = "2000-2999/2000-2099/2090-2099/2096/2096B.go"
+	refSource   = "./2096B.go"
 	maxTotalN   = 40000
 	targetTests = 140
 	maxValue    = 1_000_000_000

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSourceA  = "2000-2999/2100-2199/2160-2169/2160/2160A.go"
+	refSourceA  = "./2160A.go"
 	randomCases = 200
 	maxNTotal   = 100
 	maxValue    = 100

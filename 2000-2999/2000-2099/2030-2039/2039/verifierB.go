@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	refSourceB = "2000-2999/2000-2099/2030-2039/2039/2039B.go"
+	refSourceB = "./2039B.go"
 	sumLimit   = 300000
 )
 

@@ -11,9 +11,7 @@ import (
 	"strings"
 )
 
-const (
-	refSourceA = "2000-2999/2000-2099/2000-2009/2001/2001A.go"
-)
+const refSourceA = "./2001A.go"
 
 type testCase struct {
 	arr []int

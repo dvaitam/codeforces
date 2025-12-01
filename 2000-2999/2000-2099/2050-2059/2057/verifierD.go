@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource     = "2000-2999/2000-2099/2050-2059/2057/2057D.go"
+	refSource     = "./2057D.go"
 	randomTests   = 80
 	totalBudget   = 40000 // limit for sum of n+q across all generated tests
 	maxValue      = 1_000_000_000

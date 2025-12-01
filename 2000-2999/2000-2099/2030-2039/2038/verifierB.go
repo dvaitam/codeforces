@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSource    = "2000-2999/2000-2099/2030-2039/2038/2038B.go"
+	refSource    = "./2038B.go"
 	totalLimit   = 200000
 	maxValueRand = 1_000_000_000
 )

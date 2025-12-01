@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-const refSource = "0-999/800-899/880-889/883/883B.go"
+const refSource = "./883B.go"
 
 type testInput struct {
 	n, m, k int

@@ -12,7 +12,8 @@ import (
 	"strings"
 )
 
-const refSourceG = "2000-2999/2100-2199/2160-2169/2162/2162G.go"
+// refSourceG points to the local reference solution to avoid GOPATH resolution.
+const refSourceG = "2162G.go"
 
 type testCaseG struct {
 	n int

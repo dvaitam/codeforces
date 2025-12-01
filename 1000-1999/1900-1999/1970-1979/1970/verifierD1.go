@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const refSourceD1 = "1000-1999/1900-1999/1970-1979/1970/1970D1.go"
+const refSourceD1 = "./1970D1.go"
 
 func main() {
 	if len(os.Args) != 2 {

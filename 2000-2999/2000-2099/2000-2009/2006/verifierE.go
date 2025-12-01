@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2000-2099/2000-2009/2006/2006E.go"
+const refSource = "./2006E.go"
 
 type singleCase struct {
 	n       int

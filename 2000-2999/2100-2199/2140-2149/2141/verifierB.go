@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const refSource = "2000-2999/2100-2199/2140-2149/2141/2141B.go"
+const refSource = "./2141B.go"
 
 type testCase struct {
 	name  string

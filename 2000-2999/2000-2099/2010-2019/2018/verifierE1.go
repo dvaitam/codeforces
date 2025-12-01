@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const refSource = "2000-2999/2000-2099/2010-2019/2018/2018E1.go"
+const refSource = "./2018E1.go"
 
 func main() {
 	if len(os.Args) != 2 {

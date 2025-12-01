@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const refSource = "1000-1999/1700-1799/1770-1779/1773/1773J.go"
+const refSource = "./1773J.go"
 
 type edge struct {
 	u int

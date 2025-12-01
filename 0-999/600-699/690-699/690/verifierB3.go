@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	refSourceB3  = "0-999/600-699/690-699/690/690B3.go"
+	// refSourceB3 points to the local reference solution to avoid GOPATH resolution.
+	refSourceB3  = "690B3.go"
 	randomInputs = 80
 )
 

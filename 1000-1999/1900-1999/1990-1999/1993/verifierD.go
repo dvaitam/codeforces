@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const refSource = "1000-1999/1900-1999/1990-1999/1993/1993D.go"
+const refSource = "./1993D.go"
 
 type testCase struct {
 	n, k int

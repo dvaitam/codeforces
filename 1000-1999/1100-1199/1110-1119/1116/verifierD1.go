@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource = "1000-1999/1100-1199/1110-1119/1116/1116D1.go"
+	refSource = "./1116D1.go"
 	threshold = 1e-5
 )
 

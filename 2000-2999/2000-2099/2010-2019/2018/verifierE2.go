@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2000-2099/2010-2019/2018/2018E2.go"
+const refSource = "./2018E2.go"
 const totalLimit = 300000
 
 func main() {

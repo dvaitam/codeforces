@@ -17,7 +17,7 @@ type testCase struct {
 	people int
 }
 
-const refSource = "2000-2999/2100-2199/2170-2179/2172/2172B.go"
+const refSource = "./2172B.go"
 
 func main() {
 	if len(os.Args) != 2 {

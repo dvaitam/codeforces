@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	refSource       = "2000-2999/2100-2199/2100-2109/2104/2104E.go"
+	// refSource points to the local reference solution to avoid GOPATH resolution.
+	refSource       = "2104E.go"
 	maxTotalN       = 200000
 	maxTotalQ       = 200000
 	maxTotalTLength = 200000

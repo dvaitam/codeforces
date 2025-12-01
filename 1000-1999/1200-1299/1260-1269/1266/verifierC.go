@@ -78,7 +78,7 @@ func buildReference() (string, error) {
 		return "", err
 	}
 	tmp.Close()
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean("1000-1999/1200-1299/1260-1269/1266/1266C.go"))
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean("1266C.go"))
 	if out, err := cmd.CombinedOutput(); err != nil {
 		os.Remove(tmp.Name())
 		return "", fmt.Errorf("go build failed: %v\n%s", err, out)

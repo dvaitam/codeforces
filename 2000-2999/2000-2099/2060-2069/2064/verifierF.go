@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	refSource = "2000-2999/2000-2099/2060-2069/2064/2064F.go"
+	// refSource points to the local reference solution to avoid GOPATH resolution.
+	refSource = "2064F.go"
 	totalNCap = 200000
 )
 

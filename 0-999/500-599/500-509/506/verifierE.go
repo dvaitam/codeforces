@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const refSource = "0-999/500-599/500-509/506/506E.go"
+const refSource = "./506E.go"
 
 type testCase struct {
 	name  string

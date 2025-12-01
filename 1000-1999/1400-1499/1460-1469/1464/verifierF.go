@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const ref1464F = "1000-1999/1400-1499/1460-1469/1464/1464F.go"
+const ref1464F = "./1464F.go"
 
 func main() {
 	if len(os.Args) != 2 {

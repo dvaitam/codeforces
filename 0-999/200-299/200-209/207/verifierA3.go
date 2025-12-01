@@ -12,7 +12,9 @@ import (
 )
 
 const (
-	refSourceA3 = "0-999/200-299/200-209/207/207A3.go"
+	// refSourceA3 points to the local reference so Go does not try to resolve a
+	// module-like path under GOPATH.
+	refSourceA3 = "207A3.go"
 	orderLimit  = 200000
 )
 

@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const refSourceF1 = "2000-2999/2000-2099/2030-2039/2039/2039F1.go"
+const refSourceF1 = "./2039F1.go"
 
 type testInput struct {
 	ms []int

@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	refSource  = "1000-1999/1700-1799/1760-1769/1765/1765G.go"
+	refSource  = "./1765G.go"
 	maxQueries = 789
 )
 

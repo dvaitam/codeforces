@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSource    = "2000-2999/2000-2099/2070-2079/2074/2074A.go"
+	refSource    = "2074A.go"
 	maxTests     = 500
 	domainLimit  = 10
 	randomTrials = 400
@@ -82,7 +82,8 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	source := filepath.Join(".", refSource)
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

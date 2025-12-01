@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource   = "2000-2999/2000-2099/2060-2069/2063/2063F1.go"
+	refSource   = "2063F1.go"
 	mod         = 998244353
 	randomTests = 120
 	totalBudget = 5000 // sum of n across all tests
@@ -78,7 +78,8 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	source := filepath.Join(".", refSource)
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

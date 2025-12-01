@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource  = "1000-1999/1100-1199/1180-1189/1184/1184C2.go"
+	refSource  = "./1184C2.go"
 	refBinary  = "ref1184C2.bin"
 	totalTests = 80
 )

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource   = "2000-2999/2100-2199/2110-2119/2115/2115A.go"
+	refSource   = "./2115A.go"
 	maxTests    = 500
 	totalNLimit = 5000
 )

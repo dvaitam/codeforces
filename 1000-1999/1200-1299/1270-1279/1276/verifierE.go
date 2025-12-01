@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource = "1000-1999/1200-1299/1270-1279/1276/1276E.go"
+	refSource = "./1276E.go"
 	maxMoves  = 1000
 	maxCoord  = 1_000_000_000_000_000_000
 	stonesCnt = 4

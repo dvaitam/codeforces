@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSourceC = "2000-2999/2000-2099/2000-2009/2004/2004C.go"
+	refSourceC = "2004C.go"
 	maxValue   = int64(1e9)
 	maxSumN    = 200000
 )
@@ -99,7 +99,8 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSourceC))
+	source := filepath.Join(".", refSourceC)
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

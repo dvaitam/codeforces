@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource     = "2000-2999/2100-2199/2110-2119/2119/2119E.go"
+	refSource     = "2119E.go"
 	maxTotalN     = 4000
 	randomTests   = 120
 	maxNPerRandom = 60
@@ -75,7 +75,8 @@ func buildReference() (string, func(), error) {
 		return "", nil, fmt.Errorf("failed to create temp dir: %v", err)
 	}
 	binPath := filepath.Join(dir, "ref2119E.bin")
-	cmd := exec.Command("go", "build", "-o", binPath, filepath.Clean(refSource))
+	source := filepath.Join(".", refSource)
+	cmd := exec.Command("go", "build", "-o", binPath, source)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {

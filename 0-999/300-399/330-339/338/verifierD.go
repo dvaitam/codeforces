@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSource = "0-999/300-399/330-339/338/338D.go"
+	refSource = "./338D.go"
 	maxNM     = int64(1_000_000_000_000)
 )
 

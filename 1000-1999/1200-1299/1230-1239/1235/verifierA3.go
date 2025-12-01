@@ -17,7 +17,7 @@ const (
 	fragmentDim = 64
 	gridSize    = imageSize / fragmentDim
 	piecesCount = gridSize * gridSize
-	refSource   = "1000-1999/1200-1299/1230-1239/1235/1235A3.go"
+	refSource   = "./1235A3.go"
 )
 
 type testCase struct {

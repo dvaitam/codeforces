@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const refSource = "0-999/200-299/250-259/256/256D.go"
+const refSource = "256D.go"
 
 type testCase struct {
 	input string
@@ -58,7 +58,8 @@ func buildReference() (string, error) {
 		return "", err
 	}
 	tmp.Close()
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	source := filepath.Join(".", refSource)
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource2021D = "2000-2999/2000-2099/2020-2029/2021/2021D.go"
+	refSource2021D = "./2021D.go"
 	lim            = int64(1_000_000_000)
 )
 

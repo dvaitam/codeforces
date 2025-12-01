@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource       = "2000-2999/2000-2099/2080-2089/2082/2082A.go"
+	refSource       = "./2082A.go"
 	totalCellLimit  = 50000
 	targetTests     = 140
 	maxN            = 100

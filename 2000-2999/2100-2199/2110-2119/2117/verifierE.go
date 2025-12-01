@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const refSource = "2000-2999/2100-2199/2110-2119/2117/2117E.go"
+const refSource = "./2117E.go"
 const maxN = 200000
 
 type testCase struct {

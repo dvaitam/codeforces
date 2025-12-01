@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const refSource = "0-999/900-999/950-959/958/958E3.go"
+const refSource = "./958E3.go"
 
 type point struct {
 	X int64

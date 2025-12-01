@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSourceF   = "2000-2999/2100-2199/2150-2159/2152/2152F.go"
+	refSourceF   = "./2152F.go"
 	randomTrials = 80
 	maxNTotal    = 250000
 	maxQTotal    = 250000

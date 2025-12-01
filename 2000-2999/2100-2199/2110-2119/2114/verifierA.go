@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	refSource   = "2000-2999/2100-2199/2110-2119/2114/2114A.go"
+	refSource   = "./2114A.go"
 	targetTests = 200
 	maxTests    = 10000
 )

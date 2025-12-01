@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSourceA2 = "0-999/200-299/200-209/207/207A2.go"
+	refSourceA2 = "./207A2.go"
 	totalLimit  = 500000
 )
 

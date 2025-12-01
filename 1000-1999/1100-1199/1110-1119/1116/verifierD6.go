@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	refSourceD6  = "1000-1999/1100-1199/1110-1119/1116/1116D6.go"
+	refSourceD6  = "./1116D6.go"
 	randomTrials = 30
 )
 

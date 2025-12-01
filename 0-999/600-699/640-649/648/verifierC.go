@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const refSource = "0-999/600-699/640-649/648/648C.go"
+const refSource = "./648C.go"
 
 type point struct {
 	r, c int

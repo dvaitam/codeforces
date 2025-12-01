@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSourceA2  = "0-999/900-999/950-959/958/958A2.go"
+	refSourceA2  = "958A2.go"
 	randomTrials = 150
 )
 
@@ -68,7 +68,8 @@ func buildReference(src string) (string, error) {
 		return "", err
 	}
 	tmp.Close()
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(src))
+	source := filepath.Join(".", filepath.Clean(src))
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

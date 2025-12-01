@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSourceC   = "2000-2999/2000-2099/2000-2009/2005/2005C.go"
+	refSourceC   = "./2005C.go"
 	randomCases  = 120
 	maxTotalSize = 1_000_000
 )

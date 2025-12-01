@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSourceC3 = "0-999/300-399/330-339/331/331C3.go"
+	refSourceC3 = "./331C3.go"
 	testCount   = 200
 )
 

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSourceC1  = "0-999/100-199/170-179/177/177C1.go"
+	refSourceC1  = "./177C1.go"
 	randomTrials = 200
 )
 

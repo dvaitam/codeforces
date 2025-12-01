@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2000-2099/2060-2069/2065/2065A.go"
+const refSource = "./2065A.go"
 
 type testCase struct {
 	word string

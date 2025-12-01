@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSourceD   = "1000-1999/1700-1799/1770-1779/1773/1773D.go"
+	refSourceD   = "./1773D.go"
 	answerCap    = 1000000
 	maxRandomLen = 80
 )

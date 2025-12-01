@@ -10,7 +10,8 @@ import (
 	"strings"
 )
 
-const refSource = "2000-2999/2000-2099/2000-2009/2008/2008B.go"
+// refSource points to the local reference solution to avoid GOPATH resolution.
+const refSource = "2008B.go"
 
 func main() {
 	if len(os.Args) < 2 {

@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	refSourceB = "2000-2999/2000-2099/2000-2009/2003/2003B.go"
+	// refSourceB points to the local reference solution to avoid GOPATH resolution.
+	refSourceB = "2003B.go"
 	maxValue   = 100000
 )
 

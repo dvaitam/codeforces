@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2000-2099/2020-2029/2026/2026E.go"
+const refSource = "./2026E.go"
 
 type testInput struct {
 	name  string

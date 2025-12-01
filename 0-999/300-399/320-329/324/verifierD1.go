@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const refSource = "0-999/300-399/320-329/324/324D1.go"
+const refSource = "./324D1.go"
 
 type segment struct {
 	vertical     bool

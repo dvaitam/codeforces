@@ -12,7 +12,8 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2100-2199/2130-2139/2131/2131E.go"
+// refSource points to the local reference solution to avoid GOPATH resolution.
+const refSource = "2131E.go"
 
 type testCase struct {
 	n int

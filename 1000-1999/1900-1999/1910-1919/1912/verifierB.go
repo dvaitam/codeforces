@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource  = "1000-1999/1900-1999/1910-1919/1912/1912B.go"
+	refSource  = "./1912B.go"
 	totalTests = 80
 )
 

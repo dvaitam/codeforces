@@ -23,7 +23,7 @@ type testCase struct {
 	meta  []caseMeta
 }
 
-const referenceSource = "2000-2999/2000-2099/2000-2009/2001/2001D.go"
+const referenceSource = "./2001D.go"
 
 func main() {
 	if len(os.Args) != 2 {

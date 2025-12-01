@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource    = "2000-2999/2000-2099/2060-2069/2061/2061E.go"
+	refSource    = "./2061E.go"
 	totalNLimit  = 4000
 	totalTCLimit = 200
 )

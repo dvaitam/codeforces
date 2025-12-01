@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSource  = "1000-1999/1800-1899/1840-1849/1846/1846B.go"
+	refSource  = "1846B.go"
 	totalTests = 80
 )
 
@@ -77,7 +77,8 @@ func buildReference() (string, func(), error) {
 		return "", nil, err
 	}
 	bin := filepath.Join(dir, "ref1846B.bin")
-	cmd := exec.Command("go", "build", "-o", bin, refSource)
+	source := filepath.Join(".", refSource)
+	cmd := exec.Command("go", "build", "-o", bin, source)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {

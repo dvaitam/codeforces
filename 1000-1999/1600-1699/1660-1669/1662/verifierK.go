@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	refSource  = "1000-1999/1600-1699/1660-1669/1662/1662K.go"
+	refSource  = "./1662K.go"
 	totalTests = 80
 	tolerance  = 1e-4
 )

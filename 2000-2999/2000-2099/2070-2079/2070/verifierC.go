@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource   = "2000-2999/2000-2099/2070-2079/2070/2070C.go"
+	refSource   = "./2070C.go"
 	randomTests = 120
 	totalNLimit = 200000 // keep within problem sum constraint of 3e5
 	maxNPerCase = 5000

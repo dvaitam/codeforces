@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-const refSource = "0-999/200-299/200-209/206/206A1.go"
+const refSource = "./206A1.go"
 
 type genParams struct {
 	k      int

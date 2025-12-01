@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource = "1000-1999/1200-1299/1260-1269/1266/1266D.go"
+	refSource = "1266D.go"
 	maxEdges  = 300000
 )
 
@@ -80,7 +80,8 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	source := filepath.Join(".", refSource)
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	var combined bytes.Buffer
 	cmd.Stdout = &combined
 	cmd.Stderr = &combined

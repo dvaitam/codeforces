@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource   = "2000-2999/2100-2199/2130-2139/2137/2137C.go"
+	refSource   = "./2137C.go"
 	randomTests = 120
 	maxProd     = 1_000_000_000_000_000_000
 )

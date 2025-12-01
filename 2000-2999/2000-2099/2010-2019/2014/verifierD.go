@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2000-2099/2010-2019/2014/2014D.go"
+const refSource = "./2014D.go"
 
 type job struct {
 	l int

@@ -12,7 +12,8 @@ import (
 	"time"
 )
 
-const referenceSource = "1000-1999/1500-1599/1530-1539/1532/1532B.go"
+// referenceSource points to the local reference solution to avoid GOPATH resolution.
+const referenceSource = "1532B.go"
 
 func main() {
 	if len(os.Args) != 2 {

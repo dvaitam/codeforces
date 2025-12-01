@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource     = "1000-1999/1700-1799/1770-1779/1775/1775A2.go"
+	refSource     = "./1775A2.go"
 	totalTests    = 100
 	maxLenPerCase = 200000
 )

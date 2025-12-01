@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const refSource = "1000-1999/1000-1099/1090-1099/1090/1090J.go"
+const refSource = "./1090J.go"
 
 func main() {
 	if len(os.Args) != 2 {

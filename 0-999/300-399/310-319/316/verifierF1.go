@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	refSourceF1  = "0-999/300-399/310-319/316/316F1.go"
+	// refSourceF1 points to the local reference so Go does not attempt GOPATH resolution.
+	refSourceF1  = "316F1.go"
 	randomTrials = 60
 	minRadius    = 20
 	maxRadius    = 80

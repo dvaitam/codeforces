@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const refSource2009F = "2000-2999/2000-2099/2000-2009/2009/2009F.go"
+const refSource2009F = "./2009F.go"
 
 type query struct {
 	l int64

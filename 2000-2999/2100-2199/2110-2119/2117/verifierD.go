@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	refSource   = "2000-2999/2100-2199/2110-2119/2117/2117D.go"
+	// refSource points to the local reference solution to avoid GOPATH resolution.
+	refSource   = "2117D.go"
 	totalNLimit = 200000
 	defaultTime = 20 * time.Second
 	maxA        = 1_000_000_000

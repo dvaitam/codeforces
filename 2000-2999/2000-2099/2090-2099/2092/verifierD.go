@@ -11,7 +11,8 @@ import (
 	"strings"
 )
 
-const refSource = "2000-2999/2000-2099/2090-2099/2092/2092D.go"
+// refSource points to the local reference solution to avoid GOPATH resolution.
+const refSource = "2092D.go"
 
 type caseData struct {
 	n    int

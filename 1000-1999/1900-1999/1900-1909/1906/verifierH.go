@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const refSource = "1000-1999/1900-1999/1900-1909/1906/1906H.go"
+const refSource = "1906H.go"
 const mod = 998244353
 
 type testCase struct {
@@ -74,7 +74,8 @@ func buildReference() (string, error) {
 		return "", err
 	}
 	tmp.Close()
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	source := filepath.Join(".", refSource)
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		os.Remove(tmp.Name())
 		return "", fmt.Errorf("%v\n%s", err, string(out))

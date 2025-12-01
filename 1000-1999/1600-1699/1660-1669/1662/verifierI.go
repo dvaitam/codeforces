@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const ref1662I = "1000-1999/1600-1699/1660-1669/1662/1662I.go"
+const ref1662I = "1662I.go"
 
 func main() {
 	if len(os.Args) != 2 {
@@ -61,7 +61,8 @@ func buildReference(src string) (string, func(), error) {
 		return "", nil, err
 	}
 	bin := filepath.Join(dir, "ref.bin")
-	cmd := exec.Command("go", "build", "-o", bin, src)
+	source := filepath.Join(".", src)
+	cmd := exec.Command("go", "build", "-o", bin, source)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {

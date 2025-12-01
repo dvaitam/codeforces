@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	refSourceH   = "1000-1999/1600-1699/1650-1659/1654/1654H.go"
+	// refSourceH points to the local reference solution to avoid GOPATH resolution.
+	refSourceH   = "1654H.go"
 	randomTrials = 120
 	maxN         = 8
 )

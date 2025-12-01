@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const refSourceG1 = "2000-2999/2000-2099/2030-2039/2030/2030G1.go"
+const refSourceG1 = "./2030G1.go"
 
 func main() {
 	if len(os.Args) != 2 {

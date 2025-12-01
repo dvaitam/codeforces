@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource     = "2000-2999/2000-2099/2060-2069/2061/2061F1.go"
+	refSource     = "./2061F1.go"
 	randomTests   = 120
 	maxTotalLen   = 180000 // keep runtime reasonable (limit in statement is 4e5)
 	maxCaseLength = 2000

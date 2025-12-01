@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSourceE2 = "2000-2999/2000-2099/2050-2059/2059/2059E2.go"
+	refSourceE2 = "./2059E2.go"
 	sumLimit    = 300000
 )
 

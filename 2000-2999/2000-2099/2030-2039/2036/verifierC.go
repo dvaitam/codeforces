@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const refSource2036C = "2000-2999/2000-2099/2030-2039/2036/2036C.go"
+const refSource2036C = "./2036C.go"
 
 type query struct {
 	pos int

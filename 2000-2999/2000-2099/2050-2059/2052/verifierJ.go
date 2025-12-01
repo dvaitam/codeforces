@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource  = "2000-2999/2000-2099/2050-2059/2052/2052J.go"
+	refSource  = "./2052J.go"
 	totalLimit = 50000
 )
 

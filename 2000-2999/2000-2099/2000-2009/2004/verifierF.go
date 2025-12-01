@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const refSourceF = "2000-2999/2000-2099/2000-2009/2004/2004F.go"
+const refSourceF = "./2004F.go"
 
 type caseBundle struct {
 	arrays [][]int

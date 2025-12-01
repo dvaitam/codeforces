@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const referenceSource = "2000-2999/2000-2099/2010-2019/2014/2014F.go"
+const referenceSource = "2014F.go"
 
 type testCase struct {
 	name     string
@@ -81,7 +81,8 @@ func buildReference() (string, func(), error) {
 		return "", nil, fmt.Errorf("failed to create temp dir: %v", err)
 	}
 	binPath := filepath.Join(dir, "ref2014F.bin")
-	cmd := exec.Command("go", "build", "-o", binPath, referenceSource)
+	source := filepath.Join(".", referenceSource)
+	cmd := exec.Command("go", "build", "-o", binPath, source)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

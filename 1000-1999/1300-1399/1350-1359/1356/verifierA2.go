@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const refSource = "1000-1999/1300-1399/1350-1359/1356/1356A2.go"
+const refSource = "./1356A2.go"
 
 func main() {
 	if len(os.Args) != 2 {

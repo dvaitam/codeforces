@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const refSource = "0-999/200-299/200-209/207/207B2.go"
+const refSource = "./207B2.go"
 
 type testCase struct {
 	input string

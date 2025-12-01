@@ -64,7 +64,7 @@ func buildReference() (string, error) {
 		return "", err
 	}
 	tmp.Close()
-	src := filepath.Clean("1000-1999/1500-1599/1590-1599/1592/1592C.go")
+	src := filepath.Clean("./1592C.go")
 	cmd := exec.Command("go", "build", "-o", tmp.Name(), src)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		os.Remove(tmp.Name())

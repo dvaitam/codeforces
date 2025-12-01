@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	refSource          = "0-999/100-199/170-179/177/177G1.go"
+	refSource          = "./177G1.go"
 	maxTotalPatternLen = 100000
 )
 

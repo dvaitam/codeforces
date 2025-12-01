@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSource   = "2000-2999/2100-2199/2120-2129/2125/2125A.go"
+	refSource   = "./2125A.go"
 	maxTests    = 400
 	totalLenLim = 10000
 	alphabet    = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"

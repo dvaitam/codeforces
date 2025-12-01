@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const refSourceC = "2000-2999/2000-2099/2030-2039/2030/2030C.go"
+const refSourceC = "./2030C.go"
 
 type caseData struct {
 	s string

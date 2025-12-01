@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const refSource = "0-999/500-599/530-539/538/538F.go"
+const refSource = "538F.go"
 
 type testCase struct {
 	name  string
@@ -70,7 +70,8 @@ func buildBinary(path string) (string, func(), error) {
 			return "", nil, err
 		}
 		tmp.Close()
-		cmd := exec.Command("go", "build", "-o", tmp.Name(), cleanPath)
+		source := filepath.Join(".", cleanPath)
+		cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 		var out bytes.Buffer
 		cmd.Stdout = &out
 		cmd.Stderr = &out

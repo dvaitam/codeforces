@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSourceH = "2000-2999/2000-2099/2000-2009/2008/2008H.go"
+	refSourceH = "./2008H.go"
 	maxValue   = 100000
 )
 

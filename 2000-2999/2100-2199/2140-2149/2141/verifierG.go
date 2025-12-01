@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource     = "2000-2999/2100-2199/2140-2149/2141/2141G.go"
+	refSource     = "./2141G.go"
 	maxTotalN     = 30000
 	randomTests   = 120
 	maxNPerRandom = 200

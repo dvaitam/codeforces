@@ -6,12 +6,13 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const refSource = "2000-2999/2100-2199/2120-2129/2127/2127F.go"
+const refSource = "2127F.go"
 const mod = 1000000007
 
 type testCase struct {
@@ -74,7 +75,8 @@ func main() {
 
 func buildReference() (string, error) {
 	outPath := "./ref_2127F.bin"
-	cmd := exec.Command("go", "build", "-o", outPath, refSource)
+	source := filepath.Join(".", refSource)
+	cmd := exec.Command("go", "build", "-o", outPath, source)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("failed to build reference: %v\n%s", err, string(out))
 	}

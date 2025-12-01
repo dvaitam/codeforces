@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource = "0-999/300-399/310-319/316/316D1.go"
+	refSource = "./316D1.go"
 	mod       = 1000000007
 )
 

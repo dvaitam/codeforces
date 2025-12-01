@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const ref1765N = "1000-1999/1700-1799/1760-1769/1765/1765N.go"
+const ref1765N = "./1765N.go"
 
 func main() {
 	if len(os.Args) != 2 {

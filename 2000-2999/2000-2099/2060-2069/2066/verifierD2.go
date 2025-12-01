@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2000-2099/2060-2069/2066/2066D2.go"
+const refSource = "./2066D2.go"
 
 type testInput struct {
 	text  string

@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const refSource = "0-999/500-599/530-539/538/538H.go"
+const refSource = "./538H.go"
 
 type instance struct {
 	t, T  int64

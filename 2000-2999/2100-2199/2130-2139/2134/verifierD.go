@@ -11,7 +11,8 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2100-2199/2130-2139/2134/2134D.go"
+// refSource points to the local reference solution to avoid GOPATH resolution.
+const refSource = "2134D.go"
 
 type edge struct{ u, v int }
 

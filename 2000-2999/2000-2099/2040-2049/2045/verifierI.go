@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const refSourceI = "2000-2999/2000-2099/2040-2049/2045/2045I.go"
+const refSourceI = "2045I.go"
 
 type testCase struct {
 	n int
@@ -97,7 +97,8 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSourceI))
+	source := filepath.Join(".", refSourceI)
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource   = "2000-2999/2100-2199/2140-2149/2140/2140E2.go"
+	refSource   = "2140E2.go"
 	randomTests = 120
 	maxTotalExp = 1 << 20 // sum of 2^n across tests
 	maxTotalM   = 800000  // keep below 1e6 limit
@@ -82,7 +82,8 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	source := filepath.Join(".", refSource)
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

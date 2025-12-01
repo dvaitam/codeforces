@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource      = "1000-1999/1600-1699/1660-1669/1666/1666C.go"
+	refSource      = "./1666C.go"
 	maxSegments    = 100
 	coordLimit     = 1_000_000_000
 	requiredPoints = 3

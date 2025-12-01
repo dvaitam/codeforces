@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource = "1000-1999/1900-1999/1970-1979/1970/1970G2.go"
+	refSource = "./1970G2.go"
 	maxNTotal = 300
 	maxMTotal = 300
 )

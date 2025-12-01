@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const refSource = "1000-1999/1500-1599/1550-1559/1551/1551B2.go"
+const refSource = "./1551B2.go"
 
 func main() {
 	if len(os.Args) != 2 {

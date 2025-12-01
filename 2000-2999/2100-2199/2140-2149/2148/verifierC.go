@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-const refSource = "2000-2999/2100-2199/2140-2149/2148/2148C.go"
+const refSource = "./2148C.go"
 
 func main() {
 	if len(os.Args) != 2 {

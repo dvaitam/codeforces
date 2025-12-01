@@ -11,7 +11,8 @@ import (
 	"strings"
 )
 
-const refSource = "0-999/700-799/760-769/763/763E.go"
+// refSource points to the local reference solution to avoid GOPATH resolution.
+const refSource = "763E.go"
 
 type testCase struct {
 	name    string

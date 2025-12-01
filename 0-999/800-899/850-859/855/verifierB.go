@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSourceB   = "0-999/800-899/850-859/855/855B.go"
+	refSourceB   = "./855B.go"
 	randomTrials = 120
 	maxAbs       = 1000000000
 )

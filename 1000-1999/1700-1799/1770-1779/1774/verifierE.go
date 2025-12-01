@@ -10,7 +10,8 @@ import (
 	"strings"
 )
 
-const refSource = "1000-1999/1700-1799/1770-1779/1774/1774E.go"
+// refSource points to the local reference solution to avoid GOPATH resolution.
+const refSource = "1774E.go"
 
 type testCase struct {
 	name  string

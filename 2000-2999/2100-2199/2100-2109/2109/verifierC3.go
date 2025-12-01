@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSource = "2000-2999/2100-2199/2100-2109/2109/2109C3.go"
+	refSource = "2109C3.go"
 	cmdLimit  = 4
 )
 
@@ -63,7 +63,8 @@ func buildReference() (string, func(), error) {
 		return "", nil, fmt.Errorf("failed to create temp dir: %v", err)
 	}
 	binPath := filepath.Join(dir, "ref2109C3.bin")
-	cmd := exec.Command("go", "build", "-o", binPath, refSource)
+	source := filepath.Join(".", refSource)
+	cmd := exec.Command("go", "build", "-o", binPath, source)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {

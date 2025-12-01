@@ -14,7 +14,7 @@ import (
 
 const (
 	mod       = 1000000007
-	refSource = "2000-2999/2000-2099/2020-2029/2022/2022E2.go"
+	refSource = "./2022E2.go"
 )
 
 type testCase struct {

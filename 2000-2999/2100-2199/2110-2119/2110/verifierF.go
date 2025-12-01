@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource   = "2000-2999/2100-2199/2110-2119/2110/2110F.go"
+	refSource   = "./2110F.go"
 	randomTests = 80
 	totalNLimit = 300000 // keep within 1e6 constraint comfortably
 	maxNPerCase = 20000

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource    = "2000-2999/2000-2099/2060-2069/2060/2060F.go"
+	refSource    = "./2060F.go"
 	mod          = 998244353
 	randomTests  = 80
 	totalKBudget = 95000 // keep sum of k across tests within limits and runtime

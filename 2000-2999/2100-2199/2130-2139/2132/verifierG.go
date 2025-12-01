@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	refSource   = "2000-2999/2100-2199/2130-2139/2132/2132G.go"
+	refSource   = "./2132G.go"
 	randomTests = 100
 	maxTotalNM  = 800000 // below 1e6 limit to stay fast
 	maxN        = 1000000

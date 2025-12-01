@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2100-2199/2130-2139/2135/2135E2.go"
+const refSource = "2135E2.go"
 
 type testBatch struct {
 	text    string
@@ -77,7 +77,8 @@ func buildReference() (string, error) {
 	tmpPath := tmp.Name()
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmpPath, filepath.Clean(refSource))
+	source := filepath.Join(".", refSource)
+	cmd := exec.Command("go", "build", "-o", tmpPath, source)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

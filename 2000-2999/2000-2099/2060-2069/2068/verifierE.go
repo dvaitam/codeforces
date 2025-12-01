@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const refSourceE = "2000-2999/2000-2099/2060-2069/2068/2068E.go"
+const refSourceE = "./2068E.go"
 
 func main() {
 	var candidate string

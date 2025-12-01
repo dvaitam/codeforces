@@ -12,7 +12,8 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2000-2099/2040-2049/2045/2045G.go"
+// refSource points to the local reference solution to avoid GOPATH resolution.
+const refSource = "2045G.go"
 
 type answer struct {
 	invalid bool

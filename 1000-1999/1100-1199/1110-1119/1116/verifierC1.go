@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSourceC1  = "1000-1999/1100-1199/1110-1119/1116/1116C1.go"
+	refSourceC1  = "./1116C1.go"
 	randomTrials = 200
 	maxN         = 200
 )

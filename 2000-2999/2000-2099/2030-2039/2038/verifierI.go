@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	refSource       = "2000-2999/2000-2099/2030-2039/2038/2038I.go"
+	refSource       = "./2038I.go"
 	perTestBitLimit = 2_000_000
 	totalBitLimit   = 1_800_000
 )
