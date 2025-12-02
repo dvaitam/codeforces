@@ -62,6 +62,7 @@ func getSign(arr []int) {
 	}
 }
 
+// Generates a reference polygon to determine the expected minimal max-side-length.
 func polygon(n int) [][2]int {
 	x := make([]int, n)
 	y := make([]int, n)
@@ -149,6 +150,24 @@ func polygon(n int) [][2]int {
 	return coords
 }
 
+func distSq(p1, p2 [2]int) int {
+	dx := p1[0] - p2[0]
+	dy := p1[1] - p2[1]
+	return dx*dx + dy*dy
+}
+
+func getMaxSqDist(coords [][2]int) int {
+	maxD := 0
+	n := len(coords)
+	for i := 0; i < n; i++ {
+		d := distSq(coords[i], coords[(i+1)%n])
+		if d > maxD {
+			maxD = d
+		}
+	}
+	return maxD
+}
+
 func runCase(exe string, n int) error {
 	input := fmt.Sprintf("%d\n", n)
 	cmd := exec.Command(exe)
@@ -159,29 +178,81 @@ func runCase(exe string, n int) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	tokens := strings.Fields(out.String())
-	if len(tokens) != 1+2*n {
-		return fmt.Errorf("expected %d tokens got %d", 1+2*n, len(tokens))
+	
+	fields := strings.Fields(out.String())
+	if len(fields) == 0 {
+		return fmt.Errorf("empty output")
 	}
-	if tokens[0] != "YES" {
-		return fmt.Errorf("expected YES got %s", tokens[0])
+	if fields[0] != "YES" {
+		return fmt.Errorf("expected YES")
 	}
-	exp := polygon(n)
+	if len(fields) < 1 + 2*n {
+		return fmt.Errorf("insufficient output tokens")
+	}
+	
+	userCoords := make([][2]int, n)
 	idx := 1
 	for i := 0; i < n; i++ {
 		var x, y int
-		if _, err := fmt.Sscan(tokens[idx], &x); err != nil {
-			return fmt.Errorf("bad output token %q", tokens[idx])
-		}
+		fmt.Sscan(fields[idx], &x)
 		idx++
-		if _, err := fmt.Sscan(tokens[idx], &y); err != nil {
-			return fmt.Errorf("bad output token %q", tokens[idx])
-		}
+		fmt.Sscan(fields[idx], &y)
 		idx++
-		if x != exp[i][0] || y != exp[i][1] {
-			return fmt.Errorf("vertex %d mismatch", i+1)
+		userCoords[i] = [2]int{x, y}
+	}
+	
+	// Calculate squared lengths
+	userLens := make(map[int]bool)
+	maxUserLen := 0
+	for i := 0; i < n; i++ {
+		d := distSq(userCoords[i], userCoords[(i+1)%n])
+		if d == 0 {
+			return fmt.Errorf("zero length side at index %d", i)
+		}
+		if userLens[d] {
+			return fmt.Errorf("duplicate side length squared %d", d)
+		}
+		userLens[d] = true
+		if d > maxUserLen {
+			maxUserLen = d
 		}
 	}
+	
+	// Reference
+	refPoly := polygon(n)
+	maxRefLen := getMaxSqDist(refPoly)
+	
+	if maxUserLen > maxRefLen {
+		return fmt.Errorf("user max length %d > expected %d", maxUserLen, maxRefLen)
+	}
+	
+	// Convexity check
+	type Vec struct { x, y int64 }
+	edges := make([]Vec, n)
+	for i := 0; i < n; i++ {
+		edges[i] = Vec{
+			x: int64(userCoords[(i+1)%n][0] - userCoords[i][0]),
+			y: int64(userCoords[(i+1)%n][1] - userCoords[i][1]),
+		}
+	}
+	
+	pos := 0
+	neg := 0
+	for i := 0; i < n; i++ {
+		v1 := edges[i]
+		v2 := edges[(i+1)%n]
+		cp := v1.x*v2.y - v1.y*v2.x
+		if cp > 0 {
+			pos++
+		} else if cp < 0 {
+			neg++
+		}
+	}
+	
+	if pos > 0 && neg > 0 {
+		return fmt.Errorf("polygon is not convex (turns both left and right)")
+	}
+	
 	return nil
 }
 

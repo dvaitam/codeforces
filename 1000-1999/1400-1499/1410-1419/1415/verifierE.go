@@ -28,25 +28,51 @@ func run(bin string, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func solveE(n, k int, a []int) int64 {
-	sort.Slice(a, func(i, j int) bool { return a[i] > a[j] })
-	cntNeg := 0
-	for _, v := range a {
-		if v < 0 {
-			cntNeg++
+func solveE(n, k int, c []int) int64 {
+	sort.Ints(c)
+
+	s := make([]int64, n+1)
+	s[0] = 0
+	for i := 0; i < n; i++ {
+		s[i+1] = s[i] + int64(c[i])
+	}
+
+	sn := s[n]
+	w := make([]int64, n+1)
+	for i := 1; i <= n; i++ {
+		w[i] = sn - s[i]
+	}
+
+	suffixSum := make([]int64, n+2)
+	suffixSum[n+1] = 0
+	for i := n; i >= 1; i-- {
+		suffixSum[i] = suffixSum[i+1] + w[i]
+	}
+
+	r := k + 1
+	preCalc := make([]int64, n/r+2)
+	preCalc[0] = 0
+	for q := 1; q*r <= n; q++ {
+		preCalc[q] = preCalc[q-1] + w[q*r]
+	}
+
+	var maxScore int64 = -9223372036854775808
+
+	for i := 0; i <= n; i++ {
+		var currentScore int64
+		if i > 0 {
+			q := i / r
+			currentScore = preCalc[q]
+			if i%r != 0 {
+				currentScore += w[i]
+			}
+		}
+		currentScore += suffixSum[i+1]
+		if currentScore > maxScore {
+			maxScore = currentScore
 		}
 	}
-	p := k
-	if p > cntNeg {
-		p = cntNeg
-	}
-	mainSize := n - p
-	var ans int64
-	for i := 0; i < mainSize; i++ {
-		mult := mainSize - i - 1
-		ans += int64(a[i]) * int64(mult)
-	}
-	return ans
+	return maxScore
 }
 
 func runCase(bin string, n, k int, a []int) error {

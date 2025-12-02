@@ -618,12 +618,16 @@ func (s *solver) buildMST() {
 	for i := range s.edges {
 		e := s.edges[i]
 		if e.u == 1 {
-			s.uCost[e.v] = e.c
-			s.numEdge[e.v] = e.idx
+			if s.uCost[e.v] == 0 || e.c < s.uCost[e.v] {
+				s.uCost[e.v] = e.c
+				s.numEdge[e.v] = e.idx
+			}
 		}
 		if e.v == 1 {
-			s.uCost[e.u] = e.c
-			s.numEdge[e.u] = e.idx
+			if s.uCost[e.u] == 0 || e.c < s.uCost[e.u] {
+				s.uCost[e.u] = e.c
+				s.numEdge[e.u] = e.idx
+			}
 		}
 	}
 	sort.Slice(s.edges, func(i, j int) bool {
@@ -759,45 +763,33 @@ func (s *solver) connected() bool {
 	return true
 }
 
-func (s *solver) solve() string {
+func (s *solver) solve() (int, bool) {
 	s.buildMST()
 	if !s.connected() {
-		return "-1"
+		return -1, false
 	}
 	s.adjust()
 	if s.eCnt != s.limit {
-		return "-1"
+		return -1, false
 	}
-	var edges []string
+
+	totalCost := 0
 	for i := 2; i <= s.n; i++ {
 		if s.vis[i] {
-			edges = append(edges, strconv.Itoa(s.numEdge[i]))
+			totalCost += s.uCost[i]
 		}
 	}
+
 	used := make([]bool, len(s.g))
 	for i := 1; i <= s.tot; i++ {
 		if used[i] || s.g[i].tip {
 			continue
 		}
-		edges = append(edges, strconv.Itoa(s.g[i].idx))
+		totalCost += s.g[i].c
 		used[i] = true
 		used[s.g[i].rev] = true
 	}
-	var sb strings.Builder
-	sb.WriteString(strconv.Itoa(s.n - 1))
-	sb.WriteByte('\n')
-	for i, v := range edges {
-		if i > 0 {
-			sb.WriteByte(' ')
-		}
-		sb.WriteString(v)
-	}
-	return strings.TrimSpace(sb.String())
-}
-
-func solveCase(tc testCase) string {
-	s := newSolver(tc)
-	return s.solve()
+	return totalCost, true
 }
 
 func run(bin, input string) (string, error) {
@@ -811,6 +803,90 @@ func run(bin, input string) (string, error) {
 		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
 	return strings.TrimSpace(out.String()), nil
+}
+
+func verifyUserOutput(tc testCase, userOutput string, expectedCost int, expectedPossible bool) error {
+	lines := strings.Fields(userOutput)
+	if !expectedPossible {
+		if len(lines) == 1 && lines[0] == "-1" {
+			return nil
+		}
+		return fmt.Errorf("expected -1, got %s", userOutput)
+	}
+
+	if len(lines) > 0 && lines[0] == "-1" {
+		return fmt.Errorf("expected solution with cost %d, got -1", expectedCost)
+	}
+
+	if len(lines) == 0 {
+		return fmt.Errorf("empty output")
+	}
+
+	numEdges, err := strconv.Atoi(lines[0])
+	if err != nil {
+		return fmt.Errorf("invalid edge count: %v", err)
+	}
+
+	if numEdges != tc.n-1 {
+		return fmt.Errorf("expected %d edges, got %d", tc.n-1, numEdges)
+	}
+
+	if len(lines)-1 != numEdges {
+		return fmt.Errorf("expected %d edge indices, found %d tokens", numEdges, len(lines)-1)
+	}
+
+	edgesByIdx := make(map[int]edgeInput)
+	for i, e := range tc.edges {
+		edgesByIdx[i+1] = e
+	}
+
+	adj := make([][]int, tc.n+1)
+	userCost := 0
+	degree1 := 0
+
+	for i := 1; i < len(lines); i++ {
+		idx, err := strconv.Atoi(lines[i])
+		if err != nil {
+			return fmt.Errorf("invalid edge index: %v", err)
+		}
+		e, ok := edgesByIdx[idx]
+		if !ok {
+			return fmt.Errorf("edge index %d out of bounds", idx)
+		}
+
+		userCost += e.c
+		if e.u == 1 || e.v == 1 {
+			degree1++
+		}
+
+		adj[e.u] = append(adj[e.u], e.v)
+		adj[e.v] = append(adj[e.v], e.u)
+	}
+
+	visited := make(map[int]bool)
+	var dfs func(int)
+	dfs = func(u int) {
+		visited[u] = true
+		for _, v := range adj[u] {
+			if !visited[v] {
+				dfs(v)
+			}
+		}
+	}
+	dfs(1)
+	if len(visited) != tc.n {
+		return fmt.Errorf("graph not connected, visited %d/%d nodes", len(visited), tc.n)
+	}
+
+	if degree1 != tc.limit {
+		return fmt.Errorf("degree of node 1 is %d, expected %d", degree1, tc.limit)
+	}
+
+	if userCost != expectedCost {
+		return fmt.Errorf("user cost %d != expected cost %d", userCost, expectedCost)
+	}
+
+	return nil
 }
 
 func main() {
@@ -837,14 +913,15 @@ func main() {
 	}
 
 	for idx, tc := range testcases {
-		expect := solveCase(tc)
+		s := newSolver(tc)
+		expectCost, expectPossible := s.solve()
 		got, err := run(bin, inputs[idx])
 		if err != nil {
 			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != expect {
-			fmt.Printf("case %d failed:\nexpected: %s\ngot: %s\n", idx+1, expect, got)
+		if err := verifyUserOutput(tc, got, expectCost, expectPossible); err != nil {
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
 	}

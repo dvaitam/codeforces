@@ -139,23 +139,23 @@ func solve388C(line string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("read s[%d]: %w", i, err)
 		}
-		
-		count := s / 2
-		// Read all cards for this pile
+
+		cards := make([]int, s)
 		for j := 0; j < s; j++ {
-			v, err := readInt()
+			cards[j], err = readInt()
 			if err != nil {
 				return "", fmt.Errorf("read card[%d][%d]: %w", i, j, err)
 			}
-			// Determine who gets this card
-			if j < count {
-				cielSum += v
-			} else if j >= s-count {
-				jiroSum += v
-			} else {
-				// Middle card
-				middles = append(middles, v)
-			}
+		}
+
+		count := s / 2
+		for j := 0; j < count; j++ {
+			cielSum += cards[j]
+			jiroSum += cards[s-1-j]
+		}
+
+		if s%2 == 1 {
+			middles = append(middles, cards[s/2])
 		}
 	}
 

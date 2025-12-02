@@ -179,8 +179,7 @@ func referenceSolve(p []triple) string {
 
 	buckets := make(map[int][]entry)
 	ans := -inf * 2
-	sta1, sta2 := 0, 0
-
+	
 	var dfs1 func(idx, end, a, b, c, code int)
 	var dfs2 func(idx, end, a, b, c, code int)
 
@@ -200,13 +199,11 @@ func referenceSolve(p []triple) string {
 		if idx == end {
 			x := (b - a + base) % mod
 			best := -inf * 2
-			bestSta := 0
 			if list, ok := buckets[x]; ok {
 				for _, e := range list {
 					if e.b-e.c == c-b {
 						if e.a > best {
 							best = e.a
-							bestSta = e.sta
 						}
 					}
 				}
@@ -214,8 +211,6 @@ func referenceSolve(p []triple) string {
 			if best > -inf {
 				if best+a > ans {
 					ans = best + a
-					sta1 = code
-					sta2 = bestSta
 				}
 			}
 			return
@@ -234,30 +229,70 @@ func referenceSolve(p []triple) string {
 	if ans < -inf/2 {
 		return "Impossible"
 	}
-	var sb strings.Builder
-	for i := 0; i < m; i++ {
-		t := (sta1 / pow3[m-1-i]) % 3
-		switch t {
-		case 0:
-			sb.WriteString("LM\n")
-		case 1:
-			sb.WriteString("LW\n")
-		case 2:
-			sb.WriteString("MW\n")
+	// This just returns ONE possible max value. We need to return the value itself for validation.
+	return fmt.Sprintf("%d", ans)
+}
+
+// solveCaseForOutput runs the solver to get the full output string for exact checking if "Impossible"
+func solveCaseForOutput(tc testCase) int {
+	res := referenceSolve(tc.p)
+	if res == "Impossible" {
+		return -inf * 2
+	}
+	val, _ := strconv.Atoi(res)
+	return val
+}
+
+func verifyUser(tc testCase, userOut string) error {
+	refMax := solveCaseForOutput(tc)
+
+	lines := strings.Fields(userOut)
+	if len(lines) == 0 {
+		return fmt.Errorf("empty output")
+	}
+
+	if refMax == -inf*2 {
+		if lines[0] == "Impossible" {
+			return nil
+		}
+		return fmt.Errorf("expected Impossible, got %s", lines[0])
+	}
+
+	if lines[0] == "Impossible" {
+		return fmt.Errorf("expected solution with score %d, got Impossible", refMax)
+	}
+
+	if len(lines) != tc.n {
+		return fmt.Errorf("expected %d lines, got %d", tc.n, len(lines))
+	}
+
+	la, lb, lc := 0, 0, 0
+	for i, move := range lines {
+		t := tc.p[i]
+		switch move {
+		case "LM":
+			la += t.a
+			lb += t.b
+		case "LW":
+			la += t.a
+			lc += t.c
+		case "MW":
+			lb += t.b
+			lc += t.c
+		default:
+			return fmt.Errorf("invalid move: %s", move)
 		}
 	}
-	for i := m; i < n; i++ {
-		t := (sta2 / pow3[n-1-i]) % 3
-		switch t {
-		case 0:
-			sb.WriteString("LM\n")
-		case 1:
-			sb.WriteString("LW\n")
-		case 2:
-			sb.WriteString("MW\n")
-		}
+
+	if la != lb || lb != lc {
+		return fmt.Errorf("scores not equal: L=%d M=%d W=%d", la, lb, lc)
 	}
-	return strings.TrimRight(sb.String(), "\n")
+
+	if la != refMax {
+		return fmt.Errorf("score %d is not optimal (max %d)", la, refMax)
+	}
+
+	return nil
 }
 
 func runBinary(bin, input string) (string, string, error) {
@@ -290,14 +325,15 @@ func main() {
 		for _, t := range tc.p {
 			fmt.Fprintf(&input, "%d %d %d\n", t.a, t.b, t.c)
 		}
-		expected := referenceSolve(tc.p)
+		
 		out, stderr, err := runBinary(bin, input.String())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != strings.TrimSpace(expected) {
-			fmt.Fprintf(os.Stderr, "case %d failed\nexpected:\n%s\ngot:\n%s\n", idx+1, expected, strings.TrimSpace(out))
+
+		if err := verifyUser(tc, strings.TrimSpace(out)); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
 	}

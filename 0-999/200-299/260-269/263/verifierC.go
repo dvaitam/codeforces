@@ -1,19 +1,20 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
 type testCase struct {
-	input    string
-	expected string
+	input string
 }
 
 func runBinary(bin, input string) (string, error) {
@@ -36,106 +37,11 @@ func runBinary(bin, input string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func solve(n int, edges [][2]int) string {
-	f := make([][]int, n+1)
-	for _, e := range edges {
-		u, v := e[0], e[1]
-		f[u] = append(f[u], v)
-		f[v] = append(f[v], u)
-	}
-	a := make([]int, n+1)
-	use := make([]bool, n+1)
-	a[1] = 1
-	var getRem func() bool
-	getRem = func() bool {
-		for i := 3; i <= n-1; i++ {
-			found := false
-			for _, u := range f[a[i-1]] {
-				if use[u] {
-					continue
-				}
-				ok := false
-				for _, v := range f[a[i-2]] {
-					if v == u {
-						ok = true
-						break
-					}
-				}
-				if !ok {
-					continue
-				}
-				use[u] = true
-				a[i] = u
-				found = true
-				break
-			}
-			if !found {
-				return false
-			}
-		}
-		return true
-	}
-	check := func() bool {
-		t1, t2, t3, t4 := false, false, false, false
-		for _, v := range f[a[n]] {
-			if v == a[1] {
-				t1 = true
-			}
-			if v == a[2] {
-				t2 = true
-			}
-			if v == a[n-1] {
-				t3 = true
-			}
-			if v == a[n-2] {
-				t4 = true
-			}
-		}
-		return t1 && t2 && t3 && t4
-	}
-	for p := 0; p < len(f[1]); p++ {
-		for q := 0; q < len(f[1]); q++ {
-			if p == q {
-				continue
-			}
-			u := f[1][p]
-			v := f[1][q]
-			ok := false
-			for _, x := range f[u] {
-				if x == v {
-					ok = true
-					break
-				}
-			}
-			if !ok {
-				continue
-			}
-			for i := range use {
-				use[i] = false
-			}
-			use[1], use[u], use[v] = true, true, true
-			a[2] = v
-			a[n] = u
-			if getRem() && check() {
-				var out bytes.Buffer
-				for i := 1; i <= n; i++ {
-					if i > 1 {
-						out.WriteByte(' ')
-					}
-					fmt.Fprintf(&out, "%d", a[i])
-				}
-				return out.String()
-			}
-		}
-	}
-	return "-1"
-}
-
 func generateCases() []testCase {
 	rand.Seed(3)
 	cases := make([]testCase, 100)
 	for t := 0; t < 100; t++ {
-		n := rand.Intn(6) + 5
+		n := rand.Intn(6) + 5 // 5 to 10
 		perm := make([]int, n)
 		perm[0] = 1
 		p := rand.Perm(n - 1)
@@ -167,10 +73,97 @@ func generateCases() []testCase {
 		for _, e := range edges {
 			fmt.Fprintf(&buf, "%d %d\n", e[0], e[1])
 		}
-		expected := solve(n, edges)
-		cases[t] = testCase{input: buf.String(), expected: expected}
+		cases[t] = testCase{input: buf.String()}
 	}
 	return cases
+}
+
+func verify(input, output string) error {
+	// Parse input
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	scanner.Split(bufio.ScanWords)
+	scanInt := func() (int, bool) {
+		if scanner.Scan() {
+			v, _ := strconv.Atoi(scanner.Text())
+			return v, true
+		}
+		return 0, false
+	}
+
+	n, ok := scanInt()
+	if !ok {
+		return fmt.Errorf("failed to parse n")
+	}
+
+	adj := make(map[int]map[int]bool)
+	for {
+		u, ok := scanInt()
+		if !ok {
+			break
+		}
+		v, ok := scanInt()
+		if !ok {
+			break
+		}
+		if adj[u] == nil {
+			adj[u] = make(map[int]bool)
+		}
+		if adj[v] == nil {
+			adj[v] = make(map[int]bool)
+		}
+		adj[u][v] = true
+		adj[v][u] = true
+	}
+
+	// Parse output
+	outFields := strings.Fields(output)
+	if len(outFields) == 0 {
+		return fmt.Errorf("empty output")
+	}
+	if len(outFields) == 1 && outFields[0] == "-1" {
+		return fmt.Errorf("output is -1, but a solution is guaranteed to exist")
+	}
+
+	if len(outFields) != n {
+		return fmt.Errorf("expected %d numbers, got %d", n, len(outFields))
+	}
+
+	p := make([]int, n)
+	seen := make(map[int]bool)
+	for i, s := range outFields {
+		v, err := strconv.Atoi(s)
+		if err != nil {
+			return fmt.Errorf("invalid number: %s", s)
+		}
+		if v < 1 || v > n {
+			return fmt.Errorf("number out of range: %d", v)
+		}
+		if seen[v] {
+			return fmt.Errorf("duplicate number: %d", v)
+		}
+		seen[v] = true
+		p[i] = v
+	}
+
+	// Check edges
+	hasEdge := func(u, v int) bool {
+		return adj[u][v]
+	}
+
+	for i := 0; i < n; i++ {
+		u := p[i]
+		v1 := p[(i+1)%n]
+		v2 := p[(i+2)%n]
+
+		if !hasEdge(u, v1) {
+			return fmt.Errorf("edge %d-%d (dist 1) missing in input", u, v1)
+		}
+		if !hasEdge(u, v2) {
+			return fmt.Errorf("edge %d-%d (dist 2) missing in input", u, v2)
+		}
+	}
+
+	return nil
 }
 
 func main() {
@@ -185,8 +178,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != tc.expected {
-			fmt.Fprintf(os.Stderr, "case %d failed:\ninput:\n%s\nexpected:%s\nactual:%s\n", i+1, tc.input, tc.expected, out)
+		if err := verify(tc.input, out); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s\nactual:\n%s\n", i+1, err, tc.input, out)
 			os.Exit(1)
 		}
 	}

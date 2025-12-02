@@ -955,8 +955,7 @@ func solveCase(tc testCase) []int {
 	}
 
 	down := make([]Basis, n+1)
-	for i := len(order) - 1; i >= 0; i-- {
-		v := order[i]
+	for _, v := range order {
 		down[v].Add(a[v])
 		for _, to := range children[v] {
 			down[v].Merge(&down[to])

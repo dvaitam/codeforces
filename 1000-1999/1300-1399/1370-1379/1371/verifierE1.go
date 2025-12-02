@@ -37,8 +37,25 @@ func runProg(prog, input string) (string, error) {
 }
 
 func genCase(rng *rand.Rand) string {
-	n := rng.Intn(6) + 1
-	p := rng.Intn(50) + 1
+	// n must be >= 2. Let's use a range [2, 12] for small tests.
+	n := rng.Intn(11) + 2
+	
+	// p must be prime and p <= n.
+	primes := []int{2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53}
+	var validPrimes []int
+	for _, val := range primes {
+		if val <= n {
+			validPrimes = append(validPrimes, val)
+		}
+	}
+	
+	// Fallback just in case, though with n>=2, validPrimes will at least have [2]
+	if len(validPrimes) == 0 {
+		validPrimes = []int{2}
+	}
+	
+p := validPrimes[rng.Intn(len(validPrimes))]
+
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d %d\n", n, p)
 	for i := 0; i < n; i++ {
