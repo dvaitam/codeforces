@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strconv"
@@ -85,6 +86,21 @@ func equal(A, B [][]int) bool {
 	return true
 }
 
+func genTest() [][]int {
+	n := 2 + rand.Intn(10)
+	m := 2 + rand.Intn(10)
+	A := make([][]int, n)
+	for i := range A {
+		A[i] = make([]int, m)
+		for j := range A[i] {
+			if rand.Intn(2) == 0 {
+				A[i][j] = 1
+			}
+		}
+	}
+	return A
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
@@ -97,42 +113,10 @@ func main() {
 	}
 	defer cleanup()
 
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Println("could not open testcasesB.txt:", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
-			fmt.Printf("test %d invalid line\n", idx)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(fields[0])
-		m, _ := strconv.Atoi(fields[1])
-		if len(fields) != 2+n*m {
-			fmt.Printf("test %d wrong count\n", idx)
-			os.Exit(1)
-		}
-		A := make([][]int, n)
-		pos := 2
-		for i := 0; i < n; i++ {
-			A[i] = make([]int, m)
-			for j := 0; j < m; j++ {
-				v, _ := strconv.Atoi(fields[pos])
-				pos++
-				A[i][j] = v
-			}
-		}
+	for idx := 1; idx <= 100; idx++ {
+		A := genTest()
+		n := len(A)
+		m := len(A[0])
 		_, ok := solveOps(A)
 		var input strings.Builder
 		input.WriteString(fmt.Sprintf("%d %d\n", n, m))
@@ -175,6 +159,10 @@ func main() {
 			os.Exit(1)
 		}
 		k, _ := strconv.Atoi(first)
+		if k > n*m {
+			fmt.Printf("test %d: too many operations %d > %d\n", idx, k, n*m)
+			os.Exit(1)
+		}
 		var candOps []op
 		for i := 0; i < k; i++ {
 			if !outScan.Scan() {
@@ -199,9 +187,5 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", 100)
 }

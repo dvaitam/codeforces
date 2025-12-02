@@ -32,9 +32,11 @@ func initData() {
 		if !isPrime[v] {
 			continue
 		}
-		s := fmt.Sprintf("%05d", v)
+		s := fmt.Sprintf("%d", v)
 		for n := 1; n <= 5; n++ {
-			primesByLen[n] = append(primesByLen[n], s[5-n:])
+			if len(s) <= n {
+				primesByLen[n] = append(primesByLen[n], fmt.Sprintf("%0*d", n, v))
+			}
 		}
 	}
 	prefixMap = make([][]map[string][]string, 6)

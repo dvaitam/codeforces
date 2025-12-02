@@ -130,65 +130,46 @@ func solve388C(line string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("read n: %w", err)
 	}
-	type pile struct {
-		s     int
-		front int
-		back  int
-		diff  int
-	}
-	piles := make([]pile, n)
-	total := 0
+
+	var cielSum, jiroSum int
+	var middles []int
+
 	for i := 0; i < n; i++ {
 		s, err := readInt()
 		if err != nil {
 			return "", fmt.Errorf("read s[%d]: %w", i, err)
 		}
-		frontCnt := (s + 1) / 2
-		half := s / 2
-		sumFront, sumBack := 0, 0
+		
+		count := s / 2
+		// Read all cards for this pile
 		for j := 0; j < s; j++ {
 			v, err := readInt()
 			if err != nil {
 				return "", fmt.Errorf("read card[%d][%d]: %w", i, j, err)
 			}
-			total += v
-			if j < frontCnt {
-				sumFront += v
-			}
-			if j >= s-half {
-				sumBack += v
+			// Determine who gets this card
+			if j < count {
+				cielSum += v
+			} else if j >= s-count {
+				jiroSum += v
+			} else {
+				// Middle card
+				middles = append(middles, v)
 			}
 		}
-		piles[i] = pile{s: s, front: sumFront, back: sumBack, diff: sumFront - sumBack}
 	}
 
-	sort.Slice(piles, func(i, j int) bool {
-		di := piles[i].diff
-		dj := piles[j].diff
-		if di < 0 {
-			di = -di
-		}
-		if dj < 0 {
-			dj = -dj
-		}
-		return di > dj
-	})
+	sort.Sort(sort.Reverse(sort.IntSlice(middles)))
 
-	ciel, jiro := 0, 0
-	cielTurn := true
-	for _, p := range piles {
-		if cielTurn {
-			ciel += p.front
-			jiro += p.back
+	for i, val := range middles {
+		if i%2 == 0 {
+			cielSum += val
 		} else {
-			ciel += p.back
-			jiro += p.front
-		}
-		if p.s%2 == 1 {
-			cielTurn = !cielTurn
+			jiroSum += val
 		}
 	}
-	return fmt.Sprintf("%d %d", ciel, jiro), nil
+
+	return fmt.Sprintf("%d %d", cielSum, jiroSum), nil
 }
 
 func runBinary(bin string, input string) (string, error) {

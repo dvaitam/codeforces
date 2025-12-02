@@ -6,13 +6,18 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
 
 func buildOracle() (string, error) {
-	exe := "oracleC"
-	cmd := exec.Command("go", "build", "-o", exe, "./0-999/0-99/80-89/87/87C.go")
+	_, filename, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(filename)
+	src := filepath.Join(dir, "87C.go")
+	exe := filepath.Join(dir, "oracleC")
+	cmd := exec.Command("go", "build", "-o", exe, src)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle: %v\n%s", err, out)
 	}
@@ -51,7 +56,7 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input := generateCase(rng)
-		exp, err := runProg("./"+oracle, input)
+		exp, err := runProg(oracle, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle failure on case %d: %v\ninput:%s", i+1, err, input)
 			os.Exit(1)

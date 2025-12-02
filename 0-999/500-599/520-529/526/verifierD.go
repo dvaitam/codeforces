@@ -40,29 +40,28 @@ func solveD(input string) string {
 		}
 	}
 	diff := make([]int, n+2)
-	for L := 1; L < n; L++ {
-		l64 := int64(k) * int64(L)
-		if l64 <= int64(n) && int64(z[L]) >= l64 {
-			r64 := int64(z[L]) + int64(L)
-			maxR := int64(k+1) * int64(L)
-			if r64 > maxR {
-				r64 = maxR
-			}
-			if r64 > int64(n) {
-				r64 = int64(n)
-			}
-			lpos := int(l64)
-			rpos := int(r64)
-			if lpos <= rpos {
-				diff[lpos]++
-				diff[rpos+1]--
-			}
+	for L := 1; L <= n; L++ {
+		zL := 0
+		if L < n {
+			zL = z[L]
 		}
-		if int64(k-1)*int64(L) <= int64(z[L]) {
-			pos := k * L
-			if pos <= n {
-				diff[pos]++
-				diff[pos+1]--
+		if int64(zL) >= int64(k-1)*int64(L) {
+			start := int64(k) * int64(L)
+			end := int64(L) + int64(zL)
+			maxEnd := int64(k+1) * int64(L)
+			if end > maxEnd {
+				end = maxEnd
+			}
+			if end > int64(n) {
+				end = int64(n)
+			}
+			if start <= end {
+				if start <= int64(n) {
+					diff[start]++
+					if end+1 <= int64(n) {
+						diff[end+1]--
+					}
+				}
 			}
 		}
 	}

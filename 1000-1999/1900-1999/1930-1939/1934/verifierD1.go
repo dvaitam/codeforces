@@ -1,113 +1,136 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
-	"math/bits"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
-	}
-	if errBuf.Len() > 0 {
-		return "", fmt.Errorf(errBuf.String())
-	}
-	return strings.TrimSpace(out.String()), nil
-}
-
-func solveCase(n, m uint64) ([]uint64, bool) {
-	if m >= n || m == 0 {
-		return nil, false
-	}
-	if n&(n-1) == 0 {
-		return nil, false
-	}
-	pow := uint64(1) << (bits.Len64(n) - 1)
-	r := n - pow
-	if m >= pow {
-		if n^m >= n {
-			return nil, false
-		}
-		return []uint64{n, m}, true
-	}
-	h := uint64(1) << (bits.Len64(m) - 1)
-	if r&h != 0 {
-		return []uint64{n, m}, true
-	}
-	if r > h {
-		return []uint64{n, pow + h, m}, true
-	}
-	return nil, false
-}
-
-func genTests() [][2]uint64 {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	tests := make([][2]uint64, 100)
-	for i := range tests {
-		n := rng.Uint64()%1_000_000 + 2
-		// ensure not power of two, else expectation may be false
-		for n&(n-1) == 0 {
-			n = rng.Uint64()%1_000_000 + 2
-		}
-		m := rng.Uint64()%uint64(n-1) + 1
-		tests[i] = [2]uint64{n, m}
-	}
-	// edge case impossible
-	tests = append(tests, [2]uint64{7, 3})
-	tests = append(tests, [2]uint64{4, 2})
-	return tests
-}
-
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierD1.go /path/to/binary")
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: go run verifierD1.go <binary_path>")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	cases := genTests()
-	for idx, c := range cases {
-		input := fmt.Sprintf("1\n%d %d\n", c[0], c[1])
-		seq, ok := solveCase(c[0], c[1])
-		var expect string
-		if !ok {
-			expect = "-1"
-		} else {
-			var sb strings.Builder
-			sb.WriteString(fmt.Sprintf("%d\n", len(seq)-1))
-			for i, v := range seq {
-				if i > 0 {
-					sb.WriteByte(' ')
-				}
-				sb.WriteString(fmt.Sprintf("%d", v))
-			}
-			expect = strings.TrimSpace(sb.String())
+	binPath := os.Args[1]
+
+	if strings.HasSuffix(binPath, ".go") {
+		tmpBin := "./verifier_tmp_sol"
+		cmd := exec.Command("go", "build", "-o", tmpBin, binPath)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("Failed to compile %s: %v\n", binPath, err)
+			os.Exit(1)
 		}
-		got, err := run(bin, input)
+		defer os.Remove(tmpBin)
+		binPath = tmpBin
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	const numTests = 100
+
+	var inputBuf bytes.Buffer
+	fmt.Fprintf(&inputBuf, "%d\n", numTests)
+	
+	type TestCase struct {
+		n, m uint64
+	}
+	var cases []TestCase
+
+	for i := 0; i < numTests; i++ {
+		// Generate n, m
+		// n up to 10^18.
+		// Ensure n >= 2 so m can be >= 1.
+		n := uint64(rand.Int63n(1e18)) + 2
+		m := uint64(rand.Int63n(int64(n-1))) + 1
+		cases = append(cases, TestCase{n, m})
+		fmt.Fprintf(&inputBuf, "%d %d\n", n, m)
+	}
+
+	cmd := exec.Command(binPath)
+	cmd.Stdin = &inputBuf
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Runtime error: %v\n", err)
+		os.Exit(1)
+	}
+
+	scanner := bufio.NewScanner(&outBuf)
+	scanner.Split(bufio.ScanWords)
+
+	for i, c := range cases {
+		n, m := c.n, c.m
+		if !scanner.Scan() {
+			fmt.Printf("Test %d: missing output\n", i+1)
+			os.Exit(1)
+		}
+		kStr := scanner.Text()
+		k, err := strconv.Atoi(kStr)
 		if err != nil {
-			fmt.Printf("case %d: %v\n", idx+1, err)
+			fmt.Printf("Test %d: invalid k %q\n", i+1, kStr)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != expect {
-			fmt.Printf("case %d failed: n=%d m=%d expected %q got %q\n", idx+1, c[0], c[1], expect, got)
+
+		if k == -1 {
+			continue
+		}
+
+		if k < 1 || k > 63 {
+			fmt.Printf("Test %d: k out of range %d\n", i+1, k)
 			os.Exit(1)
+		}
+
+		path := make([]uint64, 0, k+1)
+		for j := 0; j < k+1; j++ {
+			if !scanner.Scan() {
+				fmt.Printf("Test %d: missing path element %d\n", i+1, j)
+				os.Exit(1)
+			}
+			valStr := scanner.Text()
+			val, err := strconv.ParseUint(valStr, 10, 64)
+			if err != nil {
+				fmt.Printf("Test %d: invalid path element %q\n", i+1, valStr)
+				os.Exit(1)
+			}
+			path = append(path, val)
+		}
+
+		if len(path) != k+1 {
+			fmt.Printf("Test %d: expected %d elements, got %d\n", i+1, k+1, len(path))
+			os.Exit(1)
+		}
+		if path[0] != n {
+			fmt.Printf("Test %d: path start %d != n %d\n", i+1, path[0], n)
+			os.Exit(1)
+		}
+		if path[k] != m {
+			fmt.Printf("Test %d: path end %d != m %d\n", i+1, path[k], m)
+			os.Exit(1)
+		}
+
+		for j := 0; j < k; j++ {
+			curr := path[j]
+			next := path[j+1]
+
+			if next >= curr {
+				fmt.Printf("Test %d: step %d -> %d not strictly decreasing\n", i+1, curr, next)
+				os.Exit(1)
+			}
+			if (curr ^ next) >= curr {
+				fmt.Printf("Test %d: step %d -> %d XOR condition failed (curr^next >= curr)\n", i+1, curr, next)
+				os.Exit(1)
+			}
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(cases))
+
+	fmt.Printf("All %d tests passed!\n", numTests)
 }

@@ -87,7 +87,7 @@ func runCase(bin string, input string) error {
 	}
 	arr := append([]int(nil), original...)
 	if k == -1 {
-		if hasLucky(arr) || !sort.IntsAreSorted(append([]int(nil), arr...)) {
+		if hasLucky(arr) || sort.IntsAreSorted(append([]int(nil), arr...)) {
 			return fmt.Errorf("unexpected -1 output")
 		}
 		if _, err := fmt.Fscan(reader, new(int)); err != io.EOF {

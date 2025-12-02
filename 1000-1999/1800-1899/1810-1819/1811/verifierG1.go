@@ -11,7 +11,6 @@ import (
 )
 
 const MOD int = 1_000_000_007
-const NEG_INF int = -1_000_000_000
 
 type testG1 struct {
 	n      int
@@ -34,88 +33,61 @@ func genTests() []testG1 {
 	return tests
 }
 
-type state struct {
-	len int
-	cnt int
-}
-
 func solve(tc testG1) int {
 	n := tc.n
 	k := tc.k
-	colors := tc.colors
-	dpPrev := make([][]state, k)
-	dpCur := make([][]state, k)
-	for r := 0; r < k; r++ {
-		dpPrev[r] = make([]state, n+1)
-		dpCur[r] = make([]state, n+1)
-		for c := 0; c <= n; c++ {
-			dpPrev[r][c].len = NEG_INF
-			dpCur[r][c].len = NEG_INF
-		}
+	// 1-based indexing for logic matching
+	a := make([]int, n+1)
+	for i := 0; i < n; i++ {
+		a[i+1] = tc.colors[i]
 	}
-	dpPrev[0][0] = state{0, 1}
 
-	for idx := n - 1; idx >= 0; idx-- {
-		for r := 0; r < k; r++ {
-			for c := 0; c <= n; c++ {
-				dpCur[r][c].len = NEG_INF
-				dpCur[r][c].cnt = 0
+	// Combinations table
+	C := make([][]int, n+1)
+	for i := 0; i <= n; i++ {
+		C[i] = make([]int, n+1)
+		C[i][0] = 1
+		if i > 0 {
+			for j := 1; j < i; j++ {
+				C[i][j] = (C[i-1][j-1] + C[i-1][j]) % MOD
 			}
+			C[i][i] = 1
 		}
-		color := colors[idx]
-		for r := 0; r < k; r++ {
-			for c := 0; c <= n; c++ {
-				best := dpPrev[r][c]
-				if best.len == NEG_INF {
-					dpCur[r][c] = best
-					continue
-				}
-				curLen := best.len
-				curCnt := best.cnt
-				if r == 0 {
-					nr := 1
-					nc := color
-					if nr == k {
-						nr = 0
-						nc = 0
-					}
-					cand := dpPrev[nr][nc]
-					if cand.len != NEG_INF {
-						candLen := cand.len + 1
-						candCnt := cand.cnt
-						if candLen > curLen {
-							curLen = candLen
-							curCnt = candCnt
-						} else if candLen == curLen {
-							curCnt = (curCnt + candCnt) % MOD
-						}
-					}
-				} else if c == color {
-					nr := r + 1
-					nc := c
-					if nr == k {
-						nr = 0
-						nc = 0
-					}
-					cand := dpPrev[nr][nc]
-					if cand.len != NEG_INF {
-						candLen := cand.len + 1
-						candCnt := cand.cnt
-						if candLen > curLen {
-							curLen = candLen
-							curCnt = candCnt
-						} else if candLen == curLen {
-							curCnt = (curCnt + candCnt) % MOD
-						}
-					}
-				}
-				dpCur[r][c].len = curLen
-				dpCur[r][c].cnt = curCnt % MOD
-			}
-		}
-		dpPrev, dpCur = dpCur, dpPrev
 	}
-	return dpPrev[0][0].cnt % MOD
+
+	f := make([]int, n+1)
+	g := make([]int, n+1)
+	g[0] = 1
+
+	for i := 1; i <= n; i++ {
+		s := 0
+		for j := i - 1; j >= 0; j-- {
+			if s >= k-1 {
+				ways := C[s][k-1]
+				if f[j]+1 > f[i] {
+					f[i] = f[j] + 1
+					g[i] = (g[j] * ways) % MOD
+				} else if f[j]+1 == f[i] {
+					g[i] = (g[i] + g[j]*ways) % MOD
+				}
+			}
+			if j > 0 && a[j] == a[i] {
+				s++
+			}
+		}
+	}
+
+	mx := 0
+	ans := 1
+	for i := 1; i <= n; i++ {
+		if f[i] > mx {
+			mx = f[i]
+			ans = g[i]
+		} else if f[i] == mx {
+			ans = (ans + g[i]) % MOD
+		}
+	}
+	return ans
 }
 
 func main() {

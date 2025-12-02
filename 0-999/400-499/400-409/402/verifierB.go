@@ -291,11 +291,7 @@ func main() {
 	}
 
 	for idx, tc := range cases {
-		count, ops := solve(tc.n, tc.k, tc.arr)
-		expected := fmt.Sprintf("%d", count)
-		if count > 0 {
-			expected += "\n" + strings.Join(ops, "\n")
-		}
+		expectedMinOps, _ := solve(tc.n, tc.k, tc.arr)
 
 		var sb strings.Builder
 		fmt.Fprintf(&sb, "%d %d\n", tc.n, tc.k)
@@ -317,10 +313,88 @@ func main() {
 			os.Exit(1)
 		}
 
-		got := strings.TrimSpace(out.String())
-		if got != expected {
-			fmt.Fprintf(os.Stderr, "test %d failed\nexpected:\n%s\n got:\n%s\n", idx+1, expected, got)
+		output := strings.TrimSpace(out.String())
+		lines := strings.Split(output, "\n")
+		if len(lines) == 0 {
+			fmt.Fprintf(os.Stderr, "test %d failed: empty output\n", idx+1)
 			os.Exit(1)
+		}
+
+		userOpsCount, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d failed: invalid operation count: %v\n", idx+1, err)
+			os.Exit(1)
+		}
+
+		if userOpsCount != expectedMinOps {
+			fmt.Fprintf(os.Stderr, "test %d failed: expected %d operations, got %d\n", idx+1, expectedMinOps, userOpsCount)
+			os.Exit(1)
+		}
+
+		// Apply operations
+		currentArr := make([]int, len(tc.arr))
+		copy(currentArr, tc.arr)
+
+		if len(lines)-1 < userOpsCount {
+			fmt.Fprintf(os.Stderr, "test %d failed: expected %d lines of operations, got %d\n", idx+1, userOpsCount, len(lines)-1)
+			os.Exit(1)
+		}
+
+		for i := 0; i < userOpsCount; i++ {
+			line := strings.TrimSpace(lines[i+1])
+			parts := strings.Fields(line)
+			if len(parts) != 3 {
+				fmt.Fprintf(os.Stderr, "test %d failed: invalid operation format at line %d: %s\n", idx+1, i+2, line)
+				os.Exit(1)
+			}
+			op := parts[0]
+			idxStr := parts[1]
+			valStr := parts[2]
+
+			idxVal, err1 := strconv.Atoi(idxStr)
+			val, err2 := strconv.Atoi(valStr)
+			if err1 != nil || err2 != nil {
+				fmt.Fprintf(os.Stderr, "test %d failed: invalid numbers in operation at line %d\n", idx+1, i+2)
+				os.Exit(1)
+			}
+			
+			if idxVal < 1 || idxVal > tc.n {
+				fmt.Fprintf(os.Stderr, "test %d failed: index out of bounds: %d\n", idx+1, idxVal)
+				os.Exit(1)
+			}
+			if val < 1 {
+				fmt.Fprintf(os.Stderr, "test %d failed: value must be positive: %d\n", idx+1, val)
+				os.Exit(1)
+			}
+
+			// Adjust 1-based index to 0-based
+			arrayIdx := idxVal - 1
+			if op == "+" {
+				currentArr[arrayIdx] += val
+			} else if op == "-" {
+				currentArr[arrayIdx] -= val
+			} else {
+				fmt.Fprintf(os.Stderr, "test %d failed: invalid operator: %s\n", idx+1, op)
+				os.Exit(1)
+			}
+		}
+
+		// Check constraints
+		// 1. All heights positive
+		for i, h := range currentArr {
+			if h <= 0 {
+				fmt.Fprintf(os.Stderr, "test %d failed: tree %d has non-positive height %d\n", idx+1, i+1, h)
+				os.Exit(1)
+			}
+		}
+
+		// 2. Arithmetic progression with step k
+		for i := 0; i < tc.n-1; i++ {
+			if currentArr[i+1]-currentArr[i] != tc.k {
+				fmt.Fprintf(os.Stderr, "test %d failed: invalid progression at index %d: %d -> %d (diff %d, expected %d)\n",
+					idx+1, i+1, currentArr[i], currentArr[i+1], currentArr[i+1]-currentArr[i], tc.k)
+				os.Exit(1)
+			}
 		}
 	}
 

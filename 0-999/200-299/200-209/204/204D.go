@@ -1,135 +1,142 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
+	"bufio"
+	"fmt"
+	"os"
 )
 
-const MOD = 1000000007
-
 func main() {
-   in := bufio.NewReader(os.Stdin)
-   var n, k int
-   fmt.Fscan(in, &n, &k)
-   sBytes := make([]byte, n)
-   fmt.Fscan(in, &sBytes)
-   s := string(sBytes)
-   if k > n {
-       fmt.Println(0)
-       return
-   }
-   // dp0: state before B-run; dp1: after B-run before W-run; dp2: done
-   // use ring buffers for dp0 and dp1 of size k
-   dp0 := make([]int, k)
-   t0 := make([]int, k)
-   dp1 := make([]int, k)
-   t1 := make([]int, k)
-   head0, head1 := 0, 0
-   ts0, ts1 := 1, 1
-   // initial dp0[0]=1
-   dp0[0], t0[0] = 1, ts0
-   sum0 := 1
-   sum1 := 0
-   dp2 := 0
-   for i := 0; i < n; i++ {
-       c := s[i]
-       allowB := c != 'W'
-       allowW := c != 'B'
-       // fetch q0_last and q1_last old
-       idx0 := (head0 + k - 1) % k
-       q0 := 0
-       if t0[idx0] == ts0 {
-           q0 = dp0[idx0]
-       }
-       idx1 := (head1 + k - 1) % k
-       q1 := 0
-       if t1[idx1] == ts1 {
-           q1 = dp1[idx1]
-       }
-       // dp2 update
-       opts := 0
-       if allowB {
-           opts++
-       }
-       if allowW {
-           opts++
-       }
-       if opts == 2 {
-           dp2 = (dp2 * 2) % MOD
-       }
-       // opts can be 1 or 0; dp2*1 or dp2*0
-       if opts == 1 {
-           // multiply by 1, no change
-       }
-       if opts == 0 {
-           dp2 = 0
-       }
-       if allowW {
-           dp2 = (dp2 + q1) % MOD
-       }
-       // update dp1
-       oldSum1 := sum1
-       if allowW {
-           // shift
-           head1 = (head1 + 1) % k
-           // write new dp1[0]
-           v1 := 0
-           if allowB {
-               v1 = oldSum1
-           }
-           dp1[head1] = v1
-           t1[head1] = ts1
-           // update sum1
-           // sum1 = (allowB?oldSum1:0) + (oldSum1 - q1)
-           s1 := 0
-           if allowB {
-               s1 = oldSum1
-           }
-           s1 += (oldSum1 - q1 + MOD)
-           sum1 = s1 % MOD
-       } else {
-           // wipe
-           ts1++
-           head1 = head1 // unchanged
-           v1 := 0
-           if allowB {
-               v1 = oldSum1
-           }
-           dp1[head1] = v1
-           t1[head1] = ts1
-           sum1 = v1 % MOD
-       }
-       // update dp0
-       oldSum0 := sum0
-       if allowB {
-           // shift
-           head0 = (head0 + 1) % k
-           v0 := 0
-           if allowW {
-               v0 = oldSum0
-           }
-           dp0[head0] = v0
-           t0[head0] = ts0
-           // sum0 = (allowW?oldSum0:0) + (oldSum0 - q0)
-           s0 := 0
-           if allowW {
-               s0 = oldSum0
-           }
-           s0 += (oldSum0 - q0 + MOD)
-           sum0 = s0 % MOD
-       } else {
-           // wipe
-           ts0++
-           head0 = head0
-           v0 := 0
-           if allowW {
-               v0 = oldSum0
-           }
-           dp0[head0] = v0
-           t0[head0] = ts0
-           sum0 = v0 % MOD
-       }
-   }
-   fmt.Println(dp2)
+	scanner := bufio.NewScanner(os.Stdin)
+	const maxCapacity = 2000005
+	buf := make([]byte, maxCapacity)
+	scanner.Buffer(buf, maxCapacity)
+	scanner.Split(bufio.ScanWords)
+
+	scanInt := func() int {
+		scanner.Scan()
+		b := scanner.Bytes()
+		x := 0
+		for _, c := range b {
+			x = x*10 + int(c-'0')
+		}
+		return x
+	}
+
+	if !scanner.Scan() {
+		return
+	}
+	nBytes := scanner.Bytes()
+	n := 0
+	for _, c := range nBytes {
+		n = n*10 + int(c-'0')
+	}
+
+	k := scanInt()
+
+	scanner.Scan()
+	s := scanner.Bytes()
+
+	if n < 2*k {
+		fmt.Println(0)
+		return
+	}
+
+	const MOD = 1000000007
+
+	wCount := make([]int, n+1)
+	bCount := make([]int, n+1)
+	xCount := make([]int, n+1)
+
+	for i := 0; i < n; i++ {
+		wCount[i+1] = wCount[i]
+		bCount[i+1] = bCount[i]
+		xCount[i+1] = xCount[i]
+		if s[i] == 'W' {
+			wCount[i+1]++
+		} else if s[i] == 'B' {
+			bCount[i+1]++
+		} else {
+			xCount[i+1]++
+		}
+	}
+
+	canBeB := func(l, r int) bool {
+		return wCount[r+1]-wCount[l] == 0
+	}
+	canBeW := func(l, r int) bool {
+		return bCount[r+1]-bCount[l] == 0
+	}
+
+	pow2 := make([]int64, n+1)
+	pow2[0] = 1
+	for i := 1; i <= n; i++ {
+		pow2[i] = (pow2[i-1] * 2) % MOD
+	}
+
+	dpNoB := make([]int64, n+1)
+	F := make([]int64, n+1)
+	dpNoB[0] = 1
+
+	for i := 1; i <= n; i++ {
+		mult := int64(1)
+		if s[i-1] == 'X' {
+			mult = 2
+		}
+		val := (dpNoB[i-1] * mult) % MOD
+
+		if i >= k {
+			if canBeB(i-k, i-1) {
+				if i == k {
+					F[i] = 1
+				} else {
+					if canBeW(i-k-1, i-k-1) {
+						F[i] = dpNoB[i-k-1]
+					}
+				}
+			}
+		}
+
+		dpNoB[i] = (val - F[i] + MOD) % MOD
+	}
+
+	G := make([]int64, n+2)
+	G[n] = 1
+
+	for i := n - 1; i >= 0; i-- {
+		mult := int64(1)
+		if s[i] == 'X' {
+			mult = 2
+		}
+		val := (G[i+1] * mult) % MOD
+
+		sub := int64(0)
+		if i+k <= n {
+			if canBeW(i, i+k-1) {
+				if i+k == n {
+					sub = 1
+				} else {
+					if canBeB(i+k, i+k) {
+						sub = G[i+k+1]
+					}
+				}
+			}
+		}
+		G[i] = (val - sub + MOD) % MOD
+	}
+
+	ans := int64(0)
+	for l := k; l <= n-k; l++ {
+		if F[l] == 0 {
+			continue
+		}
+		cntX := xCount[n] - xCount[l]
+		totalWays := pow2[cntX]
+
+		validWays := (totalWays - G[l] + MOD) % MOD
+		term := (F[l] * validWays) % MOD
+		ans = (ans + term) % MOD
+	}
+
+	fmt.Println(ans)
 }

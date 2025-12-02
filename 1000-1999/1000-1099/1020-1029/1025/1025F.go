@@ -1,95 +1,114 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
-   "sort"
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
 )
 
-type Pct struct {
-   x, y int
+// Point represents a point in 2D space
+type Point struct {
+	x, y int64
 }
 
-type Lin struct {
-   x, y int
-   p    [2]int
+// quad determines which half-plane/quadrant the point belongs to relative to the origin.
+// It divides the plane into two parts [0, pi) and [pi, 2*pi).
+// Returns 1 for upper half-plane (including positive x-axis), 2 for lower.
+func quad(p Point) int {
+	if p.y > 0 || (p.y == 0 && p.x > 0) {
+		return 1
+	}
+	return 2
 }
 
-func C2(x int64) int64 {
-   if x < 2 {
-       return 0
-   }
-   return x * (x - 1) / 2
+// cross computes the cross product of two points (vectors)
+func cross(a, b Point) int64 {
+	return a.x*b.y - a.y*b.x
 }
 
 func main() {
-   reader := bufio.NewReader(os.Stdin)
-   writer := bufio.NewWriter(os.Stdout)
-   defer writer.Flush()
+	// Use buffered I/O for faster execution
+	reader := bufio.NewReader(os.Stdin)
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
 
-   var n int
-   fmt.Fscan(reader, &n)
-   v := make([]Pct, n)
-   for i := 0; i < n; i++ {
-       fmt.Fscan(reader, &v[i].x, &v[i].y)
-   }
-   sort.Slice(v, func(i, j int) bool {
-       if v[i].x != v[j].x {
-           return v[i].x < v[j].x
-       }
-       return v[i].y < v[j].y
-   })
+	var n int
+	if _, err := fmt.Fscan(reader, &n); err != nil {
+		return
+	}
 
-   var ans int64
-   wlin := make([]Lin, 0, n*(n-1)/2)
-   for i := 0; i < n; i++ {
-       for j := i + 1; j < n; j++ {
-           if v[i].x == v[j].x {
-               ans += C2(int64(i)) * C2(int64(n-1-j))
-           } else {
-               dx := v[i].y - v[j].y
-               dy := v[i].x - v[j].x
-               if dy < 0 {
-                   dy = -dy
-                   dx = -dx
-               }
-               wlin = append(wlin, Lin{x: i, y: j, p: [2]int{dx, dy}})
-           }
-       }
-   }
+	points := make([]Point, n)
+	for i := 0; i < n; i++ {
+		fmt.Fscan(reader, &points[i].x, &points[i].y)
+	}
 
-   pos := make([]int, n)
-   ord := make([]int, n)
-   for i := 0; i < n; i++ {
-       pos[i] = i
-   }
-   panta := [2]int{-1000000001, 1}
-   sort.Slice(pos, func(i, j int) bool {
-       a, b := pos[i], pos[j]
-       return int64(v[a].y-v[b].y)*int64(panta[1]) < int64(panta[0])*int64(v[a].x-v[b].x)
-   })
-   for i, pi := range pos {
-       ord[pi] = i
-   }
+	var ans int64
+	// Buffer for storing relative points to avoid reallocation inside the loop
+	// Capacity is 2*n to accommodate the duplicated array
+	rel := make([]Point, 0, 2*n)
 
-   sort.Slice(wlin, func(i, j int) bool {
-       a, b := wlin[i], wlin[j]
-       return int64(a.p[0])*int64(b.p[1]) < int64(a.p[1])*int64(b.p[0])
-   })
-   for _, l := range wlin {
-       // swap positions of neighbors in order
-       if l.x < 0 || l.x >= n || l.y < 0 || l.y >= n {
-           continue
-       }
-       // assume ord[l.x] and ord[l.y] differ by 1
-       ord[l.x], ord[l.y] = ord[l.y], ord[l.x]
-       mx := ord[l.x]
-       if ord[l.y] > mx {
-           mx = ord[l.y]
-       }
-       // translate to 1-based logic: C2(mx-1) * C2(n-1-mx)
-       ans += C2(int64(mx-1)) * C2(int64(n-1-mx))
-   }
-   fmt.Fprintln(writer, ans)
+	// Iterate over each point to use as the pivot/origin
+	for i := 0; i < n; i++ {
+		rel = rel[:0]
+		origin := points[i]
+
+		// Collect all other points relative to origin
+		for j := 0; j < n; j++ {
+			if i == j {
+				continue
+			}
+			rel = append(rel, Point{points[j].x - origin.x, points[j].y - origin.y})
+		}
+
+		// Sort points angularly around the origin
+		sort.Slice(rel, func(a, b int) bool {
+			qa := quad(rel[a])
+			qb := quad(rel[b])
+			if qa != qb {
+				return qa < qb
+			}
+			return cross(rel[a], rel[b]) > 0
+		})
+
+		m := len(rel) // m = n - 1
+		// Duplicate the slice to handle angular wrap-around easily
+		for j := 0; j < m; j++ {
+			rel = append(rel, rel[j])
+		}
+
+		// Use two pointers (sliding window) to find points strictly to the left
+		k := 0
+		for j := 0; j < m; j++ {
+			// Ensure k is at least the next point
+			if k <= j {
+				k = j + 1
+			}
+			// Expand window while points are strictly to the left (angle < 180 degrees)
+			// cross > 0 ensures strictly to the left since no three points are collinear
+			for k < j+m && cross(rel[j], rel[k]) > 0 {
+				k++
+			}
+
+			// Number of points strictly to the left of the directed line i -> rel[j]
+			cntL := int64(k - j - 1)
+			
+			// Number of points strictly to the right
+			// Total other points is m = n - 1. 
+			// One is used as the end of the line (rel[j]), so remaining is m - 1.
+			cntR := int64(m - 1) - cntL
+
+			// If we can form triangles on both sides
+			if cntL >= 2 && cntR >= 2 {
+				// Choose 2 points from left set and 2 from right set
+				waysL := cntL * (cntL - 1) / 2
+				waysR := cntR * (cntR - 1) / 2
+				ans += waysL * waysR
+			}
+		}
+	}
+
+	// Each pair of disjoint triangles is separated by exactly two internal tangents.
+	// Thus, we have counted each pair exactly twice.
+	fmt.Fprintln(writer, ans/2)
 }

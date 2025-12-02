@@ -114,28 +114,6 @@ type testCase struct {
 	n int
 }
 
-// solveC mirrors 1713C solution.
-func solveC(n int) []int {
-	ans := make([]int, n)
-	x := 0
-	for x*x <= n {
-		x++
-	}
-	i := n - 1
-	cur := n
-	for i >= 0 {
-		nx := cur
-		for i >= 0 && x*x-i < cur {
-			ans[i] = x*x - i
-			nx--
-			i--
-		}
-		cur = nx
-		x--
-	}
-	return ans
-}
-
 func parseTestcases() ([]testCase, error) {
 	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
 	var cases []testCase
@@ -183,6 +161,18 @@ func runExe(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func isSquare(x int) bool {
+	if x < 0 {
+		return false
+	}
+	// Only simple integer check needed
+	r := 0
+	for r*r < x {
+		r++
+	}
+	return r*r == x
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
@@ -206,28 +196,46 @@ func main() {
 		input.WriteString("1\n")
 		input.WriteString(fmt.Sprintf("%d\n", tc.n))
 
-		expectedArr := solveC(tc.n)
-		var expectedSB strings.Builder
-		for i, v := range expectedArr {
-			if i > 0 {
-				expectedSB.WriteByte(' ')
-			}
-			expectedSB.WriteString(strconv.Itoa(v))
-		}
-		// The reference solver prints fmt.Fprint(writer, '\n'), which outputs the
-		// numeric value of '\n' (10) rather than a newline character. Mirror that
-		// exact output to compare fairly.
-		expectedSB.WriteString("10")
-		expected := expectedSB.String()
-
 		got, err := runExe(bin, input.String())
 		if err != nil {
 			fmt.Printf("candidate runtime error on test %d: %v\ninput:\n%s", idx+1, err, input.String())
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != expected {
-			fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", idx+1, input.String(), expected, got)
+
+		// Validate 'got'
+		// It should be n distinct integers from 0 to n-1.
+		// And for each i, p[i]+i is square.
+		fields := strings.Fields(got)
+		if len(fields) != tc.n {
+			fmt.Printf("test %d failed: expected %d numbers, got %d\ninput:\n%s\ngot:\n%s\n", idx+1, tc.n, len(fields), input.String(), got)
 			os.Exit(1)
+		}
+
+		seen := make(map[int]bool)
+		p := make([]int, tc.n)
+		for i, s := range fields {
+			val, err := strconv.Atoi(s)
+			if err != nil {
+				fmt.Printf("test %d failed: invalid number %q at index %d\n", idx+1, s, i)
+				os.Exit(1)
+			}
+			if val < 0 || val >= tc.n {
+				fmt.Printf("test %d failed: number %d out of range [0, %d)\n", idx+1, val, tc.n)
+				os.Exit(1)
+			}
+			if seen[val] {
+				fmt.Printf("test %d failed: duplicate number %d\n", idx+1, val)
+				os.Exit(1)
+			}
+			seen[val] = true
+			p[i] = val
+		}
+
+		for i, val := range p {
+			if !isSquare(val + i) {
+				fmt.Printf("test %d failed: p[%d] + %d = %d is not a perfect square\n", idx+1, i, i, val+i)
+				os.Exit(1)
+			}
 		}
 	}
 	fmt.Printf("All %d tests passed\n", len(cases))

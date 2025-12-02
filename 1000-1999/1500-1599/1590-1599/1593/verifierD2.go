@@ -70,7 +70,7 @@ func main() {
 		}
 		sb.WriteByte('\n')
 		input := sb.String()
-		exp, err := runProg("./"+oracle, input)
+		exp, err := runProg(oracle, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle failure on case %d: %v\ninput:%s", i+1, err, input)
 			os.Exit(1)
