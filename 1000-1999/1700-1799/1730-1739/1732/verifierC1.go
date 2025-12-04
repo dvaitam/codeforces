@@ -109,9 +109,7 @@ func generateCase(rng *rand.Rand) string {
 			fmt.Fprintf(&sb, "%d", rng.Intn(100))
 		}
 		sb.WriteByte('\n')
-		l := rng.Intn(n) + 1
-		r := rng.Intn(n-l+1) + l
-		fmt.Fprintf(&sb, "%d %d\n", l, r)
+		fmt.Fprintf(&sb, "1 %d\n", n)
 	}
 	return sb.String()
 }

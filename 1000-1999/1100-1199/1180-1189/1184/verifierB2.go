@@ -7,11 +7,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
 
-const refSource = "1000-1999/1100-1199/1180-1189/1184/1184B2.go"
+func baseDir() string {
+	_, file, _, _ := runtime.Caller(0)
+	return filepath.Dir(file)
+}
 
 type testCase struct {
 	name  string
@@ -187,11 +191,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to resolve binary path: %v\n", err)
 		os.Exit(1)
 	}
-	refPath, err := filepath.Abs(refSource)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to resolve reference path: %v\n", err)
-		os.Exit(1)
-	}
+	refPath := filepath.Join(baseDir(), "1184B2.go")
 
 	tests := buildTests()
 	for idx, tc := range tests {

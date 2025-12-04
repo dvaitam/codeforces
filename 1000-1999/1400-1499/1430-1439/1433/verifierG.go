@@ -6,9 +6,16 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
+
+func baseDir() string {
+	_, file, _, _ := runtime.Caller(0)
+	return filepath.Dir(file)
+}
 
 func run(bin, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -39,7 +46,21 @@ func genCase(rng *rand.Rand) string {
 	edges := make(map[[2]int]struct{})
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d %d %d\n", n, m, k)
+
+	// Generate spanning tree to ensure connectivity
+	p := rng.Perm(n)
 	count := 0
+	for i := 0; i < n-1; i++ {
+		u, v := p[i], p[i+1]
+		if u > v {
+			u, v = v, u
+		}
+		key := [2]int{u + 1, v + 1}
+		edges[key] = struct{}{}
+		fmt.Fprintf(&sb, "%d %d %d\n", key[0], key[1], rng.Intn(10)+1)
+		count++
+	}
+
 	for count < m {
 		u := rng.Intn(n)
 		v := rng.Intn(n)
@@ -83,7 +104,7 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	sol := "./1433G.go"
+	sol := filepath.Join(baseDir(), "1433G.go")
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		tc := genCase(rng)

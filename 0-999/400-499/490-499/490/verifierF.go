@@ -86,24 +86,31 @@ func solveCase(n int, pop []int, edges [][2]int) int {
 		adj[a] = append(adj[a], b)
 		adj[b] = append(adj[b], a)
 	}
-	ans := 1
-	for i := 0; i < n; i++ {
-		for j := i; j < n; j++ {
-			p := path(adj, i, j)
-			if p == nil {
-				continue
-			}
-			arr := make([]int, len(p))
-			for k, idx := range p {
-				arr[k] = pop[idx]
-			}
-			l := LIS(arr)
-			if l > ans {
-				ans = l
-			}
-		}
-	}
-	return ans
+    ans := 1
+    for i := 0; i < n; i++ {
+        for j := 0; j < n; j++ { // consider both orientations i->j and j->i
+            p := path(adj, i, j)
+            if p == nil {
+                continue
+            }
+            arr := make([]int, len(p))
+            for k, idx := range p {
+                arr[k] = pop[idx]
+            }
+            // consider this direction
+            if l := LIS(arr); l > ans {
+                ans = l
+            }
+            // and the reverse direction (path traversed opposite way)
+            for a, b := 0, len(arr)-1; a < b; a, b = a+1, b-1 {
+                arr[a], arr[b] = arr[b], arr[a]
+            }
+            if l := LIS(arr); l > ans {
+                ans = l
+            }
+        }
+    }
+    return ans
 }
 
 func genCase(r *rand.Rand, n int) caseF {

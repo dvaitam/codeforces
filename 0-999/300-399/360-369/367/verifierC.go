@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -13,19 +12,26 @@ import (
 )
 
 func solveC(n int64, weights []int64) int64 {
-	m := int64(len(weights))
-	lim := n - 1
-	s := int64(math.Sqrt(float64(1 + 8*lim)))
-	k := (1 + s) / 2
-	for k*(k-1)/2 > lim {
-		k--
-	}
-	if m < k {
-		k = m
-	}
+	m := len(weights)
 	sort.Slice(weights, func(i, j int) bool { return weights[i] > weights[j] })
+
+	maxK := 0
+	for k := 1; k <= m; k++ {
+		var cost int64
+		if k%2 != 0 {
+			cost = int64(k) * int64(k-1) / 2
+		} else {
+			cost = int64(k)*int64(k-1)/2 + int64(k)/2 - 1
+		}
+		if cost <= n-1 {
+			maxK = k
+		} else {
+			break
+		}
+	}
+
 	var total int64
-	for i := int64(0); i < k; i++ {
+	for i := 0; i < maxK; i++ {
 		total += weights[i]
 	}
 	return total

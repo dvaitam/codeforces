@@ -28,15 +28,26 @@ func run(bin, input string) (string, error) {
 }
 
 func generateCase(rng *rand.Rand) string {
-	n := rng.Intn(5) + 1
+	n := rng.Intn(50) + 1
+	dates := make([]int, n)
+	used := make(map[int]bool)
+	for i := 0; i < n; i++ {
+		for {
+			d := rng.Intn(100000) + 1
+			if !used[d] {
+				used[d] = true
+				dates[i] = d
+				break
+			}
+		}
+	}
+
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d\n", n)
 	for i := 0; i < n; i++ {
-		l := rng.Intn(10) + 1
-		r := l + rng.Intn(10)
-		if r < i+1 {
-			r = i + 1
-		}
+		x := dates[i]
+		l := rng.Intn(x) + 1
+		r := x + rng.Intn(10000)
 		fmt.Fprintf(&sb, "%d %d\n", l, r)
 	}
 	return sb.String()

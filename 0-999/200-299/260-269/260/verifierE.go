@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -15,58 +16,71 @@ import (
 type point struct{ x, y int }
 
 func generateCase(rng *rand.Rand) (int, []point, [9]int, float64, float64, float64, float64) {
-	n := rng.Intn(40) + 9
-	pts := make([]point, n)
-	for i := range pts {
-		pts[i] = point{rng.Intn(21) - 10, rng.Intn(21) - 10}
-	}
-	x1 := float64(rng.Intn(19)-9) + 0.5
-	x2 := float64(rng.Intn(19)-9) + 0.5
-	for x2 == x1 {
-		x2 = float64(rng.Intn(19)-9) + 0.5
-	}
-	if x1 > x2 {
-		x1, x2 = x2, x1
-	}
-	y1 := float64(rng.Intn(19)-9) + 0.5
-	y2 := float64(rng.Intn(19)-9) + 0.5
-	for y2 == y1 {
-		y2 = float64(rng.Intn(19)-9) + 0.5
-	}
-	if y1 > y2 {
-		y1, y2 = y2, y1
-	}
-	var cnt [9]int
-	for _, p := range pts {
-		region := 0
-		if float64(p.x) < x1 {
-			if float64(p.y) < y1 {
-				region = 0
-			} else if float64(p.y) < y2 {
-				region = 3
+	for {
+		n := rng.Intn(40) + 9
+		pts := make([]point, n)
+		for i := range pts {
+			pts[i] = point{rng.Intn(21) - 10, rng.Intn(21) - 10}
+		}
+		x1 := float64(rng.Intn(19)-9) + 0.5
+		x2 := float64(rng.Intn(19)-9) + 0.5
+		for x2 == x1 {
+			x2 = float64(rng.Intn(19)-9) + 0.5
+		}
+		if x1 > x2 {
+			x1, x2 = x2, x1
+		}
+		y1 := float64(rng.Intn(19)-9) + 0.5
+		y2 := float64(rng.Intn(19)-9) + 0.5
+		for y2 == y1 {
+			y2 = float64(rng.Intn(19)-9) + 0.5
+		}
+		if y1 > y2 {
+			y1, y2 = y2, y1
+		}
+		var cnt [9]int
+		valid := true
+		for _, p := range pts {
+			region := 0
+			if float64(p.x) < x1 {
+				if float64(p.y) < y1 {
+					region = 0
+				} else if float64(p.y) < y2 {
+					region = 3
+				} else {
+					region = 6
+				}
+			} else if float64(p.x) < x2 {
+				if float64(p.y) < y1 {
+					region = 1
+				} else if float64(p.y) < y2 {
+					region = 4
+				} else {
+					region = 7
+				}
 			} else {
-				region = 6
+				if float64(p.y) < y1 {
+					region = 2
+				} else if float64(p.y) < y2 {
+					region = 5
+				} else {
+					region = 8
+				}
 			}
-		} else if float64(p.x) < x2 {
-			if float64(p.y) < y1 {
-				region = 1
-			} else if float64(p.y) < y2 {
-				region = 4
-			} else {
-				region = 7
-			}
-		} else {
-			if float64(p.y) < y1 {
-				region = 2
-			} else if float64(p.y) < y2 {
-				region = 5
-			} else {
-				region = 8
+			cnt[region]++
+		}
+		
+		for i := 0; i < 9; i++ {
+			if cnt[i] == 0 {
+				valid = false
+				break
 			}
 		}
-		cnt[region]++
+		
+		if valid {
+			return n, pts, cnt, x1, x2, y1, y2
+		}
 	}
-	return n, pts, cnt, x1, x2, y1, y2
 }
 
 func checkOutput(x1, x2, y1, y2 float64, pts []point, want [9]int) error {
@@ -112,9 +126,15 @@ func checkOutput(x1, x2, y1, y2 float64, pts []point, want [9]int) error {
 		}
 		got[region]++
 	}
+	w := make([]int, 9)
+	g := make([]int, 9)
+	copy(w, want[:])
+	copy(g, got[:])
+	sort.Ints(w)
+	sort.Ints(g)
 	for i := 0; i < 9; i++ {
-		if got[i] != want[i] {
-			return fmt.Errorf("region %d expected %d got %d", i+1, want[i], got[i])
+		if w[i] != g[i] {
+			return fmt.Errorf("region counts mismatch: expected set %v, got set %v", w, g)
 		}
 	}
 	return nil

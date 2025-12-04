@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 func runProgram(bin, input string) (string, error) {
@@ -41,37 +43,24 @@ func runProgram(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func readTests(path string) ([]string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
+
+func generateCase(rng *rand.Rand) string {
+	var sb strings.Builder
+	n := rng.Intn(99999) + 2    // 2 to 100000
+	m := rng.Intn(99999) + 2    // 2 to 100000
+	k := rng.Intn(100) + 1 // 1 to 100 queries
+
+	fmt.Fprintf(&sb, "%d %d %d\n", n, m, k)
+
+	for i := 0; i < k; i++ {
+		x := rng.Intn(n-1) + 1 // 1 to n-1
+		y := rng.Intn(m-1) + 1 // 1 to m-1
+		fmt.Fprintf(&sb, "%d %d\n", x, y)
 	}
-	raw := strings.TrimSpace(string(data))
-	if !strings.Contains(raw, "\n\n") {
-		lines := strings.Split(raw, "\n")
-		tests := make([]string, 0, len(lines))
-		for _, ln := range lines {
-			ln = strings.TrimSpace(ln)
-			if ln == "" {
-				continue
-			}
-			tests = append(tests, ln+"\n")
-		}
-		return tests, nil
-	}
-	parts := strings.Split(raw, "\n\n")
-	tests := make([]string, 0, len(parts))
-	for _, p := range parts {
-		p = strings.Trim(p, "\n")
-		if p == "" {
-			continue
-		}
-		tests = append(tests, p+"\n")
-	}
-	return tests, nil
+	return sb.String()
 }
 
-func verify(candidate, refSrc, testFile string) error {
+func verify(candidate, refSrc string) error {
 	_, file, _, _ := runtime.Caller(0)
 	dir := filepath.Dir(file)
 	srcPath := filepath.Join(dir, refSrc)
@@ -122,11 +111,10 @@ func verify(candidate, refSrc, testFile string) error {
 		defer cleanup()
 	}
 
-	tests, err := readTests(filepath.Join(dir, testFile))
-	if err != nil {
-		return err
-	}
-	for i, in := range tests {
+	var rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	for i := 0; i < 100; i++ {
+		in := generateCase(rng)
 		candOut, err := runProgram(candPath, in)
 		if err != nil {
 			return fmt.Errorf("case %d: %v", i+1, err)
@@ -135,11 +123,16 @@ func verify(candidate, refSrc, testFile string) error {
 		if err != nil {
 			return fmt.Errorf("reference failed on case %d: %v", i+1, err)
 		}
-		if strings.TrimSpace(candOut) != strings.TrimSpace(refOut) {
-			return fmt.Errorf("case %d failed: expected %q got %q", i+1, refOut, candOut)
+
+		canonicalize := func(s string) string {
+			fields := strings.Fields(s)
+			return strings.Join(fields, " ")
+		}
+		if canonicalize(candOut) != canonicalize(refOut) {
+			return fmt.Errorf("case %d failed: expected %q got %q\nInput:\n%s", i+1, refOut, candOut, in)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(tests))
+	fmt.Printf("All %d tests passed\n", 100)
 	return nil
 }
 
@@ -149,7 +142,7 @@ func main() {
 		os.Exit(1)
 	}
 	candidate := os.Args[1]
-	if err := verify(candidate, "724C.go", "testcasesC.txt"); err != nil {
+	if err := verify(candidate, "724C.go"); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

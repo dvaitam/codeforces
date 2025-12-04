@@ -32,14 +32,25 @@ func solveC(x, y int64) int64 {
 
 func generateTests() []testCase {
 	rng := rand.New(rand.NewSource(3))
-	tests := make([]testCase, 100)
+	// Start with a handful of deterministic edge cases (including the one the
+	// user reported) so we are not relying on RNG for coverage.
+	seeds := []testCase{
+		{in: "10230 14\n", out: fmt.Sprintf("%d\n", solveC(10230, 14))},
+		{in: "6 3\n", out: fmt.Sprintf("%d\n", solveC(6, 3))},
+		{in: "8 5\n", out: fmt.Sprintf("%d\n", solveC(8, 5))},
+		{in: "100000 99999\n", out: fmt.Sprintf("%d\n", solveC(100000, 99999))},
+	}
+
+	tests := make([]testCase, 0, 100+len(seeds))
+	tests = append(tests, seeds...)
+
 	for i := 0; i < 100; i++ {
-		y := int64(rng.Intn(97) + 3)
+		y := int64(rng.Intn(99997) + 3) // 3 .. 99999
 		x := int64(rng.Intn(int(100000-y)) + int(y) + 1)
 		expect := solveC(x, y)
 		in := fmt.Sprintf("%d %d\n", x, y)
 		out := fmt.Sprintf("%d\n", expect)
-		tests[i] = testCase{in: in, out: out}
+		tests = append(tests, testCase{in: in, out: out})
 	}
 	return tests
 }

@@ -89,14 +89,14 @@ func main() {
 	defer os.Remove(oracle)
 
 	rng := rand.New(rand.NewSource(1))
-	for t := 0; t < 100; t++ {
-		tc := generateCase(rng)
-		input := "1\n" + tc
-		exp, err := run(oracle, input)
-		if err != nil {
-			fmt.Printf("oracle runtime error: %v\n", err)
-			os.Exit(1)
-		}
+    for t := 0; t < 100; t++ {
+        tc := generateCase(rng)
+        input := tc
+        exp, err := run(oracle, input)
+        if err != nil {
+            fmt.Printf("oracle runtime error: %v\n", err)
+            os.Exit(1)
+        }
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Printf("case %d: runtime error: %v\n%s", t+1, err, got)

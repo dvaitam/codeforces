@@ -2,11 +2,14 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
 const mod int64 = 1000000007
@@ -77,7 +80,14 @@ func genCases() []string {
 		n := rand.Intn(5) + 1
 		vectors := make([][]int, n)
 		for j := 0; j < n; j++ {
-			if rand.Intn(2) == 0 {
+			// If m=1, we can only have vectors of size 1.
+			// Otherwise, choose size 1 or 2 randomly.
+			size2 := false
+			if m > 1 {
+				size2 = rand.Intn(2) == 1
+			}
+
+			if !size2 {
 				vectors[j] = []int{rand.Intn(m) + 1}
 			} else {
 				a := rand.Intn(m) + 1
@@ -104,12 +114,18 @@ func genCases() []string {
 }
 
 func runCase(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	err := cmd.Run()
+	if ctx.Err() == context.DeadlineExceeded {
+		return "", fmt.Errorf("timeout")
+	}
 	return strings.TrimSpace(out.String()), err
 }
 
@@ -118,9 +134,45 @@ func main() {
 		fmt.Println("Usage: go run verifierF.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
+	binPath := os.Args[1]
+
+	// If the input is a Go file, compile it first
+	var cleanup func()
+	if strings.HasSuffix(binPath, ".go") {
+		fmt.Println("Compiling solution...")
+		tmpDir, err := os.MkdirTemp("", "verifier_build")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to create temp dir: %v\n", err)
+			os.Exit(1)
+		}
+		cleanup = func() { os.RemoveAll(tmpDir) }
+		defer cleanup()
+
+		binName := filepath.Join(tmpDir, "solution")
+		if strings.Contains(os.Args[0], ".exe") {
+			binName += ".exe"
+		}
+		
+		cmd := exec.Command("go", "build", "-o", binName, binPath)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to compile solution: %v\n", err)
+			os.Exit(1)
+		}
+		binPath = binName
+		fmt.Println("Compilation successful.")
+	}
+
+	fmt.Println("Generating cases...")
 	cases := genCases()
+	
+	fmt.Println("Starting tests...")
 	for i, tc := range cases {
+		if (i+1)%10 == 0 {
+			fmt.Printf("Running test %d/%d...\n", i+1, len(cases))
+		}
+		
 		lines := strings.Split(strings.TrimSpace(tc), "\n")
 		var n, m int
 		fmt.Sscan(lines[0], &n, &m)
@@ -136,7 +188,7 @@ func main() {
 			vectors[j] = vec
 		}
 		want1, want2 := solveF(n, m, vectors)
-		got, err := runCase(bin, tc)
+		got, err := runCase(binPath, tc)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Runtime error on case %d: %v\n", i+1, err)
 			os.Exit(1)

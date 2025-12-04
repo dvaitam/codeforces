@@ -1,13 +1,14 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
-	"math/bits"
-	"math/rand"
-	"os"
-	"os/exec"
-	"strings"
+    "bytes"
+    "fmt"
+    "math/bits"
+    "math/rand"
+    "os"
+    "os/exec"
+    "strconv"
+    "strings"
 )
 
 type testCaseD struct {
@@ -110,6 +111,86 @@ func runCandidate(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func parsePermutation(out string, n int) ([]int, error) {
+    fields := strings.Fields(out)
+    if len(fields) < n {
+        return nil, fmt.Errorf("expected at least %d integers, got %d", n, len(fields))
+    }
+    p := make([]int, n)
+    used := make([]bool, n+1)
+    for i := 0; i < n; i++ {
+        v, err := strconv.Atoi(fields[i])
+        if err != nil {
+            return nil, fmt.Errorf("invalid integer at position %d: %v", i+1, err)
+        }
+        if v < 1 || v > n {
+            return nil, fmt.Errorf("value out of range: %d", v)
+        }
+        if used[v] {
+            return nil, fmt.Errorf("duplicate value: %d", v)
+        }
+        used[v] = true
+        p[i] = v
+    }
+    return p, nil
+}
+
+func winningCount(n int, edges [][2]int, perm []int) int {
+    // Build adjacency
+    adj := make([][]int, n+1)
+    for _, e := range edges {
+        u, v := e[0], e[1]
+        adj[u] = append(adj[u], v)
+        adj[v] = append(adj[v], u)
+    }
+    // Allowed move between u and v if p[u]^p[v] <= min(p[u], p[v])
+    allowed := func(u, v int) bool {
+        a := perm[u-1]
+        b := perm[v-1]
+        if a < b {
+            return (a^b) <= a
+        }
+        return (a^b) <= b
+    }
+    // Memoization for state (u,parent)
+    memo := make([][]int8, n+1)
+    for i := range memo {
+        memo[i] = make([]int8, n+1)
+    }
+    var dfs func(u, p int) bool
+    dfs = func(u, p int) bool {
+        if memo[u][p] != 0 {
+            return memo[u][p] > 0
+        }
+        win := false
+        for _, v := range adj[u] {
+            if v == p {
+                continue
+            }
+            if !allowed(u, v) {
+                continue
+            }
+            if !dfs(v, u) {
+                win = true
+                break
+            }
+        }
+        if win {
+            memo[u][p] = 1
+        } else {
+            memo[u][p] = -1
+        }
+        return win
+    }
+    cnt := 0
+    for s := 1; s <= n; s++ {
+        if dfs(s, 0) {
+            cnt++
+        }
+    }
+    return cnt
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierD.go /path/to/binary")
@@ -125,23 +206,25 @@ func main() {
 			sb.WriteString(fmt.Sprintf("%d %d\n", e[0], e[1]))
 		}
 		input := sb.String()
-		expVals := solveD(tc.n, tc.edges)
-		expStr := strings.TrimSpace(strings.Join(func(arr []int) []string {
-			s := make([]string, len(arr))
-			for i, v := range arr {
-				s[i] = fmt.Sprintf("%d", v)
-			}
-			return s
-		}(expVals), " "))
-		got, err := runCandidate(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "runtime error on test %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		if strings.TrimSpace(got) != expStr {
-			fmt.Fprintf(os.Stderr, "wrong answer on test %d\ninput:\n%s\nexpected:%s\ngot:%s\n", i+1, input, expStr, got)
-			os.Exit(1)
-		}
-	}
-	fmt.Printf("All %d tests passed.\n", len(tests))
+        // Compute expected winning count using reference construction,
+        // but accept any permutation achieving the same count.
+        expPerm := solveD(tc.n, tc.edges)
+        expCount := winningCount(tc.n, tc.edges, expPerm)
+        gotOut, err := runCandidate(bin, input)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "runtime error on test %d: %v\n", i+1, err)
+            os.Exit(1)
+        }
+        perm, err := parsePermutation(gotOut, tc.n)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "invalid output on test %d: %v\noutput:%s\n", i+1, err, gotOut)
+            os.Exit(1)
+        }
+        gotCount := winningCount(tc.n, tc.edges, perm)
+        if gotCount != expCount {
+            fmt.Fprintf(os.Stderr, "wrong answer on test %d\ninput:\n%s\nexpected winning count:%d\ngot winning count:%d\noutput:%s\n", i+1, input, expCount, gotCount, gotOut)
+            os.Exit(1)
+        }
+    }
+    fmt.Printf("All %d tests passed.\n", len(tests))
 }

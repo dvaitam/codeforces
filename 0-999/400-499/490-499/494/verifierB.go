@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -46,6 +47,57 @@ func randString(n int) string {
 	return string(b)
 }
 
+func solveRef(s, t string) int {
+	n := len(s)
+	m := len(t)
+	if m > n {
+		return 0
+	}
+
+	// KMP prefix function
+	pi := make([]int, m)
+	for i, j := 1, 0; i < m; i++ {
+		for j > 0 && t[i] != t[j] {
+			j = pi[j-1]
+		}
+		if t[i] == t[j] {
+			j++
+		}
+		pi[i] = j
+	}
+
+	// Limit array: limit[i] is the max start index (1-based) of a match ending <= i
+	limit := make([]int, n+1)
+	for i, j, lastStart := 0, 0, 0; i < n; i++ {
+		for j > 0 && s[i] != t[j] {
+			j = pi[j-1]
+		}
+		if s[i] == t[j] {
+			j++
+		}
+		if j == m {
+			lastStart = i - m + 2 // 1-based start index
+			j = pi[j-1]
+		}
+		limit[i+1] = lastStart
+	}
+
+	mod := 1000000007
+	dp := make([]int, n+1)
+	sumDp := make([]int, n+1)
+	dp[0] = 1
+	sumDp[0] = 1
+
+	for i := 1; i <= n; i++ {
+		dp[i] = dp[i-1]
+		if limit[i] > 0 {
+			dp[i] = (dp[i] + sumDp[limit[i]-1]) % mod
+		}
+		sumDp[i] = (sumDp[i-1] + dp[i]) % mod
+	}
+	return (dp[n] - 1 + mod) % mod
+}
+
 func genTests() []string {
 	rand.Seed(1)
 	var tests []string
@@ -69,26 +121,27 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	refSrc := filepath.Join(baseDir(), "494B.go")
-	refPath, err := prepareBinary(refSrc, "refB")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	
 	tests := genTests()
 	for i, input := range tests {
-		exp, err := runBinary(refPath, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference error on test %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		got, err := runBinary(candPath, input)
+		lines := strings.Split(strings.TrimSpace(input), "\n")
+		s := lines[0]
+		t := lines[1]
+		exp := solveRef(s, t)
+		
+		gotStr, err := runBinary(candPath, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "candidate error on test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(exp) != strings.TrimSpace(got) {
-			fmt.Printf("Test %d failed\nInput:\n%sExpected:\n%sGot:\n%s", i+1, input, exp, got)
+		got, err := strconv.Atoi(strings.TrimSpace(gotStr))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "candidate output parse error on test %d: %v\nOutput: %s", i+1, err, gotStr)
+			os.Exit(1)
+		}
+
+		if exp != got {
+			fmt.Printf("Test %d failed\nInput:\n%sExpected:\n%d\nGot:\n%d\n", i+1, input, exp, got)
 			os.Exit(1)
 		}
 	}

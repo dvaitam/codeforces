@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -116,18 +117,18 @@ var testcases = []testCase{
 	{6, 95},
 }
 
-// solve1951D mirrors the reference solution logic embedded from 1951D.go.
-func solve1951D(n, k int64) string {
+// isPossible checks if a solution exists based on the reference logic.
+func isPossible(n, k int64) bool {
 	if k > n {
-		return "NO"
+		return false
 	}
 	if k == n {
-		return "YES\n1\n1"
+		return true
 	}
 	if k <= (n+1)/2 {
-		return fmt.Sprintf("YES\n2\n%d %d", n-k+1, 1)
+		return true
 	}
-	return "NO"
+	return false
 }
 
 func main() {
@@ -138,7 +139,7 @@ func main() {
 	binary := os.Args[1]
 
 	for idx, tc := range testcases {
-		exp := solve1951D(tc.n, tc.k)
+		possible := isPossible(tc.n, tc.k)
 
 		input := fmt.Sprintf("1\n%d %d\n", tc.n, tc.k)
 
@@ -153,10 +154,72 @@ func main() {
 			fmt.Printf("Test %d: runtime error: %v\nstderr: %s\n", idx+1, err, errBuf.String())
 			os.Exit(1)
 		}
-		outStr := strings.TrimSpace(outBuf.String())
-		if outStr != exp {
-			fmt.Printf("Test %d failed: expected %q got %q\n", idx+1, exp, outStr)
+		output := strings.Fields(outBuf.String())
+		if len(output) == 0 {
+			fmt.Printf("Test %d failed: no output\n", idx+1)
 			os.Exit(1)
+		}
+
+		ans := output[0]
+		if possible {
+			if ans != "YES" {
+				fmt.Printf("Test %d failed: expected YES, got %s\n", idx+1, ans)
+				os.Exit(1)
+			}
+			if len(output) < 2 {
+				fmt.Printf("Test %d failed: expected number of stalls\n", idx+1)
+				os.Exit(1)
+			}
+			s, err := strconv.Atoi(output[1])
+			if err != nil {
+				fmt.Printf("Test %d failed: invalid number of stalls: %v\n", idx+1, err)
+				os.Exit(1)
+			}
+			if s > 60 || s < 1 {
+				fmt.Printf("Test %d failed: invalid number of stalls: %d\n", idx+1, s)
+				os.Exit(1)
+			}
+
+			if len(output) < 2+s {
+				fmt.Printf("Test %d failed: expected %d prices, got %d tokens\n", idx+1, s, len(output)-2)
+				os.Exit(1)
+			}
+
+			prices := make([]int64, s)
+			for i := 0; i < s; i++ {
+				p, err := strconv.ParseInt(output[2+i], 10, 64)
+				if err != nil {
+					fmt.Printf("Test %d failed: invalid price: %v\n", idx+1, err)
+					os.Exit(1)
+				}
+				prices[i] = p
+			}
+
+			coins := tc.n
+			bought := int64(0)
+			for _, p := range prices {
+				if p <= 0 {
+					fmt.Printf("Test %d failed: price must be positive\n", idx+1)
+					os.Exit(1)
+				}
+				if p > 1000000000000000000 {
+					fmt.Printf("Test %d failed: price too large\n", idx+1)
+					os.Exit(1)
+				}
+				bought += coins / p
+				coins %= p
+			}
+
+			if bought != tc.k {
+				fmt.Printf("Test %d failed: simulated bought %d, expected %d\n", idx+1, bought, tc.k)
+				os.Exit(1)
+			}
+
+		} else {
+			if ans != "NO" {
+				fmt.Printf("Test %d failed: expected NO, got %s\n", idx+1, ans)
+				os.Exit(1)
+			}
 		}
 	}
 	fmt.Printf("All %d tests passed\n", len(testcases))

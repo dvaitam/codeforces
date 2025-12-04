@@ -1,117 +1,146 @@
 package main
 
 import (
-   "bufio"
-   "container/heap"
-   "fmt"
-   "io"
-   "os"
+	"bufio"
+	"container/heap"
+	"fmt"
+	"os"
 )
 
-type edge struct{ to, w int }
+const INF = 1000000000 // A large enough value to represent infinity
+
+type Edge struct {
+	to, weight int
+}
 
 type Item struct {
-   v    int
-   dist int64
+	node, priority int
+	index          int // The index of the item in the heap.
 }
 
-type PriorityQueue []Item
+// A PriorityQueue implements heap.Interface and holds Items.
+type PriorityQueue []*Item
 
 func (pq PriorityQueue) Len() int { return len(pq) }
-func (pq PriorityQueue) Less(i, j int) bool { return pq[i].dist < pq[j].dist }
-func (pq PriorityQueue) Swap(i, j int) { pq[i], pq[j] = pq[j], pq[i] }
-func (pq *PriorityQueue) Push(x interface{}) { *pq = append(*pq, x.(Item)) }
-func (pq *PriorityQueue) Pop() interface{} {
-   old := *pq
-   n := len(old)
-   it := old[n-1]
-   *pq = old[0 : n-1]
-   return it
+
+func (pq PriorityQueue) Less(i, j int) bool {
+	// We want Pop to give us the lowest priority (smallest distance) item as first.
+	return pq[i].priority < pq[j].priority
 }
 
-func dijkstra(n int, adj [][]edge, src int) []int64 {
-   const INF = int64(4e18)
-   dist := make([]int64, n)
-   for i := range dist {
-       dist[i] = INF
-   }
-   dist[src] = 0
-   pq := &PriorityQueue{{v: src, dist: 0}}
-   heap.Init(pq)
-   for pq.Len() > 0 {
-       it := heap.Pop(pq).(Item)
-       u, d := it.v, it.dist
-       if d != dist[u] {
-           continue
-       }
-       for _, e := range adj[u] {
-           nd := d + int64(e.w)
-           if nd < dist[e.to] {
-               dist[e.to] = nd
-               heap.Push(pq, Item{v: e.to, dist: nd})
-           }
-       }
-   }
-   return dist
+func (pq PriorityQueue) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+	pq[i].index = i
+	pq[j].index = j
+}
+func (pq *PriorityQueue) Push(x interface{}) {
+	n := len(*pq)
+	item := x.(*Item)
+	item.index = n
+	*pq = append(*pq, item)
+}
+
+func (pq *PriorityQueue) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	old[n-1] = nil  // avoid memory leak
+	item.index = -1 // for safety
+	*pq = old[0 : n-1]
+	return item
+}
+
+func dijkstra(n, start int, adj [][]Edge) []int {
+	d := make([]int, n) // Changed to n, for 0-based indexing
+	for i := 0; i < n; i++ { // Changed loop to 0 to n-1
+		d[i] = INF
+	}
+	d[start] = 0
+
+	pq := make(PriorityQueue, 0)
+	heap.Init(&pq)
+	heap.Push(&pq, &Item{node: start, priority: 0})
+
+	for pq.Len() > 0 {
+		item := heap.Pop(&pq).(*Item)
+		u := item.node
+
+		if item.priority > d[u] {
+			continue
+		}
+
+		for _, e := range adj[u] {
+			if d[u]+e.weight < d[e.to] {
+				d[e.to] = d[u] + e.weight
+				heap.Push(&pq, &Item{node: e.to, priority: d[e.to]})
+			}
+		}
+	}
+	return d
 }
 
 func main() {
-   in := bufio.NewReader(os.Stdin)
-   var n, m, k int
-   if _, err := fmt.Fscan(in, &n, &m, &k); err == io.EOF {
-       return
-   }
-   adj := make([][]edge, n)
-   edges := make([]struct{ u, v int }, m)
-   for i := 0; i < m; i++ {
-       var x, y, w int
-       fmt.Fscan(in, &x, &y, &w)
-       x--, y--
-       adj[x] = append(adj[x], edge{to: y, w: w})
-       adj[y] = append(adj[y], edge{to: x, w: w})
-       edges[i] = struct{ u, v int }{u: x, v: y}
-   }
-   qs := make([]struct{ a, b int }, k)
-   for i := 0; i < k; i++ {
-       var a, b int
-       fmt.Fscan(in, &a, &b)
-       qs[i] = struct{ a, b int }{a: a - 1, b: b - 1}
-   }
-   // All-pairs shortest paths via Dijkstra from each node
-   dist := make([][]int64, n)
-   for i := 0; i < n; i++ {
-       dist[i] = dijkstra(n, adj, i)
-   }
-   // Compute base sum
-   var base int64
-   for _, q := range qs {
-       base += dist[q.a][q.b]
-   }
-   ans := base
-   // Try zeroing each edge
-   for i := 0; i < m; i++ {
-       u := edges[i].u
-       v := edges[i].v
-       var sum int64
-       for _, q := range qs {
-           d0 := dist[q.a][q.b]
-           d1 := dist[q.a][u] + dist[v][q.b]
-           if d1 < d0 {
-               d0 = d1
-           }
-           d2 := dist[q.a][v] + dist[u][q.b]
-           if d2 < d0 {
-               d0 = d2
-           }
-           sum += d0
-           // early break if sum already >= ans
-           if sum >= ans {
-               break
-           }
-       }
-       if sum < ans {
-           ans = sum
-       }
-   }
-   fmt.Println(ans)
+	reader := bufio.NewReader(os.Stdin)
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
+
+	var n, m, k int
+	fmt.Fscan(reader, &n, &m, &k)
+
+	adj := make([][]Edge, n) // Changed to n, for 0-based indexing
+	type Road struct {
+		u, v, w int
+	}
+	roads := make([]Road, m)
+
+	for i := 0; i < m; i++ {
+		var u, v, w int
+		fmt.Fscan(reader, &u, &v, &w)
+		u-- // Convert to 0-based
+		v-- // Convert to 0-based
+		adj[u] = append(adj[u], Edge{to: v, weight: w})
+		adj[v] = append(adj[v], Edge{to: u, weight: w})
+		roads[i] = Road{u, v, w}
+	}
+
+	routes := make([][2]int, k)
+	for i := 0; i < k; i++ {
+		fmt.Fscan(reader, &routes[i][0], &routes[i][1])
+		routes[i][0]-- // Convert to 0-based
+		routes[i][1]-- // Convert to 0-based
+	}
+
+	dist := make([][]int, n) // Changed to n, for 0-based indexing
+	for i := 0; i < n; i++ { // Changed loop to 0 to n-1
+		dist[i] = dijkstra(n, i, adj)
+	}
+
+	ans := 0
+	for i := 0; i < k; i++ {
+		ans += dist[routes[i][0]][routes[i][1]]
+	}
+
+	for _, r := range roads {
+		cur := 0
+		u, v := r.u, r.v
+		for i := 0; i < k; i++ {
+			a, b := routes[i][0], routes[i][1]
+			d1 := dist[a][b]
+			d2 := dist[a][u] + dist[v][b]
+			d3 := dist[a][v] + dist[u][b]
+			mn := d1
+			if d2 < mn {
+				mn = d2
+			}
+			if d3 < mn {
+				mn = d3
+			}
+			cur += mn
+		}
+		if cur < ans {
+			ans = cur
+		}
+	}
+
+	fmt.Fprintln(writer, ans)
 }

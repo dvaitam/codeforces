@@ -41,17 +41,13 @@ func pointInConvex(poly []Point, q Point) bool {
 }
 
 func expected(polyA, polyB []Point) string {
-	poly := make([]Point, len(polyA))
-	copy(poly, polyA)
-	for i := 0; i < len(poly)/2; i++ {
-		poly[i], poly[len(poly)-1-i] = poly[len(poly)-1-i], poly[i]
-	}
-	for _, q := range polyB {
-		if !pointInConvex(poly, q) {
-			return "NO"
-		}
-	}
-	return "YES"
+    // polyA is expected in CCW order for pointInConvex
+    for _, q := range polyB {
+        if !pointInConvex(polyA, q) {
+            return "NO"
+        }
+    }
+    return "YES"
 }
 
 func randomPointInside(poly []Point, rng *rand.Rand) Point {
@@ -78,13 +74,13 @@ func genPolyA(rng *rand.Rand) []Point {
 	base := rng.Float64() * 2 * math.Pi
 	r := float64(100 + rng.Intn(50))
 	poly := make([]Point, n)
-	for i := 0; i < n; i++ {
-		ang := base - float64(i)*2*math.Pi/float64(n)
-		x := int64(math.Round(r*math.Cos(ang))) + 1000
-		y := int64(math.Round(r*math.Sin(ang))) + 1000
-		poly[i] = Point{x, y}
-	}
-	return poly
+    for i := 0; i < n; i++ {
+        ang := base - float64(i)*2*math.Pi/float64(n)
+        x := int64(math.Round(r*math.Cos(ang))) + 1000
+        y := int64(math.Round(r*math.Sin(ang))) + 1000
+        poly[i] = Point{x, y}
+    }
+    return poly
 }
 
 func genPolyBInside(A []Point, rng *rand.Rand) []Point {
@@ -119,14 +115,25 @@ func genPolyBOutside(A []Point, rng *rand.Rand) []Point {
 }
 
 func generateCase(rng *rand.Rand) (string, string) {
-	A := genPolyA(rng)
-	inside := rng.Intn(2) == 0
-	var B []Point
-	if inside {
-		B = genPolyBInside(A, rng)
-	} else {
-		B = genPolyBOutside(A, rng)
-	}
+    A := genPolyA(rng)
+    // Ensure A is counter-clockwise for pointInConvex
+    var area int64
+    for i := 0; i < len(A); i++ {
+        j := (i + 1) % len(A)
+        area += (A[i].x * A[j].y) - (A[i].y * A[j].x)
+    }
+    if area < 0 { // clockwise, reverse to CCW
+        for i, j := 0, len(A)-1; i < j; i, j = i+1, j-1 {
+            A[i], A[j] = A[j], A[i]
+        }
+    }
+    inside := rng.Intn(2) == 0
+    var B []Point
+    if inside {
+        B = genPolyBInside(A, rng)
+    } else {
+        B = genPolyBOutside(A, rng)
+    }
 	var sb strings.Builder
 	fmt.Fprintln(&sb, len(A))
 	for _, p := range A {
@@ -136,7 +143,7 @@ func generateCase(rng *rand.Rand) (string, string) {
 	for _, p := range B {
 		fmt.Fprintf(&sb, "%d %d\n", p.x, p.y)
 	}
-	return sb.String(), expected(A, B)
+    return sb.String(), expected(A, B)
 }
 
 func runCase(exe, input, expectedAns string) error {

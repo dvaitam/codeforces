@@ -1,14 +1,15 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
-	"math/rand"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
-	"time"
+    "bytes"
+    "fmt"
+    "math"
+    "math/rand"
+    "os"
+    "os/exec"
+    "path/filepath"
+    "strings"
+    "time"
 )
 
 func buildOracle() (string, error) {
@@ -76,20 +77,31 @@ func main() {
 	const cases = 100
 	for i := 1; i <= cases; i++ {
 		input := genCase(rng)
-		expect, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", i, err)
-			os.Exit(1)
-		}
-		got, err := run(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d: %v\n", i, err)
-			os.Exit(1)
-		}
-		if got != expect {
-			fmt.Printf("case %d failed\nexpected:\n%s\n\ngot:\n%s\n", i, expect, got)
-			os.Exit(1)
-		}
-	}
-	fmt.Printf("All %d tests passed\n", cases)
+        expectStr, err := run(oracle, input)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", i, err)
+            os.Exit(1)
+        }
+        gotStr, err := run(bin, input)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "case %d: %v\n", i, err)
+            os.Exit(1)
+        }
+        var expect, got float64
+        if _, err := fmt.Sscan(strings.TrimSpace(expectStr), &expect); err != nil {
+            fmt.Fprintf(os.Stderr, "oracle produced invalid output on case %d: %q\n", i, expectStr)
+            os.Exit(1)
+        }
+        if _, err := fmt.Sscan(strings.TrimSpace(gotStr), &got); err != nil {
+            fmt.Fprintf(os.Stderr, "candidate produced invalid output on case %d: %q\n", i, gotStr)
+            os.Exit(1)
+        }
+        diff := math.Abs(got - expect)
+        tol := 1e-6 * math.Max(1.0, math.Abs(expect))
+        if diff > tol {
+            fmt.Printf("case %d failed\nexpected:\n%.10f\n\ngot:\n%.10f\n", i, expect, got)
+            os.Exit(1)
+        }
+    }
+    fmt.Printf("All %d tests passed\n", cases)
 }

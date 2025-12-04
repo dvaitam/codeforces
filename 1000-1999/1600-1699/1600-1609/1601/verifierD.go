@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -119,31 +120,36 @@ type testCase struct {
 }
 
 func solveCase(tc testCase) int {
-	used := make([]bool, tc.n)
+	type alpinist struct {
+		s, a, maxVal int
+	}
+	alps := make([]alpinist, tc.n)
+	for i := 0; i < tc.n; i++ {
+		maxVal := tc.s[i]
+		if tc.a[i] > maxVal {
+			maxVal = tc.a[i]
+		}
+		alps[i] = alpinist{s: tc.s[i], a: tc.a[i], maxVal: maxVal}
+	}
+	sort.Slice(alps, func(i, j int) bool {
+		if alps[i].maxVal != alps[j].maxVal {
+			return alps[i].maxVal < alps[j].maxVal
+		}
+		if alps[i].s != alps[j].s {
+			return alps[i].s < alps[j].s
+		}
+		return alps[i].a < alps[j].a
+	})
+
 	cur := tc.d
 	ans := 0
-	for {
-		best := -1
-		bestA := 0
-		for i := 0; i < tc.n; i++ {
-			if used[i] {
-				continue
+	for _, p := range alps {
+		if p.s >= cur {
+			if p.a > cur {
+				cur = p.a
 			}
-			if cur <= tc.s[i] {
-				if best == -1 || tc.a[i] < bestA {
-					best = i
-					bestA = tc.a[i]
-				}
-			}
+			ans++
 		}
-		if best == -1 {
-			break
-		}
-		used[best] = true
-		if tc.a[best] > cur {
-			cur = tc.a[best]
-		}
-		ans++
 	}
 	return ans
 }
