@@ -1,45 +1,37 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
+	"fmt"
+	"strings"
 )
 
+func f(k int) int {
+	return k * (k - 1) * (k - 2) * (k - 3) / 24
+}
+
 func main() {
-   in := bufio.NewReader(os.Stdin)
-   var n int
-   if _, err := fmt.Fscan(in, &n); err != nil {
-       return
-   }
-   if n == 1 {
-       fmt.Println("a a")
-       return
-   }
-   a := make([]byte, 1, 100)
-   for c := byte('a'); c <= byte('z'); c++ {
-       a = append(a, c)
-   }
-   for c := byte('A'); c <= byte('Z'); c++ {
-       a = append(a, c)
-   }
-   m := 0
-   var s []byte
-   for n > 1 {
-       n--
-       if n%2 == 0 {
-           m++
-           s = append(s, a[m], a[m])
-           n /= 2
-       } else {
-           m++
-           s = append(s, a[m])
-       }
-   }
-   t := make([]byte, 0)
-   for i := 1; i <= m; i++ {
-       s = append(s, a[i])
-       t = append(t, a[i])
-   }
-   fmt.Printf("%s %s", s, t)
+	var n int
+	fmt.Scan(&n)
+
+	cnt := make([]int, 80)
+	k := 79 // Start from a value where f(k) > 10^6 is guaranteed or safe upper bound.
+            // f(80) approx 1.5e6 > 1e6. So 79 is safe start.
+
+	for n > 0 {
+		for f(k) > n {
+			k--
+		}
+		n -= f(k)
+		cnt[k]++
+	}
+
+	var sb strings.Builder
+	for i := 1; i < 80; i++ {
+		sb.WriteByte('a')
+		for j := 0; j < cnt[i]; j++ {
+			sb.WriteByte('b')
+		}
+	}
+	sb.WriteString(" aaaab")
+	fmt.Println(sb.String())
 }

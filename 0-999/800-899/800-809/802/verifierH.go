@@ -1,49 +1,83 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
-
-func compileRef() (string, error) {
-	exe, err := os.CreateTemp("", "refH*")
-	if err != nil {
-		return "", err
-	}
-	exe.Close()
-	os.Remove(exe.Name())
-	cmd := exec.Command("go", "build", "-o", exe.Name(), "802H.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("compile reference: %v\n%s", err, string(out))
-	}
-	return exe.Name(), nil
-}
 
 func runProg(exe, input string) (string, error) {
 	cmd := exec.Command(exe)
 	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("%v\n%s", err, out.String())
+	output, err := cmd.Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return "", fmt.Errorf("runtime error: %v\nstderr: %s", err, exitErr.Stderr)
+		}
+		return "", fmt.Errorf("runtime error: %v", err)
 	}
-	return strings.TrimSpace(out.String()), nil
+	return strings.TrimSpace(string(output)), nil
 }
 
-func genTests() []string {
-	rand.Seed(8)
-	tests := make([]string, 0, 102)
-	for i := 0; i < 100; i++ {
-		n := rand.Intn(50) + 1
-		tests = append(tests, fmt.Sprintf("%d\n", n))
+func countSubsequences(s, p string) int64 {
+	n := len(s)
+	m := len(p)
+	if m == 0 {
+		return 0
 	}
-	tests = append(tests, "1\n")
-	tests = append(tests, "2\n")
+	if n == 0 {
+		return 0
+	}
+	
+	// dp[j] will store the number of ways to form p[:j] using a prefix of s
+	dp := make([]int64, m+1)
+	dp[0] = 1
+
+	for i := 0; i < n; i++ {
+		// Traverse backwards to avoid using the same character of s multiple times for the same position in p
+		for j := m; j >= 1; j-- {
+			if s[i] == p[j-1] {
+				dp[j] += dp[j-1]
+			}
+		}
+	}
+	return dp[m]
+}
+
+func verify(n int, output string) error {
+	parts := strings.Split(output, " ")
+	if len(parts) != 2 {
+		return fmt.Errorf("expected 2 strings separated by space, got %d parts", len(parts))
+	}
+	s := parts[0]
+	p := parts[1]
+
+	if len(s) > 200 {
+		return fmt.Errorf("string s too long: %d > 200", len(s))
+	}
+	if len(p) > 200 {
+		return fmt.Errorf("string p too long: %d > 200", len(p))
+	}
+	if len(s) == 0 || len(p) == 0 {
+		return fmt.Errorf("empty strings not allowed")
+	}
+
+	count := countSubsequences(s, p)
+	if count != int64(n) {
+		return fmt.Errorf("subsequence count mismatch: expected %d, got %d", n, count)
+	}
+	return nil
+}
+
+func genTests() []int {
+	rand.Seed(time.Now().UnixNano())
+	tests := []int{1, 2, 3, 39, 100, 1000, 1000000}
+	for i := 0; i < 93; i++ {
+		tests = append(tests, rand.Intn(1000000)+1)
+	}
 	return tests
 }
 
@@ -53,27 +87,17 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	ref, err := compileRef()
-	if err != nil {
-		fmt.Println("reference compile failed:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 
 	tests := genTests()
-	for i, in := range tests {
-		exp, err := runProg(ref, in)
+	for i, n := range tests {
+		input := fmt.Sprintf("%d\n", n)
+		out, err := runProg(bin, input)
 		if err != nil {
-			fmt.Printf("reference failed on test %d: %v\n", i+1, err)
+			fmt.Printf("test %d (n=%d) failed: %v\n", i+1, n, err)
 			os.Exit(1)
 		}
-		got, err := runProg(bin, in)
-		if err != nil {
-			fmt.Printf("test %d runtime error: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		if got != exp {
-			fmt.Printf("test %d failed\ninput:%sexpected: %s got: %s\n", i+1, in, exp, got)
+		if err := verify(n, out); err != nil {
+			fmt.Printf("test %d (n=%d) failed: %v\nOutput: %s\n", i+1, n, err, out)
 			os.Exit(1)
 		}
 	}

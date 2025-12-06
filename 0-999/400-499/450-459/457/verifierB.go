@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
@@ -36,41 +37,47 @@ func runBinary(bin, input string) (string, error) {
 }
 
 func compute(input string) string {
-	rdr := strings.NewReader(strings.TrimSpace(input) + "\n")
+	rdr := strings.NewReader(input)
 	var m, n int
-	fmt.Fscan(rdr, &m, &n)
-	sumA, sumB := uint64(0), uint64(0)
-	maxA, maxB := uint64(0), uint64(0)
+	if _, err := fmt.Fscan(rdr, &m, &n); err != nil {
+		return ""
+	}
+	a := make([]int, m)
+	var sumA uint64
 	for i := 0; i < m; i++ {
-		var x uint64
-		fmt.Fscan(rdr, &x)
-		sumA += x
-		if x > maxA {
-			maxA = x
-		}
+		fmt.Fscan(rdr, &a[i])
+		sumA += uint64(a[i])
 	}
+	b := make([]int, n)
+	var sumB uint64
 	for i := 0; i < n; i++ {
-		var x uint64
-		fmt.Fscan(rdr, &x)
-		sumB += x
-		if x > maxB {
-			maxB = x
+		fmt.Fscan(rdr, &b[i])
+		sumB += uint64(b[i])
+	}
+
+	sort.Sort(sort.Reverse(sort.IntSlice(a)))
+	sort.Sort(sort.Reverse(sort.IntSlice(b)))
+
+	ans := ^uint64(0)
+
+	var currentSumA uint64
+	for k := 1; k <= m; k++ {
+		currentSumA += uint64(a[k-1])
+		ops := (sumA - currentSumA) + uint64(k)*sumB
+		if ops < ans {
+			ans = ops
 		}
 	}
-	cost1 := (sumA - maxA) + sumB
-	cost2 := sumA + (sumB - maxB)
-	cost3 := sumB * uint64(m)
-	cost4 := sumA * uint64(n)
-	ans := cost1
-	if cost2 < ans {
-		ans = cost2
+
+	var currentSumB uint64
+	for l := 1; l <= n; l++ {
+		currentSumB += uint64(b[l-1])
+		ops := (sumB - currentSumB) + uint64(l)*sumA
+		if ops < ans {
+			ans = ops
+		}
 	}
-	if cost3 < ans {
-		ans = cost3
-	}
-	if cost4 < ans {
-		ans = cost4
-	}
+
 	return fmt.Sprintf("%d", ans)
 }
 
@@ -81,6 +88,7 @@ func generateCases() []testCase {
 		"1 1\n5\n7\n",
 		"2 2\n1 2\n3 4\n",
 		"3 1\n10 20 30\n5\n",
+		"4 3\n67 38 62 93\n11 1 35\n",
 	}
 	for _, f := range fixed {
 		cases = append(cases, testCase{f, compute(f)})

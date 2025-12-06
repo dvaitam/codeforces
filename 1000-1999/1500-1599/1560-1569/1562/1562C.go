@@ -1,43 +1,40 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
+	"bufio"
+	"fmt"
+	"os"
 )
 
 func main() {
-   reader := bufio.NewReader(os.Stdin)
-   writer := bufio.NewWriter(os.Stdout)
-   defer writer.Flush()
+	in := bufio.NewReader(os.Stdin)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
 
-   var T int
-   if _, err := fmt.Fscan(reader, &T); err != nil {
-       return
-   }
-   for T > 0 {
-       T--
-       var n int
-       var s string
-       fmt.Fscan(reader, &n, &s)
-       // find last zero position (1-based)
-       idx := -1
-       for i, ch := range s {
-           if ch == '0' {
-               idx = i + 1
-           }
-       }
-       mid := n / 2
-       // output two distinct substrings of length >= floor(n/2)
-       if idx > mid {
-           // zero in right half
-           fmt.Fprintln(writer, 1, idx, 1, idx-1)
-       } else if idx < mid {
-           // zero in left half or none
-           fmt.Fprintln(writer, mid+1, n, mid, n-1)
-       } else {
-           // zero exactly at mid
-           fmt.Fprintln(writer, mid+1, n, mid, n)
-       }
-   }
+	var t int
+	fmt.Fscan(in, &t)
+
+	for ; t > 0; t-- {
+		var n int
+		var s string
+		fmt.Fscan(in, &n, &s)
+
+		m := n / 2
+		found := false
+		for i := 0; i < n; i++ {
+			if s[i] == '0' {
+				pos := i + 1
+				if pos <= m {
+					fmt.Fprintf(out, "%d %d %d %d\n", pos, n, pos+1, n)
+				} else {
+					fmt.Fprintf(out, "%d %d %d %d\n", 1, pos, 1, pos-1)
+				}
+				found = true
+				break
+			}
+		}
+		if !found {
+			fmt.Fprintf(out, "%d %d %d %d\n", 1, n-1, 2, n)
+		}
+	}
 }

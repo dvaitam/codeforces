@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math/bits"
 	"os"
 	"os/exec"
 	"strconv"
@@ -145,11 +146,12 @@ func parseTestcases(raw string) ([]testCase, error) {
 	return cases, nil
 }
 
-func expectedOutput(tc testCase) string {
-	n, k := tc.n, tc.k
+func getBestPopcount(n int, k int64) int {
 	if n == 1 {
-		return strconv.FormatInt(k, 10)
+		return bits.OnesCount64(uint64(k))
 	}
+	// Optimal strategy: pick largest 2^p - 1 <= k
+	// then a1 = 2^p - 1, a2 = k - a1.
 	var x int64
 	for i := 0; ; i++ {
 		bit := int64(1) << i
@@ -158,23 +160,12 @@ func expectedOutput(tc testCase) string {
 		}
 		x |= bit
 	}
-	var sb strings.Builder
-	sb.WriteString(strconv.FormatInt(x, 10))
-	sb.WriteByte(' ')
-	sb.WriteString(strconv.FormatInt(k-x, 10))
-	for i := 2; i < n; i++ {
-		sb.WriteString(" 0")
-	}
-	// The original solution prints fmt.Fprint(writer, '\\n') which renders as "10".
-	sb.WriteString("10")
-	return sb.String()
+	y := k - x
+	return bits.OnesCount64(uint64(x | y))
 }
 
 func buildInput(tc testCase) string {
-	var sb strings.Builder
-	sb.WriteString("1\n")
-	sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.k))
-	return sb.String()
+	return fmt.Sprintf("1\n%d %d\n", tc.n, tc.k)
 }
 
 func run(bin, input string) (string, error) {
@@ -188,6 +179,36 @@ func run(bin, input string) (string, error) {
 		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
 	return strings.TrimSpace(out.String()), nil
+}
+
+func verify(tc testCase, output string) error {
+	fields := strings.Fields(output)
+	if len(fields) != tc.n {
+		return fmt.Errorf("expected %d integers, got %d", tc.n, len(fields))
+	}
+	var sum int64
+	var orSum int64
+	for i, f := range fields {
+		val, err := strconv.ParseInt(f, 10, 64)
+		if err != nil {
+			return fmt.Errorf("invalid integer at index %d: %v", i, err)
+		}
+		if val < 0 {
+			return fmt.Errorf("negative integer at index %d: %d", i, val)
+		}
+		sum += val
+		orSum |= val
+	}
+	if sum != tc.k {
+		return fmt.Errorf("sum mismatch: expected %d, got %d", tc.k, sum)
+	}
+
+	gotPop := bits.OnesCount64(uint64(orSum))
+	expPop := getBestPopcount(tc.n, tc.k)
+	if gotPop < expPop {
+		return fmt.Errorf("suboptimal solution: popcount %d, expected %d", gotPop, expPop)
+	}
+	return nil
 }
 
 func main() {
@@ -205,14 +226,13 @@ func main() {
 
 	for idx, tc := range cases {
 		input := buildInput(tc)
-		expected := expectedOutput(tc)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Printf("case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != expected {
-			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, expected, got)
+		if err := verify(tc, got); err != nil {
+			fmt.Printf("case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
 	}

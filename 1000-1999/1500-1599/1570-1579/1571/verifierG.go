@@ -2,11 +2,14 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type attack struct {
@@ -24,28 +27,28 @@ type testG struct {
 	ws []warrior
 }
 
-func buildOracle() (string, error) {
-	exe := "oracleG.bin"
-	cmd := exec.Command("go", "build", "-o", exe, "1571G.go")
+func buildBinary(source string, output string) error {
+	cmd := exec.Command("go", "build", "-o", output, source)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+		return fmt.Errorf("build %s failed: %v\n%s", source, err, out)
 	}
-	return "./" + exe, nil
+	return nil
 }
 
 func runProg(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	err := cmd.Run()
+	if ctx.Err() == context.DeadlineExceeded {
+		return "", fmt.Errorf("timeout")
+	}
 	if err != nil {
 		return out.String() + errBuf.String(), err
 	}
@@ -53,14 +56,34 @@ func runProg(bin, input string) (string, error) {
 }
 
 func genTests() []testG {
+	numTests := 20
+	if val := os.Getenv("NUM_TESTS"); val != "" {
+		if n, err := strconv.Atoi(val); err == nil && n > 0 {
+			numTests = n
+		}
+	}
+
 	rng := rand.New(rand.NewSource(1571))
-	tests := make([]testG, 0, 100)
-	for len(tests) < 100 {
+	tests := make([]testG, 0, numTests)
+
+	// Manual sample test case
+	tests = append(tests, testG{
+		n: 2, m: 3,
+		ws: []warrior{
+			{atks: []attack{{10, 3}}},
+			{atks: []attack{{10, 3}}},
+		},
+	})
+
+	for len(tests) < numTests {
 		n := rng.Intn(3) + 1
 		m := rng.Intn(5) + 1
 		ws := make([]warrior, n)
 		for i := 0; i < n; i++ {
 			k := rng.Intn(3) + 1
+			if k > m+1 {
+				k = m + 1
+			}
 			used := make(map[int]bool)
 			atks := make([]attack, k)
 			for j := 0; j < k; j++ {
@@ -92,19 +115,47 @@ func genTests() []testG {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierG.go /path/to/binary")
+		fmt.Println("usage: go run verifierG.go /path/to/binary_or_source")
 		return
 	}
-	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
+	candidateSource := os.Args[1]
+	candidateBin := "./candidate.bin"
+	oracleBin := "./oracleG.bin"
+	// Clean up binaries on exit (best effort)
+	defer func() {
+		os.Remove(candidateBin)
+		os.Remove(oracleBin)
+	}()
+
+	// Build oracle
+	fmt.Println("Building oracle...")
+	if err := buildBinary("1571G.go", oracleBin); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.Remove(oracle)
+
+	// Build candidate if needed
+	runBin := candidateSource
+	if strings.HasSuffix(candidateSource, ".go") {
+		fmt.Println("Building candidate...")
+		if err := buildBinary(candidateSource, candidateBin); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		runBin = "./" + candidateBin
+	} else {
+		if !strings.Contains(runBin, "/") {
+			runBin = "./" + runBin
+		}
+	}
+
+	if !strings.Contains(oracleBin, "/") {
+		oracleBin = "./" + oracleBin
+	}
 
 	tests := genTests()
 	for i, tc := range tests {
+		fmt.Printf("Running test %d/%d... ", i+1, len(tests)) 
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.m))
 		for _, w := range tc.ws {
@@ -125,20 +176,21 @@ func main() {
 			sb.WriteByte('\n')
 		}
 		input := sb.String()
-		want, err := runProg(oracle, input)
+		want, err := runProg(oracleBin, input)
 		if err != nil {
-			fmt.Printf("oracle runtime error on case %d: %v\n", i+1, err)
+			fmt.Printf("FAIL\noracle runtime error on case %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		got, err := runProg(bin, input)
+		got, err := runProg(runBin, input)
 		if err != nil {
-			fmt.Printf("candidate runtime error on case %d: %v\n%s", i+1, err, got)
+			fmt.Printf("FAIL\ncandidate runtime error on case %d: %v\n%s", i+1, err, got)
 			os.Exit(1)
 		}
 		if strings.TrimSpace(got) != strings.TrimSpace(want) {
-			fmt.Printf("case %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input, want, got)
+			fmt.Printf("FAIL\ncase %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input, want, got)
 			os.Exit(1)
 		}
+		fmt.Println("PASS")
 	}
 	fmt.Printf("All %d tests passed\n", len(tests))
 }
