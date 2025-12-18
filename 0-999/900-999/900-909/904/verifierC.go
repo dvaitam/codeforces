@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type Test struct {
@@ -35,43 +36,79 @@ func buildRef() (string, error) {
 	return ref, nil
 }
 
-func randWord(n int) string {
+func randWordWith(n int, c byte) string {
 	b := make([]byte, n)
 	for i := range b {
 		b[i] = byte('a' + rand.Intn(26))
+	}
+	pos := rand.Intn(n)
+	b[pos] = c
+	return string(b)
+}
+
+func randWordWithout(n int, c byte) string {
+	b := make([]byte, n)
+	for i := range b {
+		for {
+			x := byte('a' + rand.Intn(26))
+			if x != c {
+				b[i] = x
+				break
+			}
+		}
 	}
 	return string(b)
 }
 
 func genTests() []Test {
-	rand.Seed(3)
+	rand.Seed(time.Now().UnixNano())
 	tests := make([]Test, 0, 100)
 	for i := 0; i < 100; i++ {
-		n := rand.Intn(15) + 1
+		// Choose a secret letter
+		secret := byte('a' + rand.Intn(26))
+		
+		n := rand.Intn(15) + 1 // Total actions including the last one
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d\n", n))
-		for j := 0; j < n; j++ {
+		
+		// Generate n-1 actions
+		for j := 0; j < n-1; j++ {
 			t := rand.Intn(3)
 			switch t {
-			case 0:
-				sb.WriteString(". " + randWord(rand.Intn(6)+1) + "\n")
-			case 1:
-				sb.WriteString("! " + randWord(rand.Intn(6)+1) + "\n")
-			default:
-				sb.WriteString("? " + randWord(1) + "\n")
+			case 0: // . word (must NOT contain secret)
+				sb.WriteString(". " + randWordWithout(rand.Intn(6)+1, secret) + "\n")
+			case 1: // ! word (MUST contain secret)
+				sb.WriteString("! " + randWordWith(rand.Intn(6)+1, secret) + "\n")
+			case 2: // ? guess (MUST NOT be secret, as it's not the last action)
+				var guess byte
+				for {
+					guess = byte('a' + rand.Intn(26))
+					if guess != secret {
+						break
+					}
+				}
+				sb.WriteString("? " + string(guess) + "\n")
 			}
 		}
+		// Last action: ? secret
+		sb.WriteString("? " + string(secret) + "\n")
+		
 		tests = append(tests, Test{sb.String()})
 	}
 	return tests
 }
 
 func main() {
-	if len(os.Args) != 2 {
+	args := os.Args[1:]
+	if len(args) == 2 && args[0] == "--" {
+		args = args[1:]
+	}
+
+	if len(args) != 1 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		return
 	}
-	bin := os.Args[1]
+	bin := args[0]
 	ref, err := buildRef()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

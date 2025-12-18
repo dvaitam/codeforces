@@ -22,6 +22,19 @@ func isPalindrome(s string) bool {
 
 type segment struct{ pos, len int }
 
+func isReverse(s1, s2 string) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+	n := len(s1)
+	for i := 0; i < n; i++ {
+		if s1[i] != s2[n-1-i] {
+			return false
+		}
+	}
+	return true
+}
+
 func bruteForce(s string) (int, []segment) {
 	n := len(s)
 	best := 0
@@ -43,19 +56,23 @@ func bruteForce(s string) (int, []segment) {
 	for i1 := 0; i1 < n; i1++ {
 		for l1 := 1; i1+l1 <= n; l1++ {
 			prefix := s[i1 : i1+l1]
-			for i3 := i1 + l1; i3+l1 <= n; i3++ {
-				if s[i3:i3+l1] != prefix {
-					continue
-				}
-				for i2 := i1 + l1; i2 < i3; i2++ {
-					for l2 := 1; i2+l2 <= i3; l2++ {
-						if l2%2 == 1 && isPalindrome(s[i2:i2+l2]) {
-							total := 2*l1 + l2
-							if total > best {
-								best = total
-								bestK = 3
-								bestSeg = []segment{{i1 + 1, l1}, {i2 + 1, l2}, {i3 + 1, l1}}
-							}
+			// Suffix must be at the end of the string
+			i3 := n - l1
+			if i3 <= i1+l1 { // Overlap check
+				continue
+			}
+			suffix := s[i3 : i3+l1]
+			if !isReverse(prefix, suffix) {
+				continue
+			}
+			for i2 := i1 + l1; i2 < i3; i2++ {
+				for l2 := 1; i2+l2 <= i3; l2++ {
+					if l2%2 == 1 && isPalindrome(s[i2:i2+l2]) {
+						total := 2*l1 + l2
+						if total > best {
+							best = total
+							bestK = 3
+							bestSeg = []segment{{i1 + 1, l1}, {i2 + 1, l2}, {i3 + 1, l1}}
 						}
 					}
 				}
@@ -66,6 +83,7 @@ func bruteForce(s string) (int, []segment) {
 }
 
 func segmentsValid(s string, segs []segment) bool {
+	n := len(s)
 	if len(segs) == 1 {
 		if segs[0].len%2 == 1 && isPalindrome(s[segs[0].pos-1:segs[0].pos-1+segs[0].len]) {
 			return true
@@ -81,9 +99,13 @@ func segmentsValid(s string, segs []segment) bool {
 	if !(a.pos+a.len-1 <= b.pos-1 && b.pos+b.len-1 <= c.pos-1) {
 		return false
 	}
+	// Suffix must be at the end of the string
+	if c.pos+c.len-1 != n {
+		return false
+	}
 	pre := s[a.pos-1 : a.pos-1+a.len]
 	suf := s[c.pos-1 : c.pos-1+c.len]
-	if pre != suf {
+	if !isReverse(pre, suf) {
 		return false
 	}
 	if b.len%2 == 0 || !isPalindrome(s[b.pos-1:b.pos-1+b.len]) {

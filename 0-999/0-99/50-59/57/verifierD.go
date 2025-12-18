@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -56,14 +58,25 @@ func expected(grid [][]byte) float64 {
 		}
 	}
 	S := len(cells)
-	var sum int
+	if S == 0 {
+		return 0.0
+	}
+	var sum int64
 	for _, start := range cells {
 		dist := bfs(grid, start.r, start.c)
 		for _, end := range cells {
 			d := dist[end.r][end.c]
-			sum += d
+			if d != -1 {
+				sum += int64(d)
+			}
 		}
 	}
+	// Note: if graph is not connected, d might be -1.
+	// But the problem implies connected via "shortest path through unoccupied cells"
+	// "All empty cells have the same probability of being selected as the beginning or end of the path."
+	// If they are unreachable, what happens?
+	// Given the problem constraints (no two static in same row/col, no diagonal),
+	// the empty cells are always connected.
 	return float64(sum) / float64(S*S)
 }
 
@@ -81,7 +94,8 @@ func genGrid(rng *rand.Rand) [][]byte {
 	colsUsed := make(map[int]bool)
 	var coords []cell
 	num := rng.Intn(min(n, m) + 1)
-	for len(coords) < num {
+	// Try to place num particles
+	for i := 0; i < 100 && len(coords) < num; i++ {
 		r := rng.Intn(n)
 		c := rng.Intn(m)
 		if rowsUsed[r] || colsUsed[c] {
@@ -129,8 +143,7 @@ func genCase(rng *rand.Rand) (string, string) {
 		sb.WriteByte('\n')
 	}
 	expectedVal := expected(grid)
-	out := fmt.Sprintf("%.9f\n", expectedVal)
-	return sb.String(), out
+	return sb.String(), fmt.Sprintf("%.15f", expectedVal) // Use high precision string for comparison reference, but comparison logic handles float
 }
 
 func runCase(bin, input, exp string) error {
@@ -147,9 +160,26 @@ func runCase(bin, input, exp string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	got := strings.TrimSpace(out.String())
-	if got != strings.TrimSpace(exp) {
-		return fmt.Errorf("expected %s got %s", exp, got)
+	gotStr := strings.TrimSpace(out.String())
+	
+	expVal, err := strconv.ParseFloat(exp, 64)
+	if err != nil {
+		return fmt.Errorf("bad expected value: %v", err)
+	}
+	gotVal, err := strconv.ParseFloat(gotStr, 64)
+	if err != nil {
+		return fmt.Errorf("bad output value: %v", err)
+	}
+
+	// Check absolute or relative error 10^-6
+	absErr := math.Abs(expVal - gotVal)
+	relErr := 0.0
+	if math.Abs(expVal) > 1e-9 {
+		relErr = absErr / math.Abs(expVal)
+	}
+
+	if absErr > 1e-6 && relErr > 1e-6 {
+		return fmt.Errorf("expected %v got %v (abs err %v, rel err %v)", expVal, gotVal, absErr, relErr)
 	}
 	return nil
 }

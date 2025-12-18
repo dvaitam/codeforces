@@ -84,8 +84,22 @@ func runCase(bin string, tc testCase) error {
 	}
 	exp := strings.ReplaceAll(expected, "\r", "")
 	got = strings.ReplaceAll(got, "\r", "")
-	if got != exp {
-		return fmt.Errorf("expected:\n%s\n\ngot:\n%s", exp, got)
+	if err := compareOutput(exp, got); err != nil {
+		return fmt.Errorf("comparison failed: %v\nexpected:\n%s\n\ngot:\n%s", err, exp, got)
+	}
+	return nil
+}
+
+func compareOutput(expected, got string) error {
+	expLines := strings.Split(expected, "\n")
+	gotLines := strings.Split(got, "\n")
+	if len(expLines) != len(gotLines) {
+		return fmt.Errorf("line count mismatch: expected %d, got %d", len(expLines), len(gotLines))
+	}
+	for i := range expLines {
+		if strings.TrimSpace(expLines[i]) != strings.TrimSpace(gotLines[i]) {
+			return fmt.Errorf("line %d mismatch", i+1)
+		}
 	}
 	return nil
 }

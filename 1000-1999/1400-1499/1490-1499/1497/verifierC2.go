@@ -9,34 +9,33 @@ import (
 	"strings"
 )
 
-// referenceSolve mirrors 1497C2.go for a single test case.
-func referenceSolve(n, k int64) string {
-	d := k - 3
-	n2 := n - d
-	var parts []int64
-	if n2%3 == 0 {
-		a := n2 / 3
-		parts = []int64{a, a, a}
-	} else if n2%2 == 0 {
-		half := n2 / 2
-		if half%2 == 1 {
-			x := (n2 - 2) / 2
-			parts = []int64{x, x, 2}
-		} else {
-			parts = []int64{half, half / 2, half / 2}
-		}
-	} else {
-		x := (n2 - 1) / 2
-		parts = []int64{x, x, 1}
+// gcd computes the greatest common divisor of a and b.
+func gcd(a, b int64) int64 {
+	for b != 0 {
+		a, b = b, a%b
 	}
-	for i := int64(0); i < d; i++ {
-		parts = append(parts, 1)
+	return a
+}
+
+// lcm computes the least common multiple of a and b.
+// It returns a value > limit if the result exceeds limit.
+func lcm(a, b, limit int64) int64 {
+	if a == 0 || b == 0 {
+		return 0
 	}
-	out := make([]string, len(parts))
-	for i, v := range parts {
-		out[i] = strconv.FormatInt(v, 10)
+	g := gcd(a, b)
+	// res = (a / g) * b
+	// Check for overflow or exceeding limit
+	// We want res <= limit
+	// (a/g) * b <= limit  <=>  b <= limit / (a/g)
+	op1 := a / g
+	if op1 == 0 {
+		return 0 // shouldn't happen for positive integers
 	}
-	return strings.Join(out, " ")
+	if b > limit/op1 {
+		return limit + 1 // exceeding limit
+	}
+	return op1 * b
 }
 
 type testCase struct {
@@ -196,6 +195,39 @@ func runCandidate(bin string, tc testCase) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func verify(tc testCase, output string) error {
+	fields := strings.Fields(output)
+	if int64(len(fields)) != tc.k {
+		return fmt.Errorf("expected %d numbers, got %d", tc.k, len(fields))
+	}
+
+	var sum int64
+	var currentLcm int64 = 1
+	limit := tc.n / 2
+
+	for _, f := range fields {
+		val, err := strconv.ParseInt(f, 10, 64)
+		if err != nil {
+			return fmt.Errorf("invalid number: %s", f)
+		}
+		if val <= 0 {
+			return fmt.Errorf("number must be positive, got %d", val)
+		}
+		sum += val
+		currentLcm = lcm(currentLcm, val, limit)
+	}
+
+	if sum != tc.n {
+		return fmt.Errorf("sum expected %d, got %d", tc.n, sum)
+	}
+
+	if currentLcm > limit {
+		return fmt.Errorf("LCM %d > n/2 (%d)", currentLcm, limit)
+	}
+
+	return nil
+}
+
 func main() {
 	args := os.Args[1:]
 	if len(args) == 2 && args[0] == "--" {
@@ -214,14 +246,14 @@ func main() {
 	}
 
 	for idx, tc := range tests {
-		expected := referenceSolve(tc.n, tc.k)
 		got, err := runCandidate(bin, tc)
 		if err != nil {
 			fmt.Printf("test %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expected) {
-			fmt.Printf("test %d failed\ninput:\n1\n%d %d\nexpected: %s\ngot: %s\n", idx+1, tc.n, tc.k, expected, got)
+
+		if err := verify(tc, got); err != nil {
+			fmt.Printf("test %d failed\ninput:\n1\n%d %d\ngot: %s\nerror: %v\n", idx+1, tc.n, tc.k, got, err)
 			os.Exit(1)
 		}
 	}

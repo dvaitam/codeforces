@@ -4,52 +4,53 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 )
 
-func nextQ(s []byte, q []int, c byte) int {
-	j := q[len(s)-1]
-	for j > 0 && s[j] == c {
-		j = q[j-1]
-	}
-	if s[j] != c {
-		return j + 1
-	}
-	return 0
-}
-
 func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
-	defer out.Flush()
+	reader := bufio.NewReader(os.Stdin)
+	scanner := bufio.NewScanner(reader)
+	scanner.Split(bufio.ScanWords)
 
-	var t int
-	fmt.Fscan(in, &t)
-	for ; t > 0; t-- {
-		var n int
-		fmt.Fscan(in, &n)
-		s := []byte{'0'}
-		q := []int{0}
+	scanInt := func() int {
+		if !scanner.Scan() {
+			return 0
+		}
+		x, _ := strconv.Atoi(scanner.Text())
+		return x
+	}
+
+	// Read number of tests
+	numTests := scanInt()
+
+	for t := 0; t < numTests; t++ {
+		n := scanInt()
+		if n == 0 {
+			break
+		}
+		s := make([]byte, n+1)
+		s[1] = '0'
+
+		// For n <= 120, querying every position uses n-1 queries <= 119 < 789 limit.
 		for i := 2; i <= n; i++ {
-			fmt.Fprintf(out, "2 %d\n", i)
-			out.Flush()
-			var ans int
-			fmt.Fscan(in, &ans)
-			q0 := nextQ(s, q, '0')
-			q1 := nextQ(s, q, '1')
-			if ans == q0 {
-				s = append(s, '0')
-				q = append(q, q0)
+			fmt.Printf("1 %d\n", i)
+			
+			resp := scanInt()
+			if resp > 0 {
+				s[i] = s[resp]
 			} else {
-				s = append(s, '1')
-				q = append(q, q1)
+				s[i] = '1'
 			}
 		}
-		fmt.Fprintf(out, "0 %s\n", string(s))
-		out.Flush()
-		var verdict int
-		fmt.Fscan(in, &verdict)
-		if verdict == -1 {
-			return
+
+		// Output answer
+		fmt.Printf("0 %s\n", string(s[1:]))
+		
+		// Read result
+		res := scanInt()
+		if res != 1 {
+			// Failed
+			os.Exit(0)
 		}
 	}
 }

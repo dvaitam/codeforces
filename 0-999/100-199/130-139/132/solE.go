@@ -1,14 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"math/bits"
-	"math/rand"
-	"os"
-	"os/exec"
-	"strings"
-	"time"
 )
 
 const INF = int64(1e18)
@@ -80,9 +74,6 @@ func (mc *MCMF) Solve(s, t, minFlow int) (int, int64) {
 	var totalCost int64 = 0
 
 	for mc.SPFA(s, t) {
-		// Stop if we satisfied minFlow AND we can't reduce cost further (dist >= 0).
-		// Since costs are <= 0, we typically want to push as much as possible until dist >= 0.
-		// However, 0 cost edges are neutral. We force them if needed for minFlow.
 		if totalFlow >= minFlow && mc.dist[t] >= 0 {
 			break
 		}
@@ -113,9 +104,15 @@ func (mc *MCMF) Solve(s, t, minFlow int) (int, int64) {
 	return totalFlow, totalCost
 }
 
-func solve(n, m int, a []int) string {
+func main() {
+	var n, m int
+	if _, err := fmt.Scan(&n, &m); err != nil {
+		return
+	}
+	a := make([]int, n)
 	var baseCost int64
-	for i := 1; i <= n; i++ {
+	for i := 0; i < n; i++ {
+		fmt.Scan(&a[i])
 		baseCost += int64(bits.OnesCount(uint(a[i])))
 	}
 
@@ -123,17 +120,15 @@ func solve(n, m int, a []int) string {
 	T := 2*n + 1
 	mc := NewMCMF(2*n + 2)
 
-	// Bipartite Graph: Left 1..n, Right n+1..2n
-	// S -> i, n+i -> T
-	for i := 1; i <= n; i++ {
-		mc.AddEdge(S, i, 1, 0)
-		mc.AddEdge(n+i, T, 1, 0)
-		for j := i + 1; j <= n; j++ {
-			cost := int64(0)
+	for i := 0; i < n; i++ {
+		mc.AddEdge(S, i+1, 1, 0)
+		mc.AddEdge(n+1+i, T, 1, 0)
+		for j := i + 1; j < n; j++ {
+			var cost int64 = 0
 			if a[i] == a[j] {
 				cost = -int64(bits.OnesCount(uint(a[j])))
 			}
-			mc.AddEdge(i, n+j, 1, cost)
+			mc.AddEdge(i+1, n+1+j, 1, cost)
 		}
 	}
 
@@ -145,73 +140,53 @@ func solve(n, m int, a []int) string {
 	_, reduction := mc.Solve(S, T, minFlow)
 	finalPenalty := baseCost + reduction
 
-	return fmt.Sprintf("0 %d", finalPenalty)
-}
+	match := make([]int, n)
+	for i := range match {
+		match[i] = -1
+	}
+	hasIncoming := make([]bool, n)
 
-func run(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+	for u := 1; u <= n; u++ {
+		for _, e := range mc.graph[u] {
+			if e.to > n && e.to <= 2*n && e.flow == 1 && e.cap == 1 {
+				v := e.to - (n + 1)
+				match[u-1] = v
+			hasIncoming[v] = true
+			}
+		}
 	}
-	return strings.TrimSpace(out.String()), nil
-}
 
-func genCase(rng *rand.Rand) ([]int, int, int, string) {
-	n := rng.Intn(5) + 1
-	m := rng.Intn(3) + 1
-	if m > n {
-		m = n
-	}
-	a := make([]int, n+1)
-	for i := 1; i <= n; i++ {
-		a[i] = rng.Intn(100) + 1
-	}
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "%d %d\n", n, m)
-	for i := 1; i <= n; i++ {
-		if i > 1 {
-			sb.WriteByte(' ')
+	chainID := make([]int, n)
+	currentChain := 0
+	for i := 0; i < n; i++ {
+		if !hasIncoming[i] {
+			curr := i
+			for curr != -1 {
+				chainID[curr] = currentChain
+				curr = match[curr]
+			}
+			currentChain++
 		}
-		fmt.Fprintf(&sb, "%d", a[i])
 	}
-	sb.WriteByte('\n')
-	return a, n, m, sb.String()
-}
 
-func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierE.go /path/to/binary")
-		os.Exit(1)
+	var program []string
+	varVals := make(map[int]int)
+
+	for i := 0; i < n; i++ {
+		cid := chainID[i]
+		vName := string('a' + byte(cid))
+		val := a[i]
+
+		currVal, ok := varVals[cid]
+		if !ok || currVal != val {
+			program = append(program, fmt.Sprintf("%s=%d", vName, val))
+			varVals[cid] = val
+		}
+		program = append(program, fmt.Sprintf("print(%s)", vName))
 	}
-	bin := os.Args[1]
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 100; i++ {
-		a, n, m, input := genCase(rng)
-		exp := solve(n, m, a)
-		out, err := run(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
-			os.Exit(1)
-		}
-		
-		var linesExp, costExp int
-		fmt.Sscanf(exp, "%d %d", &linesExp, &costExp)
-		
-		var linesGot, costGot int
-		outReader := strings.NewReader(out)
-		if _, err := fmt.Fscanf(outReader, "%d %d", &linesGot, &costGot); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d output format error: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		
-		if costGot != costExp {
-			fmt.Fprintf(os.Stderr, "case %d cost mismatch: expected %d, got %d\ninput:\n%s", i+1, costExp, costGot, input)
-			os.Exit(1)
-		}
+
+	fmt.Printf("%d %d\n", len(program), finalPenalty)
+	for _, line := range program {
+		fmt.Println(line)
 	}
-	fmt.Println("All tests passed")
 }

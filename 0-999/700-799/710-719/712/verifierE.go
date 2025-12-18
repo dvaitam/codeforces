@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -25,8 +27,16 @@ func merge(a, b node) node {
 	if b.r1 < 0 {
 		return a
 	}
-	r1 := a.r1 * b.r1 / (1 - a.r2*(1-b.r1))
-	r2 := b.r2 + ((1 - b.r2) * a.r2 * b.r1 / (1 - (1-b.r1)*a.r2))
+	// r1 = A.r1 * B.r1 / (1 - A.r2 * (1 - B.r1))
+	denom := 1 - a.r2*(1-b.r1)
+	if math.Abs(denom) < 1e-9 {
+		// Avoid division by zero, though with valid probs < 1 it shouldn't happen
+		denom = 1e-9
+	}
+	r1 := a.r1 * b.r1 / denom
+	
+	// r2 = B.r2 + A.r2 * B.r1 * (1 - B.r2) / (1 - A.r2 * (1 - B.r1))
+	r2 := b.r2 + ((1-b.r2)*a.r2*b.r1)/denom
 	return node{r1, r2}
 }
 
@@ -83,14 +93,14 @@ func generateTests() []testCase {
 	rng := rand.New(rand.NewSource(5))
 	tests := make([]testCase, 100)
 	for i := 0; i < 100; i++ {
-		n := rng.Intn(4) + 1
-		q := rng.Intn(4) + 1
+		n := rng.Intn(20) + 1
+		q := rng.Intn(20) + 1
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d %d\n", n, q))
 		probs := make([]float64, n)
 		for j := 0; j < n; j++ {
-			a := rng.Intn(9) + 1
-			b := rng.Intn(9) + 1
+			b := rng.Intn(100) + 2
+			a := rng.Intn(b-1) + 1
 			probs[j] = float64(a) / float64(b)
 			sb.WriteString(fmt.Sprintf("%d %d\n", a, b))
 		}
@@ -100,8 +110,8 @@ func generateTests() []testCase {
 			typ := rng.Intn(2) + 1
 			if typ == 1 {
 				idx := rng.Intn(n) + 1
-				a := rng.Intn(9) + 1
-				b := rng.Intn(9) + 1
+				b := rng.Intn(100) + 2
+				a := rng.Intn(b-1) + 1
 				ops = append(ops, op{typ: 1, idx: idx, a: a, b: b})
 				sb.WriteString(fmt.Sprintf("1 %d %d %d\n", idx, a, b))
 			} else {
@@ -120,6 +130,25 @@ func generateTests() []testCase {
 	return tests
 }
 
+func checkOutput(got, expect string) error {
+	gotLines := strings.Fields(got)
+	expLines := strings.Fields(expect)
+	if len(gotLines) != len(expLines) {
+		return fmt.Errorf("cnt mismatch: got %d exp %d", len(gotLines), len(expLines))
+	}
+	for i := range gotLines {
+		g, err1 := strconv.ParseFloat(gotLines[i], 64)
+		e, err2 := strconv.ParseFloat(expLines[i], 64)
+		if err1 != nil || err2 != nil {
+			return fmt.Errorf("parse error")
+		}
+		if math.Abs(g-e) > 1e-4 {
+			return fmt.Errorf("line %d: got %f exp %f", i, g, e)
+		}
+	}
+	return nil
+}
+
 func runCase(bin string, tc testCase) error {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(tc.in)
@@ -131,8 +160,8 @@ func runCase(bin string, tc testCase) error {
 	}
 	got := strings.TrimSpace(out.String())
 	expect := strings.TrimSpace(tc.out)
-	if got != expect {
-		return fmt.Errorf("expected %q got %q", expect, got)
+	if err := checkOutput(got, expect); err != nil {
+		return fmt.Errorf("%v\nexpected:\n%s\ngot:\n%s", err, expect, got)
 	}
 	return nil
 }

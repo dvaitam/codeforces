@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"math/bits"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -12,115 +11,32 @@ import (
 	"time"
 )
 
-const maxBits = 22
-const maxNodes = 1 << (maxBits + 1)
-
-type trie struct {
-	ch   [][2]int32
-	mx   []int32
-	size int32
-}
-
-func newTrie() *trie {
-	t := &trie{
-		ch:   make([][2]int32, maxNodes),
-		mx:   make([]int32, maxNodes),
-		size: 1,
-	}
-	for i := range t.mx {
-		t.mx[i] = -1
-	}
-	return t
-}
-
-func (t *trie) reset() {
-	t.size = 1
-	t.ch[0][0], t.ch[0][1] = 0, 0
-	t.mx[0] = -1
-}
-
-func (t *trie) add(v int) {
-	node := int32(0)
-	if int32(v) > t.mx[node] {
-		t.mx[node] = int32(v)
-	}
-	for i := maxBits - 1; i >= 0; i-- {
-		b := (v >> i) & 1
-		if t.ch[node][b] == 0 {
-			t.ch[node][b] = t.size
-			t.ch[t.size][0], t.ch[t.size][1] = 0, 0
-			t.mx[t.size] = -1
-			t.size++
-		}
-		node = t.ch[node][b]
-		if int32(v) > t.mx[node] {
-			t.mx[node] = int32(v)
-		}
-	}
-}
-
-func (t *trie) query(mask int) int {
-	if t.size == 1 {
-		return 0
-	}
-	node := int32(0)
-	res := 0
-	for i := maxBits - 1; i >= 0; i-- {
-		bit := (mask >> i) & 1
-		c0 := t.ch[node][0]
-		c1 := t.ch[node][1]
-		if bit == 1 {
-			if c1 != 0 {
-				node = c1
-				res |= 1 << i
-			} else if c0 != 0 {
-				node = c0
-			} else {
-				break
-			}
-		} else {
-			if c0 == 0 && c1 == 0 {
-				break
-			} else if c0 == 0 {
-				node = c1
-			} else if c1 == 0 {
-				node = c0
-			} else {
-				rem := mask & ((1 << i) - 1)
-				v0 := int(t.mx[c0]) & rem
-				v1 := int(t.mx[c1]) & rem
-				if v0 >= v1 {
-					node = c0
-				} else {
-					node = c1
-				}
-			}
-		}
-	}
-	return res
-}
-
 func solveF(n, q int, e []int) []int {
-	mask := (1 << bits.Len(uint(n-1))) - 1
-	trieA := newTrie()
-	trieB := newTrie()
+	a := make([]int, 0, q)
+	res := make([]int, q)
 	ans := 0
 	last := 0
-	res := make([]int, q)
 	for i := 0; i < q; i++ {
 		v := (e[i] + last) % n
-		diff1 := trieA.query(mask ^ v)
-		if diff1 > ans {
-			ans = diff1
+		a = append(a, v)
+
+		// Brute force update ans
+		// Since q is small in the generator (<= 6), we can check all pairs.
+		// For larger q, this oracle would be too slow, but it's fine here.
+		for _, u := range a {
+			// Check u & ~v
+			val1 := u &^ v
+			if val1 > ans {
+				ans = val1
+			}
+			// Check v & ~u
+			val2 := v &^ u
+			if val2 > ans {
+				ans = val2
+			}
 		}
-		diff2 := trieB.query(v)
-		if diff2 > ans {
-			ans = diff2
-		}
-		trieA.add(v)
-		trieB.add(mask ^ v)
-		last = ans
 		res[i] = ans
+		last = ans
 	}
 	return res
 }

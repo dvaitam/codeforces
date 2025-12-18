@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -12,126 +11,142 @@ import (
 	"time"
 )
 
-const limitF int64 = 10000000000
-
-var memoF = make(map[int64]string)
-
-func powInt(a, b int64) int64 {
-	res := int64(1)
-	for b > 0 {
-		if a > limitF/res {
-			return limitF + 1
-		}
-		res *= a
-		b--
-	}
-	return res
-}
-
-func root(n int64, b int) int64 {
-	if b <= 1 {
-		return -1
-	}
-	x := int64(math.Pow(float64(n), 1.0/float64(b)) + 0.5)
-	if x < 2 {
-		return -1
-	}
-	for {
-		p := powInt(x, int64(b))
-		if p == n {
-			return x
-		}
-		if p > n {
-			x--
-		} else {
-			x++
-		}
-		if x < 2 {
-			return -1
-		}
-		if powInt(x, int64(b)) == n {
-			return x
-		}
-		if powInt(x, int64(b)) > n && powInt(x-1, int64(b)) < n {
-			break
-		}
-	}
-	return -1
-}
-
 func solve(n int64) string {
-	if v, ok := memoF[n]; ok {
-		return v
-	}
-	best := strconv.FormatInt(n, 10)
-	bestLen := len(best)
-	for b := 2; b <= 34; b++ {
-		base := root(n, b)
-		if base > 1 {
-			s1 := solve(base)
-			cand := s1 + "^" + strconv.Itoa(b)
-			if len(cand) < bestLen {
-				best = cand
-				bestLen = len(cand)
-			}
-		}
-	}
+	mp := make(map[int64]string)
+	// Precompute powers
+	// i*i can overflow if i is large int64, but i <= sqrt(n) <= 10^5, so i*i <= 10^10. Safe.
 	for i := int64(2); i*i <= n; i++ {
-		if n%i == 0 {
-			s1 := solve(i)
-			s2 := solve(n / i)
-			cand := s1 + "*" + s2
-			if len(cand) < bestLen {
-				best = cand
-				bestLen = len(cand)
+		val := i * i
+		for k := 2; val <= n; k++ {
+			s := fmt.Sprintf("%d^%d", i, k)
+			if best, ok := mp[val]; !ok {
+				mp[val] = strconv.FormatInt(val, 10)
+				if len(s) < len(mp[val]) {
+					mp[val] = s
+				}
+			} else {
+				if len(s) < len(best) {
+					mp[val] = s
+				}
 			}
+			
+			// Check for overflow before multiplying
+			if n/i < val {
+				break
+			}
+			val *= i
 		}
 	}
-	for k := 1; k <= 10; k++ {
-		p := int64(math.Pow10(k))
-		if p > n {
-			break
+
+	ans := strconv.FormatInt(n, 10)
+
+	getStr := func(v int64) string {
+		if s, ok := mp[v]; ok {
+			return s
 		}
-		q := n / p
-		r := n % p
-		if q == 0 {
-			continue
-		}
-		left := solve(q) + "*" + fmt.Sprintf("10^%d", k)
-		if r == 0 {
-			if len(left) < bestLen {
-				best = left
-				bestLen = len(left)
-			}
+		return strconv.FormatInt(v, 10)
+	}
+
+	for val, rep := range mp {
+		if val > n { continue } // Should not happen by loop condition
+		
+		k := n / val
+		b := n % val
+		
+		var curr string
+		if k == 0 {
+			// Should not happen since val <= n
+			continue 
+		} else if k == 1 {
+			curr = rep
 		} else {
-			right := solve(r)
-			cand := left + "+" + right
-			if len(cand) < bestLen {
-				best = cand
-				bestLen = len(cand)
-			}
+			curr = getStr(k) + "*" + rep
+		}
+		
+		if b > 0 {
+			curr += "+" + getStr(b)
+		}
+		
+		if len(curr) < len(ans) {
+			ans = curr
 		}
 	}
-	for r := int64(1); r <= 9 && r < n; r++ {
-		s1 := solve(n - r)
-		cand := s1 + "+" + strconv.FormatInt(r, 10)
-		if len(cand) < bestLen {
-			best = cand
-			bestLen = len(cand)
-		}
-	}
-	memoF[n] = best
-	return best
+	
+	return ans
 }
 
 func generateCaseF(rng *rand.Rand) (string, string) {
-	n := rng.Int63n(1_000_000_0000) + 1
+	// Generate n up to 10^10
+	n := rng.Int63n(10000000000) + 1
 	input := fmt.Sprintf("%d\n", n)
 	expected := solve(n)
 	return input, expected
 }
 
+func eval(s string, target int64) (int64, error) {
+	for _, c := range s {
+		if !strings.ContainsRune("0123456789+*^", c) {
+			return 0, fmt.Errorf("invalid char %c", c)
+		}
+	}
+	
+	parts := strings.Split(s, "+")
+	var sum int64
+	for _, p := range parts {
+		if p == "" { return 0, fmt.Errorf("empty term") }
+		factors := strings.Split(p, "*")
+		prod := int64(1)
+		for _, f := range factors {
+			if f == "" { return 0, fmt.Errorf("empty factor") }
+			baseExp := strings.Split(f, "^")
+			if len(baseExp) > 2 {
+				return 0, fmt.Errorf("multiple carets")
+			}
+			base, err := strconv.ParseInt(baseExp[0], 10, 64)
+			if err != nil { return 0, err }
+			val := base
+			if len(baseExp) == 2 {
+				exp, err := strconv.ParseInt(baseExp[1], 10, 64)
+				if err != nil { return 0, err }
+				// val = pow(base, exp)
+				val = 1
+				for i := int64(0); i < exp; i++ {
+					if base != 0 && target/base < val { // Overflow check relative to target
+						val = target + 1
+						break
+					}
+					val *= base
+				}
+			}
+			// prod *= val
+			// Check for overflow
+			if prod == 0 { // 0 * anything = 0
+				prod = 0
+			} else {
+				if val > 0 && target/prod < val {
+					prod = target + 1
+				} else {
+					prod *= val
+				}
+			}
+		}
+		// sum += prod
+		if target-sum < prod {
+			sum = target + 1
+		} else {
+			sum += prod
+		}
+	}
+	return sum, nil
+}
+
 func runCaseF(bin, input, expected string) error {
+	nStr := strings.TrimSpace(input)
+	n, err := strconv.ParseInt(nStr, 10, 64)
+	if err != nil {
+		return fmt.Errorf("failed to parse input: %v", err)
+	}
+
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
@@ -141,9 +156,21 @@ func runCaseF(bin, input, expected string) error {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
 	got := strings.TrimSpace(out.String())
-	if got != expected {
-		return fmt.Errorf("expected %q got %q", expected, got)
+	
+	// Check validity and value
+	val, err := eval(got, n)
+	if err != nil {
+		return fmt.Errorf("eval error: %v", err)
 	}
+	if val != n {
+		return fmt.Errorf("wrong value: got %d, expected %d", val, n)
+	}
+	
+	// Check length
+	if len(got) > len(expected) {
+		return fmt.Errorf("suboptimal length: got %d (%q), expected %d (%q)", len(got), got, len(expected), expected)
+	}
+	
 	return nil
 }
 

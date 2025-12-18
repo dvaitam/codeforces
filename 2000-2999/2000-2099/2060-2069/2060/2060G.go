@@ -5,55 +5,146 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 )
 
+// Global scanner for fast input
+var sc = bufio.NewScanner(os.Stdin)
+
+func init() {
+	sc.Split(bufio.ScanWords)
+	// Set a sufficiently large buffer for tokens
+	buf := make([]byte, 0, 1<<18)
+	sc.Buffer(buf, 1<<22)
+}
+
+func nextInt() int {
+	sc.Scan()
+	i, _ := strconv.Atoi(sc.Text())
+	return i
+}
+
 func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
-	defer out.Flush()
+	// Initialize scanner by reading the first token (t)
+	if !sc.Scan() {
+		return
+	}
+	t, _ := strconv.Atoi(sc.Text())
 
-	var t int
-	fmt.Fscan(in, &t)
-	for ; t > 0; t-- {
-		var n int
-		fmt.Fscan(in, &n)
-		A := make([]int, n)
-		pos := make([]int, 2*n+1)
-		for i := 0; i < n; i++ {
-			fmt.Fscan(in, &A[i])
-			pos[A[i]] = i
-		}
-		B := make([]int, n)
-		for i := 0; i < n; i++ {
-			fmt.Fscan(in, &B[i])
-			pos[B[i]] = i
-		}
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
 
-		type pair struct{ val, idx int }
-		var arr []pair
-		for v := 1; v <= 2*n; v++ {
-			arr = append(arr, pair{val: v, idx: pos[v]})
-		}
-		sort.Slice(arr, func(i, j int) bool {
-			return arr[i].val < arr[j].val
-		})
+	for i := 0; i < t; i++ {
+		solve(writer)
+	}
+}
 
-		maxIdx := 2 * n
-		ok := true
-		for i := 2*n - 1; i >= 0; i-- {
-			if arr[i].idx > maxIdx {
-				ok = false
-				break
+type Pair struct {
+	u, v int
+}
+
+type State struct {
+	a, b int
+}
+
+func solve(w *bufio.Writer) {
+	n := nextInt()
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		a[i] = nextInt()
+	}
+	b := make([]int, n)
+	for i := 0; i < n; i++ {
+		b[i] = nextInt()
+	}
+
+	pairs := make([]Pair, n)
+	inputParity := 0
+	for i := 0; i < n; i++ {
+		u, v := a[i], b[i]
+		if u > v {
+			u, v = v, u
+			inputParity ^= 1
+		}
+		pairs[i] = Pair{u, v}
+	}
+
+	// Sort pairs based on their maximum value (v)
+	sort.Slice(pairs, func(i, j int) bool {
+		return pairs[i].v < pairs[j].v
+	})
+
+	// dp[p] stores a list of Pareto optimal states (last_a, last_b) for accumulated parity p
+	// p is 0 or 1
+	dp := make([][]State, 2)
+	dp[0] = []State{{0, 0}}
+	dp[1] = []State{}
+
+	for i := 0; i < n; i++ {
+		u, v := pairs[i].u, pairs[i].v
+		
+		nextDp0 := make([]State, 0)
+		nextDp1 := make([]State, 0)
+
+		// Transition from dp[0]
+		for _, s := range dp[0] {
+			// Orientation 0: (u, v) - Adds 0 to parity
+			if u > s.a && v > s.b {
+				nextDp0 = append(nextDp0, State{u, v})
 			}
-			if arr[i].idx < maxIdx {
-				maxIdx = arr[i].idx
+			// Orientation 1: (v, u) - Adds 1 to parity
+			if v > s.a && u > s.b {
+				nextDp1 = append(nextDp1, State{v, u})
 			}
 		}
 
-		if ok {
-			fmt.Fprintln(out, "YES")
-		} else {
-			fmt.Fprintln(out, "NO")
+		// Transition from dp[1]
+		for _, s := range dp[1] {
+			// Orientation 0: (u, v) - Adds 0 to parity (remains 1)
+			if u > s.a && v > s.b {
+				nextDp1 = append(nextDp1, State{u, v})
+			}
+			// Orientation 1: (v, u) - Adds 1 to parity (becomes 0)
+			if v > s.a && u > s.b {
+				nextDp0 = append(nextDp0, State{v, u})
+			}
+		}
+
+		dp[0] = prune(nextDp0)
+		dp[1] = prune(nextDp1)
+	}
+
+	if len(dp[inputParity]) > 0 {
+		fmt.Fprintln(w, "YES")
+	} else {
+		fmt.Fprintln(w, "NO")
+	}
+}
+
+// prune removes dominated states. A state (a1, b1) dominates (a2, b2) if a1 <= a2 and b1 <= b2.
+// We only keep states that are not dominated by any other state.
+func prune(states []State) []State {
+	if len(states) <= 1 {
+		return states
+	}
+	// Sort by 'a' ascending. If 'a' is same, sort by 'b' ascending.
+	sort.Slice(states, func(i, j int) bool {
+		if states[i].a != states[j].a {
+			return states[i].a < states[j].a
+		}
+		return states[i].b < states[j].b
+	})
+
+	res := states[:0]
+	minB := 2000000000 
+
+	// Iterate through sorted states. Since 'a' is increasing, we only keep a state
+	// if its 'b' is strictly smaller than all previous 'b's.
+	for _, s := range states {
+		if s.b < minB {
+			res = append(res, s)
+			minB = s.b
 		}
 	}
+	return res
 }

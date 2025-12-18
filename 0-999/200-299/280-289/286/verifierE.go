@@ -10,100 +10,6 @@ import (
 	"strings"
 )
 
-const embeddedSolutionSource = `package main
-
-import (
-   "bufio"
-   "fmt"
-   "os"
-   "strconv"
-)
-
-func main() {
-   reader := bufio.NewReader(os.Stdin)
-   writer := bufio.NewWriter(os.Stdout)
-   defer writer.Flush()
-
-   line, _ := reader.ReadString('\n')
-   parts := splitInts(line)
-   if len(parts) < 2 {
-       return
-   }
-   n, m := parts[0], parts[1]
-   line, _ = reader.ReadString('\n')
-   a := splitInts(line)
-   if len(a) != n {
-       return
-   }
-   if a[n-1] != m {
-       fmt.Fprintln(writer, "NO")
-       return
-   }
-   size := (m>>6) + 1
-   dp := make([]uint64, size)
-   dp[0] = 1
-   var P []int
-   for _, v := range a {
-       idx := v >> 6
-       off := uint(v & 63)
-       if (dp[idx]>>off)&1 == 1 {
-           continue
-       }
-       P = append(P, v)
-       shiftWords := v >> 6
-       shiftBits := uint(v & 63)
-       for i := len(dp) - 1; i >= int(shiftWords); i-- {
-           word := dp[i-int(shiftWords)] << shiftBits
-           if shiftBits != 0 && i-int(shiftWords)-1 >= 0 {
-               word |= dp[i-int(shiftWords)-1] >> (64 - shiftBits)
-           }
-           dp[i] |= word
-       }
-   }
-   fmt.Fprintln(writer, "YES")
-   fmt.Fprintln(writer, len(P))
-   for i, v := range P {
-       if i > 0 {
-           writer.WriteByte(' ')
-       }
-       writer.WriteString(strconv.Itoa(v))
-   }
-   writer.WriteByte('\n')
-}
-
-func splitInts(s string) []int {
-   var res []int
-   num := 0
-   neg := false
-   started := false
-   for i := 0; i < len(s); i++ {
-       c := s[i]
-       if c == '-' {
-           neg = true
-       } else if c >= '0' && c <= '9' {
-           started = true
-           num = num*10 + int(c-'0')
-       } else {
-           if started {
-               if neg {
-                   num = -num
-               }
-               res = append(res, num)
-               num = 0
-               neg = false
-               started = false
-           }
-       }
-   }
-   if started {
-       if neg {
-           num = -num
-       }
-       res = append(res, num)
-   }
-   return res
-}`
-
 const testcasesRaw = `
 3 19 1 3 18
 1 20 1
@@ -207,24 +113,21 @@ const testcasesRaw = `
 5 11 3 5 6 8 10
 `
 
-var (
-	_            = embeddedSolutionSource
-	rawTestcases = func() []string {
-		scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
-		scanner.Buffer(make([]byte, 0, 1024), 1024*1024)
-		var cases []string
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			if line != "" {
-				cases = append(cases, line)
-			}
+var rawTestcases = func() []string {
+	scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
+	scanner.Buffer(make([]byte, 0, 1024), 1024*1024)
+	var cases []string
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			cases = append(cases, line)
 		}
-		if err := scanner.Err(); err != nil {
-			panic(err)
-		}
-		return cases
-	}()
-)
+	}
+	if err := scanner.Err(); err != nil {
+		panic(err)
+	}
+	return cases
+}()
 
 func splitInts(s string) []int {
 	var res []int
@@ -263,30 +166,37 @@ func solveCase(n, m int, a []int) (string, error) {
 	if len(a) != n {
 		return "", fmt.Errorf("invalid a length")
 	}
-	if a[n-1] != m {
-		return "NO", nil
+
+	inA := make([]bool, m+1)
+	for _, v := range a {
+		inA[v] = true
 	}
-	size := (m >> 6) + 1
-	dp := make([]uint64, size)
-	dp[0] = 1
+
+	reachable := make([]bool, m+1)
+	reachable[0] = true
+
 	var P []int
 	for _, v := range a {
-		idx := v >> 6
-		off := uint(v & 63)
-		if (dp[idx]>>off)&1 == 1 {
-			continue
-		}
-		P = append(P, v)
-		shiftWords := v >> 6
-		shiftBits := uint(v & 63)
-		for i := len(dp) - 1; i >= int(shiftWords); i-- {
-			word := dp[i-int(shiftWords)] << shiftBits
-			if shiftBits != 0 && i-int(shiftWords)-1 >= 0 {
-				word |= dp[i-int(shiftWords)-1] >> (64 - shiftBits)
+		if !reachable[v] {
+			P = append(P, v)
+			// Update reachable with v (unbounded)
+			// Iterate from v to m. 
+			// If reachable[j-v] is true, then j is reachable.
+			for j := v; j <= m; j++ {
+				if reachable[j-v] {
+					reachable[j] = true
+				}
 			}
-			dp[i] |= word
 		}
 	}
+
+	// Check condition 2: all reachable sums <= m must be in A
+	for j := 1; j <= m; j++ {
+		if reachable[j] && !inA[j] {
+			return "NO", nil
+		}
+	}
+
 	var sb strings.Builder
 	sb.WriteString("YES\n")
 	sb.WriteString(strconv.Itoa(len(P)))

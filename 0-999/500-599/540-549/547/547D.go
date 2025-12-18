@@ -6,6 +6,8 @@ import (
    "os"
 )
 
+const MAX_COORD = 200005
+
 func main() {
    in := bufio.NewReader(os.Stdin)
    out := bufio.NewWriter(os.Stdout)
@@ -17,8 +19,8 @@ func main() {
    }
    // adjacency list
    g := make([][]int, n+1)
-   lc := make([]int, n+1)
-   lr := make([]int, n+1)
+   lc := make([]int, MAX_COORD)
+   lr := make([]int, MAX_COORD)
 
    for i := 1; i <= n; i++ {
        var x, y int
@@ -75,4 +77,5 @@ func main() {
        }
    }
    fmt.Fprint(out, string(res))
+   fmt.Fprintln(out)
 }
