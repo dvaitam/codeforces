@@ -1,157 +1,199 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
-   "sort"
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
 )
 
-type Trip struct {
-   idx    int
-   s, e   int64
-   t, L   int64
+const (
+	INF = 1e9 + 7
+	N   = 22
+)
+
+// Task structure replacing pair<pair<int,int>,pair<int,int>>
+type Task struct {
+	Start    int // Busy interval start (T[i].st.st)
+	Len      int // Busy interval length (T[i].st.nd)
+	Duration int // Task execution time (T[i].nd.st)
+	ID       int // Original index (T[i].nd.nd)
+}
+
+var (
+	n     int
+	tasks []Task
+	// Global DP arrays to handle large size (approx 16MB each)
+	dp    [1 << N]int
+	jaki  [1 << N]int // 'which' task was added
+	gdzie [1 << N]int // 'where' (start time)
+	ans   [N][2]int   // Result storage: [processor_id, start_time]
+)
+
+// nxt calculates the earliest finish time for a task of duration 't'
+// starting at or after 'x', given the mask 'm' of already scheduled tasks.
+func nxt(m, x, t int) int {
+	l1, l2 := 0, 0
+
+	// 1. Skip fixed busy intervals that end before x
+	for l1 < n && x >= tasks[l1].Start {
+		l1++
+	}
+
+	// 2. Check if x falls inside the previous busy interval
+	if l1 > 0 && x <= tasks[l1-1].Start+tasks[l1-1].Len-1 {
+		l1-- // Move back to handle the jump in the main loop
+	} else {
+		// 3. If x is valid wrt fixed intervals, check against task deadlines (from mask m)
+		// Find the first task in mask m that starts after x
+		for l2 < n && (x >= tasks[l2].Start || (m&(1<<l2)) == 0) {
+			l2++
+		}
+		// If no constraint found or we fit before the next constraint
+		if l2 == n || x+t < tasks[l2].Start {
+			return x + t
+		}
+	}
+
+	// 4. Iterate forward, jumping over busy intervals to find a valid slot
+	for l1 < n {
+		x = tasks[l1].Start + tasks[l1].Len
+
+		// Optimization: If the next interval starts exactly where this one ends, skip effectively merging them
+		if l1 < n-1 && tasks[l1+1].Start == x {
+			l1++
+			continue
+		}
+
+		// Check constraints again for the new x
+		for l2 < n && (x >= tasks[l2].Start || (m&(1<<l2)) == 0) {
+			l2++
+		}
+
+		if l2 == n || x+t < tasks[l2].Start {
+			return x + t
+		}
+		l1++
+	}
+	return x + t
 }
 
 func main() {
-   in := bufio.NewReader(os.Stdin)
-   var N, P int
-   if _, err := fmt.Fscan(in, &N, &P); err != nil {
-       return
-   }
-   trips := make([]Trip, N)
-   for i := 0; i < N; i++ {
-       var s, length, t int64
-       fmt.Fscan(in, &s, &length, &t)
-       trips[i] = Trip{idx: i, s: s, e: s + length - 1, t: t, L: s - t - 1}
-   }
-   // sort by start for gaps
-   tripsByS := make([]Trip, N)
-   copy(tripsByS, trips)
-   sort.Slice(tripsByS, func(i, j int) bool { return tripsByS[i].s < tripsByS[j].s })
-   // compute max L
-   var maxL int64 = 0
-   for _, tr := range trips {
-       if tr.L > maxL {
-           maxL = tr.L
-       }
-   }
-   // build allowed application gaps
-   type gap struct{ l, r int64 }
-   var gaps []gap
-   prevEnd := int64(0)
-   for _, tr := range tripsByS {
-       if prevEnd+1 <= tr.s-1 {
-           gaps = append(gaps, gap{l: prevEnd + 1, r: tr.s - 1})
-       }
-       prevEnd = tr.e
-   }
-   if prevEnd+1 <= maxL {
-       gaps = append(gaps, gap{l: prevEnd + 1, r: maxL})
-   }
-   // sort jobs by deadline L increasing
-   jobs := make([]Trip, N)
-   copy(jobs, trips)
-   sort.Slice(jobs, func(i, j int) bool { return jobs[i].L < jobs[j].L })
-   // passport schedules: list of intervals [start, finish]
-   schedules := make([][]gap, P)
-   // assignment results
-   assign := make([]int, N)
-   applyDay := make([]int64, N)
-   // function to find latest allowed start in [a, ub]
-   findLatest := func(a, ub int64) (int64, bool) {
-       // binary search first gap with l > ub
-       i := sort.Search(len(gaps), func(i int) bool { return gaps[i].l > ub })
-       for k := i - 1; k >= 0; k-- {
-           g := gaps[k]
-           if g.r < a {
-               break
-           }
-           // possible start
-           d := ub
-           if d > g.r {
-               d = g.r
-           }
-           if d >= a {
-               return d, true
-           }
-       }
-       return 0, false
-   }
-   // try schedule jobs
-   for _, job := range jobs {
-       placed := false
-       for p := 0; p < P; p++ {
-           // inspect free intervals in schedule[p]
-           sch := schedules[p]
-           // sort by start
-           sort.Slice(sch, func(i, j int) bool { return sch[i].l < sch[j].l })
-           // prev finish for start domain
-           prevF := int64(1)
-           for k, occ := range sch {
-               // free start domain [prevF, occ.l - job.t]
-               ub := job.L
-               if occ.l-job.t < ub {
-                   ub = occ.l - job.t
-               }
-               if ub >= prevF {
-                   if d, ok := findLatest(prevF, ub); ok {
-                       // place here
-                       assign[job.idx] = p + 1
-                       applyDay[job.idx] = d
-                       // add processing interval [d, d+job.t]
-                       schedules[p] = append(sch, gap{l: d, r: d + job.t})
-                       placed = true
-                       break
-                   }
-               }
-               // update prevF to max(prevF, occ.r)
-               if occ.r > prevF {
-                   prevF = occ.r
-               }
-               // for last, continuation in next iteration
-               if k == len(sch)-1 {
-                   // after last
-                   ub2 := job.L
-                   if ub2 >= prevF {
-                       if d, ok := findLatest(prevF, ub2); ok {
-                           assign[job.idx] = p + 1
-                           applyDay[job.idx] = d
-                           schedules[p] = append(sch, gap{l: d, r: d + job.t})
-                           placed = true
-                       }
-                   }
-               }
-               if placed {
-                   break
-               }
-           }
-           // if no existing occupied intervals, try whole
-           if !placed && len(sch) == 0 {
-               ub := job.L
-               if ub >= 1 {
-                   if d, ok := findLatest(1, ub); ok {
-                       assign[job.idx] = p + 1
-                       applyDay[job.idx] = d
-                       schedules[p] = append(schedules[p], gap{l: d, r: d + job.t})
-                       placed = true
-                   }
-               }
-           }
-           if placed {
-               break
-           }
-       }
-       if !placed {
-           fmt.Println("NO")
-           return
-       }
-   }
-   // success
-   fmt.Println("YES")
-   w := bufio.NewWriter(os.Stdout)
-   defer w.Flush()
-   for i := 0; i < N; i++ {
-       fmt.Fprintf(w, "%d %d\n", assign[i], applyDay[i])
-   }
+	// Fast I/O
+	reader := bufio.NewReader(os.Stdin)
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
+
+	var P int
+	if _, err := fmt.Fscan(reader, &n, &P); err != nil {
+		return
+	}
+
+	tasks = make([]Task, n)
+	for i := 0; i < n; i++ {
+		var s, l, d int
+		fmt.Fscan(reader, &s, &l, &d)
+		tasks[i] = Task{Start: s, Len: l, Duration: d, ID: i}
+		
+		// Specific constraint from original code
+		if s == 1 {
+			fmt.Fprintln(writer, "NO")
+			return
+		}
+	}
+
+	// Sort tasks by Start time (critical for the nxt logic)
+	sort.Slice(tasks, func(i, j int) bool {
+		if tasks[i].Start != tasks[j].Start {
+			return tasks[i].Start < tasks[j].Start
+		}
+		return tasks[i].ID < tasks[j].ID
+	})
+
+	// Initialize DP
+	// dp[mask] = earliest finish time for the set of tasks in mask
+	limit := 1 << n
+	for i := 0; i < limit; i++ {
+		dp[i] = INF
+	}
+	dp[0] = 1
+
+	// Bitmask DP Loop
+	for i := 0; i < limit; i++ {
+		if dp[i] == INF {
+			continue
+		}
+		// Try adding task j to the set i
+		for j := 0; j < n; j++ {
+			// If task j is NOT in set i yet
+			if (i & (1 << j)) == 0 {
+				nextMask := i | (1 << j)
+				// Calculate potential finish time
+				// We pass 'nextMask' because nxt uses the mask to find deadlines imposed by other tasks
+				x := nxt(nextMask, dp[i], tasks[j].Duration)
+				
+				// Constraint: Task must finish before its own fixed start time (deadline)
+				if x >= tasks[j].Start {
+					x = INF
+				}
+
+				if dp[nextMask] > x {
+					dp[nextMask] = x
+					jaki[nextMask] = j
+					gdzie[nextMask] = x - tasks[j].Duration // Store start time
+				}
+			}
+		}
+	}
+
+	// Check results
+	fullMask := (1 << n) - 1
+	for i := 0; i < limit; i++ {
+		// Valid conditions:
+		// 1. P=1: Check if full set (i == fullMask) is valid
+		// 2. P=2: Check if set i is valid AND complementary set (fullMask ^ i) is valid
+		
+		complement := fullMask ^ i
+		isValid := false
+		
+		if P == 2 {
+			if dp[i] < INF && dp[complement] < INF {
+				isValid = true
+			}
+		} else {
+			if i == fullMask && dp[i] < INF {
+				isValid = true
+			}
+		}
+
+		if isValid {
+			// Reconstruct Processor 1 schedule (from set i)
+			curr := i
+			for curr > 0 {
+				idx := jaki[curr]
+				originalID := tasks[idx].ID
+				ans[originalID][0] = 1
+				ans[originalID][1] = gdzie[curr]
+				curr ^= (1 << idx)
+			}
+
+			// Reconstruct Processor 2 schedule (from complement set)
+			curr = complement
+			for curr > 0 {
+				idx := jaki[curr]
+				originalID := tasks[idx].ID
+				ans[originalID][0] = 2
+				ans[originalID][1] = gdzie[curr]
+				curr ^= (1 << idx)
+			}
+
+			fmt.Fprintln(writer, "YES")
+			for k := 0; k < n; k++ {
+				fmt.Fprintf(writer, "%d %d\n", ans[k][0], ans[k][1])
+			}
+			return
+		}
+	}
+
+	fmt.Fprintln(writer, "NO")
 }

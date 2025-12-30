@@ -1,162 +1,149 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
+	"bufio"
+	"fmt"
+	"os"
 )
 
-const LG = 20
-
-type Edge struct { to int; w int64 }
-
+// Global variables to mirror the logic structure
 var (
-   n, q int
-   v    [][]Edge
-   a    []int64
-   dp, dpu []int64
-   par   [][]int
-   parsum [][]int64
-   tin, tout, h []int
-   timer int
-   outBuf *bufio.Writer
+	n    int
+	x, y int64
+	a    []int64
+	p    []int64 // Stores prime factors of y
+	c    []int64 // Array for SOS DP
+	cnt  int     // Number of prime factors
 )
 
-func dfs1(u, p, depth int) {
-   h[u] = depth
-   timer++
-   tin[u] = timer
-   par[u][0] = p
-   for i := 1; i < LG; i++ {
-       par[u][i] = par[par[u][i-1]][i-1]
-   }
-   for _, e := range v[u] {
-       if e.to == p {
-           continue
-       }
-       dfs1(e.to, u, depth+1)
-       gain := dp[e.to] + a[e.to] - 2*e.w
-       if gain > 0 {
-           dp[u] += gain
-       }
-   }
-   tout[u] = timer
+// Greatest Common Divisor
+func gcd(u, v int64) int64 {
+	for v != 0 {
+		u, v = v, u%v
+	}
+	return u
 }
 
-func dfs2(u, p int, d int64) {
-   if d > 0 {
-       dpu[u] = d
-   }
-   for _, e := range v[u] {
-       if e.to == p {
-           continue
-       }
-       gain := dp[e.to] + a[e.to] - 2*e.w
-       if gain < 0 {
-           gain = 0
-       }
-       // exclude child's contribution and add others
-       nd := dpu[u] + dp[u] + a[u] - 2*e.w - gain
-       dfs2(e.to, u, nd)
-   }
-}
+// spc handles the case where map sizes are large using SOS DP
+// Time Complexity: O(Sqrt(Y) + N * Factors + 2^Factors * Factors)
+func spc() {
+	z := y
+	cnt = 0
+	p = make([]int64, 0, 20) // Pre-allocate small capacity (max distinct primes for 64-bit int is < 20)
 
-func dfs3(u, p int, pw int64) {
-   var upGain int64
-   if u == p {
-       upGain = 0
-   } else {
-       childGain := dp[u] + a[u] - 2*pw
-       if childGain < 0 {
-           childGain = 0
-       }
-       upGain = dp[p] - childGain + a[u] - pw
-   }
-   parsum[u][0] = upGain
-   for i := 1; i < LG; i++ {
-       parsum[u][i] = parsum[u][i-1] + parsum[par[u][i-1]][i-1]
-   }
-   for _, e := range v[u] {
-       if e.to == p {
-           continue
-       }
-       dfs3(e.to, u, e.w)
-   }
-}
+	// 1. Prime factorization of y
+	for i := int64(2); i*i <= z; i++ {
+		if z%i == 0 {
+			for z%i == 0 {
+				z /= i
+			}
+			p = append(p, i)
+			cnt++
+		}
+	}
+	if z != 1 {
+		p = append(p, z)
+		cnt++
+	}
 
-func isPar(x, y int) bool {
-   return tin[x] <= tin[y] && tout[y] <= tout[x]
-}
+	// 2. Populate frequency array c based on divisibility masks
+	limit := 1 << cnt
+	c = make([]int64, limit)
 
-func lca(x, y int) int {
-   if isPar(x, y) {
-       return x
-   }
-   if isPar(y, x) {
-       return y
-   }
-   for i := LG-1; i >= 0; i-- {
-       if !isPar(par[x][i], y) {
-           x = par[x][i]
-       }
-   }
-   return par[x][0]
+	for i := 1; i <= n; i++ {
+		if a[i]%x != 0 {
+			continue
+		}
+		// We are looking for numbers that can form a valid pair with the first component.
+		// num captures the prime factors involved in a[i]/x relative to y/x.
+		num := gcd(a[i]/x, y/x)
+		msk := 0
+		for j := 0; j < cnt; j++ {
+			if num%p[j] == 0 {
+				msk |= (1 << j)
+			}
+		}
+		c[msk]++
+	}
+
+	// 3. SOS DP (Sum Over Subsets)
+	// Transforms c[mask] to store the sum of counts for all subsets of mask.
+	// This allows O(1) retrieval of "count of numbers disjoint from mask M".
+	for i := 0; i < cnt; i++ {
+		for j := 0; j < limit; j++ {
+			if (j & (1 << i)) == 0 {
+				c[j|(1<<i)] += c[j]
+			}
+		}
+	}
+
+	// 4. Calculate Answer
+	var ans int64 = 0
+	for i := 1; i <= n; i++ {
+		if y%a[i] != 0 {
+			continue
+		}
+		// For the second component y/a[i], calculate its prime factor mask
+		num := y / a[i]
+		msk := 0
+		for j := 0; j < cnt; j++ {
+			if num%p[j] == 0 {
+				msk |= (1 << j)
+			}
+		}
+		// We need gcd(A, B) = 1. If B has factors 'msk', A must NOT have any of those factors.
+		// This means A's mask must be a subset of the complement of 'msk'.
+		target := (limit - 1) ^ msk
+		ans += c[target]
+	}
+	fmt.Println(ans)
 }
 
 func main() {
-   in := bufio.NewReader(os.Stdin)
-   outBuf = bufio.NewWriter(os.Stdout)
-   defer outBuf.Flush()
-   fmt.Fscan(in, &n, &q)
-   a = make([]int64, n)
-   for i := 0; i < n; i++ {
-       fmt.Fscan(in, &a[i])
-   }
-   v = make([][]Edge, n)
-   for i := 0; i < n-1; i++ {
-       var x, y int
-       var w int64
-       fmt.Fscan(in, &x, &y, &w)
-       x--; y--
-       v[x] = append(v[x], Edge{y, w})
-       v[y] = append(v[y], Edge{x, w})
-   }
-   dp = make([]int64, n)
-   dpu = make([]int64, n)
-   par = make([][]int, n)
-   parsum = make([][]int64, n)
-   tin = make([]int, n)
-   tout = make([]int, n)
-   h = make([]int, n)
-   for i := 0; i < n; i++ {
-       par[i] = make([]int, LG)
-       parsum[i] = make([]int64, LG)
-   }
-   // root at 0
-   timer = 0
-   dfs1(0, 0, 0)
-   dfs2(0, 0, 0)
-   dfs3(0, 0, 0)
-   for i := 0; i < q; i++ {
-       var x, y int
-       fmt.Fscan(in, &x, &y)
-       x--; y--
-       g := lca(x, y)
-       var ans int64
-       for _, u := range []int{x, y} {
-           cur := u
-           ans += dp[cur]
-           dif := h[cur] - h[g]
-           for i := 0; i < LG; i++ {
-               if dif&(1<<i) != 0 {
-                   ans += parsum[cur][i]
-                   cur = par[cur][i]
-               }
-           }
-       }
-       ans -= dp[g]
-       ans += dpu[g]
-       ans += a[g]
-       fmt.Fprintln(outBuf, ans)
-   }
+	// Use bufio for fast I/O
+	reader := bufio.NewReader(os.Stdin)
+
+	// Read n, x, y
+	fmt.Fscan(reader, &n, &x, &y)
+
+	// Basic validity check
+	if y%x != 0 {
+		fmt.Println(0)
+		return
+	}
+
+	// 1-based indexing for convenience to match C++ loop logic
+	a = make([]int64, n+1)
+	m := make(map[int64]int)
+	m2 := make(map[int64]int)
+
+	// Read array a and populate frequency maps
+	for i := 1; i <= n; i++ {
+		fmt.Fscan(reader, &a[i])
+		if a[i]%x == 0 {
+			val := gcd(a[i]/x, y/x)
+			m[val]++
+		}
+		if y%a[i] == 0 {
+			val := y / a[i]
+			m2[val]++
+		}
+	}
+
+	// Strategy selection based on map size
+	if len(m) > 5000 || len(m2) > 5000 {
+		spc()
+		return
+	}
+
+	// Small dataset strategy: Brute force pairs from maps
+	var ans int64 = 0
+	for k1, v1 := range m {
+		for k2, v2 := range m2 {
+			if gcd(k1, k2) == 1 {
+				ans += int64(v1) * int64(v2)
+			}
+		}
+	}
+	fmt.Println(ans)
 }

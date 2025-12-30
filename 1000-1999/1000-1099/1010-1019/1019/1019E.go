@@ -1,262 +1,298 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
-   "sort"
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
 )
 
-// form represents a linear function f(t) = a*t + b
-type form struct {
-   a, b int64
-}
-func (f form) eval(t int64) int64 { return f.a*t + f.b }
-func addForm(x, y form) form { return form{x.a + y.a, x.b + y.b} }
-func subForm(x, y form) form { return form{x.a - y.a, x.b - y.b} }
-func cross(x, y form) int64 { return x.a*y.b - x.b*y.a }
-// cross3 returns cross(b-a, c-a)
-func cross3(a, b, c form) int64 { return cross(subForm(b, a), subForm(c, a)) }
+// Constants adjusted for the binarization process (node count can double)
+const (
+	MaxN = 400010      // Maximum number of nodes after binarization
+	MaxM = MaxN << 1   // Maximum number of edges
+)
 
-// Edge of tree: to node and weight form
-type edge struct {
-   to int
-   f  form
+// Global Variables
+var (
+	n, m, s, tt, cc int
+	cnt             int
+	res             int
+	rt              int // Root edge index
+	
+	// Graph Arrays
+	hd   [MaxN]int
+	to   [MaxM]int
+	nxt  [MaxM]int
+	valA [MaxM]int
+	valB [MaxM]int
+	w    [MaxM]bool // Edge removed flag
+
+	// Algorithm Arrays
+	sz  [MaxN]int
+	v   [MaxN]int // Temp array for DFS children
+	
+	// Edge reconstruction buffer
+	g [MaxN]EdgeRec
+
+	// Convex Hull Arrays
+	P [MaxN]float64
+	Q [MaxN]float64
+	
+	pArr [MaxN]Line
+	qArr [MaxN]Line
+	eArr []Line // Dynamic slice for the global hull lines
+)
+
+// Structs
+type EdgeRec struct {
+	x, y, a, b int
 }
 
-// solver for centroid decomposition and convex hull
-type solver struct {
-   adj     [][]edge
-   m       int64
-   n       int
-   sts     []int
-   removed []bool
-   cands   []form
+type Line struct {
+	k, b int64
 }
 
-// calculate subtree sizes
-func (s *solver) calcSts(v, p int) {
-   s.sts[v] = 1
-   for _, e := range s.adj[v] {
-       if !s.removed[e.to] && e.to != p {
-           s.calcSts(e.to, v)
-           s.sts[v] += s.sts[e.to]
-       }
-   }
+// Lines implements sort.Interface for []Line
+type Lines []Line
+
+func (a Lines) Len() int           { return len(a) }
+func (a Lines) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a Lines) Less(i, j int) bool {
+	if a[i].k == a[j].k {
+		return a[i].b > a[j].b // If slopes equal, larger intercept comes first (to be kept)
+	}
+	return a[i].k < a[j].k
 }
-// find centroid
-func (s *solver) getCentroid(v, p, total int) int {
-   for _, e := range s.adj[v] {
-       if !s.removed[e.to] && e.to != p && s.sts[e.to]*2 > total {
-           return s.getCentroid(e.to, v, total)
-       }
-   }
-   return v
+
+// add inserts an undirected edge (u, v) with weights A, B
+func add(x, y, A, B int) {
+	tt++
+	to[tt] = y
+	nxt[tt] = hd[x]
+	valA[tt] = A
+	valB[tt] = B
+	hd[x] = tt
+
+	tt++
+	to[tt] = x
+	nxt[tt] = hd[y]
+	valA[tt] = A
+	valB[tt] = B
+	hd[y] = tt
 }
-// collect forms from v to leaves
-func (s *solver) getForms(v, p int, f form, out *[]form) {
-   leaf := true
-   for _, e := range s.adj[v] {
-       if !s.removed[e.to] && e.to != p {
-           leaf = false
-           s.getForms(e.to, v, addForm(f, e.f), out)
-       }
-   }
-   if leaf {
-       *out = append(*out, f)
-   }
+
+// chk determines if line b is redundant given lines a and c
+// Intersection of (b, c) <= Intersection of (a, b)
+func chk(a, b, c Line) bool {
+	return float64(c.b-b.b)/float64(b.k-c.k) <= float64(b.b-a.b)/float64(a.k-b.k)
 }
-// keep only maximal forms: build hull
-func keepMaximal(forms *[]form) {
-   a := *forms
-   sort.Slice(a, func(i, j int) bool {
-       if a[i].a != a[j].a {
-           return a[i].a < a[j].a
-       }
-       return a[i].b > a[j].b
-   })
-   // filter increasing a
-   w := make([]form, 0, len(a))
-   for i := range a {
-       if len(w) == 0 || a[i].a > w[len(w)-1].a {
-           w = append(w, a[i])
-       }
-   }
-   // filter decreasing b
-   w2 := make([]form, 0, len(w))
-   for i := range w {
-       for len(w2) > 0 && w[i].b >= w2[len(w2)-1].b {
-           w2 = w2[:len(w2)-1]
-       }
-       w2 = append(w2, w[i])
-   }
-   // convex hull
-   res := make([]form, 0, len(w2))
-   for _, f := range w2 {
-       for len(res) >= 2 && cross3(f, res[len(res)-2], res[len(res)-1]) >= 0 {
-           res = res[:len(res)-1]
-       }
-       res = append(res, f)
-   }
-   *forms = res
+
+// dfs performs ternary binarization of the tree
+// 
+// Transforms a multi-child node into a chain of dummy nodes to ensure edge degree <= 3
+func dfs(x, p int) {
+	// Recurse first
+	for i := hd[x]; i != 0; i = nxt[i] {
+		if to[i] != p {
+			dfs(to[i], x)
+		}
+	}
+
+	// Collect children edges
+	t := 0
+	lst := x
+	for i := hd[x]; i != 0; i = nxt[i] {
+		if to[i] != p {
+			t++
+			v[t] = i
+		}
+	}
+
+	// Rebuild edges into 'g' buffer
+	if t > 0 {
+		cc++
+		g[cc] = EdgeRec{x, to[v[1]], valA[v[1]], valB[v[1]]}
+		for i := 2; i < t; i++ {
+			cc++
+			n++ // Create dummy node
+			g[cc] = EdgeRec{lst, n, 0, 0}
+			lst = n
+			cc++
+			g[cc] = EdgeRec{lst, to[v[i]], valA[v[i]], valB[v[i]]}
+		}
+		if t > 1 {
+			cc++
+			g[cc] = EdgeRec{lst, to[v[t]], valA[v[t]], valB[v[t]]}
+		}
+	}
 }
-// formRange associates form with its valid t range [l,r]
-type formRange struct {
-   f      form
-   l, r   int64
+
+// gtrt finds the centroid edge to split the tree
+func gtrt(x, p int) {
+	sz[x] = 1
+	for i := hd[x]; i != 0; i = nxt[i] {
+		y := to[i]
+		if y != p && !w[i] {
+			gtrt(y, x)
+			sz[x] += sz[y]
+			tVal := sz[y]
+			if s-sz[y] > tVal {
+				tVal = s - sz[y]
+			}
+			if tVal < res {
+				res = tVal
+				rt = i
+			}
+		}
+	}
 }
-// create formRanges from hull forms
-func (s *solver) formAndRanges(forms []form) []formRange {
-   k := len(forms)
-   fr := make([]formRange, k)
-   for i := 0; i < k; i++ {
-       fr[i].f = forms[i]
-       if i == 0 {
-           fr[i].l = 0
-       } else {
-           fr[i].l = fr[i-1].r
-       }
-       if i+1 < k {
-           // solve forms[i].eval(t) >= forms[i+1].eval(t)
-           num := forms[i].b - forms[i+1].b
-           den := forms[i+1].a - forms[i].a
-           t := num / den
-           if t > s.m-1 {
-               t = s.m - 1
-           }
-           fr[i].r = t
-       } else {
-           fr[i].r = s.m - 1
-       }
-   }
-   return fr
+
+// gtd collects all paths from node x in the current subtree
+func gtd(x, p, t int, sArr []Line, tp *int, s1, s2 int64) {
+	if t != 0 {
+		*tp++
+		sArr[*tp] = Line{s1, s2}
+	}
+	for i := hd[x]; i != 0; i = nxt[i] {
+		y := to[i]
+		if y != p && !w[i] {
+			gtd(y, x, valA[i]+valB[i], sArr, tp, s1+int64(valA[i]), s2+int64(valB[i]))
+		}
+	}
 }
-// add pair sums between two formRange lists
-func (s *solver) addPairs(a, b []formRange) {
-   j := 0
-   for i := range a {
-       for j < len(b) && b[j].r < a[i].l {
-           j++
-       }
-       for k := j; k < len(b) && b[k].l <= a[i].r; k++ {
-           s.cands = append(s.cands, addForm(a[i].f, b[k].f))
-       }
-   }
+
+// build constructs the upper convex hull from a set of lines
+func build(sArr []Line, intersect []float64, tp *int, f bool) {
+	// Sort lines by slope k
+	slice := sArr[1 : *tp+1]
+	sort.Sort(Lines(slice))
+
+	t := 0
+	// Graham scan-like algorithm to maintain upper envelope
+	for i := 0; i < len(slice); i++ {
+		ln := slice[i]
+		if i == 0 || ln.k != sArr[t].k {
+			for t > 1 && chk(sArr[t-1], sArr[t], ln) {
+				t--
+			}
+			t++
+			sArr[t] = ln
+		}
+	}
+	*tp = t
+	if f {
+		for i := 1; i < *tp; i++ {
+			intersect[i] = float64(sArr[i].b-sArr[i+1].b) / float64(sArr[i+1].k-sArr[i].k)
+		}
+	}
 }
-// process centroid c
-func (s *solver) solveC(c int) {
-   var formsList [][]form
-   for _, e := range s.adj[c] {
-       if s.removed[e.to] {
-           continue
-       }
-       var forms []form
-       s.getForms(e.to, c, e.f, &forms)
-       formsList = append(formsList, forms)
-   }
-   var rangesList [][]formRange
-   for _, forms := range formsList {
-       keepMaximal(&forms)
-       fr := s.formAndRanges(forms)
-       for _, f := range forms {
-           s.cands = append(s.cands, f)
-       }
-       rangesList = append(rangesList, fr)
-   }
-   // pairs between subtrees
-   for i := 0; i < len(rangesList); i++ {
-       for j := i + 1; j < len(rangesList); j++ {
-           s.addPairs(rangesList[i], rangesList[j])
-       }
-   }
+
+// sol is the main recursive solver (Edge Divide and Conquer)
+func sol(x int) {
+	if sz[x] == 1 {
+		return
+	}
+	s = sz[x]
+	res = 1 << 30
+	gtrt(x, 0)
+
+	// Mark edge as removed
+	edgeIdx := rt
+	w[edgeIdx] = true
+	w[edgeIdx^1] = true
+	
+	nodeA := to[edgeIdx]
+	nodeB := to[edgeIdx^1]
+
+	// Update sizes for recursion
+	if sz[nodeA] < sz[nodeB] {
+		sz[nodeB] = s - sz[nodeA]
+	} else {
+		sz[nodeA] = s - sz[nodeB]
+	}
+
+	// Collect paths from both sides
+	s1Cnt := 0
+	s2Cnt := 0
+	gtd(nodeA, nodeB, 1, pArr[:], &s1Cnt, int64(valA[edgeIdx]), int64(valB[edgeIdx]))
+	gtd(nodeB, nodeA, 1, qArr[:], &s2Cnt, 0, 0)
+
+	// Build hulls for merging
+	build(pArr[:], P[:], &s1Cnt, true)
+	build(qArr[:], Q[:], &s2Cnt, true)
+
+	// Minkowski Sum-like merge of two convex hulls
+	// Adds valid combined lines to the global list eArr
+	j := 1
+	for i := 1; i <= s1Cnt; i++ {
+		for {
+			cnt++
+			if cnt >= len(eArr) {
+				// Expand slice if needed
+				newE := make([]Line, len(eArr)*2)
+				copy(newE, eArr)
+				eArr = newE
+			}
+			eArr[cnt] = Line{pArr[i].k + qArr[j].k, pArr[i].b + qArr[j].b}
+
+			if j == s2Cnt {
+				break
+			}
+			// Compare intersection points to advance pointers
+			if i < s1Cnt && P[i] < Q[j] {
+				break
+			}
+			j++
+		}
+	}
+
+	sol(nodeA)
+	sol(nodeB)
 }
-// recursive solve
-func (s *solver) solve(v int) {
-   s.calcSts(v, -1)
-   c := s.getCentroid(v, -1, s.sts[v])
-   s.solveC(c)
-   s.removed[c] = true
-   for _, e := range s.adj[c] {
-       if !s.removed[e.to] {
-           s.solve(e.to)
-       }
-   }
-}
-// ensure degree <=3 by expanding
-func expand(v, p int, adj [][]edge, adj2 *[][]edge) int {
-   newV := len(*adj2)
-   *adj2 = append(*adj2, nil)
-   var children []struct{ node int; f form }
-   for _, e := range adj[v] {
-       if e.to == p {
-           continue
-       }
-       u := expand(e.to, v, adj, adj2)
-       children = append(children, struct{ node int; f form }{u, e.f})
-   }
-   // split if more than 2 children
-   for len(children) > 2 {
-       ca := children[len(children)-1]
-       cb := children[len(children)-2]
-       children = children[:len(children)-2]
-       join := len(*adj2)
-       *adj2 = append(*adj2, nil)
-       // connect ca
-       (*adj2)[join] = append((*adj2)[join], edge{ca.node, ca.f})
-       (*adj2)[ca.node] = append((*adj2)[ca.node], edge{join, ca.f})
-       // connect cb
-       (*adj2)[join] = append((*adj2)[join], edge{cb.node, cb.f})
-       (*adj2)[cb.node] = append((*adj2)[cb.node], edge{join, cb.f})
-       // add to children
-       children = append(children, struct{ node int; f form }{join, form{0, 0}})
-   }
-   // connect remaining to newV
-   for _, ch := range children {
-       *adj2[newV] = append(*adj2[newV], edge{ch.node, ch.f})
-       *adj2[ch.node] = append(*adj2[ch.node], edge{newV, ch.f})
-   }
-   return newV
-}
+
 func main() {
-   in := bufio.NewReader(os.Stdin)
-   out := bufio.NewWriter(os.Stdout)
-   defer out.Flush()
-   var n int
-   var m int64
-   fmt.Fscan(in, &n, &m)
-   adj := make([][]edge, n)
-   for i := 0; i < n-1; i++ {
-       var u, v int
-       var a, b int64
-       fmt.Fscan(in, &u, &v, &a, &b)
-       u--, v--
-       f := form{a, b}
-       adj[u] = append(adj[u], edge{v, f})
-       adj[v] = append(adj[v], edge{u, f})
-   }
-   // expand to adj2
-   var adj2 [][]edge
-   expand(0, -1, adj, &adj2)
-   s := &solver{
-       adj:     adj2,
-       m:       m,
-       n:       len(adj2),
-       sts:     make([]int, len(adj2)),
-       removed: make([]bool, len(adj2)),
-   }
-   s.solve(0)
-   // add zero form
-   s.cands = append(s.cands, form{0, 0})
-   keepMaximal(&s.cands)
-   // output
-   idx := 0
-   for t := int64(0); t < m; t++ {
-       for idx+1 < len(s.cands) && s.cands[idx+1].eval(t) > s.cands[idx].eval(t) {
-           idx++
-       }
-       if t > 0 {
-           out.WriteByte(' ')
-       }
-       fmt.Fprint(out, s.cands[idx].eval(t))
-   }
-   out.WriteByte('\n')
+	// Standard IO setup
+	reader := bufio.NewReader(os.Stdin)
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
+
+	fmt.Fscan(reader, &n, &m)
+	eArr = make([]Line, MaxN*20) // Initial allocation
+
+	for i := 1; i < n; i++ {
+		var u, v, x, y int
+		fmt.Fscan(reader, &u, &v, &x, &y)
+		add(u, v, x, y)
+	}
+
+	// 1. Transform tree
+	dfs(1, 0)
+
+	// 2. Rebuild graph with new edges
+	tt = 1
+	for i := 0; i < len(hd); i++ {
+		hd[i] = 0
+	}
+	for i := 1; i <= cc; i++ {
+		add(g[i].x, g[i].y, g[i].a, g[i].b)
+	}
+
+	// 3. Solve
+	sz[1] = n
+	sol(1)
+
+	// 4. Build final global hull
+	build(eArr, P[:], &cnt, false)
+
+	// 5. Answer queries
+	// Since queries x=0..m-1 are monotonic, we can just advance pointer j
+	j := 1
+	for i := 0; i < m; i++ {
+		queryX := int64(i)
+		for j < cnt && (eArr[j].k*queryX+eArr[j].b < eArr[j+1].k*queryX+eArr[j+1].b) {
+			j++
+		}
+		fmt.Fprintf(writer, "%d ", eArr[j].k*queryX+eArr[j].b)
+	}
+}
