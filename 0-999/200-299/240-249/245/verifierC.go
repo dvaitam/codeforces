@@ -80,7 +80,7 @@ func generateCase(rng *rand.Rand) (string, string) {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", n))
 	for i := 1; i <= n; i++ {
-		a[i] = rng.Intn(5)
+		a[i] = rng.Intn(5) + 1 // Fixed: a[i] >= 1
 		sb.WriteString(fmt.Sprintf("%d", a[i]))
 		if i < n {
 			sb.WriteByte(' ')

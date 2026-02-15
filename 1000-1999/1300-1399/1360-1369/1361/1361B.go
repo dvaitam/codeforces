@@ -36,46 +36,45 @@ func main() {
 		for i := 0; i < n; i++ {
 			fmt.Fscan(in, &exps[i])
 		}
-		sort.Slice(exps, func(i, j int) bool { return exps[i] > exps[j] })
 		if p == 1 {
-			if n%2 == 0 {
-				fmt.Fprintln(out, 0)
-			} else {
-				fmt.Fprintln(out, 1)
-			}
+			fmt.Fprintln(out, n%2)
 			continue
 		}
-		const inf = 1000000
-		diff := 0
-		curExp := 0
-		var ans int64
+		
+		sort.Slice(exps, func(i, j int) bool { return exps[i] > exps[j] })
+		
+		var ans int64 = 0
+		var diff int64 = 0 
+		var curExp int = 0
+		const inf int64 = 1000005 
+
 		for i, k := range exps {
-			if diff == 0 {
+			if i == 0 {
+				ans = powMod(p, int64(k))
 				diff = 1
 				curExp = k
-				ans = powMod(p, int64(k))
 				continue
 			}
-			for diff < inf && curExp > k {
-				diff *= int(p)
+
+			for curExp > k {
 				if diff >= inf {
+					curExp = k
 					break
 				}
-				ans = ans * p % mod
+				diff *= p
 				curExp--
 			}
-			if diff >= inf {
-				// Difference is already huge, just subtract remaining contributions
-				for j := i; j < n; j++ {
-					ans = (ans - powMod(p, int64(exps[j]))%mod + mod) % mod
-				}
-				diff = 0
-				break
+
+			if diff > 0 {
+				diff--
+				term := powMod(p, int64(k))
+				ans = (ans - term + mod) % mod
+			} else {
+				diff++
+				term := powMod(p, int64(k))
+				ans = (ans + term) % mod
 			}
-			diff--
-			ans = (ans - powMod(p, int64(k))%mod + mod) % mod
-			curExp = k
 		}
-		fmt.Fprintln(out, (ans%mod+mod)%mod)
+		fmt.Fprintln(out, ans)
 	}
 }

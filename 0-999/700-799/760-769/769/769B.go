@@ -18,8 +18,8 @@ func main() {
    if _, err := fmt.Fscan(reader, &n); err != nil {
        return
    }
-   // total nodes N = n+1
-   N := n + 1
+   // total nodes N = n
+   N := n
    // read first node
    var firstF int
    fmt.Fscan(reader, &firstF)
@@ -31,8 +31,8 @@ func main() {
    q := make([]pair, 0, N)
    q = append(q, pair{firstF, 1})
    // read remaining nodes
-   a := make([]pair, n)
-   for i := 0; i < n; i++ {
+   a := make([]pair, n-1)
+   for i := 0; i < n-1; i++ {
        fmt.Fscan(reader, &a[i].F)
        a[i].S = i + 2
    }

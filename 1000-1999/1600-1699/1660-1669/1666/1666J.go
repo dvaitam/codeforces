@@ -47,6 +47,15 @@ func main() {
 		return pref[x2][y2] - pref[x1-1][y2] - pref[x2][y1-1] + pref[x1-1][y1-1]
 	}
 
+	getW := func(l, r int) int64 {
+		if l > r {
+			return 0
+		}
+		totalRows := pref[r][n] - pref[l-1][n]
+		internal := sumRect(l, r, l, r)
+		return totalRows - internal
+	}
+
 	dp := make([][]int64, n+2)
 	root := make([][]int, n+2)
 	for i := range dp {
@@ -68,9 +77,9 @@ func main() {
 			for k := l; k <= r; k++ {
 				left := dp[l][k-1]
 				right := dp[k+1][r]
-				edgeLeft := sumRect(l, k-1, k, r)
-				edgeRight := sumRect(l, k, k+1, r)
-				total := left + right + edgeLeft + edgeRight
+				costLeft := getW(l, k-1)
+				costRight := getW(k+1, r)
+				total := left + right + costLeft + costRight
 				if total < dp[l][r] {
 					dp[l][r] = total
 					root[l][r] = k

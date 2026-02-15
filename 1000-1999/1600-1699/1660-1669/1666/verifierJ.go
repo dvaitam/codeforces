@@ -4,14 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"time"
 )
-
-const refSource = "1000-1999/1600-1699/1660-1669/1666/1666J.go"
 
 func main() {
 	if len(os.Args) != 2 {
@@ -20,17 +20,11 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	inputData, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		fail("failed to read input: %v", err)
-	}
-	if len(inputData) == 0 {
-		fail("empty input")
-	}
+	inputData := generateTestCase()
 
 	n, matrix, err := parseInput(inputData)
 	if err != nil {
-		fail("failed to parse input: %v", err)
+		fail("failed to parse generated input: %v", err)
 	}
 
 	refBin, err := buildReference()
@@ -66,10 +60,44 @@ func main() {
 	}
 
 	if candCost != refCost {
+		fmt.Printf("Input:\n%s\n", string(inputData))
+		fmt.Printf("Reference Output:\n%s\n", refOut)
+		fmt.Printf("Candidate Output:\n%s\n", candOut)
 		fail("cost mismatch: expected %d got %d", refCost, candCost)
 	}
 
 	fmt.Println("OK")
+}
+
+func generateTestCase() []byte {
+	rand.Seed(time.Now().UnixNano())
+	n := rand.Intn(50) + 1 // Use smaller N for faster testing, or up to 200
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "%d\n", n)
+
+	matrix := make([][]int, n)
+	for i := 0; i < n; i++ {
+		matrix[i] = make([]int, n)
+	}
+
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			val := rand.Intn(1000) // Random cost
+			matrix[i][j] = val
+			matrix[j][i] = val
+		}
+	}
+
+	for i := 0; i < n; i++ {
+		for j := 0; j < n; j++ {
+			fmt.Fprintf(&buf, "%d", matrix[i][j])
+			if j < n-1 {
+				fmt.Fprint(&buf, " ")
+			}
+		}
+		fmt.Fprintln(&buf)
+	}
+	return buf.Bytes()
 }
 
 func parseInput(data []byte) (int, [][]int64, error) {
@@ -94,13 +122,20 @@ func parseInput(data []byte) (int, [][]int64, error) {
 }
 
 func buildReference() (string, error) {
+	_, currentFile, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", fmt.Errorf("failed to determine current file path")
+	}
+	dir := filepath.Dir(currentFile)
+	refSource := filepath.Join(dir, "1666J.go")
+
 	tmp, err := os.CreateTemp("", "1666J-ref-*")
 	if err != nil {
 		return "", err
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), refSource)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

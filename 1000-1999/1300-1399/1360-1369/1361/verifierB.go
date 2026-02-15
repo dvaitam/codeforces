@@ -7,18 +7,22 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 )
 
 func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+	_, currentFile, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", fmt.Errorf("failed to determine current file path")
 	}
-	oracle := filepath.Join(dir, "oracleB")
-	cmd := exec.Command("go", "build", "-o", oracle, "1361B.go")
+	dir := filepath.Dir(currentFile)
+	oracleSource := filepath.Join(dir, "1361B.go")
+	
+	oracle := filepath.Join(os.TempDir(), fmt.Sprintf("oracleB-%d", time.Now().UnixNano()))
+	cmd := exec.Command("go", "build", "-o", oracle, oracleSource)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}

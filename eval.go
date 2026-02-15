@@ -64,6 +64,7 @@ func main() {
 	httpTimeout := flag.Duration("timeout", 120*time.Second, "HTTP request timeout")
 	language := flag.String("lang", "go", "Programming language to generate the solution in")
 	useResponses := flag.Bool("use-responses", false, "Use the responses endpoint instead of chat for compatible providers/models")
+	numProblems := flag.Int("problems", 50, "Number of problems to evaluate (1-500)")
 	flag.Parse()
 	lang := strings.ToLower(*language)
 	switch lang {
@@ -78,6 +79,10 @@ func main() {
 
 	if *maxAttempts < 1 || *maxAttempts > 5 {
 		fmt.Println("max-attempts must be between 1 and 5")
+		os.Exit(1)
+	}
+	if *numProblems < 1 || *numProblems > 500 {
+		fmt.Println("problems must be between 1 and 500")
 		os.Exit(1)
 	}
 
@@ -161,7 +166,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	estimatedRating := 800
-	for i := 0; i < 50; i++ {
+	for i := 0; i < *numProblems; i++ {
 		actualRating := clampToNearest(estimatedRating, availableRatings)
 		fmt.Printf("Attempt %d: Targeting estimated %d (using actual rating %d)\n", i+1, estimatedRating, actualRating)
 		problem, verifierFile := getRandomProblem(db, actualRating)

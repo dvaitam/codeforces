@@ -140,16 +140,16 @@ func solve(n, m int) int64 {
 	for i := m; i > 0; i-- {
 		ifac[i-1] = ifac[i] * int64(i) % mod
 	}
-	N := m - 2
-	K := n - 3
-	cmb := int64(0)
-	if K >= 0 && N >= K {
-		cmb = fac[N] * ifac[K] % mod * ifac[N-K] % mod
+
+	// Formula: nCr(m, n-1) * (n-2) * 2^(n-3)
+	if n-1 > m {
+		return 0
 	}
-	inv2 := (mod + 1) / 2
-	x := int64(m) * int64(m-1) % mod * int64(inv2) % mod
+	cmb := fac[m] * ifac[n-1] % mod * ifac[m-(n-1)] % mod
+	term2 := int64(n - 2)
 	pow2 := modpow(2, int64(n-3))
-	return x * cmb % mod * pow2 % mod
+
+	return cmb * term2 % mod * pow2 % mod
 }
 
 type testCase struct {
