@@ -245,8 +245,9 @@ func main() {
 			os.Exit(1)
 		}
 		pos++
-		expected := solveCase(tc.arr)
-		for _, e := range expected {
+		n := len(tc.arr)
+		uf := newDSU(n)
+		for x := 1; x <= n-1; x++ {
 			if pos+1 >= len(outFields) {
 				fmt.Printf("case %d missing edges\n", i+1)
 				os.Exit(1)
@@ -254,10 +255,29 @@ func main() {
 			u, _ := strconv.Atoi(outFields[pos])
 			v, _ := strconv.Atoi(outFields[pos+1])
 			pos += 2
-			if u != e[0]+1 || v != e[1]+1 {
-				fmt.Printf("case %d edge mismatch\nexpected: %d %d\ngot: %d %d\n", i+1, e[0]+1, e[1]+1, u, v)
+			if u < 1 || u > n || v < 1 || v > n || u == v {
+				fmt.Printf("case %d invalid edge %d %d\n", i+1, u, v)
 				os.Exit(1)
 			}
+			diff := tc.arr[u-1] - tc.arr[v-1]
+			if diff < 0 {
+				diff = -diff
+			}
+			if diff%x != 0 {
+				fmt.Printf("case %d condition failed: diff %d not divisible by %d\n", i+1, diff, x)
+				os.Exit(1)
+			}
+			uf.union(u-1, v-1)
+		}
+		comps := 0
+		for j := 0; j < n; j++ {
+			if uf.find(j) == j {
+				comps++
+			}
+		}
+		if comps > 1 {
+			fmt.Printf("case %d not connected\n", i+1)
+			os.Exit(1)
 		}
 	}
 	if pos != len(outFields) {

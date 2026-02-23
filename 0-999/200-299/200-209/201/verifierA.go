@@ -3,25 +3,25 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
-	"time"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+// expectedAnswer returns the minimum n for the given sharpness x,
+// using the same formula as the reference solution.
+func expectedAnswer(x int) int {
+	if x == 3 {
+		return 5
 	}
-	oracle := filepath.Join(dir, "oracleA")
-	cmd := exec.Command("go", "build", "-o", oracle, "201A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	for i := 0; i < 100; i++ {
+		odd := 2*i + 1
+		acc := (odd/2)*odd + (odd/2) + 1
+		if x <= acc {
+			return odd
+		}
 	}
-	return oracle, nil
+	return -1
 }
 
 func runBinary(bin, input string) (string, error) {
@@ -42,39 +42,24 @@ func runBinary(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func generateCase(rng *rand.Rand) string {
-	x := rng.Intn(100) + 1
-	return fmt.Sprintf("%d\n", x)
-}
-
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierA.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 100; i++ {
-		tc := generateCase(rng)
-		expected, err := runBinary(oracle, tc)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle failed on case %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
+	// Test all 100 possible inputs exhaustively.
+	for x := 1; x <= 100; x++ {
+		tc := fmt.Sprintf("%d\n", x)
+		expected := fmt.Sprintf("%d", expectedAnswer(x))
 		got, err := runBinary(bin, tc)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, tc)
+			fmt.Fprintf(os.Stderr, "x=%d failed: %v\ninput:\n%s", x, err, tc)
 			os.Exit(1)
 		}
 		if expected != strings.TrimSpace(got) {
-			fmt.Fprintf(os.Stderr, "case %d wrong answer\nexpected: %s\ngot: %s\ninput:\n%s", i+1, expected, got, tc)
+			fmt.Fprintf(os.Stderr, "x=%d wrong answer\nexpected: %s\ngot: %s\n", x, expected, got)
 			os.Exit(1)
 		}
 	}

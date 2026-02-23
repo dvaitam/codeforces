@@ -134,11 +134,8 @@ func generateTests() []testCase {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for len(tests) < 40 {
 		n := rng.Intn(15) + 1
-		k := rng.Intn(n / 2 * 3)
-		arrs := [][]int{
-			randArray(rng, n),
-		}
-		tests = append(tests, buildTest(randArray(rng, n), k, arrs))
+		k := rng.Intn(n)
+		tests = append(tests, buildTest(randArray(rng, n), k, nil))
 	}
 	return tests
 }
@@ -146,7 +143,7 @@ func generateTests() []testCase {
 func randArray(rng *rand.Rand, n int) []int {
 	arr := make([]int, n)
 	for i := range arr {
-		arr[i] = rng.Intn(3)
+		arr[i] = rng.Intn(n) + 1
 	}
 	return arr
 }

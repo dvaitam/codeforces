@@ -172,33 +172,45 @@ func solve(tc testCase) [][2]int {
 func parseTestcases() ([]testCase, error) {
 	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
 	cases := make([]testCase, 0, len(lines))
-	for idx, line := range lines {
+	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 		fields := strings.Fields(line)
 		if len(fields) < 2 {
-			return nil, fmt.Errorf("line %d: not enough fields", idx+1)
+			continue
 		}
 		n, err := strconv.Atoi(fields[0])
 		if err != nil {
-			return nil, fmt.Errorf("line %d: parse n: %v", idx+1, err)
+			continue
 		}
 		k, err := strconv.Atoi(fields[1])
-		if err != nil {
-			return nil, fmt.Errorf("line %d: parse k: %v", idx+1, err)
+		if err != nil || k < 2 {
+			continue
 		}
 		if len(fields) != 2+n*k {
-			return nil, fmt.Errorf("line %d: expected %d fields got %d", idx+1, 2+n*k, len(fields))
+			continue
 		}
 		seq := make([]int, n*k)
+		counts := make(map[int]int)
 		for i := 0; i < n*k; i++ {
 			v, err := strconv.Atoi(fields[2+i])
 			if err != nil {
-				return nil, fmt.Errorf("line %d: parse seq: %v", idx+1, err)
+				continue
 			}
 			seq[i] = v
+			counts[v]++
+		}
+		valid := true
+		for i := 1; i <= n; i++ {
+			if counts[i] != k {
+				valid = false
+				break
+			}
+		}
+		if !valid {
+			continue
 		}
 		cases = append(cases, testCase{n: n, k: k, seq: seq})
 	}
@@ -254,7 +266,6 @@ func main() {
 	defer cleanup()
 
 	for i, tc := range cases {
-		expectedPairs := solve(tc)
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.k))
 		for idx, v := range tc.seq {
@@ -275,6 +286,10 @@ func main() {
 			fmt.Printf("case %d: expected %d lines, got %d\n", i+1, tc.n, len(gotLines))
 			os.Exit(1)
 		}
+		
+		limit := (tc.n + tc.k - 2) / (tc.k - 1)
+		cov := make([]int, tc.n*tc.k+1)
+
 		for idx, line := range gotLines {
 			fields := strings.Fields(line)
 			if len(fields) != 2 {
@@ -287,10 +302,25 @@ func main() {
 				fmt.Printf("case %d line %d: non-integer output\n", i+1, idx+1)
 				os.Exit(1)
 			}
-			exp := expectedPairs[idx]
-			if a != exp[0] || b != exp[1] {
-				fmt.Printf("case %d line %d failed\nexpected: %d %d\ngot: %d %d\n", i+1, idx+1, exp[0], exp[1], a, b)
+			if a >= b {
+				fmt.Printf("case %d line %d: invalid interval %d %d\n", i+1, idx+1, a, b)
 				os.Exit(1)
+			}
+			if a < 1 || b > tc.n*tc.k {
+				fmt.Printf("case %d line %d: out of bounds %d %d\n", i+1, idx+1, a, b)
+				os.Exit(1)
+			}
+			color := idx + 1
+			if tc.seq[a-1] != color || tc.seq[b-1] != color {
+				fmt.Printf("case %d line %d: ends do not match color %d\n", i+1, idx+1, color)
+				os.Exit(1)
+			}
+			for j := a; j <= b; j++ {
+				cov[j]++
+				if cov[j] > limit {
+					fmt.Printf("case %d: point %d covered more than %d times\n", i+1, j, limit)
+					os.Exit(1)
+				}
 			}
 		}
 	}

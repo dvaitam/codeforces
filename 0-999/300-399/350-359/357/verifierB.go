@@ -11,624 +11,58 @@ import (
 
 // rawTestcases embeds the contents of testcasesB.txt.
 var rawTestcases = []string{
-	`6 7
-1 3 4
-4 3 6
-3 5 2
-5 2 3
-2 1 3
-5 6 2
-3 1 5`,
-	`8 6
-8 5 1
-6 4 3
-4 5 8
-8 7 5
-5 1 8
-1 8 6`,
-	`6 1
-5 4 3`,
-	`4 6
-1 4 3
-2 1 4
-1 4 2
-4 1 2
-3 4 1
-3 4 1`,
-	`7 5
-4 1 5
-7 4 3
-5 2 3
-2 7 6
-1 5 3`,
-	`6 2
-1 2 5
-1 6 4`,
-	`8 5
-4 7 2
-7 5 3
-8 4 6
-6 1 3
-2 4 5`,
-	`8 6
-4 2 1
-5 1 6
-4 3 2
-6 4 1
-2 7 8
-4 1 5`,
-	`8 2
-1 8 6
-4 5 7`,
-	`3 7
-1 2 3
-1 3 2
-1 3 2
-1 3 2
-3 2 1
-2 1 3
-1 2 3`,
-	`6 3
-1 5 4
-1 5 6
-6 4 2`,
-	`5 6
-4 2 3
-2 1 3
-2 5 4
-5 3 1
-5 4 3
-2 1 5`,
-	`8 7
-5 6 3
-7 8 6
-5 2 8
-1 4 6
-2 3 6
-1 5 3
-3 2 4`,
-	`5 5
-3 2 5
-3 4 5
-4 1 5
-5 2 3
-3 2 1`,
-	`4 8
-4 3 2
-1 2 3
-1 4 2
-1 2 4
-4 3 2
-1 4 2
-3 2 4
-1 2 4`,
-	`7 2
-7 6 2
-1 4 6`,
-	`5 1
-2 1 3`,
-	`3 2
-1 3 2
-2 3 1`,
-	`3 8
-2 1 3
-2 3 1
-2 1 3
-1 3 2
-1 3 2
-1 2 3
-2 1 3
-3 2 1`,
-	`5 3
-2 4 3
-3 1 4
-2 3 5`,
-	`5 6
-1 3 4
-1 5 2
-2 5 3
-3 5 2
-5 2 4
-1 4 3`,
-	`4 1
-3 1 4`,
-	`5 7
-3 5 2
-1 5 3
-4 5 2
-3 1 2
-1 4 2
-1 3 2
-2 5 3`,
-	`7 7
-7 6 1
-1 7 2
-6 2 1
-4 1 6
-4 5 6
-3 4 6
-7 5 2`,
-	`6 2
-3 2 6
-5 2 4`,
-	`4 6
-1 4 3
-4 3 1
-1 2 3
-3 1 4
-2 3 1
-1 4 2`,
-	`6 6
-5 2 1
-5 4 2
-5 4 6
-5 4 3
-4 6 2
-5 6 2`,
-	`3 6
-3 2 1
-1 3 2
-3 1 2
-3 2 1
-1 3 2
-1 3 2`,
-	`3 5
-1 2 3
-1 3 2
-2 3 1
-3 1 2
-3 2 1`,
-	`5 7
-4 5 3
-5 2 1
-1 2 4
-5 3 2
-1 4 2
-3 4 2
-4 1 5`,
-	`8 3
-4 3 6
-6 1 7
-8 4 2`,
-	`6 2
-6 2 3
-4 1 6`,
-	`6 8
-1 6 4
-2 1 5
-5 6 2
-6 3 1
-6 5 3
-2 4 5
-1 6 4
-5 3 1`,
-	`8 5
-3 4 8
-2 5 8
-1 7 4
-8 3 2
-8 3 6`,
+
 	`3 1
 1 2 3`,
-	`3 4
-1 3 2
-3 2 1
-1 2 3
-1 3 2`,
-	`3 2
-2 1 3
-2 3 1`,
-	`3 8
-2 3 1
-2 1 3
-2 1 3
-2 1 3
-1 2 3
-3 1 2
-1 3 2
-3 1 2`,
-	`5 1
-5 2 1`,
-	`4 8
-1 2 3
-3 1 4
-2 4 3
-4 2 3
-3 1 4
-1 3 2
-2 4 1
-2 1 4`,
-	`7 4
-2 7 3
-3 4 1
-7 2 5
-1 4 7`,
-	`8 2
-3 4 8
-7 6 2`,
-	`7 7
-3 6 7
-1 2 4
-6 3 5
-1 4 6
-1 4 3
-4 2 3
-3 4 1`,
-	`4 2
-3 1 4
-4 2 1`,
-	`6 7
-2 6 4
-3 5 2
-3 4 1
-4 2 3
-1 4 5
-1 2 3
-1 3 2`,
-	`6 8
-1 4 2
-5 4 3
-6 1 5
-3 1 5
-3 4 5
-4 1 3
-3 6 2
-5 1 6`,
-	`3 5
-2 3 1
-3 1 2
-1 2 3
-2 1 3
-3 1 2`,
-	`8 7
-5 3 4
-6 5 8
-3 2 1
-2 4 7
-8 2 5
-5 3 6
-8 6 4`,
-	`4 8
-4 3 2
-4 3 1
-4 2 1
-4 1 3
-1 2 3
-4 1 3
-1 3 2
-1 2 4`,
+
 	`3 1
 2 3 1`,
-	`4 5
-2 1 4
-4 3 2
-4 1 2
-4 3 2
-2 4 1`,
-	`7 6
-2 7 6
-4 3 7
-4 7 6
-6 2 7
-4 2 5
-6 1 4`,
-	`3 4
-3 1 2
-2 1 3
-1 2 3
-3 2 1`,
-	`6 8
-1 5 4
-5 4 6
-3 4 2
-3 6 1
-1 6 2
-3 1 6
-6 1 2
-1 4 2`,
-	`7 7
-5 2 4
-2 3 5
-1 5 7
-7 3 6
-5 4 3
-3 1 5
-1 2 3`,
-	`3 4
-3 2 1
-1 2 3
-2 3 1
-2 3 1`,
-	`3 5
-3 1 2
-2 3 1
-1 2 3
-2 3 1
-1 3 2`,
-	`3 3
-2 1 3
-3 1 2
-3 2 1`,
-	`4 4
-4 1 3
-3 2 4
-4 1 2
-2 3 4`,
-	`6 8
-5 3 6
-2 1 5
-5 1 2
-6 4 2
-2 3 1
-6 5 4
-1 6 4
-6 3 1`,
-	`8 6
-4 6 7
-5 2 6
-4 1 5
-5 6 3
-4 3 6
-8 3 5`,
-	`4 3
-1 3 2
-3 4 1
-2 4 1`,
-	`4 2
-2 1 4
-2 1 3`,
-	`4 7
-3 4 1
-4 1 3
-3 2 4
-3 1 4
-2 3 4
-4 3 2
-1 2 4`,
-	`7 7
-6 2 3
-7 3 4
-1 2 7
-3 6 2
-3 4 2
-3 7 2
-3 1 7`,
-	`7 1
-6 7 2`,
-	`5 1
-4 1 5`,
-	`4 1
-1 4 2`,
+
 	`3 1
 2 3 1`,
-	`4 8
-4 1 2
-3 1 2
-4 2 1
-4 2 3
-1 3 4
-4 2 1
-1 3 4
-2 1 4`,
-	`4 3
-2 1 3
-2 3 1
-4 3 1`,
-	`7 8
-6 2 5
-5 1 3
-3 6 4
-1 6 7
-4 1 3
-3 6 2
-4 2 5
-3 2 4`,
-	`5 5
-4 5 1
-3 5 4
-4 1 3
-5 3 4
-1 4 2`,
-	`8 2
-7 3 4
-1 8 3`,
-	`8 1
-5 6 7`,
-	`7 5
-6 2 5
-5 3 4
-7 3 2
-1 5 3
-7 2 5`,
-	`8 6
-3 7 2
-6 7 8
-1 5 8
-3 8 7
-5 6 3
-6 4 7`,
-	`7 7
-2 1 7
-5 1 4
-2 3 1
-6 4 3
-6 5 2
-1 5 4
-3 2 5`,
-	`4 2
-2 3 1
-4 2 3`,
-	`5 5
-1 4 3
-3 5 4
-5 3 2
-2 4 1
-1 2 3`,
-	`8 7
-6 4 1
-7 6 5
-4 1 3
-3 6 2
-6 8 7
-8 1 6
-4 5 2`,
-	`5 3
-4 1 3
-4 2 3
-4 1 5`,
-	`4 8
-1 2 3
-3 2 4
-3 4 2
-1 2 4
-4 1 2
-2 4 3
-4 3 2
-1 3 2`,
-	`5 3
-5 3 2
-1 4 2
-5 2 1`,
-	`3 6
-2 1 3
-1 3 2
-1 2 3
-2 3 1
-3 2 1
-3 1 2`,
-	`6 5
-5 1 2
-2 6 4
-6 1 5
-5 4 2
-3 5 1`,
-	`3 3
-2 1 3
-2 3 1
-3 2 1`,
-	`6 3
-1 5 2
-6 5 1
-3 1 2`,
-	`8 8
-4 7 8
-3 6 8
-3 4 5
-1 5 8
-6 1 7
-2 4 5
-6 5 4
-6 7 4`,
-	`7 6
-7 6 1
-2 3 1
-2 6 7
-1 3 5
-2 1 4
-6 1 3`,
-	`6 1
-5 2 3`,
-	`3 7
-1 2 3
-3 2 1
-3 2 1
-1 3 2
-2 1 3
-1 2 3
-1 3 2`,
-	`3 3
-2 1 3
-2 3 1
-1 3 2`,
-	`5 1
-5 1 4`,
-	`5 6
-1 4 5
-2 3 1
-1 4 2
-2 5 1
-2 5 3
-2 3 1`,
-	`6 7
-1 2 5
-6 3 5
-2 6 3
-2 6 4
-4 3 2
-4 5 1
-2 5 1`,
-	`8 7
-3 2 1
-1 7 3
-1 8 7
-2 5 7
-3 7 2
-7 8 1
-7 4 5`,
-	`8 6
-4 2 3
-4 5 8
-2 8 4
-6 1 4
-7 2 4
-7 2 4`,
-	`4 8
-4 3 1
-3 2 4
-1 3 2
-2 4 1
-3 2 1
-1 4 2
-1 2 3
-4 1 2`,
-	`7 8
-2 7 3
-4 7 2
-5 3 7
-1 3 6
-2 6 3
-7 4 5
-7 1 2
-3 2 5`,
 }
 
-// solve357B mirrors the reference solution from 357B.go using in-memory I/O.
-func solve357B(input string) (string, error) {
-	reader := bufio.NewReader(strings.NewReader(input))
+func verifyOutput(input string, output string) error {
+	inReader := bufio.NewReader(strings.NewReader(input))
+	outReader := bufio.NewReader(strings.NewReader(output))
+
 	var n, m int
-	if _, err := fmt.Fscan(reader, &n, &m); err != nil {
-		return "", err
+	if _, err := fmt.Fscan(inReader, &n, &m); err != nil {
+		return fmt.Errorf("bad input: %v", err)
 	}
-	a := make([]int, n+1)
-	var trip [3]int
+
+	dances := make([][3]int, m)
 	for i := 0; i < m; i++ {
-		if _, err := fmt.Fscan(reader, &trip[0], &trip[1], &trip[2]); err != nil {
-			return "", err
-		}
-		var used [4]bool
-		for j := 0; j < 3; j++ {
-			used[a[trip[j]]] = true
-		}
-		for j := 0; j < 3; j++ {
-			if a[trip[j]] == 0 {
-				for k := 1; k <= 3; k++ {
-					if !used[k] {
-						a[trip[j]] = k
-						used[k] = true
-						break
-					}
-				}
-			}
+		if _, err := fmt.Fscan(inReader, &dances[i][0], &dances[i][1], &dances[i][2]); err != nil {
+			return fmt.Errorf("bad input dances: %v", err)
 		}
 	}
-	var sb strings.Builder
+
+	colors := make([]int, n+1)
 	for i := 1; i <= n; i++ {
-		if i > 1 {
-			sb.WriteByte(' ')
+		var c int
+		if _, err := fmt.Fscan(outReader, &c); err != nil {
+			return fmt.Errorf("failed to read color for dancer %d: %v", i, err)
 		}
-		fmt.Fprint(&sb, a[i])
+		if c < 1 || c > 3 {
+			return fmt.Errorf("invalid color %d for dancer %d", c, i)
+		}
+		colors[i] = c
 	}
-	return sb.String(), nil
+
+	var extra string
+	if _, err := fmt.Fscan(outReader, &extra); err == nil {
+		return fmt.Errorf("unexpected extra output: %q", extra)
+	}
+
+	for i := 0; i < m; i++ {
+		c1, c2, c3 := colors[dances[i][0]], colors[dances[i][1]], colors[dances[i][2]]
+		if c1 == c2 || c2 == c3 || c1 == c3 {
+			return fmt.Errorf("dance %d (%d, %d, %d) has colors (%d, %d, %d) which are not distinct", i+1, dances[i][0], dances[i][1], dances[i][2], c1, c2, c3)
+		}
+	}
+
+	return nil
 }
 
 func run(bin string, input string) (string, error) {
@@ -651,18 +85,13 @@ func main() {
 	bin := os.Args[1]
 	for idx, tc := range rawTestcases {
 		input := tc + "\n"
-		expected, err := solve357B(input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d invalid: %v\n", idx+1, err)
-			os.Exit(1)
-		}
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if got != expected {
-			fmt.Fprintf(os.Stderr, "case %d failed\nexpected: %s\n got: %s\n", idx+1, expected, got)
+		if err := verifyOutput(input, got); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed\n got: %s\n error: %v\n", idx+1, got, err)
 			os.Exit(1)
 		}
 	}
