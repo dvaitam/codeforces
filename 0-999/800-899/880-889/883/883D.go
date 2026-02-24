@@ -1,102 +1,110 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"sort"
 )
 
-func canCover(t int, stars, packs []int) bool {
-	m, n := len(stars), len(packs)
-	if m == 0 {
-		return true
-	}
-	i := 0
-	for j := 0; j < n && i < m; j++ {
-		p := packs[j]
-		// if current star is left of this packman
-		if stars[i] < p {
-			// see if next packman can reach it
-			if j+1 < n && packs[j+1]-stars[i] <= t {
-				// orient this packman right to help with right side
-				for i < m && stars[i] >= p && stars[i]-p <= t {
-					i++
-				}
-			} else {
-				// must orient left
-				if p-stars[i] > t {
-					return false
-				}
-				for i < m && stars[i] <= p && p-stars[i] <= t {
-					i++
-				}
-			}
-		} else {
-			// star is to the right
-			for i < m && stars[i] >= p && stars[i]-p <= t {
-				i++
-			}
-		}
-	}
-	return i == m
-}
-
 func main() {
-	in := bufio.NewReader(os.Stdin)
 	var n int
-	if _, err := fmt.Fscan(in, &n); err != nil {
-		return
-	}
+	fmt.Scan(&n)
 	var s string
-	fmt.Fscan(in, &s)
-	stars := make([]int, 0)
-	packs := make([]int, 0)
-	for i, ch := range s {
+	fmt.Scan(&s)
+
+	pre := make([]int, n+2)
+	d := make([]int, 1)
+	p := make([]int, 1)
+
+	for i := 1; i <= n; i++ {
+		ch := s[i-1]
 		if ch == '*' {
-			stars = append(stars, i)
-		} else if ch == 'P' {
-			packs = append(packs, i)
-		}
-	}
-	sort.Ints(stars)
-	sort.Ints(packs)
-	m := len(stars)
-	k := len(packs)
-	if k == 0 || m == 0 {
-		fmt.Println(0, 0)
-		return
-	}
-	if k == 1 {
-		p := packs[0]
-		// count stars on each side
-		idx := sort.SearchInts(stars, p)
-		left := idx
-		right := m - idx
-		if left >= right {
-			time := 0
-			if left > 0 {
-				time = p - stars[0]
-			}
-			fmt.Println(left, time)
+			pre[i] = pre[i-1] + 1
+			d = append(d, i)
 		} else {
-			time := 0
-			if right > 0 {
-				time = stars[m-1] - p
+			pre[i] = pre[i-1]
+		}
+		if ch == 'P' {
+			p = append(p, i)
+		}
+	}
+
+	tot := len(p) - 1
+	cnt := len(d) - 1
+
+	if tot == 0 {
+		fmt.Println("0 0")
+		return
+	}
+
+	if tot == 1 {
+		x := p[1]
+		leftStars := pre[x]
+		rightStars := cnt - pre[x]
+
+		if leftStars > rightStars {
+			fmt.Printf("%d %d\n", leftStars, x-d[1])
+		} else if leftStars < rightStars {
+			fmt.Printf("%d %d\n", rightStars, d[cnt]-x)
+		} else {
+			t1 := x - d[1]
+			t2 := d[cnt] - x
+			if t1 < t2 {
+				fmt.Printf("%d %d\n", leftStars, t1)
+			} else {
+				fmt.Printf("%d %d\n", leftStars, t2)
 			}
-			fmt.Println(right, time)
 		}
 		return
 	}
-	// k >= 2, we can eat all stars
-	l, r := 0, n
-	for l < r {
+
+	empty := func(l, r int) bool {
+		if l > r {
+			return true
+		}
+		if l < 1 {
+			l = 1
+		}
+		if r > n {
+			r = n
+		}
+		return pre[l-1] == pre[r]
+	}
+
+	check := func(t int) bool {
+		f := make([]int, tot+1)
+		for i := 1; i <= tot; i++ {
+			x := p[i]
+			f[i] = 0
+			if empty(f[i-1]+1, x-1) {
+				if f[i] < x+t {
+					f[i] = x + t
+				}
+			}
+			if empty(f[i-1]+1, x-t-1) {
+				if f[i] < x {
+					f[i] = x
+				}
+			}
+			if i > 1 && empty(f[i-2]+1, x-t-1) {
+				if f[i] < p[i-1]+t {
+					f[i] = p[i-1] + t
+				}
+			}
+		}
+		return f[tot] >= d[cnt]
+	}
+
+	l := 0
+	r := n
+	ans := 0
+	for l <= r {
 		mid := (l + r) / 2
-		if canCover(mid, stars, packs) {
-			r = mid
+		if check(mid) {
+			ans = mid
+			r = mid - 1
 		} else {
 			l = mid + 1
 		}
 	}
-	fmt.Println(m, l)
+
+	fmt.Printf("%d %d\n", cnt, ans)
 }

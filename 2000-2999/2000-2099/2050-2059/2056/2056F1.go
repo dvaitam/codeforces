@@ -3,77 +3,62 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"math/big"
 	"os"
 )
 
-func combParity(n, k int) int {
-	if k < 0 || k > n {
-		return 0
-	}
-	if (k & (n - k)) == 0 {
-		return 1
-	}
-	return 0
-}
-
 func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
-	defer out.Flush()
+	reader := bufio.NewReader(os.Stdin)
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
 
 	var t int
-	fmt.Fscan(in, &t)
-	for ; t > 0; t-- {
-		var k, m int
-		fmt.Fscan(in, &k, &m)
+	if _, err := fmt.Fscan(reader, &t); err != nil {
+		return
+	}
+
+	for i := 0; i < t; i++ {
+		var k_bits, m int
+		fmt.Fscan(reader, &k_bits, &m)
 		var s string
-		fmt.Fscan(in, &s)
-		if len(s) != k {
-			k = len(s)
-		}
+		fmt.Fscan(reader, &s)
 
-		var nVal big.Int
-		nVal.SetString(s, 2)
-		var H big.Int
-		H.Set(&nVal)
-		H.Add(&H, big.NewInt(1))
-		H.Rsh(&H, 1)
-
-		prefix := big.NewInt(0)
-		t0 := -1
-		totalBits := 0
-		for i := 0; i < k; i++ {
-			if s[i] == '1' {
-				totalBits++
-				exp := uint(k - 1 - i)
-				var bit big.Int
-				bit.Lsh(big.NewInt(1), exp)
-				prefix.Add(prefix, &bit)
-				if t0 == -1 && prefix.Cmp(&H) >= 0 {
-					t0 = totalBits
-				}
+		w := 0
+		for j := 0; j < len(s); j++ {
+			if s[j] == '1' {
+				w++
 			}
 		}
 
-		if t0 == -1 {
-			t0 = totalBits
+		if w == 0 {
+			fmt.Fprintln(writer, 0)
+			continue
+		}
+
+		S := make([][]int, w+1)
+		for j := 0; j <= w; j++ {
+			S[j] = make([]int, w+1)
+		}
+		S[0][0] = 1
+		for i := 1; i <= w; i++ {
+			for j := 1; j <= i; j++ {
+				S[i][j] = ((j & 1) * S[i-1][j]) ^ S[i-1][j-1]
+			}
 		}
 
 		ans := 0
-		for i := 0; i < m; i++ {
-			A := combParity(t0+i, i)
-			B := combParity(t0+i-1, i-1)
-			prefixParity := A ^ B
-
-			L := totalBits - t0
-			M := m - 1 - i
-			suffixParity := combParity(L+M, M)
-
-			if prefixParity == 1 && suffixParity == 1 {
-				ans ^= i
+		for x := 0; x < m; x++ {
+			parity := 0
+			for k := 1; k <= w; k++ {
+				if S[w][k] == 1 {
+					if (x & (k - 1)) == (k - 1) {
+						parity ^= 1
+					}
+				}
+			}
+			if parity == 1 {
+				ans ^= x
 			}
 		}
-		fmt.Fprintln(out, ans)
+		fmt.Fprintln(writer, ans)
 	}
 }

@@ -37,7 +37,7 @@ type state struct {
 const MOD int64 = 1_000_000_007
 
 func solveF(n int64, x, k int64) int64 {
-	maxVal := x + k*(n-1)
+	maxVal := x + k - 1 + k*(n-1)
 	memo := make(map[state]int64)
 	var dfs func(pos int, val int64, seen bool) int64
 	dfs = func(pos int, val int64, seen bool) int64 {

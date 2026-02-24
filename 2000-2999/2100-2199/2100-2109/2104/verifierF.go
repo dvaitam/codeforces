@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -20,10 +21,7 @@ func main() {
 	}
 	candidatePath := os.Args[1]
 
-	inputData, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		fail("failed to read input: %v", err)
-	}
+	inputData := generateInput()
 
 	testCount, err := parseTestCount(inputData)
 	if err != nil {
@@ -162,4 +160,17 @@ func parseOutputs(out string, t int) ([]uint64, error) {
 		res[i] = v
 	}
 	return res, nil
+}
+
+func generateInput() []byte {
+	var buf bytes.Buffer
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	t := 100
+	buf.WriteString(fmt.Sprintf("%d\n", t))
+	for i := 0; i < t; i++ {
+		// generate n from 1 to 10^9 - 2
+		n := r.Intn(1e9 - 2) + 1
+		buf.WriteString(fmt.Sprintf("%d\n", n))
+	}
+	return buf.Bytes()
 }

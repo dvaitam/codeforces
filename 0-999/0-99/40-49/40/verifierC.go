@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sort"
 )
 
 // Embedded testcases (one per line: N x M y).
@@ -110,135 +111,101 @@ const embeddedTestcases = `4 -40 6 -4
 11 26 32 -17
 36 39 28 36`
 
-type dsuNext struct {
-	parent []int
-	n      int
+type Interval struct {
+	L, R int64
 }
 
-func newDSUNext(n int) *dsuNext {
-	p := make([]int, n+2)
-	for i := 0; i <= n+1; i++ {
-		p[i] = i
+func abs(x int64) int64 {
+	if x < 0 {
+		return -x
 	}
-	return &dsuNext{parent: p, n: n}
+	return x
 }
 
-func (d *dsuNext) find(x int) int {
-	if x > d.n+1 {
-		return d.n + 1
+func max(a, b int64) int64 {
+	if a > b {
+		return a
 	}
-	if d.parent[x] != x {
-		d.parent[x] = d.find(d.parent[x])
-	}
-	return d.parent[x]
+	return b
 }
 
-func (d *dsuNext) remove(x int) { d.parent[x] = d.find(x + 1) }
+func min(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 func solve(N int, x int64, M int, y int64) int64 {
-	d := x - y
-	if d < 0 {
-		d = -d
+	D := abs(x - y)
+
+	var intervals []Interval
+	var isolatedU int64 = 0
+
+	var I1, I2 int64 = 0, 0
+
+	for u := int64(1); u <= int64(N); u++ {
+		L := max(1, abs(u-D))
+		R := min(int64(M), u+D)
+
+		if L > R {
+			isolatedU++
+			continue
+		}
+
+		intervals = append(intervals, Interval{L, R})
+
+		cL := max(1, abs(u-D)+1)
+		cR := min(int64(M), u+D-1)
+
+		var crossCount int64 = 0
+		if cL <= cR {
+			crossCount = cR - cL + 1
+		}
+
+		totalCount := R - L + 1
+		touchCount := totalCount - crossCount
+
+		I2 += crossCount
+		I1 += touchCount
 	}
-	Li := make([]int, N+1)
-	Ri := make([]int, N+1)
-	cntI := 0
-	var P int64
-	for i := 1; i <= N; i++ {
-		dd := int64(i) - d
-		if dd < 0 {
-			dd = -dd
+
+	sort.Slice(intervals, func(i, j int) bool {
+		if intervals[i].L == intervals[j].L {
+			return intervals[i].R < intervals[j].R
 		}
-		l := int(dd) + 1
-		if l < 1 {
-			l = 1
-		}
-		r := int64(i) + d - 1
-		if r > int64(M) {
-			r = int64(M)
-		}
-		if l <= int(r) {
-			Li[i] = l
-			Ri[i] = int(r)
-			cntI++
-			P += int64(r - int64(l) + 1)
-		} else {
-			Li[i] = 1
-			Ri[i] = 0
-		}
-	}
-	Lj := make([]int, M+1)
-	Rj := make([]int, M+1)
-	cntJ := 0
-	for j := 1; j <= M; j++ {
-		dd := int64(j) - d
-		if dd < 0 {
-			dd = -dd
-		}
-		l := int(dd) + 1
-		if l < 1 {
-			l = 1
-		}
-		r := int64(j) + d - 1
-		if r > int64(N) {
-			r = int64(N)
-		}
-		if l <= int(r) {
-			Lj[j] = l
-			Rj[j] = int(r)
-			cntJ++
-		} else {
-			Lj[j] = 1
-			Rj[j] = 0
-		}
-	}
-	dsuI := newDSUNext(N)
-	dsuJ := newDSUNext(M)
-	for i := 1; i <= N; i++ {
-		if Ri[i] < Li[i] {
-			dsuI.remove(i)
-		}
-	}
-	for j := 1; j <= M; j++ {
-		if Rj[j] < Lj[j] {
-			dsuJ.remove(j)
-		}
-	}
-	CCbig := 0
-	type node struct {
-		left bool
-		idx  int
-	}
-	queue := []node{}
-	for i := 1; i <= N; i++ {
-		ii := dsuI.find(i)
-		if ii > N {
-			break
-		}
-		CCbig++
-		queue = append(queue, node{true, ii})
-		dsuI.remove(ii)
-		for q := 0; q < len(queue); q++ {
-			nd := queue[q]
-			if nd.left {
-				i0 := nd.idx
-				for j := dsuJ.find(Li[i0]); j <= Ri[i0]; j = dsuJ.find(j) {
-					queue = append(queue, node{false, j})
-					dsuJ.remove(j)
-				}
-			} else {
-				j0 := nd.idx
-				for i2 := dsuI.find(Lj[j0]); i2 <= Rj[j0]; i2 = dsuI.find(i2) {
-					queue = append(queue, node{true, i2})
-					dsuI.remove(i2)
-				}
+		return intervals[i].L < intervals[j].L
+	})
+
+	var mergedCount int64 = 0
+	var coveredW int64 = 0
+	var currentL int64 = -1
+	var currentR int64 = -1
+
+	for _, iv := range intervals {
+		if currentR < iv.L {
+			if currentL != -1 {
+				mergedCount++
+				coveredW += currentR - currentL + 1
 			}
+			currentL = iv.L
+			currentR = iv.R
+		} else {
+			currentR = max(currentR, iv.R)
 		}
-		queue = queue[:0]
 	}
-	Z := int64((N - cntI) + (M - cntJ))
-	Cc := Z + int64(CCbig)
-	F := 2*P + Cc + 1
+
+	if currentL != -1 {
+		mergedCount++
+		coveredW += currentR - currentL + 1
+	}
+
+	isolatedW := int64(M) - coveredW
+	K_draw := mergedCount + isolatedU + isolatedW
+	V_draw := I1 + 2*I2
+
+	F := int64(1) + K_draw + V_draw
+
 	return F
 }
 

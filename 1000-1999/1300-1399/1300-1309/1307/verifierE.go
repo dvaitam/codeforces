@@ -137,6 +137,9 @@ func solve(input string) string {
 func generateCase(rng *rand.Rand) (string, string) {
 	n := rng.Intn(6) + 1
 	m := rng.Intn(6) + 1
+	if m > n*n {
+		m = n * n
+	}
 	s := make([]int, n)
 	for i := range s {
 		s[i] = rng.Intn(n) + 1
@@ -150,10 +153,20 @@ func generateCase(rng *rand.Rand) (string, string) {
 			fmt.Fprintf(&sb, "%d ", v)
 		}
 	}
+	
+	type pair struct{ f, h int }
+	pairs := []pair{}
+	for f := 1; f <= n; f++ {
+		for h := 1; h <= n; h++ {
+			pairs = append(pairs, pair{f, h})
+		}
+	}
+	rng.Shuffle(len(pairs), func(i, j int) {
+		pairs[i], pairs[j] = pairs[j], pairs[i]
+	})
+	
 	for i := 0; i < m; i++ {
-		f := rng.Intn(n) + 1
-		h := rng.Intn(n) + 1
-		fmt.Fprintf(&sb, "%d %d\n", f, h)
+		fmt.Fprintf(&sb, "%d %d\n", pairs[i].f, pairs[i].h)
 	}
 	in := sb.String()
 	return in, solve(in)

@@ -1,162 +1,161 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
+	"bufio"
+	"fmt"
+	"os"
 )
 
-// Solve: orient edges to maximize reachable pairs count
 func main() {
-   rdr := bufio.NewReader(os.Stdin)
-   wtr := bufio.NewWriter(os.Stdout)
-   defer wtr.Flush()
+	rdr := bufio.NewScanner(os.Stdin)
+	rdr.Split(bufio.ScanWords)
+	rdr.Buffer(make([]byte, 1024*1024), 1024*1024)
 
-   // fast integer reader
-   readInt := func() int {
-       var x int
-       var c byte
-       var err error
-       // skip non-digit
-       for {
-           c, err = rdr.ReadByte()
-           if err != nil {
-               return 0
-           }
-           if c >= '0' && c <= '9' {
-               break
-           }
-       }
-       // read number
-       for c >= '0' && c <= '9' {
-           x = x*10 + int(c-'0')
-           c, err = rdr.ReadByte()
-           if err != nil {
-               break
-           }
-       }
-       return x
-   }
+	readInt := func() int {
+		if !rdr.Scan() {
+			return 0
+		}
+		res := 0
+		for _, b := range rdr.Bytes() {
+			res = res*10 + int(b-'0')
+		}
+		return res
+	}
 
-   n := readInt()
-   m := readInt()
-   // original graph
-   type Edge struct{ to, id int }
-   adj := make([][]Edge, n)
-   U := make([]int, m)
-   V := make([]int, m)
-   for i := 0; i < m; i++ {
-       u := readInt() - 1
-       v := readInt() - 1
-       U[i], V[i] = u, v
-       adj[u] = append(adj[u], Edge{v, i})
-       adj[v] = append(adj[v], Edge{u, i})
-   }
-   // find bridges
-   disc := make([]int, n)
-   low := make([]int, n)
-   isBridge := make([]bool, m)
-   timer := 1
-   var dfsBridge func(u, peid int)
-   dfsBridge = func(u, peid int) {
-       disc[u] = timer
-       low[u] = timer
-       timer++
-       for _, e := range adj[u] {
-           v, eid := e.to, e.id
-           if eid == peid {
-               continue
-           }
-           if disc[v] == 0 {
-               dfsBridge(v, eid)
-               if low[v] > disc[u] {
-                   isBridge[eid] = true
-               }
-               if low[v] < low[u] {
-                   low[u] = low[v]
-               }
-           } else if disc[v] < low[u] {
-               low[u] = disc[v]
-           }
-       }
-   }
-   dfsBridge(0, -1)
-   // build 2-edge-connected components
-   compId := make([]int, n)
-   for i := range compId {
-       compId[i] = -1
-   }
-   compCnt := 0
-   for i := 0; i < n; i++ {
-       if compId[i] != -1 {
-           continue
-       }
-       // DFS stack
-       stack := []int{i}
-       compId[i] = compCnt
-       for len(stack) > 0 {
-           u := stack[len(stack)-1]
-           stack = stack[:len(stack)-1]
-           for _, e := range adj[u] {
-               if compId[e.to] == -1 && !isBridge[e.id] {
-                   compId[e.to] = compCnt
-                   stack = append(stack, e.to)
-               }
-           }
-       }
-       compCnt++
-   }
-   // component sizes
-   compSize := make([]int64, compCnt)
-   for i := 0; i < n; i++ {
-       compSize[compId[i]]++
-   }
-   // build component tree
-   cadj := make([][]int, compCnt)
-   for i := 0; i < m; i++ {
-       if isBridge[i] {
-           u, v := compId[U[i]], compId[V[i]]
-           cadj[u] = append(cadj[u], v)
-           cadj[v] = append(cadj[v], u)
-       }
-   }
-   // subtree sums and initial DP
-   S := make([]int64, compCnt)
-   par := make([]int, compCnt)
-   var f0 int64
-   var dfs1 func(u, p int)
-   dfs1 = func(u, p int) {
-       par[u] = p
-       S[u] = compSize[u]
-       for _, v := range cadj[u] {
-           if v == p {
-               continue
-           }
-           dfs1(v, u)
-           S[u] += S[v]
-       }
-       f0 += compSize[u] * S[u]
-   }
-   dfs1(0, -1)
-   // reroot DP
-   total := int64(n)
-   F := make([]int64, compCnt)
-   F[0] = f0
-   ans := F[0]
-   var dfs2 func(u int)
-   dfs2 = func(u int) {
-       for _, v := range cadj[u] {
-           if v == par[u] {
-               continue
-           }
-           F[v] = F[u] + compSize[v]*(total-S[v]) - compSize[u]*S[v]
-           if F[v] > ans {
-               ans = F[v]
-           }
-           dfs2(v)
-       }
-   }
-   dfs2(0)
-   // output result
-   fmt.Fprintln(wtr, ans)
+	n := readInt()
+	m := readInt()
+	if n == 0 {
+		return
+	}
+
+	type Edge struct {
+		to, id int
+	}
+	graph := make([][]Edge, n+1)
+	for i := 0; i < m; i++ {
+		u := readInt()
+		v := readInt()
+		graph[u] = append(graph[u], Edge{v, i})
+		graph[v] = append(graph[v], Edge{u, i})
+	}
+
+	tin := make([]int, n+1)
+	low := make([]int, n+1)
+	timer := 0
+	isBridge := make([]bool, m)
+
+	var dfsBridge func(u, pEdge int)
+	dfsBridge = func(u, pEdge int) {
+		timer++
+		tin[u] = timer
+		low[u] = timer
+		for _, e := range graph[u] {
+			if e.id == pEdge {
+				continue
+			}
+			if tin[e.to] != 0 {
+				if tin[e.to] < low[u] {
+					low[u] = tin[e.to]
+				}
+			} else {
+				dfsBridge(e.to, e.id)
+				if low[e.to] < low[u] {
+					low[u] = low[e.to]
+				}
+				if low[e.to] > tin[u] {
+					isBridge[e.id] = true
+				}
+			}
+		}
+	}
+	if n > 0 {
+		dfsBridge(1, -1)
+	}
+
+	comp := make([]int, n+1)
+	compCnt := 0
+	var dfsComp func(u, c int)
+	dfsComp = func(u, c int) {
+		comp[u] = c
+		for _, e := range graph[u] {
+			if !isBridge[e.id] && comp[e.to] == 0 {
+				dfsComp(e.to, c)
+			}
+		}
+	}
+	for i := 1; i <= n; i++ {
+		if comp[i] == 0 {
+			compCnt++
+			dfsComp(i, compCnt)
+		}
+	}
+
+	W := make([]int, compCnt+1)
+	for i := 1; i <= n; i++ {
+		W[comp[i]]++
+	}
+
+	tree := make([][]int, compCnt+1)
+	for u := 1; u <= n; u++ {
+		for _, e := range graph[u] {
+			if isBridge[e.id] {
+				cu := comp[u]
+				cv := comp[e.to]
+				tree[cu] = append(tree[cu], cv)
+			}
+		}
+	}
+
+	maxPairs := int64(0)
+
+	for root := 1; root <= compCnt; root++ {
+		S := make([]int, compCnt+1)
+		var dfs func(u, p int)
+		dfs = func(u, p int) {
+			S[u] = W[u]
+			for _, v := range tree[u] {
+				if v != p {
+					dfs(v, u)
+					S[u] += S[v]
+				}
+			}
+		}
+		dfs(root, 0)
+
+		V := int64(0)
+		for i := 1; i <= compCnt; i++ {
+			if i != root {
+				V += int64(W[i]) * int64(S[i])
+			}
+		}
+
+		dp := make([]bool, n+1)
+		dp[0] = true
+		for _, v := range tree[root] {
+			sz := S[v]
+			for j := n; j >= sz; j-- {
+				if dp[j-sz] {
+					dp[j] = true
+				}
+			}
+		}
+
+		bestXY := int64(0)
+		rem := n - W[root]
+		for i := 0; i <= rem; i++ {
+			if dp[i] {
+				xy := int64(i) * int64(rem-i)
+				if xy > bestXY {
+					bestXY = xy
+				}
+			}
+		}
+
+		pairs := V + int64(W[root])*int64(n) + bestXY
+		if pairs > maxPairs {
+			maxPairs = pairs
+		}
+	}
+
+	fmt.Println(maxPairs)
 }
