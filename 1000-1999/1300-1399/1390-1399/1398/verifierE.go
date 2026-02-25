@@ -41,9 +41,9 @@ func maxDamage(fire []int64, light []int64) int64 {
 				used[i] = true
 				sp := spells[i]
 				if sp.tp == 0 {
-					dfs(k+1, mult, dmg+mult*sp.d)
+					dfs(k+1, 1, dmg+mult*sp.d)
 				} else {
-					dfs(k+1, mult*2, dmg+mult*sp.d)
+					dfs(k+1, 2, dmg+mult*sp.d)
 				}
 				used[i] = false
 			}
@@ -105,15 +105,9 @@ func generateCase(rng *rand.Rand) string {
 		if add {
 			// ensure unique
 			for {
-				d = int64(rng.Intn(9) + 1)
-				if tp == 0 {
-					if !fire[d] {
-						break
-					}
-				} else {
-					if !light[d] {
-						break
-					}
+				d = int64(rng.Intn(100) + 1)
+				if !fire[d] && !light[d] {
+					break
 				}
 			}
 			if tp == 0 {
@@ -140,7 +134,12 @@ func generateCase(rng *rand.Rand) string {
 				sb.WriteString(fmt.Sprintf("%d %d\n", tp, -d))
 			} else {
 				// if chosen type empty, add instead
-				d = int64(rng.Intn(9) + 1)
+				for {
+					d = int64(rng.Intn(100) + 1)
+					if !fire[d] && !light[d] {
+						break
+					}
+				}
 				if tp == 0 {
 					fire[d] = true
 				} else {

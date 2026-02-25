@@ -20,7 +20,14 @@ func genCaseC(rng *rand.Rand) caseC {
 	n := rng.Intn(100) + 1
 	vs := make([]vec, n)
 	for i := 0; i < n; i++ {
-		vs[i] = vec{rng.Intn(2000001) - 1000000, rng.Intn(2000001) - 1000000}
+		for {
+			x := rng.Intn(2000001) - 1000000
+			y := rng.Intn(2000001) - 1000000
+			if int64(x)*int64(x)+int64(y)*int64(y) <= 1000000000000 {
+				vs[i] = vec{x, y}
+				break
+			}
+		}
 	}
 	return caseC{vs: vs}
 }
