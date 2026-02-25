@@ -6,13 +6,18 @@ import (
     "math/rand"
     "os"
     "os/exec"
+    "path/filepath"
+    "runtime"
     "strings"
     "time"
 )
 
 func buildOracle() (string, error) {
-    oracle := "oracleA.bin"
-    cmd := exec.Command("go", "build", "-o", oracle, "1491A.go")
+    _, file, _, _ := runtime.Caller(0)
+    dir := filepath.Dir(file)
+    src := filepath.Join(dir, "1491A.go")
+    oracle := filepath.Join(os.TempDir(), "oracle1491A.bin")
+    cmd := exec.Command("go", "build", "-o", oracle, src)
     if out, err := cmd.CombinedOutput(); err != nil {
         return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
     }
@@ -20,7 +25,12 @@ func buildOracle() (string, error) {
 }
 
 func run(bin string, input string) (string, error) {
-    cmd := exec.Command(bin)
+    var cmd *exec.Cmd
+    if strings.HasSuffix(bin, ".go") {
+        cmd = exec.Command("go", "run", bin)
+    } else {
+        cmd = exec.Command(bin)
+    }
     cmd.Stdin = strings.NewReader(input)
     var out bytes.Buffer
     var stderr bytes.Buffer

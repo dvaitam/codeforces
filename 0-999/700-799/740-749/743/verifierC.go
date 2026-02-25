@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -90,6 +91,52 @@ func generateCaseC(rng *rand.Rand) (string, string) {
 	return input, expect
 }
 
+func checkAnswer(nStr, exp, got string) error {
+	exp = strings.TrimSpace(exp)
+	got = strings.TrimSpace(got)
+	if exp == "-1" {
+		if got != "-1" {
+			return fmt.Errorf("expected -1 got %s", got)
+		}
+		return nil
+	}
+	if got == "-1" {
+		return fmt.Errorf("expected valid answer, got -1")
+	}
+
+	var x, y, z int64
+	parsed, err := fmt.Sscanf(got, "%d %d %d", &x, &y, &z)
+	if err != nil || parsed != 3 {
+		return fmt.Errorf("failed to parse output: %s", got)
+	}
+
+	if x <= 0 || y <= 0 || z <= 0 || x > 1000000000 || y > 1000000000 || z > 1000000000 {
+		return fmt.Errorf("values out of bounds: %d %d %d", x, y, z)
+	}
+
+	if x == y || y == z || x == z {
+		return fmt.Errorf("values not distinct: %d %d %d", x, y, z)
+	}
+
+	var n int64
+	fmt.Sscanf(nStr, "%d", &n)
+
+	left := new(big.Int).Mul(big.NewInt(2), big.NewInt(x))
+	left.Mul(left, big.NewInt(y))
+	left.Mul(left, big.NewInt(z))
+
+	sum := new(big.Int).Mul(big.NewInt(x), big.NewInt(y))
+	sum.Add(sum, new(big.Int).Mul(big.NewInt(y), big.NewInt(z)))
+	sum.Add(sum, new(big.Int).Mul(big.NewInt(z), big.NewInt(x)))
+
+	right := new(big.Int).Mul(big.NewInt(n), sum)
+
+	if left.Cmp(right) != 0 {
+		return fmt.Errorf("equation not satisfied: 2/%d != 1/%d + 1/%d + 1/%d (got %d %d %d)", n, x, y, z, x, y, z)
+	}
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
@@ -104,8 +151,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != strings.TrimSpace(exp) {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, exp, out, in)
+		if err := checkAnswer(in, exp, out); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}
 	}

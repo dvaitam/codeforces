@@ -93,7 +93,25 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", t+1, err)
 			os.Exit(1)
 		}
-		if got != exp {
+		var expMin, expMax, gotMin, gotMax float64
+		if _, err := fmt.Sscanf(exp, "%f %f", &expMin, &expMax); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d bad reference output: %s\n", t+1, exp)
+			os.Exit(1)
+		}
+		if _, err := fmt.Sscanf(got, "%f %f", &gotMin, &gotMax); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d bad output: %s\n", t+1, got)
+			os.Exit(1)
+		}
+		eps := 1e-7
+		diffMin := expMin - gotMin
+		if diffMin < 0 {
+			diffMin = -diffMin
+		}
+		diffMax := expMax - gotMax
+		if diffMax < 0 {
+			diffMax = -diffMax
+		}
+		if diffMin > eps || diffMax > eps {
 			fmt.Fprintf(os.Stderr, "case %d mismatch\nexpected: %s\ngot: %s\n", t+1, exp, got)
 			os.Exit(1)
 		}

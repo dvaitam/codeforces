@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
 	"math/rand"
 	"os"
@@ -11,24 +11,6 @@ import (
 )
 
 type point struct{ x, y int }
-
-func runCandidate(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
-	}
-	return strings.TrimSpace(out.String()), nil
-}
 
 var dirs = []struct {
 	dx, dy int
@@ -91,40 +73,6 @@ func bfs(grid []string, n, m int) ([]byte, bool, int, int) {
 	return path, true, fx, fy
 }
 
-func solveCase(n, m int, swapLR, swapUD int, grid []string) string {
-	path, ok, _, _ := bfs(grid, n, m)
-	if !ok {
-		return ""
-	}
-	for i, c := range path {
-		if c == 'L' || c == 'R' {
-			if swapLR == 1 {
-				if c == 'L' {
-					path[i] = 'R'
-				} else {
-					path[i] = 'L'
-				}
-			}
-		} else {
-			if swapUD == 1 {
-				if c == 'U' {
-					path[i] = 'D'
-				} else {
-					path[i] = 'U'
-				}
-			}
-		}
-	}
-	var sb strings.Builder
-	for i, c := range path {
-		if i > 0 {
-			sb.WriteByte('\n')
-		}
-		sb.WriteByte(c)
-	}
-	return sb.String()
-}
-
 func genGrid(rng *rand.Rand, n, m int) ([]string, int, int) {
 	grid := make([][]byte, n)
 	for i := 0; i < n; i++ {
@@ -183,20 +131,100 @@ func genGrid(rng *rand.Rand, n, m int) ([]string, int, int) {
 	return lines, fx, fy
 }
 
-func genCase(rng *rand.Rand) (string, string) {
-	n := rng.Intn(5) + 2
-	m := rng.Intn(5) + 2
-	grid, _, _ := genGrid(rng, n, m)
-	swapLR := rng.Intn(2)
-	swapUD := rng.Intn(2)
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "%d %d %d %d\n", n, m, swapLR, swapUD)
-	for _, row := range grid {
-		sb.WriteString(row)
-		sb.WriteByte('\n')
+func genValidGrid(rng *rand.Rand) (int, int, []string) {
+	for {
+		n := rng.Intn(10) + 2
+		m := rng.Intn(10) + 2
+		grid, _, _ := genGrid(rng, n, m)
+		_, ok, _, _ := bfs(grid, n, m)
+		if ok {
+			return n, m, grid
+		}
 	}
-	expected := solveCase(n, m, swapLR, swapUD, grid)
-	return sb.String(), expected
+}
+
+func runCandidateInteractive(bin string, n, m, swapLR, swapUD int, grid []string) error {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	
+	defer func() {
+		cmd.Process.Kill()
+		cmd.Wait()
+	}()
+	
+	// Send initial input
+	fmt.Fprintf(stdin, "%d %d\n", n, m)
+	for _, row := range grid {
+		fmt.Fprintf(stdin, "%s\n", row)
+	}
+	
+	scanner := bufio.NewScanner(stdout)
+	
+	x, y := 0, 0
+	
+	for {
+		if !scanner.Scan() {
+			break // EOF or error
+		}
+		move := strings.TrimSpace(scanner.Text())
+		if move == "" {
+			continue
+		}
+		
+		// Map the candidate's move using swapLR / swapUD
+		actualMove := move
+		if move == "L" || move == "R" {
+			if swapLR == 1 {
+				if move == "L" { actualMove = "R" } else { actualMove = "L" }
+			}
+		} else if move == "U" || move == "D" {
+			if swapUD == 1 {
+				if move == "U" { actualMove = "D" } else { actualMove = "U" }
+			}
+		}
+		
+		nx, ny := x, y
+		switch actualMove {
+		case "U": nx--
+		case "D": nx++
+		case "L": ny--
+		case "R": ny++
+		}
+		
+		if nx >= 0 && nx < n && ny >= 0 && ny < m && grid[nx][ny] != '*' {
+			x, y = nx, ny
+		}
+		
+		if grid[x][y] == 'F' {
+			fmt.Fprintf(stdin, "%d %d\n", x+1, y+1)
+			break
+		}
+		
+		fmt.Fprintf(stdin, "%d %d\n", x+1, y+1)
+	}
+	
+	if grid[x][y] != 'F' {
+		return fmt.Errorf("did not reach finish, ended at %d %d", x+1, y+1)
+	}
+	
+	return nil
 }
 
 func main() {
@@ -207,14 +235,20 @@ func main() {
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		in, exp := genCase(rng)
-		out, err := runCandidate(bin, in)
+		n, m, grid := genValidGrid(rng)
+		swapLR := rng.Intn(2)
+		swapUD := rng.Intn(2)
+		
+		err := runCandidateInteractive(bin, n, m, swapLR, swapUD, grid)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
-			os.Exit(1)
-		}
-		if strings.TrimSpace(out) != strings.TrimSpace(exp) {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, exp, out, in)
+			var sb strings.Builder
+			sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
+			for _, row := range grid {
+				sb.WriteString(row)
+				sb.WriteByte('\n')
+			}
+			
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, sb.String())
 			os.Exit(1)
 		}
 	}

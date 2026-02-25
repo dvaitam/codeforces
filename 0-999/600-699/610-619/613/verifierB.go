@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -62,6 +64,98 @@ func genCases() []Case {
 	return cases
 }
 
+func checkCandidate(input, expected, got string) error {
+	inScan := bufio.NewScanner(strings.NewReader(input))
+	inScan.Split(bufio.ScanWords)
+
+	readInt := func() int64 {
+		inScan.Scan()
+		val, _ := strconv.ParseInt(inScan.Text(), 10, 64)
+		return val
+	}
+
+	n := readInt()
+	A := readInt()
+	cf := readInt()
+	cm := readInt()
+	m := readInt()
+
+	orig := make([]int64, n)
+	for i := 0; i < int(n); i++ {
+		orig[i] = readInt()
+	}
+
+	expScan := bufio.NewScanner(strings.NewReader(expected))
+	expScan.Split(bufio.ScanWords)
+	expScan.Scan()
+	expForce, err := strconv.ParseInt(expScan.Text(), 10, 64)
+	if err != nil {
+		return fmt.Errorf("could not parse expected force")
+	}
+
+	gotScan := bufio.NewScanner(strings.NewReader(got))
+	gotScan.Split(bufio.ScanWords)
+	
+	if !gotScan.Scan() {
+		return fmt.Errorf("candidate output is empty")
+	}
+	gotForce, err := strconv.ParseInt(gotScan.Text(), 10, 64)
+	if err != nil {
+		return fmt.Errorf("could not parse candidate force")
+	}
+
+	if gotForce != expForce {
+		return fmt.Errorf("expected force %d got %d", expForce, gotForce)
+	}
+
+	candArr := make([]int64, n)
+	var minVal int64 = -1
+	var countA int64 = 0
+	var cost int64 = 0
+
+	for i := 0; i < int(n); i++ {
+		if !gotScan.Scan() {
+			return fmt.Errorf("candidate array too short")
+		}
+		val, err := strconv.ParseInt(gotScan.Text(), 10, 64)
+		if err != nil {
+			return fmt.Errorf("could not parse array element")
+		}
+		candArr[i] = val
+
+		if candArr[i] < orig[i] {
+			return fmt.Errorf("skill %d decreased from %d to %d", i, orig[i], candArr[i])
+		}
+		if candArr[i] > A {
+			return fmt.Errorf("skill %d exceeded A (%d > %d)", i, candArr[i], A)
+		}
+
+		cost += candArr[i] - orig[i]
+
+		if minVal == -1 || candArr[i] < minVal {
+			minVal = candArr[i]
+		}
+		if candArr[i] == A {
+			countA++
+		}
+	}
+
+	if gotScan.Scan() {
+		return fmt.Errorf("extra tokens in candidate output")
+	}
+
+	if cost > m {
+		return fmt.Errorf("used %d coins, but m is %d", cost, m)
+	}
+
+	actualForce := countA*cf + minVal*cm
+	if actualForce != expForce {
+		return fmt.Errorf("array has force %d but printed force is %d", actualForce, expForce)
+	}
+
+	return nil
+}
+
 func runCase(bin, ref string, c Case) error {
 	expected, err := runBinary(ref, c.input)
 	if err != nil {
@@ -71,10 +165,7 @@ func runCase(bin, ref string, c Case) error {
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(expected) != strings.TrimSpace(got) {
-		return fmt.Errorf("expected %s got %s", expected, got)
-	}
-	return nil
+	return checkCandidate(c.input, expected, got)
 }
 
 func main() {

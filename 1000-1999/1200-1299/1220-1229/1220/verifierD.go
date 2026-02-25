@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 type testD struct {
@@ -29,7 +30,7 @@ func genTestsD() []testD {
 	return tests
 }
 
-func solveD(tc testD) []uint64 {
+func solveD(tc testD) int {
 	cnt := make([]int, 64)
 	for _, v := range tc.arr {
 		tz := bits.TrailingZeros64(v)
@@ -38,20 +39,30 @@ func solveD(tc testD) []uint64 {
 		}
 	}
 	maxCnt := 0
-	tu := 0
-	for i, c := range cnt {
+	for _, c := range cnt {
 		if c > maxCnt {
 			maxCnt = c
-			tu = i
 		}
 	}
-	res := []uint64{}
-	for _, v := range tc.arr {
-		if bits.TrailingZeros64(v) != tu {
-			res = append(res, v)
-		}
+	return len(tc.arr) - maxCnt
+}
+
+func runCandidate(bin string, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
 	}
-	return res
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+	}
+	return out.String(), nil
 }
 
 func main() {
@@ -62,37 +73,27 @@ func main() {
 	bin := os.Args[1]
 	tests := genTestsD()
 
-	var input bytes.Buffer
-	fmt.Fprintln(&input, len(tests))
-	for _, tc := range tests {
+	for i, tc := range tests {
+		var input bytes.Buffer
 		fmt.Fprintln(&input, len(tc.arr))
-		for i, v := range tc.arr {
-			if i > 0 {
+		for j, v := range tc.arr {
+			if j > 0 {
 				input.WriteByte(' ')
 			}
 			fmt.Fprint(&input, v)
 		}
 		input.WriteByte('\n')
-	}
 
-	expected := make([][]uint64, len(tests))
-	for i, tc := range tests {
-		expected[i] = solveD(tc)
-	}
+		expectedK := solveD(tc)
 
-	cmd := exec.Command(bin)
-	cmd.Stdin = bytes.NewReader(input.Bytes())
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "runtime error: %v\noutput:\n%s\n", err, out.String())
-		os.Exit(1)
-	}
+		outStr, err := runCandidate(bin, input.String())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
+			os.Exit(1)
+		}
 
-	scanner := bufio.NewScanner(bytes.NewReader(out.Bytes()))
-	scanner.Split(bufio.ScanWords)
-	for i, exp := range expected {
+		scanner := bufio.NewScanner(strings.NewReader(outStr))
+		scanner.Split(bufio.ScanWords)
 		if !scanner.Scan() {
 			fmt.Fprintf(os.Stderr, "wrong output format on test %d\n", i+1)
 			os.Exit(1)
@@ -102,13 +103,15 @@ func main() {
 			fmt.Fprintf(os.Stderr, "non-integer output on test %d\n", i+1)
 			os.Exit(1)
 		}
-		if k != len(exp) {
-			fmt.Fprintf(os.Stderr, "wrong answer on test %d: expected length %d got %d\n", i+1, len(exp), k)
+		if k != expectedK {
+			fmt.Fprintf(os.Stderr, "wrong answer on test %d: expected length %d got %d\n", i+1, expectedK, k)
 			os.Exit(1)
 		}
+
+		erased := make(map[uint64]int)
 		for j := 0; j < k; j++ {
 			if !scanner.Scan() {
-				fmt.Fprintf(os.Stderr, "wrong output format on test %d\n", i+1)
+				fmt.Fprintf(os.Stderr, "wrong output format on test %d (not enough erased elements)\n", i+1)
 				os.Exit(1)
 			}
 			val, err := strconv.ParseUint(scanner.Text(), 10, 64)
@@ -116,15 +119,41 @@ func main() {
 				fmt.Fprintf(os.Stderr, "non-integer output on test %d\n", i+1)
 				os.Exit(1)
 			}
-			if val != exp[j] {
-				fmt.Fprintf(os.Stderr, "wrong answer on test %d\n", i+1)
+			erased[val]++
+		}
+
+		if scanner.Scan() {
+			fmt.Fprintln(os.Stderr, "extra output")
+			os.Exit(1)
+		}
+
+		// Validate that erased elements are a subset of original array
+		originalCounts := make(map[uint64]int)
+		for _, v := range tc.arr {
+			originalCounts[v]++
+		}
+
+		for v, count := range erased {
+			if originalCounts[v] < count {
+				fmt.Fprintf(os.Stderr, "erased element %d not in original array or erased too many times\n", v)
 				os.Exit(1)
 			}
+			originalCounts[v] -= count
 		}
-	}
-	if scanner.Scan() {
-		fmt.Fprintln(os.Stderr, "extra output")
-		os.Exit(1)
+
+		// and the remaining have same trailing zeros
+		remainingTz := -1
+		for v, count := range originalCounts {
+			for c := 0; c < count; c++ {
+				tz := bits.TrailingZeros64(v)
+				if remainingTz == -1 {
+					remainingTz = tz
+				} else if remainingTz != tz {
+					fmt.Fprintf(os.Stderr, "wrong answer on test %d: remaining elements have different trailing zeros\n", i+1)
+					os.Exit(1)
+				}
+			}
+		}
 	}
 	fmt.Println("Accepted")
 }

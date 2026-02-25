@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -347,82 +346,50 @@ func loadTestcases() ([]testCase, error) {
 	return cases, nil
 }
 
-type BIT struct {
-	n    int
-	tree []int
-}
-
-func newBIT(n int) *BIT {
-	return &BIT{n: n, tree: make([]int, n+1)}
-}
-
-func (b *BIT) update(i, v int) {
-	for ; i <= b.n; i += i & -i {
-		b.tree[i] += v
-	}
-}
-
-func (b *BIT) sum(i int) int {
-	res := 0
-	for ; i > 0; i -= i & -i {
-		res += b.tree[i]
-	}
-	return res
-}
-
-func (b *BIT) findByPrefix(k int) int {
-	idx := 0
-	bitMask := 1
-	for bitMask<<1 <= b.n {
-		bitMask <<= 1
-	}
-	for bitMask > 0 {
-		next := idx + bitMask
-		if next <= b.n && b.tree[next] < k {
-			idx = next
-			k -= b.tree[next]
-		}
-		bitMask >>= 1
-	}
-	return idx + 1
-}
-
 func solveCase(n, m int, A, B []int) string {
-	a := append([]int(nil), A...)
-	sort.Ints(a)
-	bit := newBIT(m)
+	cntA := make([]int, m)
+	cntB := make([]int, m)
+	for _, v := range A {
+		cntA[v]++
+	}
 	for _, v := range B {
-		bit.update(v+1, 1)
+		cntB[v]++
 	}
-	C := make([]int, n)
-	for i, aVal := range a {
-		bound := m - 1 - aVal
-		var bIdx int
-		if bound >= 0 {
-			cnt := bit.sum(min(bound, m-1) + 1)
-			if cnt > 0 {
-				idx := bit.findByPrefix(cnt)
-				bIdx = idx - 1
-			} else {
-				total := bit.sum(m)
-				idx := bit.findByPrefix(total)
-				bIdx = idx - 1
+
+	res := make([]int, 0, n)
+	for k := m - 1; k >= 0; k-- {
+		for x := 0; x <= k; x++ {
+			y := k - x
+			if cntA[x] > 0 && cntB[y] > 0 {
+				take := cntA[x]
+				if cntB[y] < take {
+					take = cntB[y]
+				}
+				cntA[x] -= take
+				cntB[y] -= take
+				for j := 0; j < take; j++ {
+					res = append(res, k)
+				}
 			}
-		} else {
-			total := bit.sum(m)
-			idx := bit.findByPrefix(total)
-			bIdx = idx - 1
 		}
-		bit.update(bIdx+1, -1)
-		sum := aVal + bIdx
-		if sum >= m {
-			sum -= m
+		for x := k + 1; x < m; x++ {
+			y := k + m - x
+			if cntA[x] > 0 && cntB[y] > 0 {
+				take := cntA[x]
+				if cntB[y] < take {
+					take = cntB[y]
+				}
+				cntA[x] -= take
+				cntB[y] -= take
+				for j := 0; j < take; j++ {
+					res = append(res, k)
+				}
+			}
 		}
-		C[i] = sum
 	}
-	sort.Sort(sort.Reverse(sort.IntSlice(C)))
+
 	var sb strings.Builder
-	for i, v := range C {
+	for i, v := range res {
 		if i > 0 {
 			sb.WriteByte(' ')
 		}

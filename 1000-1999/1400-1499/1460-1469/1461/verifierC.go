@@ -3,21 +3,23 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
 
 func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleC")
-	cmd := exec.Command("go", "build", "-o", oracle, "1461C.go")
+	_, file, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(file)
+	src := filepath.Join(dir, "1461C.go")
+	oracle := filepath.Join(os.TempDir(), "oracle1461C.bin")
+	cmd := exec.Command("go", "build", "-o", oracle, src)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}
@@ -67,6 +69,32 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func compareOutputs(expect, got string) error {
+	expFields := strings.Fields(expect)
+	gotFields := strings.Fields(got)
+
+	if len(expFields) != len(gotFields) {
+		return fmt.Errorf("expected %d tokens, got %d", len(expFields), len(gotFields))
+	}
+
+	for i := range expFields {
+		expVal, err1 := strconv.ParseFloat(expFields[i], 64)
+		gotVal, err2 := strconv.ParseFloat(gotFields[i], 64)
+
+		if err1 == nil && err2 == nil {
+			if math.Abs(expVal-gotVal) > 1e-6 {
+				return fmt.Errorf("at token %d: expected %s, got %s (diff > 1e-6)", i+1, expFields[i], gotFields[i])
+			}
+		} else {
+			if expFields[i] != gotFields[i] {
+				return fmt.Errorf("at token %d: expected %s, got %s", i+1, expFields[i], gotFields[i])
+			}
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
@@ -92,8 +120,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if got != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, expect, got, input)
+		if err := compareOutputs(expect, got); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, err, input, expect, got)
 			os.Exit(1)
 		}
 	}

@@ -133,6 +133,22 @@ const testcaseData = `2 4 1
 type testCase struct {
 	input    string
 	expected string
+	arr      []int64
+}
+
+func simulate(arr []int64, k int64) int64 {
+	var rating int64 = 0
+	reached := rating >= k
+	for _, a := range arr {
+		rating += a
+		if reached && rating < k {
+			rating = k
+		}
+		if rating >= k {
+			reached = true
+		}
+	}
+	return rating
 }
 
 func solve(arr []int64) int64 {
@@ -206,6 +222,7 @@ func loadCases() ([]testCase, error) {
 		cases = append(cases, testCase{
 			input:    sb.String(),
 			expected: strconv.FormatInt(solve(arr), 10),
+			arr:      arr,
 		})
 	}
 	return cases, nil
@@ -235,13 +252,24 @@ func main() {
 		os.Exit(1)
 	}
 	for idx, tc := range cases {
-		got, err := run(os.Args[1], tc.input)
+		gotStr, err := run(os.Args[1], tc.input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if got != tc.expected {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, tc.expected, got)
+		gotStr = strings.TrimSpace(gotStr)
+		gotK, err := strconv.ParseInt(gotStr, 10, 64)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: could not parse output '%s': %v\n", idx+1, gotStr, err)
+			os.Exit(1)
+		}
+		expectedK, _ := strconv.ParseInt(tc.expected, 10, 64)
+		
+		gotRating := simulate(tc.arr, gotK)
+		expectedRating := simulate(tc.arr, expectedK)
+		
+		if gotRating != expectedRating {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected rating %d (k=%d) got rating %d (k=%d)\n", idx+1, expectedRating, expectedK, gotRating, gotK)
 			os.Exit(1)
 		}
 	}
