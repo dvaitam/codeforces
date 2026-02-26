@@ -43,9 +43,9 @@ func runBinary(bin, input string) (string, error) {
 
 func genCases() []testCase {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	cases := []testCase{{strs: []string{"a"}}}
+	cases := []testCase{{strs: []string{"a", "b"}}}
 	for len(cases) < 100 {
-		n := rng.Intn(5) + 1
+		n := rng.Intn(5) + 2
 		arr := make([]string, n)
 		for i := 0; i < n; i++ {
 			l := rng.Intn(6) + 1

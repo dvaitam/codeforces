@@ -117,15 +117,12 @@ func runCase(bin string, tc testE) error {
     for i, group := range expected {
         if !scanner.Scan() { return fmt.Errorf("missing group letter") }
         letter := strings.TrimSpace(scanner.Text())
-        if letter != string('A'+i) { return fmt.Errorf("wrong group letter") }
-        for range group {
+        expectedLetter := fmt.Sprintf("Group %c:", 'A'+i)
+        if letter != expectedLetter { return fmt.Errorf("wrong group letter: got %q, expected %q", letter, expectedLetter) }
+        for j, expectedName := range group {
             if !scanner.Scan() { return fmt.Errorf("missing team name") }
             name := strings.TrimSpace(scanner.Text())
-            valid := false
-            for _, nm := range group {
-                if nm == name { valid = true; break }
-            }
-            if !valid { return fmt.Errorf("unexpected team name %s", name) }
+            if name != expectedName { return fmt.Errorf("unexpected team name %q, expected %q at position %d", name, expectedName, j) }
         }
     }
     if scanner.Scan() { return fmt.Errorf("extra output") }

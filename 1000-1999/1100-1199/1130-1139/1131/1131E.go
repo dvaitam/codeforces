@@ -59,10 +59,16 @@ func main() {
                }
            } else {
                for i := 0; i < 26; i++ {
-                   maxlen[i] = min(maxlen[i], 1)
+                   if maxlen[i] > 0 {
+                       maxlen[i] = 1
+                       if i == int(first) {
+                           maxlen[i] += int64(l)
+                       }
+                       if i == int(last) {
+                           maxlen[i] += int64(rcount)
+                       }
+                   }
                }
-               maxlen[first] += int64(l)
-               maxlen[last] += int64(rcount)
            }
        }
        // update from runs in s

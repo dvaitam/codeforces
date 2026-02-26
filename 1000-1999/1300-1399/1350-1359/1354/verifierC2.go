@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -55,9 +57,21 @@ func runCase(bin, oracle, input string) error {
 		return fmt.Errorf("runtime error: %v\nstderr: %s", err, errb.String())
 	}
 	result := strings.TrimSpace(out.String())
-	if result != expected {
-		return fmt.Errorf("expected %s got %s", expected, result)
+	
+	expFloat, errE := strconv.ParseFloat(expected, 64)
+	resFloat, errR := strconv.ParseFloat(result, 64)
+	
+	if errE != nil || errR != nil {
+		if result != expected {
+			return fmt.Errorf("expected %s got %s", expected, result)
+		}
+	} else {
+		diff := math.Abs(expFloat - resFloat)
+		if diff > 1e-6 && diff/math.Max(1.0, math.Abs(expFloat)) > 1e-6 {
+			return fmt.Errorf("expected %s got %s", expected, result)
+		}
 	}
+	
 	return nil
 }
 

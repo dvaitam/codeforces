@@ -10,7 +10,7 @@ import (
 )
 
 func buildRef() (string, error) {
-	ref := "refG.bin"
+	ref := "./refG.bin"
 	cmd := exec.Command("go", "build", "-o", ref, "1252G.go")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build reference failed: %v\n%s", err, out)
@@ -34,27 +34,37 @@ func genTests() []TestCase {
 	rng := rand.New(rand.NewSource(7))
 	tests := make([]TestCase, 0, 100)
 	for i := 0; i < 100; i++ {
-		N := rng.Intn(3) + 1
-		M := rng.Intn(3) + 1
-		Q := rng.Intn(3) + 1
+		N := rng.Intn(10) + 2
+		M := rng.Intn(10) + 1
+		Q := rng.Intn(10) + 1
 		var sb strings.Builder
 		fmt.Fprintf(&sb, "%d %d %d\n", N, M, Q)
+		
+		vals := rng.Perm(1000)
+		vIdx := 0
+		
 		for j := 0; j < N; j++ {
-			fmt.Fprintf(&sb, "%d ", rng.Intn(10))
+			fmt.Fprintf(&sb, "%d ", vals[vIdx])
+			vIdx++
 		}
 		sb.WriteByte('\n')
+		
+		Rs := make([]int, M)
 		for j := 0; j < M; j++ {
-			R := rng.Intn(3) + 1
+			R := rng.Intn(N-1) + 1
+			Rs[j] = R
 			fmt.Fprintf(&sb, "%d ", R)
 			for k := 0; k < R; k++ {
-				fmt.Fprintf(&sb, "%d ", rng.Intn(10))
+				fmt.Fprintf(&sb, "%d ", vals[vIdx])
+				vIdx++
 			}
 			sb.WriteByte('\n')
 		}
 		for j := 0; j < Q; j++ {
 			X := rng.Intn(M) + 1
-			Y := rng.Intn(3)
-			Z := rng.Intn(10)
+			Y := rng.Intn(Rs[X-1]) + 1
+			Z := vals[vIdx]
+			vIdx++
 			fmt.Fprintf(&sb, "%d %d %d\n", X, Y, Z)
 		}
 		tests = append(tests, TestCase(sb.String()))

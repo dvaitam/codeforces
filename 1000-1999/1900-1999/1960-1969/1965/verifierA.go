@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
@@ -35,10 +36,23 @@ func run(bin, input string) (string, error) {
 
 func solve(nums []int) string {
 	seen := make(map[int]struct{})
+	var unique []int
 	for _, v := range nums {
-		seen[v] = struct{}{}
+		if _, ok := seen[v]; !ok {
+			seen[v] = struct{}{}
+			unique = append(unique, v)
+		}
 	}
-	if len(seen)%2 == 1 {
+	sort.Ints(unique)
+	for i, v := range unique {
+		if v > i+1 {
+			if i%2 == 0 {
+				return "Alice"
+			}
+			return "Bob"
+		}
+	}
+	if len(unique)%2 == 1 {
 		return "Alice"
 	}
 	return "Bob"
@@ -62,7 +76,7 @@ func genRandomCase(rng *rand.Rand) testCase {
 	n := rng.Intn(10) + 1
 	nums := make([]int, n)
 	for i := range nums {
-		nums[i] = rng.Intn(10)
+		nums[i] = rng.Intn(10) + 1
 	}
 	return buildCase(nums)
 }

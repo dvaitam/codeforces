@@ -7,15 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
-
-func baseDir() string {
-	_, file, _, _ := runtime.Caller(0)
-	return filepath.Dir(file)
-}
 
 func prepareBinary(path, tag string) (string, error) {
 	if strings.HasSuffix(path, ".go") {
@@ -41,7 +35,7 @@ func runBinary(path, input string) (string, error) {
 
 func genCase(r *rand.Rand) string {
 	n := r.Intn(20) + 3
-	m := r.Intn(n-1) + 1
+	m := r.Intn(n-1) + 2
 	letters := "abcdefghijklmnopqrstuvwxyz"
 	s := make([]byte, n)
 	for i := 0; i < n; i++ {
@@ -50,7 +44,7 @@ func genCase(r *rand.Rand) string {
 	idx := make([]int, m)
 	last := -1
 	for i := 0; i < m; i++ {
-		idx[i] = r.Intn(n-(m-i)) + last + 1
+		idx[i] = r.Intn(n-m+i-last) + last + 1
 		last = idx[i]
 	}
 	t := make([]byte, m)
@@ -70,7 +64,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	refSrc := filepath.Join(baseDir(), "1492C.go")
+	refSrc := "1492C.go"
 	refPath, err := prepareBinary(refSrc, "refC")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

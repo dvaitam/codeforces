@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"container/heap"
 	"context"
 	"fmt"
 	"math/rand"
@@ -12,41 +11,49 @@ import (
 	"time"
 )
 
-type IntHeap []int
-
-func (h IntHeap) Len() int            { return len(h) }
-func (h IntHeap) Less(i, j int) bool  { return h[i] < h[j] }
-func (h IntHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
-func (h *IntHeap) Push(x interface{}) { *h = append(*h, x.(int)) }
-func (h *IntHeap) Pop() interface{} {
-	old := *h
-	x := old[len(old)-1]
-	*h = old[:len(old)-1]
-	return x
-}
-
 func solveB(a []int) int64 {
-	h := &IntHeap{}
-	heap.Init(h)
-	var invest, sumTotal, ans int64
 	n := len(a)
+	sumA := 0
+	for _, v := range a {
+		sumA += v
+	}
+
+	dp := make([]bool, sumA+2)
+	dp[1] = true
+
 	for i := 1; i <= n; i++ {
-		for invest < int64(i-1) {
-			if h.Len() == 0 {
-				return ans
+		if a[i-1] == 0 {
+			continue
+		}
+		for j := sumA + 1; j >= i; j-- {
+			if dp[j] {
+				if j+a[i-1] <= sumA+1 {
+					dp[j+a[i-1]] = true
+				}
 			}
-			invest += int64(heap.Pop(h).(int))
-		}
-		if invest < int64(i-1) {
-			return ans
-		}
-		heap.Push(h, a[i-1])
-		sumTotal += int64(a[i-1])
-		if cur := sumTotal - invest; cur > ans {
-			ans = cur
 		}
 	}
-	return ans
+
+	P := make([]int, n+1)
+	for i := 1; i <= n; i++ {
+		P[i] = P[i-1] + a[i-1]
+	}
+
+	var maxVP int64 = -1
+	for j := 1; j <= sumA+1; j++ {
+		if dp[j] {
+			var vp int
+			if j <= n {
+				vp = P[j] - j + 1
+			} else {
+				vp = P[n] - j + 1
+			}
+			if int64(vp) > maxVP {
+				maxVP = int64(vp)
+			}
+		}
+	}
+	return maxVP
 }
 
 func run(bin, input string) (string, error) {
