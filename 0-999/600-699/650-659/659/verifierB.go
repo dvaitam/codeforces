@@ -16,69 +16,84 @@ type student struct {
 	points int
 }
 
-func solve(input string) string {
+// validate checks whether output is a correct answer for the given input.
+func validate(input, output string) error {
+	lines := strings.Split(strings.TrimSpace(input), "\n")
 	var n, m int
-	fmt.Sscan(strings.SplitN(input, "\n", 2)[0], &n, &m)
-	lines := strings.Split(strings.TrimSpace(input), "\n")[1:]
-	top := make([][3]student, m+1)
-	for i := range top {
-		for j := range top[i] {
-			top[i][j].points = -1
-		}
-	}
-	for _, line := range lines {
+	fmt.Sscan(lines[0], &n, &m)
+
+	// Group students by region, sorted by score descending.
+	regions := make([][]student, m+1)
+	for _, line := range lines[1:] {
 		var s student
 		fmt.Sscan(line, &s.name, &s.region, &s.points)
-		r := s.region
-		if s.points >= top[r][0].points {
-			top[r][2] = top[r][1]
-			top[r][1] = top[r][0]
-			top[r][0] = s
-		} else if s.points >= top[r][1].points {
-			top[r][2] = top[r][1]
-			top[r][1] = s
-		} else if s.points >= top[r][2].points {
-			top[r][2] = s
-		}
+		regions[s.region] = append(regions[s.region], s)
 	}
-	var b strings.Builder
 	for i := 1; i <= m; i++ {
-		if top[i][1].points == top[i][2].points {
-			b.WriteString("?\n")
+		sort.Slice(regions[i], func(a, b int) bool {
+			return regions[i][a].points > regions[i][b].points
+		})
+	}
+
+	outLines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(outLines) != m {
+		return fmt.Errorf("expected %d output lines, got %d", m, len(outLines))
+	}
+
+	for i := 1; i <= m; i++ {
+		r := regions[i]
+		line := strings.TrimSpace(outLines[i-1])
+
+		// Ambiguous when 3rd highest ties with 2nd highest.
+		ambiguous := len(r) >= 3 && r[1].points == r[2].points
+
+		if ambiguous {
+			if line != "?" {
+				return fmt.Errorf("region %d: expected '?' (ambiguous), got %q", i, line)
+			}
 		} else {
-			fmt.Fprintf(&b, "%s %s\n", top[i][0].name, top[i][1].name)
+			// Unique team: top 2 students, in any order.
+			parts := strings.Fields(line)
+			if len(parts) != 2 {
+				return fmt.Errorf("region %d: expected two names, got %q", i, line)
+			}
+			want := map[string]bool{r[0].name: true, r[1].name: true}
+			got := map[string]bool{parts[0]: true, parts[1]: true}
+			for k := range want {
+				if !got[k] {
+					return fmt.Errorf("region %d: expected team {%s, %s}, got %q",
+						i, r[0].name, r[1].name, line)
+				}
+			}
 		}
 	}
-	return b.String()
+	return nil
 }
 
-func generateTests() []string {
-	rand.Seed(43)
-	tests := make([]string, 100)
-	for t := 0; t < 100; t++ {
-		m := rand.Intn(5) + 1
-		n := 2*m + rand.Intn(6)
+func generateTests(rng *rand.Rand) []string {
+	tests := make([]string, 200)
+	for t := 0; t < 200; t++ {
+		m := rng.Intn(5) + 1
+		n := 2*m + rng.Intn(6)
 		students := make([]student, 0, n)
 		nameID := 1
 		for r := 1; r <= m; r++ {
 			for i := 0; i < 2; i++ {
-				s := student{
+				students = append(students, student{
 					name:   fmt.Sprintf("name%d", nameID),
 					region: r,
-					points: rand.Intn(801),
-				}
+					points: rng.Intn(801),
+				})
 				nameID++
-				students = append(students, s)
 			}
 		}
 		for len(students) < n {
-			s := student{
+			students = append(students, student{
 				name:   fmt.Sprintf("name%d", nameID),
-				region: rand.Intn(m) + 1,
-				points: rand.Intn(801),
-			}
+				region: rng.Intn(m) + 1,
+				points: rng.Intn(801),
+			})
 			nameID++
-			students = append(students, s)
 		}
 		sort.Slice(students, func(i, j int) bool { return students[i].name < students[j].name })
 		var b strings.Builder
@@ -107,17 +122,16 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	tests := generateTests()
-	for i, t := range tests {
-		expect := strings.TrimSpace(solve(t))
-		got, err := runBinary(bin, t)
+	rng := rand.New(rand.NewSource(43))
+	tests := generateTests(rng)
+	for i, tc := range tests {
+		got, err := runBinary(bin, tc)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		got = strings.TrimSpace(got)
-		if expect != got {
-			fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, t, expect, got)
+		if err := validate(tc, got); err != nil {
+			fmt.Printf("test %d failed: %v\ninput:\n%sgot:\n%s\n", i+1, err, tc, got)
 			os.Exit(1)
 		}
 	}

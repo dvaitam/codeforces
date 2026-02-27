@@ -7,7 +7,7 @@ import (
 )
 
 func canGetTShirt(s, p int) bool {
-	cur := s
+	cur := s / 50
 	for i := 0; i < 25; i++ {
 		cur = (cur*96 + 42) % 475
 		if cur+26 == p {

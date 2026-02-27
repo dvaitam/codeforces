@@ -10,15 +10,6 @@ import (
 	"time"
 )
 
-func buildOracle() (string, error) {
-	oracle := "oracleA"
-	cmd := exec.Command("go", "build", "-o", oracle, "1073A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
-}
-
 func runProg(prog, input string) (string, error) {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(prog, ".go") {
@@ -46,34 +37,88 @@ func genCase(rng *rand.Rand) string {
 	return fmt.Sprintf("%d\n%s\n", n, string(b))
 }
 
+// isDiverse returns true if no letter appears strictly more than len(t)/2 times.
+func isDiverse(t string) bool {
+	n := len(t)
+	freq := [26]int{}
+	for i := 0; i < n; i++ {
+		freq[t[i]-'a']++
+	}
+	for _, c := range freq {
+		if 2*c > n {
+			return false
+		}
+	}
+	return true
+}
+
+// hasDiverseSubstring returns true if s has any diverse substring.
+// Since any 2-char substring with two different chars is diverse, this is
+// equivalent to checking whether s has at least two distinct characters.
+func hasDiverseSubstring(s string) bool {
+	for i := 1; i < len(s); i++ {
+		if s[i] != s[0] {
+			return true
+		}
+	}
+	return false
+}
+
+func validate(input, output string) error {
+	lines := strings.Split(strings.TrimSpace(input), "\n")
+	s := strings.TrimSpace(lines[1])
+
+	outLines := strings.Split(strings.TrimSpace(output), "\n")
+
+	verdict := strings.TrimSpace(outLines[0])
+	if verdict != "YES" && verdict != "NO" {
+		return fmt.Errorf("first line must be YES or NO, got %q", verdict)
+	}
+
+	if verdict == "NO" {
+		if hasDiverseSubstring(s) {
+			return fmt.Errorf("output NO but a diverse substring exists in %q", s)
+		}
+		return nil
+	}
+
+	// verdict == "YES"
+	if !hasDiverseSubstring(s) {
+		return fmt.Errorf("output YES but no diverse substring exists in %q", s)
+	}
+	if len(outLines) < 2 {
+		return fmt.Errorf("YES verdict missing substring on second line")
+	}
+	sub := strings.TrimSpace(outLines[1])
+	if len(sub) == 0 {
+		return fmt.Errorf("returned empty substring")
+	}
+	if !strings.Contains(s, sub) {
+		return fmt.Errorf("returned %q is not a substring of %q", sub, s)
+	}
+	if !isDiverse(sub) {
+		return fmt.Errorf("returned %q is not diverse", sub)
+	}
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierA.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 1000; i++ {
 		input := genCase(rng)
-		exp, err := runProg(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle runtime error on case %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
 		out, err := runProg(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d runtime error: %v\n%s", i+1, err, out)
 			os.Exit(1)
 		}
-		if out != exp {
-			fmt.Fprintf(os.Stderr, "case %d failed:\nexpected: %s\n got: %s\ninput:\n%s", i+1, exp, out, input)
+		if err := validate(input, out); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s\noutput: %s\n", i+1, err, input, out)
 			os.Exit(1)
 		}
 	}

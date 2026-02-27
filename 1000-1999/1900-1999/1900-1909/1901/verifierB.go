@@ -6,59 +6,54 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
-	"time"
 )
 
-type result struct {
-	out string
-	err error
-}
-
-func buildRef() (string, error) {
-	refSrc := filepath.Join(filepath.Dir(os.Args[0]), "1901B.go")
-	bin := filepath.Join(os.TempDir(), fmt.Sprintf("refB_%d", time.Now().UnixNano()))
-	cmd := exec.Command("go", "build", "-o", bin, refSrc)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, string(out))
+// expected computes the minimum number of teleports for a single test case.
+// Formula: sum of positive rises in c (treating c[-1]=0 as baseline), minus 1.
+func expected(c []int64) int64 {
+	var segments, prev int64
+	for _, v := range c {
+		if v > prev {
+			segments += v - prev
+		}
+		prev = v
 	}
-	return bin, nil
+	return segments - 1
 }
 
-func runBinary(path, input string) result {
+func genTest(rng *rand.Rand) string {
+	n := rng.Intn(20) + 1
+	arr := make([]int64, n)
+	for i := range arr {
+		arr[i] = rng.Int63n(1000)
+	}
+	if arr[0] == 0 {
+		arr[0] = 1
+	}
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "1\n%d\n", n)
+	for i, v := range arr {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		fmt.Fprintf(&sb, "%d", v)
+	}
+	sb.WriteByte('\n')
+	return sb.String()
+}
+
+func runBinary(path, input string) (string, error) {
 	cmd := exec.Command(path)
 	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
+	var out, stderr bytes.Buffer
 	cmd.Stdout = &out
-	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err != nil {
 		err = fmt.Errorf("%v: %s", err, stderr.String())
 	}
-	return result{strings.TrimSpace(out.String()), err}
-}
-
-func genTest() string {
-	n := rand.Intn(20) + 1
-	arr := make([]int64, n)
-	for i := 0; i < n; i++ {
-		arr[i] = rand.Int63n(1000)
-	}
-	if arr[0] == 0 {
-		arr[0] = 1
-	}
-	sb := &strings.Builder{}
-	fmt.Fprintf(sb, "1\n%d\n", n)
-	for i, v := range arr {
-		if i > 0 {
-			sb.WriteByte(' ')
-		}
-		fmt.Fprintf(sb, "%d", v)
-	}
-	sb.WriteByte('\n')
-	return sb.String()
+	return strings.TrimSpace(out.String()), err
 }
 
 func main() {
@@ -67,27 +62,34 @@ func main() {
 		os.Exit(1)
 	}
 	binary := os.Args[1]
-	rand.Seed(2)
-	refBin, err := buildRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-	for i := 0; i < 100; i++ {
-		tc := genTest()
-		exp := runBinary(refBin, tc)
-		if exp.err != nil {
-			fmt.Fprintf(os.Stderr, "reference run failed on test %d: %v\n", i+1, exp.err)
+	rng := rand.New(rand.NewSource(2))
+	for i := 0; i < 1000; i++ {
+		tc := genTest(rng)
+
+		// Parse c from the generated test case.
+		lines := strings.Split(strings.TrimSpace(tc), "\n")
+		var n int
+		fmt.Sscan(lines[1], &n)
+		c := make([]int64, n)
+		fields := strings.Fields(lines[2])
+		for j := 0; j < n; j++ {
+			fmt.Sscan(fields[j], &c[j])
+		}
+		exp := expected(c)
+
+		got, err := runBinary(binary, tc)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "binary failed on test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		got := runBinary(binary, tc)
-		if got.err != nil {
-			fmt.Fprintf(os.Stderr, "binary failed on test %d: %v\n", i+1, got.err)
+
+		var gotVal int64
+		if _, err := fmt.Sscan(got, &gotVal); err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: could not parse output %q: %v\n", i+1, got, err)
 			os.Exit(1)
 		}
-		if exp.out != got.out {
-			fmt.Printf("mismatch on test %d\ninput:\n%s\nexpected:\n%s\nactual:\n%s\n", i+1, tc, exp.out, got.out)
+		if gotVal != exp {
+			fmt.Printf("mismatch on test %d\ninput:\n%s\nexpected: %d\nactual:   %d\n", i+1, tc, exp, gotVal)
 			os.Exit(1)
 		}
 	}

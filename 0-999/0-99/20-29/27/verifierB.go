@@ -17,15 +17,6 @@ type match struct {
 	loser  int
 }
 
-func buildReference() (string, error) {
-	ref := "./refB.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "27B.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
-	}
-	return ref, nil
-}
-
 func runProgram(target, input string) (string, error) {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(target, ".go") {
@@ -105,6 +96,8 @@ func parseInputData(input string) (int, [][]bool, [2]int, error) {
 	return n, wins, missing, nil
 }
 
+// validateCandidate checks that declaring x beat y completes the tournament
+// into a valid total order (no cycles, no missing/duplicate pairs).
 func validateCandidate(n int, wins [][]bool, x, y int) error {
 	if x < 1 || x > n || y < 1 || y > n {
 		return fmt.Errorf("players must be between 1 and %d, got %d %d", n, x, y)
@@ -166,7 +159,7 @@ func validateCandidate(n int, wins [][]bool, x, y int) error {
 		}
 	}
 	if processed != n {
-		return fmt.Errorf("declared result %d %d creates a cycle", x, y)
+		return fmt.Errorf("declared result %d beats %d creates a cycle", x, y)
 	}
 	return nil
 }
@@ -174,9 +167,6 @@ func validateCandidate(n int, wins [][]bool, x, y int) error {
 func makeCase(n int, ranking []int, missing [2]int) string {
 	matches := make([]match, 0, n*(n-1)/2-1)
 	a, b := missing[0], missing[1]
-	if a < 1 || a > n || b < 1 || b > n || a == b {
-		panic("invalid missing pair")
-	}
 	for i := 1; i <= n; i++ {
 		for j := i + 1; j <= n; j++ {
 			if (i == a && j == b) || (i == b && j == a) {
@@ -205,14 +195,12 @@ func deterministicCases() []string {
 		makeCase(6, []int{5, 1, 3, 0, 2, 4}, [2]int{1, 2}),
 	}
 
-	// Large deterministic case with shuffled matches to stress parsing order.
 	n := 50
 	ranking := make([]int, n)
 	for i := range ranking {
 		ranking[i] = i
 	}
 	input := makeCase(n, ranking, [2]int{1, n})
-	// Shuffle match order for this case.
 	lines := strings.Split(strings.TrimSpace(input), "\n")
 	matches := lines[1:]
 	rng := rand.New(rand.NewSource(123456789))
@@ -261,22 +249,10 @@ func generateRandomCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
-func verifyCase(candidate, ref, input string) error {
+func verifyCase(candidate, input string) error {
 	n, wins, missing, err := parseInputData(input)
 	if err != nil {
 		return fmt.Errorf("bad test data: %v", err)
-	}
-
-	refOut, err := runProgram(ref, input)
-	if err != nil {
-		return fmt.Errorf("reference error: %v", err)
-	}
-	rx, ry, err := parsePair(refOut)
-	if err != nil {
-		return fmt.Errorf("bad reference output: %v", err)
-	}
-	if err := validateCandidate(n, wins, rx, ry); err != nil {
-		return fmt.Errorf("reference produced invalid answer: %v", err)
 	}
 
 	candOut, err := runProgram(candidate, input)
@@ -287,16 +263,16 @@ func verifyCase(candidate, ref, input string) error {
 	if err != nil {
 		return err
 	}
+
+	// Check the candidate identified the correct missing pair (either orientation).
+	if !((cx == missing[0] && cy == missing[1]) || (cx == missing[1] && cy == missing[0])) {
+		return fmt.Errorf("missing pair is {%d,%d}, but candidate returned %d %d",
+			missing[0], missing[1], cx, cy)
+	}
+
+	// Check that the declared winner/loser is consistent (no cycle).
 	if err := validateCandidate(n, wins, cx, cy); err != nil {
 		return err
-	}
-	// Additional safety: ensure candidate filled the actual missing pair.
-	if !((cx == missing[0] && cy == missing[1]) || (cx == missing[1] && cy == missing[0])) {
-		return fmt.Errorf("match between %d and %d is missing, but candidate returned %d %d", missing[0], missing[1], cx, cy)
-	}
-	// Orientation must match reference in this problem.
-	if cx != rx || cy != ry {
-		return fmt.Errorf("expected %d %d, got %d %d", rx, ry, cx, cy)
 	}
 	return nil
 }
@@ -308,13 +284,6 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	ref, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
 	tests := deterministicCases()
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 300; i++ {
@@ -322,7 +291,7 @@ func main() {
 	}
 
 	for idx, input := range tests {
-		if err := verifyCase(candidate, ref, input); err != nil {
+		if err := verifyCase(candidate, input); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", idx+1, err, input)
 			os.Exit(1)
 		}
