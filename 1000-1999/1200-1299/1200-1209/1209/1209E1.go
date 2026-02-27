@@ -68,6 +68,9 @@ func main() {
 			copy(newDP, dp)
 			for mask := 0; mask < size; mask++ {
 				for sub := 1; sub < size; sub++ {
+					if sub&mask != 0 {
+						continue
+					}
 					nm := mask | sub
 					if val := dp[mask] + best[sub]; val > newDP[nm] {
 						newDP[nm] = val
