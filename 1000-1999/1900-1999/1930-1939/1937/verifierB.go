@@ -6,13 +6,18 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
 
 func buildRef() (string, error) {
-	ref := "refB.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1937B.go")
+	_, selfPath, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(selfPath)
+	src := filepath.Join(dir, "1937B.go")
+	ref := filepath.Join(dir, "refB.bin")
+	cmd := exec.Command("go", "build", "-o", ref, src)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("failed to build reference: %v\n%s", err, string(out))
 	}

@@ -6,44 +6,30 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func expected(s string) string {
-	n := len(s)
+func optimal(s string) string {
+	k := strings.Count(s, "a")
+	return strings.Repeat("a", k) + strings.Repeat("b", len(s)-k)
+}
+
+func simulate(s string, ops []int) string {
 	b := []byte(s)
-	res := make([]int, n)
-	for i := 1; i < n; i++ {
-		rev := false
-		if i == n-1 {
-			if b[i] == 'a' {
-				rev = true
-			}
-		} else {
-			if b[i] != b[i+1] {
-				rev = true
-			}
-		}
-		if rev {
-			res[i] = 1
+	for i, op := range ops {
+		if op == 1 {
 			for l, r := 0, i; l < r; l, r = l+1, r-1 {
 				b[l], b[r] = b[r], b[l]
 			}
 		}
 	}
-	var sb strings.Builder
-	for i, v := range res {
-		if i > 0 {
-			sb.WriteByte(' ')
-		}
-		sb.WriteString(fmt.Sprintf("%d", v))
-	}
-	sb.WriteByte('\n')
-	return sb.String()
+	return string(b)
 }
 
-func runCase(bin, input, want string) error {
+func runCase(bin, s string) error {
+	input := s + "\n"
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
 		cmd = exec.Command("go", "run", bin)
@@ -57,9 +43,23 @@ func runCase(bin, input, want string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	got := strings.TrimSpace(out.String())
-	if strings.TrimSpace(want) != got {
-		return fmt.Errorf("expected %q got %q", want, got)
+	parts := strings.Fields(strings.TrimSpace(out.String()))
+	n := len(s)
+	if len(parts) != n {
+		return fmt.Errorf("expected %d integers, got %d: %q", n, len(parts), out.String())
+	}
+	ops := make([]int, n)
+	for i, p := range parts {
+		v, err := strconv.Atoi(p)
+		if err != nil || (v != 0 && v != 1) {
+			return fmt.Errorf("invalid value %q at position %d", p, i)
+		}
+		ops[i] = v
+	}
+	got := simulate(s, ops)
+	want := optimal(s)
+	if got != want {
+		return fmt.Errorf("resulting string %q is not optimal %q", got, want)
 	}
 	return nil
 }
@@ -87,10 +87,8 @@ func main() {
 	}
 
 	for idx, s := range tests {
-		input := s + "\n"
-		want := expected(s)
-		if err := runCase(bin, input, want); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:%s", idx+1, err, input)
+		if err := runCase(bin, s); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:%s\n", idx+1, err, s)
 			os.Exit(1)
 		}
 	}

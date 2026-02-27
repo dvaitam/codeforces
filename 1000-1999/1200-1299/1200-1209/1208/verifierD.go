@@ -94,7 +94,7 @@ func generateCase(rng *rand.Rand) (string, string) {
 	for i := n - 1; i >= 0; i-- {
 		val := rng.Int63n(bit.Sum(n))
 		idx := bit.LowerBound(val)
-		s[i] = val
+		s[i] = bit.Sum(idx - 1)
 		bit.Add(idx, -int64(idx))
 	}
 	var sb strings.Builder

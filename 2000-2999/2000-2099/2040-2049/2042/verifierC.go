@@ -111,6 +111,9 @@ func buildTests(rng *rand.Rand) []testCase {
 	}
 	for len(tests) < 500 && total < maxTotalN {
 		remaining := maxTotalN - total
+		if remaining < 2 {
+			break
+		}
 		n := rng.Intn(min(1000, remaining-1)) + 2
 		if n > remaining {
 			n = remaining

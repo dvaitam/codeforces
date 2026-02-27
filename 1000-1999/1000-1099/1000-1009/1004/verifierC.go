@@ -63,7 +63,7 @@ func main() {
 		n := rng.Intn(20) + 1
 		arr := make([]int, n)
 		for j := 0; j < n; j++ {
-			arr[j] = rng.Intn(10)
+			arr[j] = rng.Intn(10) + 1
 		}
 		cases = append(cases, arr)
 	}

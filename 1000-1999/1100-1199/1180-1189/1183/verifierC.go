@@ -6,17 +6,27 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	oracle := "oracleC"
-	cmd := exec.Command("go", "build", "-o", oracle, "1183C.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+func buildOracle() (string, func(), error) {
+	_, file, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(file)
+	src := filepath.Join(dir, "1183C.go")
+	tmp, err := os.CreateTemp("", "oracle1183C*")
+	if err != nil {
+		return "", nil, err
 	}
-	return oracle, nil
+	tmp.Close()
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), src)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(tmp.Name())
+		return "", nil, fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	}
+	return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
 }
 
 func runProg(prog, input string) (string, error) {
@@ -57,12 +67,12 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
+	oracle, cleanup, err := buildOracle()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.Remove(oracle)
+	defer cleanup()
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {

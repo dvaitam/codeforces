@@ -27,13 +27,19 @@ func main() {
 			freq[v]++
 		}
 
+		// cntMult[g] = count of elements whose value is a multiple of g
 		cntMult := make([]int, maxVal+1)
+		for g := 1; g <= maxVal; g++ {
+			for m := g; m <= maxVal; m += g {
+				cntMult[g] += freq[m]
+			}
+		}
+
+		// hasDiv[m] = true if some array element divides m
 		hasDiv := make([]bool, maxVal+1)
-		// accumulate multiples and divisors presence
 		for v := 1; v <= maxVal; v++ {
 			if freq[v] > 0 {
 				for m := v; m <= maxVal; m += v {
-					cntMult[m] += freq[v]
 					hasDiv[m] = true
 				}
 			}

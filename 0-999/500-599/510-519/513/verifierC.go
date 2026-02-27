@@ -3,10 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -49,6 +51,16 @@ func genCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
+func floatClose(a, b string, eps float64) bool {
+	fa, err1 := strconv.ParseFloat(strings.TrimSpace(a), 64)
+	fb, err2 := strconv.ParseFloat(strings.TrimSpace(b), 64)
+	if err1 != nil || err2 != nil {
+		return a == b
+	}
+	diff := math.Abs(fa - fb)
+	return diff <= eps || diff <= eps*math.Max(math.Abs(fa), math.Abs(fb))
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
@@ -76,7 +88,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d: %v\n", i, err)
 			os.Exit(1)
 		}
-		if got != expect {
+		if !floatClose(expect, got, 1e-6) {
 			fmt.Printf("case %d failed\nexpected:\n%s\n\ngot:\n%s\n", i, expect, got)
 			os.Exit(1)
 		}

@@ -55,7 +55,7 @@ func solve(in *bufio.Reader, out *bufio.Writer) {
 	for _, id := range res1 {
 		fmt.Fprint(out, " ", id)
 	}
-	fmt.Fprint(out, '\n')
+	fmt.Fprint(out, "\n")
 	fmt.Fprint(out, len(res2))
 	for _, id := range res2 {
 		fmt.Fprint(out, " ", id)
