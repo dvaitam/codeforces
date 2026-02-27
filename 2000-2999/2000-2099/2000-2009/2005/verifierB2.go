@@ -7,32 +7,61 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
 
-type testInput struct {
-	text     string
-	ansCount int
+// solveCase is the embedded reference implementation.
+// For each query position a, the answer is:
+//   - a is left of all teachers:  b[0] - 1
+//   - a is right of all teachers: n - b[m-1]
+//   - a is between two teachers:  (b[right] - b[left]) / 2
+func solveCase(n int64, teachers []int64, queries []int64) []int64 {
+	b := make([]int64, len(teachers))
+	copy(b, teachers)
+	sort.Slice(b, func(i, j int) bool { return b[i] < b[j] })
+	m := len(b)
+	results := make([]int64, len(queries))
+	for qi, a := range queries {
+		idx := sort.Search(m, func(i int) bool { return b[i] >= a })
+		var ans int64
+		if idx == 0 {
+			ans = b[0] - 1
+		} else if idx == m {
+			ans = n - b[m-1]
+		} else {
+			ans = (b[idx] - b[idx-1]) / 2
+		}
+		results[qi] = ans
+	}
+	return results
 }
 
-func buildReference() (string, error) {
-	refDir := filepath.Join("2000-2999", "2000-2099", "2000-2009", "2005")
-	tmp, err := os.CreateTemp("", "ref2005B2")
-	if err != nil {
-		return "", err
-	}
-	tmpPath := tmp.Name()
-	tmp.Close()
-	os.Remove(tmpPath)
+type testInput struct {
+	text     string
+	expected []int64
+}
 
-	cmd := exec.Command("go", "build", "-o", tmpPath, "2005B2.go")
-	cmd.Dir = refDir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
+func buildTest(n int64, teachers []int64, queries []int64) testInput {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "1\n%d %d %d\n", n, len(teachers), len(queries))
+	for i, v := range teachers {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.FormatInt(v, 10))
 	}
-	return tmpPath, nil
+	sb.WriteByte('\n')
+	for i, v := range queries {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.FormatInt(v, 10))
+	}
+	sb.WriteByte('\n')
+	return testInput{text: sb.String(), expected: solveCase(n, teachers, queries)}
 }
 
 func commandForPath(path string) *exec.Cmd {
@@ -61,12 +90,12 @@ func runBinary(path, input string) (string, error) {
 	return out.String(), nil
 }
 
-func parseOutput(out string, expected int) ([]int64, error) {
+func parseOutput(out string, count int) ([]int64, error) {
 	fields := strings.Fields(out)
-	if len(fields) != expected {
-		return nil, fmt.Errorf("expected %d integers, got %d", expected, len(fields))
+	if len(fields) != count {
+		return nil, fmt.Errorf("expected %d integers, got %d", count, len(fields))
 	}
-	ans := make([]int64, expected)
+	ans := make([]int64, count)
 	for i, f := range fields {
 		val, err := strconv.ParseInt(f, 10, 64)
 		if err != nil {
@@ -79,71 +108,78 @@ func parseOutput(out string, expected int) ([]int64, error) {
 
 func fixedTests() []testInput {
 	return []testInput{
-		{text: "1\n8 1 1\n6\n1\n", ansCount: 1},
-		{text: "1\n20 2 3\n5 15\n1 10 20\n", ansCount: 3},
+		buildTest(8, []int64{6}, []int64{1}),
+		buildTest(10, []int64{1, 4, 8}, []int64{2, 3, 10}),
+	}
+}
+
+func edgeTests() []testInput {
+	return []testInput{
+		buildTest(1_000_000_000, []int64{1, 500_000_000, 1_000_000_000}, []int64{2, 999_999_999, 500_000_001}),
 	}
 }
 
 func randomTest(rng *rand.Rand) testInput {
-	t := rng.Intn(10) + 1
+	t := rng.Intn(5) + 1
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d\n", t))
-	ansCount := 0
-	for caseIdx := 0; caseIdx < t; caseIdx++ {
-		n := int64(rng.Intn(1_000_000_000-2) + 3)
+	fmt.Fprintf(&sb, "%d\n", t)
+	var allExpected []int64
+	for range t {
+		n := int64(rng.Intn(999_999_998) + 3)
 		m := rng.Intn(5) + 1
 		q := rng.Intn(5) + 1
-		ansCount += q
-		sb.WriteString(fmt.Sprintf("%d %d %d\n", n, m, q))
-		teacherPositions := make(map[int64]struct{})
-		for len(teacherPositions) < m {
-			pos := int64(rng.Intn(int(n)) + 1)
-			teacherPositions[pos] = struct{}{}
-		}
-		first := true
-		for pos := range teacherPositions {
-			if !first {
-				sb.WriteByte(' ')
-			}
-			sb.WriteString(fmt.Sprintf("%d", pos))
-			first = false
-		}
-		sb.WriteByte('\n')
+		fmt.Fprintf(&sb, "%d %d %d\n", n, m, q)
 
-		for i := 0; i < q; i++ {
-			var pos int64
-			for {
-				pos = int64(rng.Intn(int(n)) + 1)
-				if _, exists := teacherPositions[pos]; !exists {
-					break
-				}
-			}
+		teacherSet := make(map[int64]struct{})
+		for len(teacherSet) < m {
+			teacherSet[int64(rng.Intn(int(n)))+1] = struct{}{}
+		}
+		teachers := make([]int64, 0, m)
+		for pos := range teacherSet {
+			teachers = append(teachers, pos)
+		}
+		for i, pos := range teachers {
 			if i > 0 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(fmt.Sprintf("%d", pos))
+			sb.WriteString(strconv.FormatInt(pos, 10))
 		}
 		sb.WriteByte('\n')
+
+		queries := make([]int64, 0, q)
+		for len(queries) < q {
+			pos := int64(rng.Intn(int(n))) + 1
+			if _, exists := teacherSet[pos]; !exists {
+				queries = append(queries, pos)
+			}
+		}
+		for i, pos := range queries {
+			if i > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.FormatInt(pos, 10))
+		}
+		sb.WriteByte('\n')
+
+		allExpected = append(allExpected, solveCase(n, teachers, queries)...)
 	}
-	return testInput{text: sb.String(), ansCount: ansCount}
+	return testInput{text: sb.String(), expected: allExpected}
 }
 
-func edgeTests() []testInput {
-	var sb strings.Builder
-	sb.WriteString("1\n1000000000 3 3\n1 500000000 1000000000\n2 999999999 500000001\n")
-	return []testInput{
-		{text: sb.String(), ansCount: 3},
-	}
-}
-
-func generateTests() []testInput {
+func generateTests(rng *rand.Rand) []testInput {
 	tests := fixedTests()
 	tests = append(tests, edgeTests()...)
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for len(tests) < 60 {
 		tests = append(tests, randomTest(rng))
 	}
 	return tests
+}
+
+func preview(s string) string {
+	if len(s) <= 400 {
+		return s
+	}
+	return s[:400] + "...\n"
 }
 
 func main() {
@@ -152,51 +188,25 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-
-	ref, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
-	tests := generateTests()
-	for idx, input := range tests {
-		expectRaw, err := runBinary(ref, input.text)
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	tests := generateTests(rng)
+	for idx, tc := range tests {
+		gotRaw, err := runBinary(bin, tc.text)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\ninput:\n%s\n", idx+1, err, preview(input.text))
+			fmt.Fprintf(os.Stderr, "candidate runtime error on test %d: %v\ninput:\n%s\n", idx+1, err, preview(tc.text))
 			os.Exit(1)
 		}
-		expect, err := parseOutput(expectRaw, input.ansCount)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to parse reference output on test %d: %v\noutput:\n%s\n", idx+1, err, expectRaw)
-			os.Exit(1)
-		}
-
-		gotRaw, err := runBinary(bin, input.text)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "candidate runtime error on test %d: %v\ninput:\n%s\n", idx+1, err, preview(input.text))
-			os.Exit(1)
-		}
-		got, err := parseOutput(gotRaw, input.ansCount)
+		got, err := parseOutput(gotRaw, len(tc.expected))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to parse candidate output on test %d: %v\noutput:\n%s\n", idx+1, err, gotRaw)
 			os.Exit(1)
 		}
-
-		for i := range expect {
-			if expect[i] != got[i] {
-				fmt.Fprintf(os.Stderr, "mismatch on test %d answer %d: expected %d got %d\ninput:\n%s\n", idx+1, i+1, expect[i], got[i], preview(input.text))
+		for i := range tc.expected {
+			if tc.expected[i] != got[i] {
+				fmt.Fprintf(os.Stderr, "mismatch on test %d answer %d: expected %d got %d\ninput:\n%s\n", idx+1, i+1, tc.expected[i], got[i], preview(tc.text))
 				os.Exit(1)
 			}
 		}
 	}
 	fmt.Printf("All %d tests passed.\n", len(tests))
-}
-
-func preview(s string) string {
-	if len(s) <= 400 {
-		return s
-	}
-	return s[:400] + "...\n"
 }

@@ -6,26 +6,39 @@ import (
 	"os"
 )
 
-func reverseRunes(s string) string {
-	runes := []rune(s)
-	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
-		runes[i], runes[j] = runes[j], runes[i]
-	}
-	return string(runes)
-}
-
 func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
+	in := bufio.NewReaderSize(os.Stdin, 1<<20)
+	out := bufio.NewWriterSize(os.Stdout, 1<<20)
 	defer out.Flush()
 
-	var t int
-	if _, err := fmt.Fscan(in, &t); err != nil {
-		return
-	}
-	for ; t > 0; t-- {
-		var s string
-		fmt.Fscan(in, &s)
-		fmt.Fprintln(out, reverseRunes(s))
+	var T int
+	fmt.Fscan(in, &T)
+	for ; T > 0; T-- {
+		var n int
+		fmt.Fscan(in, &n)
+		a := make([]int, n+1)
+		for i := 1; i <= n; i++ {
+			fmt.Fscan(in, &a[i])
+		}
+
+		mp1 := make(map[int]int) // last occurrence (1-based)
+		mp2 := make(map[int]int) // first occurrence (1-based)
+
+		for i := 1; i <= n; i++ {
+			mp1[a[i]] = i
+		}
+
+		var ans int64
+		num := 0
+		for i := 1; i <= n; i++ {
+			if mp2[a[i]] == 0 {
+				mp2[a[i]] = i
+				num++
+			}
+			if mp1[a[i]] == i {
+				ans += int64(num)
+			}
+		}
+		fmt.Fprintln(out, ans)
 	}
 }

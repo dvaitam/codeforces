@@ -26,7 +26,7 @@ func genTest(rng *rand.Rand) []byte {
 }
 
 func check(s, p int) bool {
-	cur := s % 475
+	cur := (s / 50) % 475
 	for i := 0; i < 25; i++ {
 		cur = (cur*96 + 42) % 475
 		if cur+26 == p {

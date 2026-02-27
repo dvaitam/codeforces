@@ -6,22 +6,41 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+// bruteForce computes the answer for all starting messages by simulation.
+// a is 1-indexed (a[0] unused); returns answers for messages 1..n.
+func bruteForce(n, k int, a []int) []int {
+	result := make([]int, n+1)
+	for start := 1; start <= n; start++ {
+		seen := make([]bool, n+1)
+		cur := start
+		for cur != 0 {
+			lo := cur - k
+			if lo < 1 {
+				lo = 1
+			}
+			hi := cur + k
+			if hi > n {
+				hi = n
+			}
+			for j := lo; j <= hi; j++ {
+				seen[j] = true
+			}
+			cur = a[cur]
+		}
+		count := 0
+		for j := 1; j <= n; j++ {
+			if seen[j] {
+				count++
+			}
+		}
+		result[start] = count
 	}
-	oracle := filepath.Join(dir, "oracleB")
-	cmd := exec.Command("go", "build", "-o", oracle, "928B.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
+	return result[1:]
 }
 
 func runProg(bin, input string) (string, error) {
@@ -42,19 +61,22 @@ func runProg(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func genCase(rng *rand.Rand) string {
+func genCase(rng *rand.Rand) (string, int, int, []int) {
 	n := rng.Intn(20) + 1
-	k := rng.Intn(n)
+	k := rng.Intn(n + 1)
+	a := make([]int, n+1) // 1-indexed
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d %d\n", n, k)
 	for i := 1; i <= n; i++ {
 		if i > 1 {
 			sb.WriteByte(' ')
 		}
-		sb.WriteString(fmt.Sprintf("%d", rng.Intn(i)))
+		v := rng.Intn(i) // 0..i-1, satisfies a[i] < i
+		a[i] = v
+		sb.WriteString(strconv.Itoa(v))
 	}
 	sb.WriteByte('\n')
-	return sb.String()
+	return sb.String(), n, k, a
 }
 
 func main() {
@@ -63,28 +85,29 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		input := genCase(rng)
-		want, err := runProg(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
+		input, n, k, a := genCase(rng)
+		want := bruteForce(n, k, a)
+
 		got, err := runProg(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(want) {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, want, got, input)
+
+		fields := strings.Fields(got)
+		if len(fields) != n {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %d values, got %d\ninput:\n%s", i+1, n, len(fields), input)
+			os.Exit(1)
+		}
+		wantStrs := make([]string, n)
+		for j, v := range want {
+			wantStrs[j] = strconv.Itoa(v)
+		}
+		if strings.Join(fields, " ") != strings.Join(wantStrs, " ") {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s",
+				i+1, strings.Join(wantStrs, " "), strings.Join(fields, " "), input)
 			os.Exit(1)
 		}
 	}

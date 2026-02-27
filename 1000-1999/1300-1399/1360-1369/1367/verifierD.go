@@ -9,57 +9,47 @@ import (
 	"strings"
 )
 
-// solve embeds the logic from 1367D.go.
-func solve(s string, b []int) string {
+// validateAnswer checks whether t is a valid answer for the given s and b.
+// Returns "" on success, or a reason string on failure.
+func validateAnswer(s string, b []int, t string) string {
 	m := len(b)
-	freq := make([]int, 26)
+	if len(t) != m {
+		return fmt.Sprintf("length mismatch: want %d, got %d", m, len(t))
+	}
+	// Check all characters are lowercase letters.
+	for _, ch := range t {
+		if ch < 'a' || ch > 'z' {
+			return fmt.Sprintf("invalid character %q", ch)
+		}
+	}
+	// Check t's characters are a submultiset of s's characters.
+	freqS := make([]int, 26)
 	for _, ch := range s {
-		freq[int(ch-'a')]++
+		freqS[int(ch-'a')]++
 	}
-
-	res := make([]byte, m)
-	used := make([]bool, m)
-	remaining := m
-	ch := 25
-	for remaining > 0 {
-		zeros := make([]int, 0)
-		for i := 0; i < m; i++ {
-			if !used[i] && b[i] == 0 {
-				zeros = append(zeros, i)
-			}
+	for _, ch := range t {
+		freqS[int(ch-'a')]--
+		if freqS[int(ch-'a')] < 0 {
+			return fmt.Sprintf("character %q used more times than available in s", ch)
 		}
-		if len(zeros) == 0 {
-			break
-		}
-		for ch >= 0 && freq[ch] < len(zeros) {
-			ch--
-		}
-		if ch < 0 {
-			break
-		}
-		for _, pos := range zeros {
-			res[pos] = byte('a' + ch)
-			used[pos] = true
-		}
-		freq[ch] -= len(zeros)
-		ch--
-		remaining -= len(zeros)
-		for i := 0; i < m; i++ {
-			if used[i] {
-				continue
-			}
-			sum := 0
-			for _, pos := range zeros {
-				if i > pos {
-					sum += i - pos
-				} else {
-					sum += pos - i
+	}
+	// Recompute b from t and compare.
+	for i := 0; i < m; i++ {
+		sum := 0
+		for j := 0; j < m; j++ {
+			if t[j] > t[i] {
+				d := i - j
+				if d < 0 {
+					d = -d
 				}
+				sum += d
 			}
-			b[i] -= sum
+		}
+		if sum != b[i] {
+			return fmt.Sprintf("b[%d]: want %d, got %d", i, b[i], sum)
 		}
 	}
-	return string(res)
+	return ""
 }
 
 // Embedded testcases from testcasesD.txt.
@@ -474,14 +464,14 @@ func main() {
 		}
 		input.WriteByte('\n')
 
-		expected := solve(tc.s, append([]int(nil), tc.b...))
 		got, err := runCandidate(bin, input.String())
 		if err != nil {
 			fmt.Printf("test %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expected) {
-			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input.String(), expected, got)
+		got = strings.TrimSpace(got)
+		if reason := validateAnswer(tc.s, tc.b, got); reason != "" {
+			fmt.Printf("test %d failed\ninput:\n%sgot: %q\nreason: %s\n", i+1, input.String(), got, reason)
 			os.Exit(1)
 		}
 	}

@@ -3,122 +3,36 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
+	"time"
 )
 
-const testcasesRaw = `kqidto
-apvnsq
-ulmvierwao
-kxb
-iehypltjvlsutewjmx
-ucatgwkfhhuomw
-nbmwsnyvwbfociwfoqp
-tyabpkjobzzngrucxe
-m
-kagawyavqtdgdt
-jiwfdpm
-aio
-ieuq
-deiabbgvirkl
-bxwtupwuounlrfgmsja
-eikkz
-wckytbbifesj
-mrejdpxhbjfq
-jmk
-nddrppkzzk
-pdwp
-bjkxvefusmzucc
-gxh
-ma
-mrqj
-pzswvgnclhisyfn
-ldcwaqo
-dpmigub
-tedgoml
-edtpesmuvnqpvkppuv
-rthakwx
-kbqeitzemsj
-czcqbchebjayokfz
-uolqm
-qbscvzzqytcxnygjr
-npzmtshzavaxfjqsikcp
-jynmzmbfu
-hjxkb
-pn
-ptwcv
-qgzgruykannokk
-mslxqvp
-uodw
-lsptm
-mpqhkncggu
-gpmqqqjowynicbj
-kzgh
-xhuj
-awi
-gxdyodmw
-zuyrdhsewvlxt
-liej
-osyyjuezq
-gabwz
-jprklfevh
-wz
-opqekywsgzffmdbkihys
-jgeymahutunc
-oeifrqkybqtjpqvpon
-owrdr
-ityowmszduambni
-qmnwwgytpi
-ysapg
-ezswjkkll
-zq
-ndsoiijctqqclkzy
-vseja
-xfz
-vvkoqjnhjgfypmro
-km
-xnrrndfwtbkok
-ouvsbrwifhldslczt
-cm
-iyvnmjskk
-uoarsrqrsosqkp
-jxkoyjpzkhmcg
-gsqp
-knjoxxpisrhi
-wobdettpxsidprajepnd
-aiypbdtsmwvwkjh
-azbswus
-qnxmt
-gkxgjmsjwziyxftlyng
-nsznkjsbfhvzjzolz
-od
-qrflwgmfszsyghplreqc
-zldvepyldfddtmx
-frkrjqlvfued
-viezmzdabbd
-oorjkmhbvdwdgcgu
-roftbjrzcf
-kccbfzwfypyqgmkp
-gqlmfhjrxulyzrg
-hsalcxrdezlkzcteo
-eesuljboejqvwedshyhk
-ejxd
-jshjfsbuljutlobmdvd
-nocjdplamlfzvxlxztb
-brhsscdtobrcbtbqbkkr
-srqpbgcwwtyqqenpasc
-ptackudefidengicrqyn
-rnlqknsgutbszibvlga
-vjns
-xxvdxcxwmzprebqapqi`
-
-func reverse(s string) string {
-	r := []rune(s)
-	for i, j := 0, len(r)-1; i < j; i, j = i+1, j-1 {
-		r[i], r[j] = r[j], r[i]
+// solve mirrors the C++ reference solution:
+//   mp1[v] = last occurrence index of v (1-based)
+//   num    = count of distinct values seen so far (left to right)
+//   ans   += num whenever position i is the last occurrence of a[i]
+func solve(a []int) int64 {
+	lastOcc := make(map[int]int)
+	for i, v := range a {
+		lastOcc[v] = i + 1 // 1-based
 	}
-	return string(r)
+	seen := make(map[int]bool)
+	num := 0
+	var ans int64
+	for i, v := range a {
+		if !seen[v] {
+			seen[v] = true
+			num++
+		}
+		if lastOcc[v] == i+1 {
+			ans += int64(num)
+		}
+	}
+	return ans
 }
 
 func run(bin, input string) (string, error) {
@@ -138,13 +52,26 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func loadCases() []string {
-	lines := strings.Fields(testcasesRaw)
-	if len(lines) == 0 {
-		fmt.Println("no embedded testcases")
-		os.Exit(1)
+// genBatch builds t test cases into one input string and returns expected answers.
+func genBatch(rng *rand.Rand, t int) (string, []int64) {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d\n", t)
+	expected := make([]int64, t)
+	for i := 0; i < t; i++ {
+		n := rng.Intn(15) + 1
+		a := make([]int, n)
+		fmt.Fprintf(&sb, "%d\n", n)
+		for j := 0; j < n; j++ {
+			a[j] = rng.Intn(n) + 1 // values in [1, n] to produce repetitions
+			if j > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.Itoa(a[j]))
+		}
+		sb.WriteByte('\n')
+		expected[i] = solve(a)
 	}
-	return lines
+	return sb.String(), expected
 }
 
 func main() {
@@ -153,19 +80,36 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	cases := loadCases()
-	for i, s := range cases {
-		input := fmt.Sprintf("1\n%s\n", s)
-		expected := reverse(s)
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	total := 0
+	for batch := 0; batch < 20; batch++ {
+		t := rng.Intn(10) + 1
+		input, expected := genBatch(rng, t)
 		got, err := run(bin, input)
 		if err != nil {
-			fmt.Printf("case %d failed: %v\n", i+1, err)
+			fmt.Fprintf(os.Stderr, "batch %d failed: %v\ninput:\n%s", batch+1, err, input)
 			os.Exit(1)
 		}
-		if got != expected {
-			fmt.Printf("case %d failed: expected %s got %s\n", i+1, expected, got)
+		lines := strings.Fields(got)
+		if len(lines) != t {
+			fmt.Fprintf(os.Stderr, "batch %d: expected %d output lines, got %d\ninput:\n%s\noutput:\n%s\n",
+				batch+1, t, len(lines), input, got)
 			os.Exit(1)
+		}
+		for i, expVal := range expected {
+			total++
+			gotVal, err := strconv.ParseInt(lines[i], 10, 64)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "case %d: could not parse output %q: %v\n", total, lines[i], err)
+				os.Exit(1)
+			}
+			if gotVal != expVal {
+				fmt.Fprintf(os.Stderr, "case %d failed: expected %d got %d\ninput:\n%s\n",
+					total, expVal, gotVal, input)
+				os.Exit(1)
+			}
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(cases))
+	fmt.Printf("All %d tests passed\n", total)
 }

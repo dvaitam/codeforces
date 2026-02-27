@@ -31,7 +31,7 @@ func genCase(rng *rand.Rand) (string, string) {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "1\n%d\n", n)
 	for i := 0; i < n; i++ {
-		arr[i] = rng.Intn(1000) + 1
+		arr[i] = rng.Intn(n) + 1
 		if i > 0 {
 			sb.WriteByte(' ')
 		}
