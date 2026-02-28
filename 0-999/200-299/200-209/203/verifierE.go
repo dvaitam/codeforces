@@ -120,60 +120,117 @@ type robot struct {
 }
 
 func solve203E(n, d, S int64, robots []robot) (int64, int64) {
-	var epos []robot
-	var negCount int64
-	var totalCposE int64
+	var Zn int64
+	var G int64
+
+	A := make([]int64, 0) // c=0, l>=d
+	B := make([]int64, 0) // c>=1, l>=d
+
 	for _, r := range robots {
-		if r.c > 0 && r.f >= d {
-			epos = append(epos, robot{f: r.f, c: r.c})
-			totalCposE += r.c
+		if r.c == 0 {
+			Zn++
 		} else {
-			negCount++
+			G += (r.c - 1)
+		}
+		if r.l >= d {
+			if r.c == 0 {
+				A = append(A, r.f)
+			} else {
+				B = append(B, r.f)
+			}
 		}
 	}
-	A := int64(len(epos))
-	if A == 0 {
-		return 0, 0
+
+	sort.Slice(A, func(i, j int) bool { return A[i] < A[j] })
+	sort.Slice(B, func(i, j int) bool { return B[i] < B[j] })
+
+	pA := make([]int64, len(A)+1)
+	for i := 1; i <= len(A); i++ {
+		pA[i] = pA[i-1] + A[i-1]
 	}
-	B := totalCposE - A
-	Cneg := negCount
-	sort.Slice(epos, func(i, j int) bool { return epos[i].f < epos[j].f })
-	costF := make([]int64, A+1)
-	for i := int64(1); i <= A; i++ {
-		costF[i] = costF[i-1] + epos[i-1].f
+
+	type item struct {
+		cost int64
+		isB  bool
 	}
-	rMax := int64(0)
-	for i := int64(1); i <= A; i++ {
-		if costF[i] <= S {
-			rMax = i
+
+	combined := make([]item, 0, len(A)+len(B))
+	for _, c := range B {
+		combined = append(combined, item{cost: c, isB: true})
+	}
+	for _, c := range A {
+		combined = append(combined, item{cost: c, isB: false})
+	}
+	sort.Slice(combined, func(i, j int) bool {
+		if combined[i].cost != combined[j].cost {
+			return combined[i].cost < combined[j].cost
+		}
+		if combined[i].isB != combined[j].isB {
+			return combined[i].isB && !combined[j].isB
+		}
+		return false
+	})
+
+	sc := make([]int64, len(combined)+1)
+	cb := make([]int, len(combined)+1)
+	for i := 1; i <= len(combined); i++ {
+		sc[i] = sc[i-1] + combined[i-1].cost
+		cb[i] = cb[i-1]
+		if combined[i-1].isB {
+			cb[i]++
+		}
+	}
+
+	const INF int64 = 1<<62 - 1
+	minB := INF
+	if len(B) > 0 {
+		minB = B[0]
+	}
+
+	bestT := int64(0)
+	bestFuel := int64(0)
+
+	kA := 0
+	for i := 1; i <= len(A); i++ {
+		if pA[i] <= S {
+			kA = i
 		} else {
 			break
 		}
 	}
-	if rMax == 0 {
-		return 0, 0
+	TA := int64(kA)
+	if TA > bestT || (TA == bestT && pA[kA] < bestFuel) {
+		bestT = TA
+		bestFuel = pA[kA]
 	}
-	var kMax int64
-	if B+rMax >= Cneg {
-		kMax = A + Cneg
-	} else {
-		kMax = A + B + rMax
-	}
-	var rNeed int64
-	if kMax == A+Cneg {
-		need := Cneg - B
-		if need < 1 {
-			need = 1
+
+	if len(B) > 0 {
+		for m := 1; m <= len(combined); m++ {
+			var FM int64
+			if cb[m] > 0 {
+				FM = sc[m]
+			} else {
+				if minB == INF {
+					continue
+				}
+				FM = sc[m] - combined[m-1].cost + minB
+			}
+			if FM > S {
+				continue
+			}
+			def := Zn - G - int64(m)
+			if def < 0 {
+				def = 0
+			}
+			Tm := int64(n) - def
+			if Tm > bestT || (Tm == bestT && FM < bestFuel) {
+				bestT = Tm
+				bestFuel = FM
+			}
 		}
-		rNeed = need
-	} else {
-		rNeed = rMax
 	}
-	if rNeed > rMax {
-		rNeed = rMax
-	}
-	fuel := costF[rNeed]
-	return kMax, fuel
+
+	return bestT, bestFuel
 }
 
 func parseCase(line string, idx int) (string, int64, int64, int64, []robot, error) {
