@@ -79,7 +79,7 @@ func addInRange(node, l, r, ql, qr, v int, w int64) {
 }
 
 func dijkstra(s int) []int64 {
-	nNodes := offIn + sizeSeg
+	nNodes := offIn + sizeSeg*2
 	dist := make([]int64, nNodes+1)
 	for i := range dist {
 		dist[i] = 1<<63 - 1
