@@ -50,10 +50,25 @@ func fixedCases() []string {
 }
 
 func firstIntToken(s string) (int64, error) {
-	for _, tok := range strings.Fields(s) {
-		if v, err := strconv.ParseInt(tok, 10, 64); err == nil {
+	b := []byte(s)
+	for i := 0; i < len(b); i++ {
+		if b[i] != '-' && (b[i] < '0' || b[i] > '9') {
+			continue
+		}
+		j := i
+		if b[j] == '-' {
+			j++
+			if j >= len(b) || b[j] < '0' || b[j] > '9' {
+				continue
+			}
+		}
+		for j < len(b) && b[j] >= '0' && b[j] <= '9' {
+			j++
+		}
+		if v, err := strconv.ParseInt(string(b[i:j]), 10, 64); err == nil {
 			return v, nil
 		}
+		i = j - 1
 	}
 	return 0, fmt.Errorf("no integer token in output")
 }
@@ -77,7 +92,7 @@ func randomCases() []string {
 	return cases
 }
 
-func runCase(bin, input string) (int64, string, error) {
+func runCase(bin, input string) (int64, bool, string, string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
@@ -85,32 +100,25 @@ func runCase(bin, input string) (int64, string, error) {
 	cmd.Stdout = &out
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return 0, stderr.String(), err
+		return 0, false, "", stderr.String(), err
 	}
 
-	rawOut := strings.TrimSpace(out.String())
-	if rawOut == "" {
-		// Some binaries write the answer to stderr (or mix streams); accept first integer from either stream.
-		rawOut = strings.TrimSpace(stderr.String())
+	stdout := strings.TrimSpace(out.String())
+	stderrTrim := strings.TrimSpace(stderr.String())
+	raw := stdout
+	if raw == "" {
+		raw = stderrTrim
 	}
-	v, parseErr := firstIntToken(rawOut)
-	if parseErr != nil {
-		merged := strings.TrimSpace(out.String())
-		if errTxt := strings.TrimSpace(stderr.String()); errTxt != "" {
-			if merged != "" {
-				merged += "\n"
-			}
-			merged += errTxt
-		}
-		if merged != "" {
-			if v2, err := firstIntToken(merged); err == nil {
-				return v2, strings.TrimSpace(stderr.String()), nil
-			}
-		}
-		return 0, strings.TrimSpace(stderr.String()), fmt.Errorf("%w: stdout=%q stderr=%q", parseErr, out.String(), stderr.String())
+	if v, err := firstIntToken(raw); err == nil {
+		return v, true, stdout, stderrTrim, nil
 	}
-
-	return v, strings.TrimSpace(stderr.String()), nil
+	if stdout != "" && stderrTrim != "" {
+		merged := stdout + "\n" + stderrTrim
+		if v, err := firstIntToken(merged); err == nil {
+			return v, true, stdout, stderrTrim, nil
+		}
+	}
+	return 0, false, stdout, stderrTrim, nil
 }
 
 func main() {
@@ -131,15 +139,24 @@ func main() {
 	for i, c := range cases {
 		idx := i + 1
 
-		expected, oracleErrOut, err := runCase(oracle, c)
+		expected, okExpected, _, oracleErrOut, err := runCase(oracle, c)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle run error on case %d: %v\nstderr: %s\n", idx, err, oracleErrOut)
 			os.Exit(1)
 		}
+		if !okExpected {
+			fmt.Fprintf(os.Stderr, "oracle parse error on case %d: no integer in output\nstderr: %s\n", idx, oracleErrOut)
+			os.Exit(1)
+		}
 
-		got, binErrOut, err := runCase(bin, c)
+		got, okGot, gotOut, binErrOut, err := runCase(bin, c)
 		if err != nil {
 			fmt.Printf("case %d: runtime error: %v\nstderr: %s\n", idx, err, binErrOut)
+			os.Exit(1)
+		}
+
+		if !okGot {
+			fmt.Printf("case %d failed\ninput:\n%sexpected: %d\n     got: <no integer token>\nstdout: %q\nstderr: %q\n", idx, c, expected, gotOut, binErrOut)
 			os.Exit(1)
 		}
 
