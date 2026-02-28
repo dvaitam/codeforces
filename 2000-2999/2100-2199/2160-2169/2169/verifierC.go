@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -56,7 +57,8 @@ func (tr *tokenReader) peek() string {
 }
 
 func buildReference() (string, error) {
-	refDir := filepath.Join("2000-2999", "2100-2199", "2160-2169", "2169")
+	_, selfFile, _, _ := runtime.Caller(0)
+	refDir := filepath.Dir(selfFile)
 	tmp, err := os.CreateTemp("", "ref2169C")
 	if err != nil {
 		return "", err
