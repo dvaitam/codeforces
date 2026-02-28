@@ -11,16 +11,16 @@ import (
 	"time"
 )
 
-const MOD = 1000000007
+const MOD int64 = 1000000007
 
 func solveTree(b []int) string {
 	n := len(b) - 1
 	if n <= 1 {
 		return "1"
 	}
-	dp := make([][]int, n+2)
+	dp := make([][]int64, n+2)
 	for i := range dp {
-		dp[i] = make([]int, n+2)
+		dp[i] = make([]int64, n+2)
 	}
 	for i := 1; i <= n; i++ {
 		dp[i][i] = 1
@@ -35,17 +35,16 @@ func solveTree(b []int) string {
 			}
 		}
 	}
-	return strconv.Itoa(dp[1][n])
+	return strconv.FormatInt(dp[1][n], 10)
 }
 
 func generateCase(rng *rand.Rand) []int {
 	n := rng.Intn(6) + 1
 	b := make([]int, n+1)
-	perm := rand.Perm(n)
+	perm := rng.Perm(n)
 	for i := 0; i < n; i++ {
 		b[i+1] = perm[i] + 1
 	}
-	b[0] = 0
 	if b[1] != 1 {
 		idx := 1
 		for i := 1; i <= n; i++ {
@@ -82,7 +81,7 @@ func runCase(bin string, b []int) error {
 	got := strings.TrimSpace(out.String())
 	expected := solveTree(b)
 	if got != expected {
-		return fmt.Errorf("expected %s got %s", expected, got)
+		return fmt.Errorf("input=%v expected %s got %s", b[1:], expected, got)
 	}
 	return nil
 }
