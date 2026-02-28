@@ -6,13 +6,11 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
 
 const (
-	refSource    = "2074A.go"
 	maxTests     = 500
 	domainLimit  = 10
 	randomTrials = 400
@@ -32,25 +30,12 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
 	tests := generateTests()
 	input := buildInput(tests)
 
-	refOut, err := runProgram(refBin, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference runtime error: %v\noutput:\n%s\n", err, refOut)
-		os.Exit(1)
-	}
-	refAns, err := parseOutput(refOut, len(tests))
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to parse reference output:", err)
-		os.Exit(1)
+	refAns := make([]bool, len(tests))
+	for i, tc := range tests {
+		refAns[i] = isSquare(tc)
 	}
 
 	candOut, err := runCandidate(candidate, input)
@@ -75,32 +60,8 @@ func main() {
 	fmt.Printf("Accepted (%d tests).\n", len(tests))
 }
 
-func buildReference() (string, error) {
-	tmp, err := os.CreateTemp("", "2074A-ref-*")
-	if err != nil {
-		return "", err
-	}
-	tmp.Close()
-
-	source := filepath.Join(".", refSource)
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, out.String())
-	}
-	return tmp.Name(), nil
-}
-
 func runCandidate(path, input string) (string, error) {
 	cmd := commandFor(path)
-	return runWithInput(cmd, input)
-}
-
-func runProgram(path, input string) (string, error) {
-	cmd := exec.Command(path)
 	return runWithInput(cmd, input)
 }
 
@@ -109,6 +70,10 @@ func commandFor(path string) *exec.Cmd {
 		return exec.Command("go", "run", path)
 	}
 	return exec.Command(path)
+}
+
+func isSquare(tc testCase) bool {
+	return tc.l == tc.r && tc.r == tc.d && tc.d == tc.u
 }
 
 func runWithInput(cmd *exec.Cmd, input string) (string, error) {
