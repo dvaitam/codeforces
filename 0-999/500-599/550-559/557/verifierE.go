@@ -29,10 +29,15 @@ func solveE(s string, k int) string {
 		}
 	}
 	substrs := make([]string, 0)
+	seen := make(map[string]struct{})
 	for i := 0; i < n; i++ {
 		for j := i; j < n; j++ {
 			if dp[i][j] {
-				substrs = append(substrs, s[i:j+1])
+				t := s[i : j+1]
+				if _, ok := seen[t]; !ok {
+					seen[t] = struct{}{}
+					substrs = append(substrs, t)
+				}
 			}
 		}
 	}
@@ -55,6 +60,7 @@ func genCase() (string, string) {
 	n := rand.Intn(6) + 1
 	s := randString(n)
 	valid := make([]string, 0)
+	seen := make(map[string]struct{})
 	dp := make([][]bool, n)
 	for i := range dp {
 		dp[i] = make([]bool, n)
@@ -70,7 +76,11 @@ func genCase() (string, string) {
 				dp[i][j] = true
 			}
 			if dp[i][j] {
-				valid = append(valid, s[i:j+1])
+				t := s[i : j+1]
+				if _, ok := seen[t]; !ok {
+					seen[t] = struct{}{}
+					valid = append(valid, t)
+				}
 			}
 		}
 	}
