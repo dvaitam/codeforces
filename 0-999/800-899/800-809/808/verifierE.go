@@ -1,15 +1,17 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
-	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 )
+
+const randomSeed int64 = 808
+const randomCaseCount = 300
 
 func buildOracle() (string, error) {
 	dir, err := os.Getwd()
@@ -24,26 +26,56 @@ func buildOracle() (string, error) {
 	return oracle, nil
 }
 
-func readCases(r io.Reader) ([]string, error) {
-	scanner := bufio.NewScanner(r)
-	cases := []string{}
+func buildCase(n, m int, items [][2]int) string {
 	var sb strings.Builder
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.TrimSpace(line) == "" {
-			if sb.Len() > 0 {
-				cases = append(cases, sb.String())
-				sb.Reset()
-			}
-			continue
+	sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
+	for _, it := range items {
+		sb.WriteString(fmt.Sprintf("%d %d\n", it[0], it[1]))
+	}
+	return sb.String()
+}
+
+func fixedCases() []string {
+	return []string{
+		buildCase(1, 1, [][2]int{{1, 1}}),
+		buildCase(3, 3, [][2]int{{1, 10}, {2, 20}, {3, 100}}),
+		buildCase(6, 7, [][2]int{{1, 3}, {1, 4}, {2, 5}, {2, 6}, {3, 10}, {3, 11}}),
+		buildCase(8, 10, [][2]int{{1, 1000}, {1, 1}, {1, 1}, {2, 100}, {2, 99}, {3, 1000}, {3, 998}, {3, 997}}),
+		buildCase(10, 1, [][2]int{{2, 100}, {3, 200}, {2, 50}, {3, 1}, {2, 2}, {3, 3}, {2, 4}, {3, 5}, {2, 6}, {3, 7}}),
+		buildCase(12, 30, [][2]int{{1, 1000000000}, {1, 999999999}, {2, 1000000000}, {2, 999999998}, {3, 1000000000}, {3, 999999997}, {1, 7}, {2, 8}, {3, 9}, {1, 10}, {2, 11}, {3, 12}}),
+	}
+}
+
+func randomCases() []string {
+	rng := rand.New(rand.NewSource(randomSeed))
+	cases := make([]string, 0, randomCaseCount)
+
+	for i := 0; i < randomCaseCount; i++ {
+		n := rng.Intn(70) + 1
+		m := rng.Intn(150) + 1
+		items := make([][2]int, n)
+		for j := 0; j < n; j++ {
+			w := rng.Intn(3) + 1
+			v := rng.Intn(2000) + 1
+			items[j] = [2]int{w, v}
 		}
-		sb.WriteString(line)
-		sb.WriteByte('\n')
+		cases = append(cases, buildCase(n, m, items))
 	}
-	if sb.Len() > 0 {
-		cases = append(cases, sb.String())
+
+	return cases
+}
+
+func runCase(bin, input string) (string, string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", stderr.String(), err
 	}
-	return cases, scanner.Err()
+	return strings.TrimSpace(out.String()), strings.TrimSpace(stderr.String()), nil
 }
 
 func main() {
@@ -52,6 +84,7 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+
 	oracle, err := buildOracle()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -59,46 +92,27 @@ func main() {
 	}
 	defer os.Remove(oracle)
 
-	f, err := os.Open("testcasesE.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	cases, err := readCases(f)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to read cases: %v\n", err)
-		os.Exit(1)
-	}
-
+	cases := append(fixedCases(), randomCases()...)
 	for i, c := range cases {
 		idx := i + 1
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(c)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle run error on case %d: %v\n", idx, err)
-			os.Exit(1)
-		}
-		expected := strings.TrimSpace(outO.String())
 
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(c)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("case %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
+		expected, oracleErrOut, err := runCase(oracle, c)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "oracle run error on case %d: %v\nstderr: %s\n", idx, err, oracleErrOut)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
+
+		got, binErrOut, err := runCase(bin, c)
+		if err != nil {
+			fmt.Printf("case %d: runtime error: %v\nstderr: %s\n", idx, err, binErrOut)
+			os.Exit(1)
+		}
+
 		if got != expected {
-			fmt.Printf("case %d failed\nexpected: %s\n got: %s\n", idx, expected, got)
+			fmt.Printf("case %d failed\ninput:\n%sexpected: %s\n     got: %s\n", idx, c, expected, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(cases))
+
+	fmt.Printf("All %d tests passed (fixed + random, seed=%d)\n", len(cases), randomSeed)
 }
