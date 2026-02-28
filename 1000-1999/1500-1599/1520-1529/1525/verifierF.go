@@ -111,26 +111,13 @@ const testcaseData = `
 5 9 2 4 3 4 1 1 5 2 1 2 3 5 2 4 2 5 4 3 1 39 39 1 98
 4 4 3 3 1 4 1 1 2 4 2 12 20 46 11 82 55`
 
-type pair struct {
-	val   int64
-	prevJ int
-}
-
-func solveInput(data string) (string, error) {
-	in := strings.NewReader(data)
-	out := &bytes.Buffer{}
-	var n, m, l int
-	if _, err := fmt.Fscan(in, &n, &m, &l); err != nil {
-		return "", err
-	}
-
+func solveOptimal(n, m, l int, edges [][2]int, waves [][2]int64) (int64, error) {
 	graph := make([][]bool, n)
 	for i := 0; i < n; i++ {
 		graph[i] = make([]bool, n)
 	}
 	for i := 0; i < m; i++ {
-		var a, b int
-		fmt.Fscan(in, &a, &b)
+		a, b := edges[i][0], edges[i][1]
 		a--
 		b--
 		graph[a][b] = true
@@ -159,115 +146,169 @@ func solveInput(data string) (string, error) {
 		return false
 	}
 
+	cLen := 0
 	for u := 0; u < n; u++ {
 		used := make([]bool, n)
 		if dfsMatch(u, used) {
 			matchX[u] = true
+			cLen++
 		}
 	}
 
-	visL := make([]bool, n)
-	visR := make([]bool, n)
-	var dfsCover func(int)
-	dfsCover = func(u int) {
-		if visL[u] {
-			return
-		}
-		visL[u] = true
-		for v := 0; v < n; v++ {
-			if graph[u][v] && !visR[v] {
-				visR[v] = true
-				if matchY[v] >= 0 {
-					dfsCover(matchY[v])
-				}
-			}
-		}
-	}
-	for u := 0; u < n; u++ {
-		if !matchX[u] {
-			dfsCover(u)
-		}
-	}
-
-	cuts := make([]int, 0, n)
-	for i := 0; i < n; i++ {
-		if !visL[i] {
-			cuts = append(cuts, i+1)
-		}
-		if visR[i] {
-			cuts = append(cuts, -(i + 1))
-		}
-	}
-	cLen := len(cuts)
-
-	dp := make([][]pair, l+1)
+	dp := make([][]int64, l+1)
 	for i := 0; i <= l; i++ {
-		dp[i] = make([]pair, n+1)
+		dp[i] = make([]int64, n+1)
 		for j := 0; j <= n; j++ {
-			dp[i][j].val = -1
-			dp[i][j].prevJ = -1
+			dp[i][j] = -1
 		}
 	}
-	dp[0][cLen].val = 0
+	dp[0][cLen] = 0
 
 	for i := 1; i <= l; i++ {
-		var x, y int64
-		fmt.Fscan(in, &x, &y)
+		x, y := waves[i-1][0], waves[i-1][1]
 		for j := 0; j < n-i; j++ {
 			for k := j; k <= n; k++ {
-				prev := dp[i-1][k].val
+				prev := dp[i-1][k]
 				if prev >= 0 {
 					gain := x - int64(k-j)*y
 					if gain < 0 {
 						gain = 0
 					}
 					tot := prev + gain
-					if tot > dp[i][j].val {
-						dp[i][j].val = tot
-						dp[i][j].prevJ = k
+					if tot > dp[i][j] {
+						dp[i][j] = tot
 					}
 				}
 			}
 		}
 	}
 
-	lastJ := -1
-	best := pair{val: -1}
+	var best int64 = -1
 	for j := 0; j <= n; j++ {
-		if dp[l][j].val >= 0 && dp[l][j].val > best.val {
-			best.val = dp[l][j].val
-			lastJ = j
+		if dp[l][j] >= 0 && dp[l][j] > best {
+			best = dp[l][j]
 		}
 	}
-	if lastJ == -1 {
-		return "", fmt.Errorf("no valid state")
+	if best == -1 {
+		return -1, fmt.Errorf("no valid state")
 	}
 
-	seq := make([]int, 0)
-	for i := l; i >= 1; i-- {
-		prevJ := dp[i][lastJ].prevJ
-		seq = append(seq, 0)
-		for lastJ < prevJ {
-			seq = append(seq, cuts[lastJ])
-			lastJ++
-		}
-		lastJ = prevJ
-	}
-	total := len(seq)
-	fmt.Fprintln(out, total)
-	for i := total - 1; i >= 0; i-- {
-		if i > 0 {
-			fmt.Fprint(out, seq[i], " ")
-		} else {
-			fmt.Fprintln(out, seq[i])
-		}
-	}
-	return strings.TrimSpace(out.String()), nil
+	return best, nil
 }
 
-func runCandidate(bin string) (string, error) {
+func maxMatching(n int, edges [][2]int, blockedOut, blockedIn []bool) int {
+	graph := make([][]bool, n)
+	for i := 0; i < n; i++ {
+		graph[i] = make([]bool, n)
+	}
+	for _, e := range edges {
+		u, v := e[0]-1, e[1]-1
+		if !blockedOut[u] && !blockedIn[v] {
+			graph[u][v] = true
+		}
+	}
+
+	matchY := make([]int, n)
+	for i := range matchY {
+		matchY[i] = -1
+	}
+
+	var dfsMatch func(int, []bool) bool
+	dfsMatch = func(u int, used []bool) bool {
+		if used[u] {
+			return false
+		}
+		used[u] = true
+		for v := 0; v < n; v++ {
+			if graph[u][v] {
+				if matchY[v] < 0 || dfsMatch(matchY[v], used) {
+					matchY[v] = u
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	M := 0
+	for u := 0; u < n; u++ {
+		used := make([]bool, n)
+		if dfsMatch(u, used) {
+			M++
+		}
+	}
+	return M
+}
+
+func evaluateGot(got string, n, m, l int, edges [][2]int, waves [][2]int64) (int64, error) {
+	fields := strings.Fields(got)
+	if len(fields) < 1 {
+		return -1, fmt.Errorf("empty output")
+	}
+	var total int
+	fmt.Sscanf(fields[0], "%d", &total)
+	if len(fields) != total+1 {
+		return -1, fmt.Errorf("expected %d elements, got %d", total, len(fields)-1)
+	}
+
+	seq := make([]int, total)
+	for i := 0; i < total; i++ {
+		fmt.Sscanf(fields[i+1], "%d", &seq[i])
+	}
+
+	blockedOut := make([]bool, n)
+	blockedIn := make([]bool, n)
+
+	var score int64 = 0
+	waveIdx := 0
+	opsBeforeWave := 0
+
+	usedBlock := make(map[int]bool)
+
+	for _, action := range seq {
+		if action == 0 {
+			waveIdx++
+			if waveIdx > l {
+				return -1, fmt.Errorf("called more than %d waves", l)
+			}
+			M := maxMatching(n, edges, blockedOut, blockedIn)
+			if n-M <= waveIdx {
+				return -1, fmt.Errorf("wave %d failed: M=%d, n=%d, n-M=%d <= %d", waveIdx, M, n, n-M, waveIdx)
+			}
+			x, y := waves[waveIdx-1][0], waves[waveIdx-1][1]
+			gain := x - int64(opsBeforeWave)*y
+			if gain > 0 {
+				score += gain
+			}
+			opsBeforeWave = 0
+		} else {
+			if usedBlock[action] {
+				return -1, fmt.Errorf("repeated block action %d", action)
+			}
+			usedBlock[action] = true
+			if action > 0 {
+				if action > n {
+					return -1, fmt.Errorf("invalid action %d", action)
+				}
+				blockedOut[action-1] = true
+			} else {
+				if -action > n {
+					return -1, fmt.Errorf("invalid action %d", action)
+				}
+				blockedIn[-action-1] = true
+			}
+			opsBeforeWave++
+		}
+	}
+	if waveIdx != l {
+		return -1, fmt.Errorf("called %d waves, expected %d", waveIdx, l)
+	}
+	return score, nil
+}
+
+func runCandidate(bin string, input string) (string, error) {
 	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(testcaseData)
+	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
 	cmd.Stdout = &out
@@ -285,24 +326,57 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	expect, err := solveInput(testcaseData)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to solve embedded data:", err)
-		os.Exit(1)
+	in := strings.NewReader(testcaseData)
+	testIdx := 1
+	for {
+		var n, m, l int
+		if _, err := fmt.Fscan(in, &n, &m, &l); err != nil {
+			break
+		}
+		var inputBuf bytes.Buffer
+		fmt.Fprintf(&inputBuf, "%d %d %d\n", n, m, l)
+
+		edges := make([][2]int, m)
+		for i := 0; i < m; i++ {
+			fmt.Fscan(in, &edges[i][0], &edges[i][1])
+			fmt.Fprintf(&inputBuf, "%d %d\n", edges[i][0], edges[i][1])
+		}
+		waves := make([][2]int64, l)
+		for i := 0; i < l; i++ {
+			fmt.Fscan(in, &waves[i][0], &waves[i][1])
+			fmt.Fprintf(&inputBuf, "%d %d\n", waves[i][0], waves[i][1])
+		}
+
+		input := inputBuf.String()
+		expectedScore, err := solveOptimal(n, m, l, edges, waves)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to solve embedded data for test %d: %v\n", testIdx, err)
+			os.Exit(1)
+		}
+
+		got, err := runCandidate(bin, input)
+		if err != nil {
+			fmt.Printf("test %d candidate failed: %v\n", testIdx, err)
+			os.Exit(1)
+		}
+
+		gotScore, err := evaluateGot(got, n, m, l, edges, waves)
+		if err != nil {
+			fmt.Printf("test %d output invalid: %v\n", testIdx, err)
+			fmt.Printf("expected score: %d\ngot output:\n%s\n", expectedScore, got)
+			os.Exit(1)
+		}
+
+		if gotScore != expectedScore {
+			fmt.Printf("test %d output mismatch\n", testIdx)
+			fmt.Printf("expected score: %d\n", expectedScore)
+			fmt.Printf("got score: %d\n", gotScore)
+			fmt.Printf("got output:\n%s\n", got)
+			os.Exit(1)
+		}
+
+		testIdx++
 	}
 
-	got, err := runCandidate(bin)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	if got != expect {
-		fmt.Println("output mismatch")
-		fmt.Println("expected:")
-		fmt.Println(expect)
-		fmt.Println("got:")
-		fmt.Println(got)
-		os.Exit(1)
-	}
 	fmt.Println("All tests passed")
 }

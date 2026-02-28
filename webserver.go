@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"database/sql"
@@ -1628,6 +1629,243 @@ func ensureSerialSequence(db *sql.DB, table, column string) error {
 	return nil
 }
 
+// ---- sync helpers (mirrors sync_problems.go) ----
+
+type problemAsset struct {
+	Contest   string
+	Index     string
+	Statement string
+	Title     string
+	Solution  string
+	Verifier  string
+	Path      string
+}
+
+type problemFile struct {
+	Contest string
+	Index   string
+	Path    string
+}
+
+type idAllocator struct {
+	needsManual bool
+	current     int64
+}
+
+func newIDAllocator(ctx context.Context, d *sql.DB) (*idAllocator, error) {
+	var colDefault sql.NullString
+	err := d.QueryRowContext(ctx, `
+		SELECT column_default FROM information_schema.columns
+		WHERE table_name = 'problems' AND column_name = 'id'
+	`).Scan(&colDefault)
+	if err != nil {
+		return nil, err
+	}
+	if colDefault.Valid && strings.Contains(colDefault.String, "nextval") {
+		return &idAllocator{needsManual: false}, nil
+	}
+	var maxID sql.NullInt64
+	if err := d.QueryRowContext(ctx, `SELECT COALESCE(MAX(id), 0) FROM problems`).Scan(&maxID); err != nil {
+		return nil, err
+	}
+	return &idAllocator{needsManual: true, current: maxID.Int64}, nil
+}
+
+func (a *idAllocator) next() int64 {
+	a.current++
+	return a.current
+}
+
+func deriveTitleFromBytes(p problemFile, data []byte) string {
+	scanner := bufio.NewScanner(bytes.NewReader(data))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			return line
+		}
+	}
+	return fmt.Sprintf("Contest %s Problem %s", p.Contest, p.Index)
+}
+
+func collectAssets(root, contestFilter, problemContest, problemIndex string) ([]problemAsset, error) {
+	var list []problemAsset
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		name := d.Name()
+		if !strings.HasPrefix(name, "problem") || !strings.HasSuffix(name, ".txt") {
+			return nil
+		}
+		index := strings.TrimSuffix(strings.TrimPrefix(name, "problem"), ".txt")
+		if index == "" {
+			return nil
+		}
+		dir := filepath.Dir(path)
+		contest := filepath.Base(dir)
+		if _, err := strconv.Atoi(contest); err != nil {
+			return nil
+		}
+		if contestFilter != "" && contest != contestFilter {
+			return nil
+		}
+		if problemIndex != "" && (contest != problemContest || strings.ToUpper(index) != problemIndex) {
+			return nil
+		}
+		stmtData, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read statement %s: %w", path, err)
+		}
+		title := deriveTitleFromBytes(problemFile{Contest: contest, Index: index}, stmtData)
+		solutionPath := filepath.Join(dir, contest+index+".go")
+		solutionData, _ := os.ReadFile(solutionPath)
+		verifierPath := findVerifier(dir, index)
+		verifierData, _ := os.ReadFile(verifierPath)
+		list = append(list, problemAsset{
+			Contest:   contest,
+			Index:     strings.ToUpper(index),
+			Statement: string(stmtData),
+			Title:     title,
+			Solution:  string(solutionData),
+			Verifier:  string(verifierData),
+			Path:      path,
+		})
+		return nil
+	})
+	return list, err
+}
+
+func upsertProblemAsset(ctx context.Context, d *sql.DB, asset problemAsset, alloc *idAllocator) (string, error) {
+	var id int64
+	err := d.QueryRowContext(ctx,
+		`SELECT id FROM problems WHERE contest_id = $1 AND UPPER(index_name) = UPPER($2)`,
+		asset.Contest, asset.Index).Scan(&id)
+	if err != nil && err != sql.ErrNoRows {
+		return "", err
+	}
+	if err == sql.ErrNoRows {
+		ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		if alloc.needsManual {
+			id = alloc.next()
+			_, err = d.ExecContext(ctx2,
+				`INSERT INTO problems (id, contest_id, index_name, title, statement, reference_solution, verifier) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+				id, asset.Contest, asset.Index, asset.Title, asset.Statement, asset.Solution, asset.Verifier)
+		} else {
+			_, err = d.ExecContext(ctx2,
+				`INSERT INTO problems (contest_id, index_name, title, statement, reference_solution, verifier) VALUES ($1,$2,$3,$4,$5,$6)`,
+				asset.Contest, asset.Index, asset.Title, asset.Statement, asset.Solution, asset.Verifier)
+		}
+		return "inserted", err
+	}
+	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err = d.ExecContext(ctx2,
+		`UPDATE problems SET title=$1, statement=$2, reference_solution=$3, verifier=$4 WHERE id=$5`,
+		asset.Title, asset.Statement, asset.Solution, asset.Verifier, id)
+	return "updated", err
+}
+
+func parseProblemID(val string) (string, string, error) {
+	v := strings.TrimSpace(val)
+	if v == "" {
+		return "", "", nil
+	}
+	split := -1
+	for i, r := range v {
+		if r < '0' || r > '9' {
+			split = i
+			break
+		}
+	}
+	if split <= 0 || split >= len(v) {
+		return "", "", fmt.Errorf("expected digits followed by index letter, e.g. 1994A")
+	}
+	contest := v[:split]
+	if _, err := strconv.Atoi(contest); err != nil {
+		return "", "", fmt.Errorf("contest must be numeric: %w", err)
+	}
+	return contest, strings.ToUpper(strings.TrimSpace(v[split:])), nil
+}
+
+func runSync(root, contestFilter, problemContest, problemIndex string) (inserted, updated int, logs []string, err error) {
+	ctx := context.Background()
+	alloc, err := newIDAllocator(ctx, db)
+	if err != nil {
+		return 0, 0, nil, fmt.Errorf("id allocator: %w", err)
+	}
+	assets, err := collectAssets(root, contestFilter, problemContest, problemIndex)
+	if err != nil {
+		return 0, 0, nil, fmt.Errorf("collect assets: %w", err)
+	}
+	for _, asset := range assets {
+		action, e := upsertProblemAsset(ctx, db, asset, alloc)
+		if e != nil {
+			logs = append(logs, fmt.Sprintf("ERROR %s%s: %v", asset.Contest, asset.Index, e))
+			continue
+		}
+		logs = append(logs, fmt.Sprintf("%s %s%s", action, asset.Contest, asset.Index))
+		if action == "inserted" {
+			inserted++
+		} else {
+			updated++
+		}
+	}
+	return inserted, updated, logs, nil
+}
+
+func syncHandler(w http.ResponseWriter, r *http.Request) {
+	problem := strings.TrimSpace(r.URL.Query().Get("problem"))
+	contest := strings.TrimSpace(r.URL.Query().Get("contest"))
+
+	var contestFilter, problemContest, problemIndex string
+
+	switch {
+	case problem != "":
+		c, idx, err := parseProblemID(problem)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		contestFilter, problemContest, problemIndex = c, c, idx
+	case contest != "":
+		if _, err := strconv.Atoi(contest); err != nil {
+			http.Error(w, "contest must be numeric", http.StatusBadRequest)
+			return
+		}
+		contestFilter = contest
+	default:
+		http.Error(w, "provide ?problem=1994A or ?contest=1994", http.StatusBadRequest)
+		return
+	}
+
+	inserted, updated, logs, err := runSync(".", contestFilter, problemContest, problemIndex)
+	w.Header().Set("Content-Type", "text/plain")
+	for _, l := range logs {
+		fmt.Fprintln(w, l)
+	}
+	if err != nil {
+		fmt.Fprintf(w, "error: %v\n", err)
+		return
+	}
+	fmt.Fprintf(w, "done: %d inserted, %d updated\n", inserted, updated)
+}
+
+func deployHandler(w http.ResponseWriter, r *http.Request) {
+	cmd := exec.Command("git", "pull", "origin", "main")
+	cmd.Dir = "/home/ubuntu/codeforces"
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("git pull failed: %v\n%s", err, out), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write(out)
+}
+
 func main() {
 	var err error
 	fmt.Println("PATH:", os.Getenv("PATH"))
@@ -1697,5 +1935,7 @@ func main() {
 	http.HandleFunc("/evaluation/", evaluationContentHandler)
 	// raw code response
 	http.HandleFunc("/evaluation/raw/response/", evaluationRawResponseHandler)
+	http.HandleFunc("/sync", syncHandler)
+	http.HandleFunc("/deploy", deployHandler)
 	http.ListenAndServe(":8081", nil)
 }

@@ -10,15 +10,6 @@ import (
 	"time"
 )
 
-func buildOracle() (string, error) {
-	oracle := "oracleA"
-	cmd := exec.Command("go", "build", "-o", oracle, "1346A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle: %v\n%s", err, out)
-	}
-	return oracle, nil
-}
-
 func run(bin, input string) (string, error) {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
@@ -37,10 +28,12 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func genCase(rng *rand.Rand) string {
+func genCase(rng *rand.Rand) (string, []int64, []int64) {
 	t := rng.Intn(3) + 1
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d\n", t)
+	ns := make([]int64, t)
+	ks := make([]int64, t)
 	for i := 0; i < t; i++ {
 		k := int64(rng.Intn(500) + 1)
 		denom := int64(1) + k + k*k + k*k*k
@@ -50,9 +43,35 @@ func genCase(rng *rand.Rand) string {
 		}
 		n1 := rng.Int63n(maxN1) + 1
 		n := n1 * denom
+		ns[i] = n
+		ks[i] = k
 		fmt.Fprintf(&sb, "%d %d\n", n, k)
 	}
-	return sb.String()
+	return sb.String(), ns, ks
+}
+
+func check(output string, ns, ks []int64) error {
+	r := strings.NewReader(output)
+	for i, n := range ns {
+		k := ks[i]
+		var n1, n2, n3, n4 int64
+		if _, err := fmt.Fscan(r, &n1, &n2, &n3, &n4); err != nil {
+			return fmt.Errorf("test %d: failed to parse output: %v", i+1, err)
+		}
+		if n2 != k*n1 {
+			return fmt.Errorf("test %d: n2=%d != k*n1=%d*%d=%d", i+1, n2, k, n1, k*n1)
+		}
+		if n3 != k*n2 {
+			return fmt.Errorf("test %d: n3=%d != k*n2=%d*%d=%d", i+1, n3, k, n2, k*n2)
+		}
+		if n4 != k*n3 {
+			return fmt.Errorf("test %d: n4=%d != k*n3=%d*%d=%d", i+1, n4, k, n3, k*n3)
+		}
+		if n1+n2+n3+n4 != n {
+			return fmt.Errorf("test %d: sum=%d != n=%d", i+1, n1+n2+n3+n4, n)
+		}
+	}
+	return nil
 }
 
 func main() {
@@ -61,28 +80,17 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	for i := 0; i < 100; i++ {
-		input := genCase(rng)
-		exp, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle failure on case %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
+		input, ns, ks := genCase(rng)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if got != exp {
-			fmt.Fprintf(os.Stderr, "case %d failed:\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, input, exp, got)
+		if err := check(got, ns, ks); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%sgot:\n%s\n", i+1, err, input, got)
 			os.Exit(1)
 		}
 	}

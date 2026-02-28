@@ -6,23 +6,9 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
-
-func buildRef() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	ref := filepath.Join(dir, "oracleA")
-	cmd := exec.Command("go", "build", "-o", ref, "1237A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build reference failed: %v\n%s", err, out)
-	}
-	return ref, nil
-}
 
 func run(bin string, input string) (string, error) {
 	cmd := exec.Command(bin)
@@ -37,8 +23,8 @@ func run(bin string, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func genCase(r *rand.Rand) string {
-	n := r.Intn(20) + 1
+func genCase(r *rand.Rand) (string, []int) {
+	n := r.Intn(20) + 2
 	vals := make([]int, n)
 	sum := 0
 	for i := 0; i < n-1; i++ {
@@ -47,15 +33,43 @@ func genCase(r *rand.Rand) string {
 	}
 	vals[n-1] = -sum
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d\n", n))
-	for i, v := range vals {
-		if i > 0 {
-			sb.WriteByte(' ')
-		}
-		sb.WriteString(fmt.Sprintf("%d", v))
+	fmt.Fprintf(&sb, "%d\n", n)
+	for _, v := range vals {
+		fmt.Fprintf(&sb, "%d\n", v)
 	}
-	sb.WriteByte('\n')
-	return sb.String()
+	return sb.String(), vals
+}
+
+// isValid checks that b is either floor(a/2) or ceil(a/2).
+func isValid(a, b int) bool {
+	if a%2 == 0 {
+		return b == a/2
+	}
+	// a is odd: 2b must be a±1
+	diff := 2*b - a
+	return diff == 1 || diff == -1
+}
+
+func check(output string, as []int) error {
+	r := strings.NewReader(output)
+	n := len(as)
+	bs := make([]int, n)
+	for i := range bs {
+		if _, err := fmt.Fscan(r, &bs[i]); err != nil {
+			return fmt.Errorf("failed to parse output value %d: %v", i+1, err)
+		}
+	}
+	sum := 0
+	for i, b := range bs {
+		if !isValid(as[i], b) {
+			return fmt.Errorf("b[%d]=%d is not floor or ceil of %d/2", i+1, b, as[i])
+		}
+		sum += b
+	}
+	if sum != 0 {
+		return fmt.Errorf("sum of b_i = %d, want 0", sum)
+	}
+	return nil
 }
 
 func main() {
@@ -64,28 +78,16 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	ref, err := buildRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 1; i <= 100; i++ {
-		input := genCase(rng)
-		want, err := run(ref, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\n", i, err)
-			os.Exit(1)
-		}
+		input, as := genCase(rng)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i, err, input)
 			os.Exit(1)
 		}
-		if got != want {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i, want, got, input)
+		if err := check(got, as); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ngot:\n%s\ninput:\n%s", i, err, got, input)
 			os.Exit(1)
 		}
 	}
