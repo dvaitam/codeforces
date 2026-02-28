@@ -18,47 +18,24 @@ func solveTree(b []int) string {
 	if n <= 1 {
 		return "1"
 	}
-	m := n - 1
-	breakChild := make([]bool, m)
-	for i := 1; i < m; i++ {
-		if b[i+2] < b[i+1] {
-			breakChild[i] = true
-		}
+	dp := make([][]int, n+2)
+	for i := range dp {
+		dp[i] = make([]int, n+2)
 	}
-	dpPrev := make([]int, m+2)
-	dpPrev[1] = 1
-	for i := 1; i < m; i++ {
-		pre := make([]int, i+2)
-		for k := 1; k <= i; k++ {
-			pre[k] = pre[k-1] + dpPrev[k]
-			if pre[k] >= MOD {
-				pre[k] -= MOD
-			}
-		}
-		dpCurr := make([]int, m+2)
-		for k := 1; k <= i+1; k++ {
-			if breakChild[i] {
-				if k-1 >= 1 {
-					dpCurr[k] = pre[k-1]
-				}
-			} else {
-				if k > i {
-					dpCurr[k] = pre[i]
-				} else {
-					dpCurr[k] = pre[k]
+	for i := 1; i <= n; i++ {
+		dp[i][i] = 1
+	}
+	for length := 2; length <= n; length++ {
+		for l := 1; l+length-1 <= n; l++ {
+			r := l + length - 1
+			for k := l + 1; k <= r; k++ {
+				if k == r || b[k+1] > b[l+1] {
+					dp[l][r] = (dp[l][r] + dp[l+1][k]*dp[k][r]) % MOD
 				}
 			}
 		}
-		dpPrev = dpCurr
 	}
-	ans := 0
-	for k := 1; k <= m; k++ {
-		ans += dpPrev[k]
-		if ans >= MOD {
-			ans -= MOD
-		}
-	}
-	return strconv.Itoa(ans)
+	return strconv.Itoa(dp[1][n])
 }
 
 func generateCase(rng *rand.Rand) []int {
