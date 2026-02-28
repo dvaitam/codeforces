@@ -1,21 +1,22 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	refSource = "2135D1.go"
-	maxW      = 100000
+	maxW           = 100000
+	maxQueries     = 2
+	timeoutSeconds = 30
 )
 
 type testCase struct {
@@ -33,129 +34,163 @@ func main() {
 	}
 	candidate := args[0]
 
-	refBin, err := buildReference()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
 	tests := buildTests()
-	input := buildInput(tests)
 
-	refOut, err := runProgram(refBin, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference runtime error: %v\n%s\n", err, refOut)
+	if err := runInteractive(candidate, tests); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
-	}
-	expect, err := parseOutputs(refOut, len(tests))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to parse reference output: %v\n%s\n", err, refOut)
-		os.Exit(1)
-	}
-
-	candOut, err := runProgram(candidate, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "candidate runtime error: %v\n%s\n", err, candOut)
-		os.Exit(1)
-	}
-	got, err := parseOutputs(candOut, len(tests))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to parse candidate output: %v\n%s\n", err, candOut)
-		os.Exit(1)
-	}
-
-	for i := range tests {
-		if expect[i] != got[i] {
-			fmt.Fprintf(os.Stderr, "wrong answer on test %d: expected %d got %d (W=%d)\n", i+1, expect[i], got[i], tests[i].w)
-			os.Exit(1)
-		}
 	}
 
 	fmt.Printf("All %d tests passed.\n", len(tests))
 }
 
-func buildReference() (string, error) {
-	dir, err := verifierDir()
-	if err != nil {
-		return "", err
+// simulateEditor computes the number of lines the editor uses to display
+// the article with the given word lengths and width W.
+// Returns 0 if any word exceeds W.
+func simulateEditor(words []int, W int) int {
+	for _, a := range words {
+		if a > W {
+			return 0
+		}
 	}
-	tmp, err := os.CreateTemp("", "2135D1-ref-*")
-	if err != nil {
-		return "", err
+	lines := 1
+	s := 0
+	for _, a := range words {
+		if s+a <= W {
+			s += a
+		} else {
+			lines++
+			s = a
+		}
 	}
-	tmp.Close()
-
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Join(dir, refSource))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, string(out))
-	}
-	return tmp.Name(), nil
+	return lines
 }
 
-func verifierDir() (string, error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("cannot determine verifier directory")
-	}
-	return filepath.Dir(file), nil
-}
+func runInteractive(path string, tests []testCase) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutSeconds*time.Second)
+	defer cancel()
 
-func runProgram(target, input string) (string, error) {
-	cmd := commandFor(target)
-	cmd.Stdin = strings.NewReader(input)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+	cmd := commandFor(ctx, path)
+	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return stdout.String() + stderr.String(), err
+		return fmt.Errorf("failed to create stdin pipe: %w", err)
 	}
-	return stdout.String(), nil
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+	var stderrBuf strings.Builder
+	cmd.Stderr = &stderrBuf
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start candidate: %w", err)
+	}
+	defer func() {
+		stdin.Close()
+		cmd.Wait()
+	}()
+
+	writer := bufio.NewWriter(stdin)
+	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 0, 1<<20), 1<<20)
+
+	// Send the number of test cases
+	fmt.Fprintf(writer, "%d\n", len(tests))
+	writer.Flush()
+
+	for idx, tc := range tests {
+		W := tc.w
+		queries := 0
+
+		for {
+			if !scanner.Scan() {
+				if ctx.Err() == context.DeadlineExceeded {
+					return fmt.Errorf("test %d (W=%d): timed out waiting for output", idx+1, W)
+				}
+				return fmt.Errorf("test %d (W=%d): unexpected EOF from candidate\nstderr: %s", idx+1, W, stderrBuf.String())
+			}
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" {
+				continue
+			}
+
+			if strings.HasPrefix(line, "!") {
+				// Answer line: "! W"
+				parts := strings.Fields(line)
+				if len(parts) != 2 {
+					return fmt.Errorf("test %d (W=%d): malformed answer line: %q", idx+1, W, line)
+				}
+				ans, err := strconv.Atoi(parts[1])
+				if err != nil {
+					return fmt.Errorf("test %d (W=%d): invalid answer %q", idx+1, W, parts[1])
+				}
+				if ans != W {
+					return fmt.Errorf("test %d: wrong answer %d (expected %d)", idx+1, ans, W)
+				}
+				break // move to next test case
+			} else if strings.HasPrefix(line, "?") {
+				// Query line: "? n a1 a2 ... an"
+				queries++
+				if queries > maxQueries {
+					// Send -1 to signal error, then fail
+					fmt.Fprintln(writer, -1)
+					writer.Flush()
+					return fmt.Errorf("test %d (W=%d): too many queries (%d > %d)", idx+1, W, queries, maxQueries)
+				}
+
+				parts := strings.Fields(line)
+				if len(parts) < 2 {
+					fmt.Fprintln(writer, -1)
+					writer.Flush()
+					return fmt.Errorf("test %d (W=%d): malformed query: %q", idx+1, W, line)
+				}
+				n, err := strconv.Atoi(parts[1])
+				if err != nil || n < 1 || n > maxW {
+					fmt.Fprintln(writer, -1)
+					writer.Flush()
+					return fmt.Errorf("test %d (W=%d): invalid n=%q in query", idx+1, W, parts[1])
+				}
+				if len(parts) != n+2 {
+					fmt.Fprintln(writer, -1)
+					writer.Flush()
+					return fmt.Errorf("test %d (W=%d): expected %d words but got %d tokens", idx+1, W, n, len(parts)-2)
+				}
+				words := make([]int, n)
+				for i := 0; i < n; i++ {
+					val, err := strconv.Atoi(parts[i+2])
+					if err != nil || val < 1 || val > maxW {
+						fmt.Fprintln(writer, -1)
+						writer.Flush()
+						return fmt.Errorf("test %d (W=%d): invalid word length %q", idx+1, W, parts[i+2])
+					}
+					words[i] = val
+				}
+
+				result := simulateEditor(words, W)
+				fmt.Fprintln(writer, result)
+				writer.Flush()
+			} else {
+				return fmt.Errorf("test %d (W=%d): unexpected line: %q", idx+1, W, line)
+			}
+		}
+	}
+
+	stdin.Close()
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("candidate runtime error: %v\nstderr: %s", err, stderrBuf.String())
+	}
+	return nil
 }
 
-func commandFor(path string) *exec.Cmd {
+func commandFor(ctx context.Context, path string) *exec.Cmd {
 	switch filepath.Ext(path) {
 	case ".go":
-		return exec.Command("go", "run", path)
+		return exec.CommandContext(ctx, "go", "run", path)
 	case ".py":
-		return exec.Command("python3", path)
+		return exec.CommandContext(ctx, "python3", path)
 	default:
-		return exec.Command(path)
+		return exec.CommandContext(ctx, path)
 	}
-}
-
-func parseOutputs(out string, expected int) ([]int, error) {
-	tokens := strings.Fields(out)
-	if len(tokens) < expected {
-		return nil, fmt.Errorf("expected %d integers, got %d", expected, len(tokens))
-	}
-	if len(tokens) > expected {
-		return nil, fmt.Errorf("extra output starting at token %q", tokens[expected])
-	}
-	res := make([]int, expected)
-	for i := 0; i < expected; i++ {
-		val, err := strconv.Atoi(tokens[i])
-		if err != nil {
-			return nil, fmt.Errorf("token %q is not an integer", tokens[i])
-		}
-		res[i] = val
-	}
-	return res, nil
-}
-
-func buildInput(tests []testCase) string {
-	var sb strings.Builder
-	sb.WriteString(strconv.Itoa(len(tests)))
-	sb.WriteByte(' ')
-	sb.WriteString("manual")
-	sb.WriteByte('\n')
-	for _, tc := range tests {
-		sb.WriteString(strconv.Itoa(tc.w))
-		sb.WriteByte('\n')
-	}
-	return sb.String()
 }
 
 func buildTests() []testCase {
