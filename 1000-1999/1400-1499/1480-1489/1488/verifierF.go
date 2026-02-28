@@ -6,17 +6,15 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	exe := "oracleF"
-	cmd := exec.Command("go", "build", "-o", exe, "1488F.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle: %v\n%s", err, out)
-	}
-	return exe, nil
+type testCase struct {
+	n       int
+	prices  []int
+	queries [][2]int
 }
 
 func runProg(bin, input string) (string, error) {
@@ -32,24 +30,60 @@ func runProg(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func generateCase(rng *rand.Rand) string {
+func generateCase(rng *rand.Rand) testCase {
 	n := rng.Intn(50) + 1
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "%d\n", n)
-	for i := 0; i < n; i++ {
-		val := rng.Intn(100) + 1
-		fmt.Fprintf(&sb, "%d", val)
-		if i+1 < n {
-			sb.WriteByte(' ')
-		}
+	prices := make([]int, n)
+	for i := range prices {
+		prices[i] = rng.Intn(100) + 1
 	}
-	sb.WriteByte('\n')
 	q := rng.Intn(50) + 1
-	fmt.Fprintf(&sb, "%d\n", q)
+	queries := make([][2]int, q)
 	for i := 0; i < q; i++ {
 		l := rng.Intn(n) + 1
 		r := rng.Intn(n-l+1) + l
-		fmt.Fprintf(&sb, "%d %d\n", l, r)
+		queries[i] = [2]int{l, r}
+	}
+	return testCase{n: n, prices: prices, queries: queries}
+}
+
+func renderCase(tc testCase) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d\n", tc.n)
+	for i, v := range tc.prices {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		fmt.Fprintf(&sb, "%d", v)
+	}
+	sb.WriteByte('\n')
+	fmt.Fprintf(&sb, "%d\n", len(tc.queries))
+	for _, qr := range tc.queries {
+		fmt.Fprintf(&sb, "%d %d\n", qr[0], qr[1])
+	}
+	return sb.String()
+}
+
+func brute(tc testCase) string {
+	ans := make([]int64, len(tc.queries))
+	for i, qr := range tc.queries {
+		l, r := qr[0], qr[1]
+		var sum int64
+		mx := 0
+		for pos := r; pos >= l; pos-- {
+			if tc.prices[pos-1] > mx {
+				mx = tc.prices[pos-1]
+			}
+			sum += int64(mx)
+		}
+		ans[i] = sum
+	}
+
+	var sb strings.Builder
+	for i, v := range ans {
+		if i > 0 {
+			sb.WriteByte('\n')
+		}
+		sb.WriteString(strconv.FormatInt(v, 10))
 	}
 	return sb.String()
 }
@@ -60,28 +94,21 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		input := generateCase(rng)
-		exp, err := runProg("./"+oracle, input)
-		if err != nil {
-			fmt.Printf("oracle error on case %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
+		tc := generateCase(rng)
+		input := renderCase(tc)
+		exp := brute(tc)
+
 		got, err := runProg(bin, input)
 		if err != nil {
 			fmt.Printf("case %d failed: %v\n", i+1, err)
+			fmt.Printf("input:\n%s", input)
 			os.Exit(1)
 		}
 		if strings.TrimSpace(got) != strings.TrimSpace(exp) {
-			fmt.Printf("case %d mismatch\nexpected:\n%s\n got:\n%s\n", i+1, exp, got)
+			fmt.Printf("case %d mismatch\ninput:\n%s\nexpected:\n%s\n got:\n%s\n", i+1, input, exp, got)
 			os.Exit(1)
 		}
 	}
