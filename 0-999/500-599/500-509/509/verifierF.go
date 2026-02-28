@@ -11,64 +11,40 @@ import (
 	"time"
 )
 
-const MOD = 1000000007
+const MOD int64 = 1000000007
 
 func solveTree(b []int) string {
 	n := len(b) - 1
 	if n <= 1 {
 		return "1"
 	}
-	m := n - 1
-	breakChild := make([]bool, m)
-	for i := 1; i < m; i++ {
-		if b[i+2] < b[i+1] {
-			breakChild[i] = true
-		}
+	dp := make([][]int64, n+2)
+	for i := range dp {
+		dp[i] = make([]int64, n+2)
 	}
-	dpPrev := make([]int, m+2)
-	dpPrev[1] = 1
-	for i := 1; i < m; i++ {
-		pre := make([]int, i+2)
-		for k := 1; k <= i; k++ {
-			pre[k] = pre[k-1] + dpPrev[k]
-			if pre[k] >= MOD {
-				pre[k] -= MOD
-			}
-		}
-		dpCurr := make([]int, m+2)
-		for k := 1; k <= i+1; k++ {
-			if breakChild[i] {
-				if k-1 >= 1 {
-					dpCurr[k] = pre[k-1]
-				}
-			} else {
-				if k > i {
-					dpCurr[k] = pre[i]
-				} else {
-					dpCurr[k] = pre[k]
+	for i := 1; i <= n; i++ {
+		dp[i][i] = 1
+	}
+	for length := 2; length <= n; length++ {
+		for l := 1; l+length-1 <= n; l++ {
+			r := l + length - 1
+			for k := l + 1; k <= r; k++ {
+				if k == r || b[k+1] > b[l+1] {
+					dp[l][r] = (dp[l][r] + dp[l+1][k]*dp[k][r]) % MOD
 				}
 			}
 		}
-		dpPrev = dpCurr
 	}
-	ans := 0
-	for k := 1; k <= m; k++ {
-		ans += dpPrev[k]
-		if ans >= MOD {
-			ans -= MOD
-		}
-	}
-	return strconv.Itoa(ans)
+	return strconv.FormatInt(dp[1][n], 10)
 }
 
 func generateCase(rng *rand.Rand) []int {
 	n := rng.Intn(6) + 1
 	b := make([]int, n+1)
-	perm := rand.Perm(n)
+	perm := rng.Perm(n)
 	for i := 0; i < n; i++ {
 		b[i+1] = perm[i] + 1
 	}
-	b[0] = 0
 	if b[1] != 1 {
 		idx := 1
 		for i := 1; i <= n; i++ {
@@ -105,7 +81,7 @@ func runCase(bin string, b []int) error {
 	got := strings.TrimSpace(out.String())
 	expected := solveTree(b)
 	if got != expected {
-		return fmt.Errorf("expected %s got %s", expected, got)
+		return fmt.Errorf("input=%v expected %s got %s", b[1:], expected, got)
 	}
 	return nil
 }
