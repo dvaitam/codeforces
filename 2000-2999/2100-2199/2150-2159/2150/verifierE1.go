@@ -1,102 +1,251 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
-	"io"
+	"math/bits"
+	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
+	"strconv"
 	"strings"
+	"time"
 )
 
-func runProgram(path string, input []byte) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	} else {
-		cmd = exec.Command(path)
-	}
-	cmd.Stdin = bytes.NewReader(input)
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
-	}
-	return out.String(), nil
+type hiddenTest struct {
+	n      int
+	arr    []int
+	unique int
 }
 
-func parseOutput(out string, t int) ([]int, error) {
-	fields := strings.Fields(out)
-	if len(fields) < t {
-		return nil, fmt.Errorf("expected %d outputs, got %d", t, len(fields))
+type testCase struct {
+	name string
+	data hiddenTest
+}
+
+func buildBinary(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		tmp, err := os.CreateTemp("", "solver-*")
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		if out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput(); err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("failed to build %s: %v\n%s", path, err, string(out))
+		}
+		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
 	}
-	ans := make([]int, t)
-	for i := 0; i < t; i++ {
-		if _, err := fmt.Sscan(fields[i], &ans[i]); err != nil {
-			return nil, fmt.Errorf("failed to parse integer at test %d: %v", i+1, err)
+	return path, func() {}, nil
+}
+
+func randomHiddenTest(rng *rand.Rand, n int) hiddenTest {
+	unique := rng.Intn(n) + 1
+	arr := make([]int, 0, 2*n-1)
+	for v := 1; v <= n; v++ {
+		count := 2
+		if v == unique {
+			count = 1
+		}
+		for i := 0; i < count; i++ {
+			arr = append(arr, v)
 		}
 	}
-	return ans, nil
+	rng.Shuffle(len(arr), func(i, j int) { arr[i], arr[j] = arr[j], arr[i] })
+	return hiddenTest{n: n, arr: arr, unique: unique}
+}
+
+func ceilLog2(x int) int {
+	if x <= 1 {
+		return 0
+	}
+	return bits.Len(uint(x - 1))
+}
+
+func maxQueries(n int) int {
+	return 4*n + 2*ceilLog2(n)
+}
+
+func deterministicTests() []testCase {
+	ns := []int{1, 2, 3, 7, 16, 31, 64, 127, 255, 300}
+	seeds := []int64{1, 2, 3, 4, 5}
+	tests := make([]testCase, 0, len(ns)+len(seeds)*4)
+
+	for i, n := range ns {
+		rng := rand.New(rand.NewSource(int64(1000 + i)))
+		tests = append(tests, testCase{
+			name: fmt.Sprintf("edge_n_%d", n),
+			data: randomHiddenTest(rng, n),
+		})
+	}
+
+	for idx, seed := range seeds {
+		rng := rand.New(rand.NewSource(seed))
+		for j := 0; j < 4; j++ {
+			n := 1 + rng.Intn(300)
+			tests = append(tests, testCase{
+				name: fmt.Sprintf("deterministic_%d_%d", idx+1, j+1),
+				data: randomHiddenTest(rng, n),
+			})
+		}
+	}
+	return tests
+}
+
+func generateTests() []testCase {
+	tests := deterministicTests()
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for len(tests) < 60 {
+		n := 1 + rng.Intn(300)
+		tests = append(tests, testCase{
+			name: fmt.Sprintf("random_%d", len(tests)+1),
+			data: randomHiddenTest(rng, n),
+		})
+	}
+	return tests
+}
+
+func runInteraction(bin string, tests []testCase) error {
+	cmd := exec.Command(bin)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	writer := bufio.NewWriter(stdin)
+	fmt.Fprintf(writer, "%d\n", len(tests))
+	fmt.Fprintf(writer, "%d\n", tests[0].data.n)
+	if err := writer.Flush(); err != nil {
+		return err
+	}
+
+	reader := bufio.NewScanner(stdout)
+	reader.Buffer(make([]byte, 0, 1024), 1<<20)
+
+	current := 0
+	queriesUsed := 0
+	for current < len(tests) {
+		if !reader.Scan() {
+			if err := reader.Err(); err != nil {
+				return fmt.Errorf("failed to read output: %v", err)
+			}
+			return fmt.Errorf("unexpected EOF while waiting for test %d response", current+1)
+		}
+		line := strings.TrimSpace(reader.Text())
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		switch fields[0] {
+		case "?":
+			if len(fields) < 4 {
+				return fmt.Errorf("malformed query on test %d: %s", current+1, line)
+			}
+			x, err := strconv.Atoi(fields[1])
+			if err != nil {
+				return fmt.Errorf("invalid x in query: %v", err)
+			}
+			k, err := strconv.Atoi(fields[2])
+			if err != nil {
+				return fmt.Errorf("invalid subset size: %v", err)
+			}
+			if k < 0 || len(fields) != 3+k {
+				return fmt.Errorf("query subset size mismatch on test %d", current+1)
+			}
+			subset := make([]int, k)
+			seen := make(map[int]bool, k)
+			for i := 0; i < k; i++ {
+				val, err := strconv.Atoi(fields[3+i])
+				if err != nil {
+					return fmt.Errorf("invalid index in query: %v", err)
+				}
+				if val < 1 || val > len(tests[current].data.arr) {
+					return fmt.Errorf("query index %d out of range on test %d", val, current+1)
+				}
+				if seen[val] {
+					return fmt.Errorf("duplicate index %d in query on test %d", val, current+1)
+				}
+				seen[val] = true
+				subset[i] = val
+			}
+			if x < 1 || x > tests[current].data.n {
+				return fmt.Errorf("query value %d out of range on test %d", x, current+1)
+			}
+			answer := 0
+			for _, idx := range subset {
+				if tests[current].data.arr[idx-1] == x {
+					answer = 1
+					break
+				}
+			}
+			fmt.Fprintf(writer, "%d\n", answer)
+			if err := writer.Flush(); err != nil {
+				return err
+			}
+			queriesUsed++
+			if queriesUsed > maxQueries(tests[current].data.n) {
+				return fmt.Errorf("too many queries on test %d (>%d)", current+1, maxQueries(tests[current].data.n))
+			}
+		case "!":
+			if len(fields) != 2 {
+				return fmt.Errorf("malformed answer on test %d: %s", current+1, line)
+			}
+			val, err := strconv.Atoi(fields[1])
+			if err != nil {
+				return fmt.Errorf("invalid answer value: %v", err)
+			}
+			if val != tests[current].data.unique {
+				return fmt.Errorf("wrong answer on test %d (%s): expected %d got %d", current+1, tests[current].name, tests[current].data.unique, val)
+			}
+			current++
+			queriesUsed = 0
+			if current < len(tests) {
+				fmt.Fprintf(writer, "%d\n", tests[current].data.n)
+				if err := writer.Flush(); err != nil {
+					return err
+				}
+			}
+		default:
+			return fmt.Errorf("unexpected output: %s", line)
+		}
+	}
+
+	writer.Flush()
+	stdin.Close()
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("program exited with error: %v", err)
+	}
+	return nil
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("usage: go run verifierE1.go /path/to/binary")
+	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "--" {
+		args = args[1:]
+	}
+	if len(args) != 1 {
+		fmt.Fprintln(os.Stderr, "usage: go run verifierE1.go /path/to/binary")
 		os.Exit(1)
 	}
-	target := os.Args[len(os.Args)-1]
-	if target == "--" {
-		fmt.Println("usage: go run verifierE1.go /path/to/binary")
-		os.Exit(1)
-	}
-
-	inputData, err := io.ReadAll(os.Stdin)
+	bin, cleanup, err := buildBinary(args[0])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to read input: %v\n", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	reader := strings.NewReader(string(inputData))
-	var t int
-	if _, err := fmt.Fscan(reader, &t); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to read t: %v\n", err)
-		os.Exit(1)
-	}
+	defer cleanup()
 
-	_, src, _, _ := runtime.Caller(0)
-	baseDir := filepath.Dir(src)
-	refPath := filepath.Join(baseDir, "2150E1.go")
-
-	refOut, err := runProgram(refPath, inputData)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference runtime error: %v\n", err)
+	tests := generateTests()
+	if err := runInteraction(bin, tests); err != nil {
+		fmt.Fprintf(os.Stderr, "verification failed: %v\n", err)
 		os.Exit(1)
 	}
-	expected, err := parseOutput(refOut, t)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference output parse error: %v\n", err)
-		os.Exit(1)
-	}
-
-	out, err := runProgram(target, inputData)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "target runtime error: %v\n", err)
-		os.Exit(1)
-	}
-	ans, err := parseOutput(out, t)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "target output parse error: %v\n", err)
-		os.Exit(1)
-	}
-
-	for i := 0; i < t; i++ {
-		if ans[i] != expected[i] {
-			fmt.Fprintf(os.Stderr, "wrong answer on test case %d: expected %d got %d\n", i+1, expected[i], ans[i])
-			os.Exit(1)
-		}
-	}
-	fmt.Println("all tests passed")
+	fmt.Printf("All %d tests passed.\n", len(tests))
 }
