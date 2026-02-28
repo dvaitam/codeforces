@@ -1,171 +1,161 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
 )
 
-type testCase struct {
-	values []int
+func commandFor(path string) *exec.Cmd {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".go":
+		return exec.Command("go", "run", path)
+	case ".py":
+		return exec.Command("python3", path)
+	default:
+		return exec.Command(path)
+	}
 }
 
-func buildOracle() (string, func(), error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", nil, fmt.Errorf("cannot determine verifier path")
+func measured(y, x int) int {
+	if y < x {
+		return y
 	}
-	dir := filepath.Dir(file)
-	tmpDir, err := os.MkdirTemp("", "oracle-1999G1-")
+	return y + 1
+}
+
+func interact(target string, values []int) error {
+	cmd := commandFor(target)
+	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return "", nil, err
+		return fmt.Errorf("failed to open stdin pipe: %v", err)
 	}
-	outPath := filepath.Join(tmpDir, "oracleG1")
-	cmd := exec.Command("go", "build", "-o", outPath, "1999G1.go")
-	cmd.Dir = dir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		os.RemoveAll(tmpDir)
-		return "", nil, fmt.Errorf("failed to build oracle: %v\n%s", err, out)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to open stdout pipe: %v", err)
 	}
-	cleanup := func() {
-		os.RemoveAll(tmpDir)
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("failed to open stderr pipe: %v", err)
 	}
-	return outPath, cleanup, nil
-}
 
-func runBinary(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start target: %v", err)
 	}
-	cmd.Stdin = strings.NewReader(input)
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
-	}
-	return stdout.String(), nil
-}
 
-func buildInput(tc testCase) string {
-	var sb strings.Builder
-	sb.Grow(len(tc.values)*6 + 16)
-	sb.WriteString(strconv.Itoa(len(tc.values)))
-	sb.WriteByte('\n')
-	for _, v := range tc.values {
-		sb.WriteString(strconv.Itoa(v))
-		sb.WriteByte('\n')
-	}
-	return sb.String()
-}
+	reader := bufio.NewReader(stdout)
+	writer := bufio.NewWriter(stdin)
+	stderrCh := make(chan string, 1)
+	go func() {
+		data, _ := io.ReadAll(stderr)
+		stderrCh <- string(data)
+	}()
 
-func parseOutput(out string, expected int) ([]int, error) {
-	fields := strings.Fields(out)
-	if len(fields) != expected {
-		return nil, fmt.Errorf("expected %d values, got %d", expected, len(fields))
+	if _, err := fmt.Fprintln(writer, len(values)); err != nil {
+		_ = cmd.Process.Kill()
+		return fmt.Errorf("failed to send t: %v", err)
 	}
-	res := make([]int, expected)
-	for i, f := range fields {
-		val, err := strconv.Atoi(f)
-		if err != nil {
-			return nil, fmt.Errorf("invalid integer %q: %v", f, err)
+	if err := writer.Flush(); err != nil {
+		_ = cmd.Process.Kill()
+		return fmt.Errorf("failed to flush t: %v", err)
+	}
+
+	for tc, x := range values {
+		queries := 0
+		for {
+			var op string
+			if _, err := fmt.Fscan(reader, &op); err != nil {
+				_ = cmd.Process.Kill()
+				if err == io.EOF {
+					return fmt.Errorf("target terminated before answering test %d", tc+1)
+				}
+				return fmt.Errorf("failed to read operation on test %d: %v", tc+1, err)
+			}
+
+			switch op {
+			case "?":
+				var a, b int
+				if _, err := fmt.Fscan(reader, &a, &b); err != nil {
+					_ = cmd.Process.Kill()
+					return fmt.Errorf("invalid query format on test %d: %v", tc+1, err)
+				}
+				if a < 1 || a > 1000 || b < 1 || b > 1000 {
+					_ = cmd.Process.Kill()
+					return fmt.Errorf("query out of bounds on test %d: ? %d %d", tc+1, a, b)
+				}
+				queries++
+				if queries > 10 {
+					_ = cmd.Process.Kill()
+					return fmt.Errorf("too many queries on test %d: %d", tc+1, queries)
+				}
+
+				resp := measured(a, x) * measured(b, x)
+				if _, err := fmt.Fprintln(writer, resp); err != nil {
+					_ = cmd.Process.Kill()
+					return fmt.Errorf("failed to send response on test %d: %v", tc+1, err)
+				}
+				if err := writer.Flush(); err != nil {
+					_ = cmd.Process.Kill()
+					return fmt.Errorf("failed to flush response on test %d: %v", tc+1, err)
+				}
+			case "!":
+				var ans int
+				if _, err := fmt.Fscan(reader, &ans); err != nil {
+					_ = cmd.Process.Kill()
+					return fmt.Errorf("invalid answer format on test %d: %v", tc+1, err)
+				}
+				if ans != x {
+					_ = cmd.Process.Kill()
+					return fmt.Errorf("wrong answer on test %d: expected %d, got %d", tc+1, x, ans)
+				}
+				goto nextTest
+			default:
+				_ = cmd.Process.Kill()
+				return fmt.Errorf("unexpected token %q on test %d, expected '?' or '!'", op, tc+1)
+			}
 		}
-		res[i] = val
+	nextTest:
 	}
-	return res, nil
-}
 
-func deterministicTests() []testCase {
-	return []testCase{
-		{values: []int{2}},
-		{values: []int{4, 100}},
-		{values: []int{999}},
-		{values: []int{2, 3, 5, 7, 11}},
-	}
-}
-
-func randomTests() []testCase {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	tests := make([]testCase, 0, 120)
-	for len(tests) < cap(tests) {
-		t := rng.Intn(20) + 1
-		if rng.Intn(4) == 0 {
-			t = rng.Intn(100) + 1
-		}
-		values := make([]int, t)
-		for i := 0; i < t; i++ {
-			values[i] = rng.Intn(998) + 2
-		}
-		tests = append(tests, testCase{values: values})
-	}
-	return tests
-}
-
-func compareAnswers(expected, actual []int) error {
-	if len(expected) != len(actual) {
-		return fmt.Errorf("length mismatch: expected %d, got %d", len(expected), len(actual))
-	}
-	for i := range expected {
-		if expected[i] != actual[i] {
-			return fmt.Errorf("value mismatch at position %d: expected %d, got %d", i+1, expected[i], actual[i])
-		}
+	_ = stdin.Close()
+	targetStderr := <-stderrCh
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("target exited with error: %v\nstderr:\n%s", err, strings.TrimSpace(string(targetStderr)))
 	}
 	return nil
 }
 
+func deterministicTests() []int {
+	return []int{2, 4, 100, 500, 999, 678, 345, 876, 3, 998}
+}
+
+func randomTests() []int {
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	vals := make([]int, 200)
+	for i := range vals {
+		vals[i] = rng.Intn(998) + 2
+	}
+	return vals
+}
+
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierG1.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: go run verifierG1.go /path/to/candidate")
 		os.Exit(1)
 	}
-	target := os.Args[1]
 
-	oracle, cleanup, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+	allTests := append(deterministicTests(), randomTests()...)
+	if err := interact(os.Args[1], allTests); err != nil {
+		fmt.Fprintf(os.Stderr, "verification failed: %v\n", err)
 		os.Exit(1)
 	}
-	defer cleanup()
 
-	tests := append(deterministicTests(), randomTests()...)
-	for idx, tc := range tests {
-		input := buildInput(tc)
-		expectedOut, err := runBinary(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle failed on test %d: %v\ninput:\n%s", idx+1, err, input)
-			os.Exit(1)
-		}
-		actualOut, err := runBinary(target, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "target runtime error on test %d: %v\ninput:\n%s", idx+1, err, input)
-			os.Exit(1)
-		}
-		expectedVals, err := parseOutput(expectedOut, len(tc.values))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle output invalid on test %d: %v\noutput:\n%s", idx+1, err, expectedOut)
-			os.Exit(1)
-		}
-		actualVals, err := parseOutput(actualOut, len(tc.values))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "target output invalid on test %d: %v\noutput:\n%s", idx+1, err, actualOut)
-			os.Exit(1)
-		}
-		if err := compareAnswers(expectedVals, actualVals); err != nil {
-			fmt.Fprintf(os.Stderr, "test %d mismatch: %v\ninput:\n%s", idx+1, err, input)
-			os.Exit(1)
-		}
-	}
-
-	fmt.Println("All tests passed.")
+	fmt.Println("All tests passed:", strconv.Itoa(len(allTests)))
 }
