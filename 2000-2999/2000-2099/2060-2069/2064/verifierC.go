@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2000-2099/2060-2069/2064/2064C.go"
+const refSource = "2064C.go"
 
 func buildBinary(path string) (string, func(), error) {
 	if !strings.HasSuffix(path, ".go") {
