@@ -6,22 +6,10 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
-
-func buildOracle() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	exe := filepath.Join(dir, "oracleG")
-	cmd := exec.Command("go", "build", "-o", exe, filepath.Join(dir, "1593G.go"))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle: %v\n%s", err, out)
-	}
-	return exe, nil
-}
 
 func generateCase(rng *rand.Rand) (string, [][2]int) {
 	n := rng.Intn(10) + 2
@@ -34,14 +22,9 @@ func generateCase(rng *rand.Rand) (string, [][2]int) {
 	queries := make([][2]int, q)
 	for i := 0; i < q; i++ {
 		l := rng.Intn(n-1) + 1
-		r := rng.Intn(n-l) + l + 1
-		if (r-l+1)%2 == 1 {
-			if r < n {
-				r++
-			} else if l > 1 {
-				l--
-			}
-		}
+		maxLen := n - l + 1
+		length := 2 * (rng.Intn(maxLen/2) + 1)
+		r := l + length - 1
 		queries[i] = [2]int{l, r}
 	}
 	return string(s), queries
@@ -59,18 +42,73 @@ func runProg(exe, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func minCost(sub string) int {
+	const inf = int(1e9)
+	type state struct {
+		pos   int
+		stack string
+	}
+	memo := make(map[state]int)
+
+	var solve func(pos int, stack string) int
+	solve = func(pos int, stack string) int {
+		st := state{pos: pos, stack: stack}
+		if v, ok := memo[st]; ok {
+			return v
+		}
+		if pos == len(sub) {
+			if len(stack) == 0 {
+				return 0
+			}
+			return inf
+		}
+
+		options := [][2]int{}
+		if sub[pos] == '(' || sub[pos] == ')' {
+			options = append(options, [2]int{0, 0})
+		} else {
+			options = append(options, [2]int{1, 0})
+			options = append(options, [2]int{0, 1})
+		}
+
+		best := inf
+		for _, op := range options {
+			typ := byte(op[0])
+			cost := op[1]
+
+			openCost := solve(pos+1, stack+string('0'+typ))
+			if openCost+cost < best {
+				best = openCost + cost
+			}
+
+			if len(stack) > 0 && stack[len(stack)-1] == '0'+typ {
+				closeCost := solve(pos+1, stack[:len(stack)-1])
+				if closeCost+cost < best {
+					best = closeCost + cost
+				}
+			}
+		}
+		memo[st] = best
+		return best
+	}
+
+	return solve(0, "")
+}
+
+func expectedOutput(s string, queries [][2]int) string {
+	ans := make([]string, len(queries))
+	for i, q := range queries {
+		ans[i] = strconv.Itoa(minCost(s[q[0]-1 : q[1]]))
+	}
+	return strings.Join(ans, "\n")
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierG.go /path/to/binary")
 		os.Exit(1)
 	}
 	candidate := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		s, queries := generateCase(rng)
@@ -83,11 +121,7 @@ func main() {
 			fmt.Fprintf(&sb, "%d %d\n", q[0], q[1])
 		}
 		input := sb.String()
-		exp, err := runProg("./"+oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle failure on case %d: %v\ninput:%s", i+1, err, input)
-			os.Exit(1)
-		}
+		exp := expectedOutput(s, queries)
 		got, err := runProg(candidate, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d: %v\ninput:%s", i+1, err, input)
