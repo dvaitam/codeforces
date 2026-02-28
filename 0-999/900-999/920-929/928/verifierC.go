@@ -7,17 +7,17 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
 
 func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
+	_, selfFile, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(selfFile)
 	oracle := filepath.Join(dir, "oracleC")
 	cmd := exec.Command("go", "build", "-o", oracle, "928C.go")
+	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}

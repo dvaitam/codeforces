@@ -87,6 +87,7 @@ func main() {
 
 	writer := bufio.NewWriter(os.Stdout)
 	defer writer.Flush()
+	fmt.Fprintf(writer, "%d\n", len(res))
 	for _, k := range res {
 		fmt.Fprintf(writer, "%s %d\n", k.name, k.ver)
 	}
