@@ -154,6 +154,7 @@ func parseOutput(input string, out string) (result, error) {
 		return result{}, err
 	}
 	sc := bufio.NewScanner(strings.NewReader(out))
+	sc.Buffer(make([]byte, 1024*1024), 1024*1024)
 	results := make([][]int, test.t)
 	for i := 0; i < test.t; i++ {
 		if !sc.Scan() {
