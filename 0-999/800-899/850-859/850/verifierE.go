@@ -44,19 +44,30 @@ func genTests() []Test {
 	for i := 0; i < 100; i++ {
 		n := rand.Intn(5) + 1
 		N := 1 << n
+		mask := N - 1
+		f := make([]byte, N)
+		used := make([]bool, N)
+		for j := 0; j < N; j++ {
+			if used[j] {
+				continue
+			}
+			comp := mask ^ j
+			v := byte(rand.Intn(2))
+			f[j] = v
+			f[comp] = 1 - v
+			used[j] = true
+			used[comp] = true
+		}
 		var sb strings.Builder
 		sb.WriteString(strconv.Itoa(n) + "\n")
 		for j := 0; j < N; j++ {
-			if rand.Intn(2) == 0 {
-				sb.WriteByte('0')
-			} else {
-				sb.WriteByte('1')
-			}
+			sb.WriteByte('0' + f[j])
 		}
 		sb.WriteByte('\n')
 		tests = append(tests, Test{sb.String()})
 	}
-	tests = append(tests, Test{"1\n0\n"})
+	// f(x) = x1, valid since f(1-x) = 1-x1 = 1-f(x)
+	tests = append(tests, Test{"1\n01\n"})
 	return tests
 }
 
