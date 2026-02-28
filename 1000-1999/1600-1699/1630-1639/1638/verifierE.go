@@ -42,15 +42,18 @@ func generateCases() []testCase {
 			case 0:
 				l := rng.Intn(n) + 1
 				r := rng.Intn(n) + 1
+				if l > r {
+					l, r = r, l
+				}
 				c := rng.Intn(n) + 1
-				qs[j] = fmt.Sprintf("C %d %d %d", l, r, c)
+				qs[j] = fmt.Sprintf("Color %d %d %d", l, r, c)
 			case 1:
 				c := rng.Intn(n) + 1
 				x := rng.Intn(1000) + 1
-				qs[j] = fmt.Sprintf("A %d %d", c, x)
+				qs[j] = fmt.Sprintf("Add %d %d", c, x)
 			default:
 				idx := rng.Intn(n) + 1
-				qs[j] = fmt.Sprintf("Q %d", idx)
+				qs[j] = fmt.Sprintf("Query %d", idx)
 			}
 		}
 		cases[i] = testCase{n: n, queries: qs}
