@@ -44,13 +44,27 @@ func genCases() []Case {
 	for i := range cases {
 		n := rng.Intn(4) + 1
 		m := rng.Intn(4) + 1
+		// collect all white cells (i+j even)
+		var whites [][2]int
+		for r := 1; r <= 2*n; r++ {
+			for c := 1; c <= 2*m; c++ {
+				if (r+c)%2 == 0 {
+					whites = append(whites, [2]int{r, c})
+				}
+			}
+		}
+		// shuffle and pick up to q unique white cells
+		rng.Shuffle(len(whites), func(a, b int) {
+			whites[a], whites[b] = whites[b], whites[a]
+		})
 		q := rng.Intn(4) + 1
+		if q > len(whites) {
+			q = len(whites)
+		}
 		var sb strings.Builder
 		fmt.Fprintf(&sb, "%d %d %d\n", n, m, q)
 		for j := 0; j < q; j++ {
-			ii := rng.Intn(2*n) + 1
-			jj := rng.Intn(2*m) + 1
-			fmt.Fprintf(&sb, "%d %d\n", ii, jj)
+			fmt.Fprintf(&sb, "%d %d\n", whites[j][0], whites[j][1])
 		}
 		cases[i] = Case{sb.String()}
 	}
