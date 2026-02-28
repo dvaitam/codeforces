@@ -72,13 +72,13 @@ func runCase(bin string, tc testCase) error {
 	queryCnt := 0
 	for {
 		line, err := reader.ReadString('\n')
-		if err != nil {
+		line = strings.TrimSpace(line)
+		if line == "" && err != nil {
 			if ctx.Err() == context.DeadlineExceeded {
 				return fmt.Errorf("time limit")
 			}
 			return fmt.Errorf("read error: %v stderr:%s", err, stderr.String())
 		}
-		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "?") {
 			var x1, y1, x2, y2 int
 			if _, err := fmt.Sscanf(line, "? %d %d %d %d", &x1, &y1, &x2, &y2); err != nil {
