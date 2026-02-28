@@ -55,6 +55,98 @@ func genCase(rng *rand.Rand) string {
 	return fmt.Sprintf("%d\n%s\n%s\n", n, s, t)
 }
 
+// parseInput extracts n, s, t from a test case input string.
+func parseInput(input string) (n int, s, t string) {
+	parts := strings.Fields(input)
+	fmt.Sscan(parts[0], &n)
+	s = parts[1]
+	t = parts[2]
+	return
+}
+
+// validate checks whether the candidate output is correct given the input.
+// It uses the reference verdict only to decide whether "NO" is acceptable.
+func validate(input, refOut, candOut string, testNum int) bool {
+	n, s, t := parseInput(input)
+
+	refLines := strings.SplitN(refOut, "\n", 2)
+	refVerdict := strings.TrimSpace(refLines[0])
+
+	candLines := strings.SplitN(candOut, "\n", 2)
+	candVerdict := strings.TrimSpace(candLines[0])
+
+	if candVerdict == "NO" {
+		// Candidate claims no solution exists; accept only if reference also says NO.
+		if refVerdict != "NO" {
+			fmt.Printf("wrong answer on test %d\ninput:\n%sexpected:YES\ngot:NO\n",
+				testNum, input)
+			return false
+		}
+		return true
+	}
+
+	if candVerdict != "YES" {
+		fmt.Printf("wrong answer on test %d\ninput:\n%sinvalid first line: %q\n",
+			testNum, input, candVerdict)
+		return false
+	}
+
+	// Reference says NO but candidate says YES — candidate is wrong.
+	if refVerdict == "NO" {
+		fmt.Printf("wrong answer on test %d\ninput:\n%sexpected:NO\ngot:YES\n",
+			testNum, input)
+		return false
+	}
+
+	// Candidate says YES — verify the string.
+	if len(candLines) < 2 {
+		fmt.Printf("wrong answer on test %d\ninput:\n%smissing result string after YES\n",
+			testNum, input)
+		return false
+	}
+	res := strings.TrimSpace(candLines[1])
+
+	if len(res) != 3*n {
+		fmt.Printf("wrong answer on test %d\ninput:\n%sresult length %d, expected %d\n",
+			testNum, input, len(res), 3*n)
+		return false
+	}
+
+	var ca, cb, cc int
+	for _, ch := range res {
+		switch ch {
+		case 'a':
+			ca++
+		case 'b':
+			cb++
+		case 'c':
+			cc++
+		default:
+			fmt.Printf("wrong answer on test %d\ninput:\n%sinvalid character %q in result\n",
+				testNum, input, ch)
+			return false
+		}
+	}
+	if ca != n || cb != n || cc != n {
+		fmt.Printf("wrong answer on test %d\ninput:\n%scharacter counts a=%d b=%d c=%d, expected %d each\n",
+			testNum, input, ca, cb, cc, n)
+		return false
+	}
+
+	if strings.Contains(res, s) {
+		fmt.Printf("wrong answer on test %d\ninput:\n%sresult contains forbidden substring %q\n",
+			testNum, input, s)
+		return false
+	}
+	if strings.Contains(res, t) {
+		fmt.Printf("wrong answer on test %d\ninput:\n%sresult contains forbidden substring %q\n",
+			testNum, input, t)
+		return false
+	}
+
+	return true
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierE.go /path/to/binary")
@@ -81,8 +173,7 @@ func main() {
 			fmt.Printf("runtime error on test %d: %v\n", i, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(want) != strings.TrimSpace(got) {
-			fmt.Printf("wrong answer on test %d\ninput:\n%sexpected:%s\ngot:%s\n", i, input, want, got)
+		if !validate(input, want, got, i) {
 			os.Exit(1)
 		}
 	}
