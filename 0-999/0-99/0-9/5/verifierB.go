@@ -49,10 +49,8 @@ func generateCase(rng *rand.Rand) (string, string) {
 		l := spaces / 2
 		r := spaces - l
 		if spaces%2 == 1 {
-			if leftFlag {
-				l++
-			} else {
-				r++
+			if !leftFlag {
+				l, r = r, l
 			}
 			leftFlag = !leftFlag
 		}
