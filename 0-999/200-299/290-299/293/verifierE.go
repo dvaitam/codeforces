@@ -106,9 +106,9 @@ func solve(input string) (string, error) {
 		return u
 	}
 
-	collect := func(u, p int) []pair {
+	collect := func(u, p, ew int) []pair {
 		type st struct{ u, p, d, w int }
-		stack := []st{{u, p, 1, 0}}
+		stack := []st{{u, p, 1, ew}}
 		var res []pair
 		for len(stack) > 0 {
 			cur := stack[len(stack)-1]
@@ -137,7 +137,7 @@ func solve(input string) (string, error) {
 			if removed[e.to] {
 				continue
 			}
-			sub := collect(e.to, c)
+			sub := collect(e.to, c, e.w)
 			// sort by weight
 			sort.Slice(sub, func(i, j int) bool { return sub[i].w < sub[j].w })
 			sort.Slice(vec, func(i, j int) bool { return vec[i].w < vec[j].w })
