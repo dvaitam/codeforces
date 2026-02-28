@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 )
 
@@ -16,57 +17,40 @@ func solveE(n int, edges [][2]int) int {
 		adj[x] = append(adj[x], y)
 		adj[y] = append(adj[y], x)
 	}
-	parent := make([]int, n+1)
-	depth := make([]int, n+1)
-	queue := make([]int, n)
-	head, tail := 0, 0
-	queue[tail] = 1
-	tail++
-	parent[1] = 0
-	order := []int{1}
-	for head < tail {
-		u := queue[head]
-		head++
-		for _, v := range adj[u] {
-			if v == parent[u] {
-				continue
-			}
-			parent[v] = u
-			depth[v] = depth[u] + 1
-			queue[tail] = v
-			tail++
-			order = append(order, v)
-		}
-	}
-	leafCount := make([]int, n+1)
-	maxDepthLeaf := 0
+
+	// For each child of root 1, collect leaf depths, sort, then greedily
+	// compute arrival times. Ants within the same subtree of root all pass
+	// through the same child of root at distinct times, so p = max(p+1, depth).
 	ans := 0
-	for i := len(order) - 1; i >= 0; i-- {
-		u := order[i]
-		if u != 1 && len(adj[u]) == 1 {
-			leafCount[u] = 1
-			if depth[u] > maxDepthLeaf {
-				maxDepthLeaf = depth[u]
-			}
-		} else {
-			sum := 0
+	for _, child := range adj[1] {
+		var leaves []int
+		var dfs func(u, par, d int)
+		dfs = func(u, par, d int) {
+			isLeaf := true
 			for _, v := range adj[u] {
-				if v == parent[u] {
+				if v == par {
 					continue
 				}
-				sum += leafCount[v]
+				dfs(v, u, d+1)
+				isLeaf = false
 			}
-			leafCount[u] = sum
-		}
-		if u != 1 && leafCount[u] > 1 {
-			t := depth[u] + leafCount[u]
-			if t > ans {
-				ans = t
+			if isLeaf {
+				leaves = append(leaves, d)
 			}
 		}
-	}
-	if maxDepthLeaf > ans {
-		ans = maxDepthLeaf
+		dfs(child, 1, 1)
+		sort.Ints(leaves)
+		p := 0
+		for _, d := range leaves {
+			if p+1 > d {
+				p = p + 1
+			} else {
+				p = d
+			}
+		}
+		if p > ans {
+			ans = p
+		}
 	}
 	return ans
 }
