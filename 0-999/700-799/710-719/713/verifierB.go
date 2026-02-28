@@ -39,13 +39,61 @@ func randomRect(rng *rand.Rand, n int) rect {
 
 func generateCase(rng *rand.Rand) testCase {
 	n := rng.Intn(20) + 2
-	r1 := randomRect(rng, n)
-	var r2 rect
-	for {
-		r2 = randomRect(rng, n)
-		if !overlap(r1, r2) {
-			break
+
+	// Build two non-overlapping rectangles without rejection sampling.
+	if n == 2 || rng.Intn(2) == 0 {
+		split := rng.Intn(n-1) + 1
+		r1 := rect{
+			rng.Intn(split) + 1,
+			rng.Intn(n) + 1,
+			rng.Intn(split) + 1,
+			rng.Intn(n) + 1,
 		}
+		r2 := rect{
+			rng.Intn(n-split) + split + 1,
+			rng.Intn(n) + 1,
+			rng.Intn(n-split) + split + 1,
+			rng.Intn(n) + 1,
+		}
+		if r1[0] > r1[2] {
+			r1[0], r1[2] = r1[2], r1[0]
+		}
+		if r1[1] > r1[3] {
+			r1[1], r1[3] = r1[3], r1[1]
+		}
+		if r2[0] > r2[2] {
+			r2[0], r2[2] = r2[2], r2[0]
+		}
+		if r2[1] > r2[3] {
+			r2[1], r2[3] = r2[3], r2[1]
+		}
+		return testCase{n: n, rects: [2]rect{r1, r2}}
+	}
+
+	split := rng.Intn(n-1) + 1
+	r1 := rect{
+		rng.Intn(n) + 1,
+		rng.Intn(split) + 1,
+		rng.Intn(n) + 1,
+		rng.Intn(split) + 1,
+	}
+	r2 := rect{
+		rng.Intn(n) + 1,
+		rng.Intn(n-split) + split + 1,
+		rng.Intn(n) + 1,
+		rng.Intn(n-split) + split + 1,
+	}
+	if r1[0] > r1[2] {
+		r1[0], r1[2] = r1[2], r1[0]
+	}
+	if r1[1] > r1[3] {
+		r1[1], r1[3] = r1[3], r1[1]
+	}
+	if r2[0] > r2[2] {
+		r2[0], r2[2] = r2[2], r2[0]
+	}
+	if r2[1] > r2[3] {
+		r2[1], r2[3] = r2[3], r2[1]
 	}
 	return testCase{n: n, rects: [2]rect{r1, r2}}
 }
