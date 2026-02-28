@@ -54,8 +54,27 @@ func randString(n int) string {
 func genCase() (string, string) {
 	n := rand.Intn(6) + 1
 	s := randString(n)
-	maxSub := n * (n + 1) / 2
-	k := rand.Intn(maxSub) + 1
+	valid := make([]string, 0)
+	dp := make([][]bool, n)
+	for i := range dp {
+		dp[i] = make([]bool, n)
+	}
+	for l := 1; l <= n; l++ {
+		for i := 0; i+l-1 < n; i++ {
+			j := i + l - 1
+			if l == 1 {
+				dp[i][j] = true
+			} else if l == 2 {
+				dp[i][j] = s[i] == s[j]
+			} else if s[i] == s[j] && (l <= 4 || dp[i+2][j-2]) {
+				dp[i][j] = true
+			}
+			if dp[i][j] {
+				valid = append(valid, s[i:j+1])
+			}
+		}
+	}
+	k := rand.Intn(len(valid)) + 1
 	res := solveE(s, k)
 	input := fmt.Sprintf("%s\n%d\n", s, k)
 	return input, res
