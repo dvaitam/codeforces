@@ -6,20 +6,12 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const (
-	// refSource points to the local reference solution to avoid GOPATH resolution.
-	refSource       = "2104E.go"
-	maxTotalN       = 200000
-	maxTotalQ       = 200000
-	maxTotalTLength = 200000
-	targetTests     = 80
-)
+const targetTests = 80
 
 type testCase struct {
 	n int
@@ -29,6 +21,70 @@ type testCase struct {
 	t []string
 }
 
+// solveE implements the correct reference solution using next-occurrence
+// arrays and DP.  For each position i in s (and position 0 = "before s"),
+// nxt[i][c] = next occurrence of character c after position i.
+// dp[i] = minimum letters to append so that starting from position i the
+// string becomes unpleasant (not a subsequence). dp[n+1] = 0 (past end).
+// dp[i] = 1 + min over c of dp[nxt[i][c]].
+func solveE(tc testCase) []int64 {
+	n := tc.n
+	k := tc.k
+	s := tc.s
+
+	// Build nxt table: (n+1) positions x k characters.
+	// nxt[i*k+c] = next position of char c at or after position i+1 (1-indexed in s).
+	// If not found, n+1 (sentinel).
+	nxt := make([]int32, (n+1)*k)
+	nextPos := make([]int32, k)
+	for c := 0; c < k; c++ {
+		nextPos[c] = int32(n + 1)
+	}
+	for i := n; i >= 0; i-- {
+		base := i * k
+		for c := 0; c < k; c++ {
+			nxt[base+c] = nextPos[c]
+		}
+		if i > 0 {
+			ch := int(s[i-1] - 'a')
+			nextPos[ch] = int32(i)
+		}
+	}
+
+	// Build DP.
+	dp := make([]int32, n+2)
+	for i := n; i >= 0; i-- {
+		base := i * k
+		mn := int32(1 << 30)
+		for c := 0; c < k; c++ {
+			j := int(nxt[base+c])
+			if dp[j] < mn {
+				mn = dp[j]
+			}
+		}
+		dp[i] = mn + 1
+	}
+
+	// Answer queries.
+	results := make([]int64, tc.q)
+	for qi, t := range tc.t {
+		pos := 0
+		for _, bb := range t {
+			c := int(bb - 'a')
+			pos = int(nxt[pos*k+c])
+			if pos == n+1 {
+				break
+			}
+		}
+		if pos == n+1 {
+			results[qi] = 0
+		} else {
+			results[qi] = int64(dp[pos])
+		}
+	}
+	return results
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierE.go /path/to/binary")
@@ -36,77 +92,48 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
 	tests := generateTests()
-	input := buildInput(tests)
 
-	refOut, err := runProgram(refBin, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference runtime error: %v\noutput:\n%s\n", err, refOut)
-		os.Exit(1)
-	}
-	refAns, err := parseAnswers(refOut, tests)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to parse reference output: %v\noutput:\n%s\n", err, refOut)
-		os.Exit(1)
-	}
+	for idx, tc := range tests {
+		input := formatSingleTest(tc)
+		expected := solveE(tc)
 
-	candOut, err := runCandidate(candidate, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "candidate runtime error: %v\noutput:\n%s\n", err, candOut)
-		os.Exit(1)
-	}
-	candAns, err := parseAnswers(candOut, tests)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to parse candidate output: %v\noutput:\n%s\n", err, candOut)
-		os.Exit(1)
-	}
-
-	if len(refAns) != len(candAns) {
-		fmt.Fprintf(os.Stderr, "answer count mismatch: expected %d values, got %d\n", len(refAns), len(candAns))
-		os.Exit(1)
-	}
-	for i := range refAns {
-		if refAns[i] != candAns[i] {
-			fmt.Fprintf(os.Stderr, "mismatch at answer %d: expected %d, got %d\n", i+1, refAns[i], candAns[i])
+		candOut, err := runCandidate(candidate, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: candidate runtime error: %v\noutput:\n%s\n", idx+1, err, candOut)
 			os.Exit(1)
+		}
+		candAns, err := parseInts(candOut, tc.q)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: failed to parse candidate output: %v\noutput:\n%s\n", idx+1, err, candOut)
+			os.Exit(1)
+		}
+
+		for i := range expected {
+			if expected[i] != candAns[i] {
+				fmt.Fprintf(os.Stderr, "test %d, query %d: expected %d, got %d\n", idx+1, i+1, expected[i], candAns[i])
+				fmt.Fprintf(os.Stderr, "input:\n%s", input)
+				os.Exit(1)
+			}
 		}
 	}
 
 	fmt.Printf("Accepted (%d test cases).\n", len(tests))
 }
 
-func buildReference() (string, error) {
-	tmp, err := os.CreateTemp("", "2104E-ref-*")
-	if err != nil {
-		return "", err
+func formatSingleTest(tc testCase) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%d %d\n", tc.n, tc.k)
+	fmt.Fprintf(&b, "%s\n", tc.s)
+	fmt.Fprintf(&b, "%d\n", tc.q)
+	for _, t := range tc.t {
+		fmt.Fprintf(&b, "%s\n", t)
 	}
-	tmp.Close()
-
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, out.String())
-	}
-	return tmp.Name(), nil
+	return b.String()
 }
 
 func runCandidate(path, input string) (string, error) {
 	cmd := commandFor(path)
-	return runWithInput(cmd, input)
-}
-
-func runProgram(path, input string) (string, error) {
-	cmd := exec.Command(path)
 	return runWithInput(cmd, input)
 }
 
@@ -128,22 +155,15 @@ func runWithInput(cmd *exec.Cmd, input string) (string, error) {
 		out.WriteString(errBuf.String())
 		return out.String(), err
 	}
-	if errBuf.Len() > 0 {
-		out.WriteString(errBuf.String())
-	}
 	return out.String(), nil
 }
 
-func parseAnswers(out string, tests []testCase) ([]int64, error) {
-	total := 0
-	for _, tc := range tests {
-		total += tc.q
-	}
+func parseInts(out string, expected int) ([]int64, error) {
 	tokens := strings.Fields(out)
-	if len(tokens) != total {
-		return nil, fmt.Errorf("expected %d answers, got %d", total, len(tokens))
+	if len(tokens) != expected {
+		return nil, fmt.Errorf("expected %d answers, got %d", expected, len(tokens))
 	}
-	res := make([]int64, total)
+	res := make([]int64, expected)
 	for i, tok := range tokens {
 		val, err := strconv.ParseInt(tok, 10, 64)
 		if err != nil {
@@ -154,40 +174,12 @@ func parseAnswers(out string, tests []testCase) ([]int64, error) {
 	return res, nil
 }
 
-func buildInput(tests []testCase) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "%d\n", len(tests))
-	for _, tc := range tests {
-		fmt.Fprintf(&b, "%d %d\n", tc.n, tc.k)
-		fmt.Fprintf(&b, "%s\n", tc.s)
-		fmt.Fprintf(&b, "%d\n", tc.q)
-		for _, t := range tc.t {
-			fmt.Fprintf(&b, "%s\n", t)
-		}
-	}
-	return b.String()
-}
-
 func generateTests() []testCase {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	var tests []testCase
-	totalN, totalQ, totalLenT := 0, 0, 0
 
 	add := func(tc testCase) {
-		if totalN+tc.n > maxTotalN || totalQ+tc.q > maxTotalQ {
-			return
-		}
-		sumLen := 0
-		for _, s := range tc.t {
-			sumLen += len(s)
-		}
-		if totalLenT+sumLen > maxTotalTLength {
-			return
-		}
 		tests = append(tests, tc)
-		totalN += tc.n
-		totalQ += tc.q
-		totalLenT += sumLen
 	}
 
 	// Manual cases from statement.
@@ -218,37 +210,20 @@ func generateTests() []testCase {
 		t: []string{"a", "aa"},
 	})
 
-	for len(tests) < targetTests && totalN < maxTotalN && totalQ < maxTotalQ {
-		remainN := maxTotalN - totalN
-		if remainN <= 0 {
-			break
-		}
-		n := rng.Intn(min(5000, remainN)) + 1
+	for len(tests) < targetTests {
+		n := rng.Intn(5000) + 1
 		k := rng.Intn(26) + 1
 		s := randString(rng, n, k)
-
-		remainQ := maxTotalQ - totalQ
-		if remainQ <= 0 {
-			break
-		}
-		q := rng.Intn(min(500, remainQ)) + 1
+		q := rng.Intn(500) + 1
 		qs := make([]string, q)
-		sumLen := 0
 		for i := 0; i < q; i++ {
 			maxLen := min(20, n+5)
 			length := rng.Intn(maxLen) + 1
 			qs[i] = randString(rng, length, k)
-			sumLen += length
-		}
-		if totalLenT+sumLen > maxTotalTLength {
-			break
 		}
 		add(testCase{n: n, k: k, s: s, q: q, t: qs})
 	}
 
-	if len(tests) == 0 {
-		add(testCase{n: 1, k: 1, s: "a", q: 1, t: []string{"a"}})
-	}
 	return tests
 }
 
