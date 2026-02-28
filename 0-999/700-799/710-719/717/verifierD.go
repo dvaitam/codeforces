@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -62,7 +64,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if got != expect {
+		eVal, err1 := strconv.ParseFloat(strings.TrimSpace(expect), 64)
+		gVal, err2 := strconv.ParseFloat(strings.TrimSpace(got), 64)
+		if err1 != nil || err2 != nil || math.Abs(eVal-gVal) > 1e-6 {
 			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:%s", i+1, expect, got, input)
 			os.Exit(1)
 		}
