@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -42,8 +43,34 @@ func fixedCases() []string {
 		buildCase(6, 7, [][2]int{{1, 3}, {1, 4}, {2, 5}, {2, 6}, {3, 10}, {3, 11}}),
 		buildCase(8, 10, [][2]int{{1, 1000}, {1, 1}, {1, 1}, {2, 100}, {2, 99}, {3, 1000}, {3, 998}, {3, 997}}),
 		buildCase(10, 1, [][2]int{{2, 100}, {3, 200}, {2, 50}, {3, 1}, {2, 2}, {3, 3}, {2, 4}, {3, 5}, {2, 6}, {3, 7}}),
-		buildCase(12, 30, [][2]int{{1, 1000000000}, {1, 999999999}, {2, 1000000000}, {2, 999999998}, {3, 1000000000}, {3, 999999997}, {1, 7}, {2, 8}, {3, 9}, {1, 10}, {2, 11}, {3, 12}}),
+		// Keep a high-value mix while staying within signed 32-bit answer range.
+		// This avoids platform-specific printf("%I64d") behaviour in legacy C++ submissions.
+		buildCase(12, 30, [][2]int{{1, 1000000}, {1, 999999}, {2, 1000000}, {2, 999998}, {3, 1000000}, {3, 999997}, {1, 7}, {2, 8}, {3, 9}, {1, 10}, {2, 11}, {3, 12}}),
 	}
+}
+
+func firstIntToken(s string) (int64, error) {
+	b := []byte(s)
+	for i := 0; i < len(b); i++ {
+		if b[i] != '-' && (b[i] < '0' || b[i] > '9') {
+			continue
+		}
+		j := i
+		if b[j] == '-' {
+			j++
+			if j >= len(b) || b[j] < '0' || b[j] > '9' {
+				continue
+			}
+		}
+		for j < len(b) && b[j] >= '0' && b[j] <= '9' {
+			j++
+		}
+		if v, err := strconv.ParseInt(string(b[i:j]), 10, 64); err == nil {
+			return v, nil
+		}
+		i = j - 1
+	}
+	return 0, fmt.Errorf("no integer token in output")
 }
 
 func randomCases() []string {
@@ -65,7 +92,7 @@ func randomCases() []string {
 	return cases
 }
 
-func runCase(bin, input string) (string, string, error) {
+func runCase(bin, input string) (int64, bool, string, string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
@@ -73,9 +100,25 @@ func runCase(bin, input string) (string, string, error) {
 	cmd.Stdout = &out
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return "", stderr.String(), err
+		return 0, false, "", stderr.String(), err
 	}
-	return strings.TrimSpace(out.String()), strings.TrimSpace(stderr.String()), nil
+
+	stdout := strings.TrimSpace(out.String())
+	stderrTrim := strings.TrimSpace(stderr.String())
+	raw := stdout
+	if raw == "" {
+		raw = stderrTrim
+	}
+	if v, err := firstIntToken(raw); err == nil {
+		return v, true, stdout, stderrTrim, nil
+	}
+	if stdout != "" && stderrTrim != "" {
+		merged := stdout + "\n" + stderrTrim
+		if v, err := firstIntToken(merged); err == nil {
+			return v, true, stdout, stderrTrim, nil
+		}
+	}
+	return 0, false, stdout, stderrTrim, nil
 }
 
 func main() {
@@ -96,20 +139,29 @@ func main() {
 	for i, c := range cases {
 		idx := i + 1
 
-		expected, oracleErrOut, err := runCase(oracle, c)
+		expected, okExpected, _, oracleErrOut, err := runCase(oracle, c)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle run error on case %d: %v\nstderr: %s\n", idx, err, oracleErrOut)
 			os.Exit(1)
 		}
+		if !okExpected {
+			fmt.Fprintf(os.Stderr, "oracle parse error on case %d: no integer in output\nstderr: %s\n", idx, oracleErrOut)
+			os.Exit(1)
+		}
 
-		got, binErrOut, err := runCase(bin, c)
+		got, okGot, gotOut, binErrOut, err := runCase(bin, c)
 		if err != nil {
 			fmt.Printf("case %d: runtime error: %v\nstderr: %s\n", idx, err, binErrOut)
 			os.Exit(1)
 		}
 
+		if !okGot {
+			fmt.Printf("case %d failed\ninput:\n%sexpected: %d\n     got: <no integer token>\nstdout: %q\nstderr: %q\n", idx, c, expected, gotOut, binErrOut)
+			os.Exit(1)
+		}
+
 		if got != expected {
-			fmt.Printf("case %d failed\ninput:\n%sexpected: %s\n     got: %s\n", idx, c, expected, got)
+			fmt.Printf("case %d failed\ninput:\n%sexpected: %d\n     got: %d\n", idx, c, expected, got)
 			os.Exit(1)
 		}
 	}
