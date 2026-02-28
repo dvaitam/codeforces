@@ -59,30 +59,30 @@ func randName(rng *rand.Rand) string {
 
 func genCase(rng *rand.Rand) string {
 	n := rng.Intn(4) + 1
-	projects := make([]proj, 0, n)
+	names := make([]string, n)
+	versions := make([]int, n)
+	for i := 0; i < n; i++ {
+		names[i] = randName(rng)
+		versions[i] = rng.Intn(5) + 1
+	}
+
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d\n", n)
 	for i := 0; i < n; i++ {
-		p := proj{randName(rng), rng.Intn(5) + 1}
-		fmt.Fprintf(&sb, "%s %d\n", p.name, p.ver)
+		fmt.Fprintf(&sb, "%s %d\n", names[i], versions[i])
+		// Project i can depend on projects i+1..n-1, so Polycarp (i=0)
+		// can have dependencies and no cycles are possible.
+		available := n - i - 1
 		depCount := 0
-		if len(projects) > 0 {
-			depCount = rng.Intn(len(projects) + 1)
+		if available > 0 {
+			depCount = rng.Intn(available + 1)
 		}
 		fmt.Fprintf(&sb, "%d\n", depCount)
-		used := map[int]bool{}
+		perm := rng.Perm(available)
 		for j := 0; j < depCount; j++ {
-			for {
-				idx := rng.Intn(len(projects))
-				if !used[idx] {
-					used[idx] = true
-					d := projects[idx]
-					fmt.Fprintf(&sb, "%s %d\n", d.name, d.ver)
-					break
-				}
-			}
+			idx := i + 1 + perm[j]
+			fmt.Fprintf(&sb, "%s %d\n", names[idx], versions[idx])
 		}
-		projects = append(projects, p)
 	}
 	return sb.String()
 }
