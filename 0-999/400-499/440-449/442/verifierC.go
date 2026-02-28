@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"container/heap"
 	"fmt"
 	"math/rand"
 	"os"
@@ -29,26 +28,6 @@ func runBinary(path, input string) (string, error) {
 	return out.String(), nil
 }
 
-type Item struct {
-	score int
-	idx   int
-}
-
-type MaxHeap []Item
-
-func (h MaxHeap) Len() int           { return len(h) }
-func (h MaxHeap) Less(i, j int) bool { return h[i].score > h[j].score }
-func (h MaxHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
-
-func (h *MaxHeap) Push(x interface{}) { *h = append(*h, x.(Item)) }
-func (h *MaxHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	it := old[n-1]
-	*h = old[0 : n-1]
-	return it
-}
-
 func solveC(r *bufio.Reader) string {
 	var n int
 	fmt.Fscan(r, &n)
@@ -59,65 +38,42 @@ func solveC(r *bufio.Reader) string {
 	if n < 3 {
 		return "0\n"
 	}
-	L := make([]int, n)
-	R := make([]int, n)
-	removed := make([]bool, n)
+
+	var ans int64
+	stack := make([]int, 0, n)
+
 	for i := 0; i < n; i++ {
-		L[i] = i - 1
-		R[i] = i + 1
-	}
-	R[n-1] = -1
-	getScore := func(i int) int {
-		if i < 0 || i >= n || removed[i] {
-			return -1
-		}
-		l := L[i]
-		r := R[i]
-		if l < 0 || r < 0 {
-			return -1
-		}
-		if a[l] < a[r] {
-			return a[l]
-		}
-		return a[r]
-	}
-	h := &MaxHeap{}
-	heap.Init(h)
-	for i := 1; i < n-1; i++ {
-		sc := getScore(i)
-		if sc >= 0 {
-			heap.Push(h, Item{score: sc, idx: i})
+		stack = append(stack, a[i])
+		for len(stack) >= 3 {
+			m := len(stack)
+			if stack[m-3] >= stack[m-2] && stack[m-2] <= stack[m-1] {
+				mn := stack[m-3]
+				if stack[m-1] < mn {
+					mn = stack[m-1]
+				}
+				ans += int64(mn)
+				stack[m-2] = stack[m-1]
+				stack = stack[:m-1]
+			} else {
+				break
+			}
 		}
 	}
-	var total int64
-	for h.Len() > 0 {
-		it := heap.Pop(h).(Item)
-		i := it.idx
-		if removed[i] {
-			continue
-		}
-		sc := getScore(i)
-		if sc != it.score {
-			continue
-		}
-		total += int64(sc)
-		removed[i] = true
-		l := L[i]
-		r := R[i]
-		if l >= 0 {
-			R[l] = r
-		}
-		if r >= 0 {
-			L[r] = l
-		}
-		if sc2 := getScore(l); sc2 >= 0 {
-			heap.Push(h, Item{score: sc2, idx: l})
-		}
-		if sc3 := getScore(r); sc3 >= 0 {
-			heap.Push(h, Item{score: sc3, idx: r})
+
+	sum := int64(0)
+	max1, max2 := 0, 0
+	for _, val := range stack {
+		sum += int64(val)
+		if val > max1 {
+			max2 = max1
+			max1 = val
+		} else if val > max2 {
+			max2 = val
 		}
 	}
-	return fmt.Sprintf("%d\n", total)
+	ans += sum - int64(max1) - int64(max2)
+
+	return fmt.Sprintf("%d\n", ans)
 }
 
 func generateCase(rng *rand.Rand) string {
