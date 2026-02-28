@@ -139,7 +139,7 @@ func solve(input string) (string, error) {
 			}
 			sub := collect(e.to, c, e.w)
 			// sort by weight
-			sort.Slice(sub, func(i, j int) bool { return sub[i].w < sub[j].w })
+			sort.Slice(sub, func(i, j int) bool { return sub[i].w > sub[j].w })
 			sort.Slice(vec, func(i, j int) bool { return vec[i].w < vec[j].w })
 			b.reset()
 			ptr := 0
