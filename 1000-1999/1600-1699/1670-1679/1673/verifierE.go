@@ -34,46 +34,69 @@ func generateTests() []testCase {
 	return tests
 }
 
+func f(n, m int) int {
+	if m <= 0 {
+		if n == 0 {
+			return 1
+		}
+		return 0
+	}
+	if n < m {
+		return 0
+	}
+	if ((n - 1) & (m - 1)) == (m - 1) {
+		return 1
+	}
+	return 0
+}
+
 func expected(t testCase) string {
 	n, k := t.n, t.k
-	B := t.b
-	if n > 20 {
+	a := make([]int, n+1)
+	for i, v := range t.b {
+		a[i+1] = v
+	}
+	ans := make([]byte, LIM)
+	maxBit := -1
+	for i := 1; i <= n; i++ {
+		s := 0
+		for j := i; j <= n; {
+			if s >= 20 || (LIM-1)>>s < a[i] {
+				break
+			}
+			idx := a[i] << s
+			t := 0
+			if i > 1 {
+				t++
+			}
+			if j < n {
+				t++
+			}
+			ans[idx] ^= byte(f(n-1-(j-i)-t, k-t))
+			if ans[idx] == 1 && idx > maxBit {
+				maxBit = idx
+			}
+			j++
+			if j <= n {
+				s += a[j]
+			}
+		}
+	}
+	for maxBit > 0 && ans[maxBit] == 0 {
+		maxBit--
+	}
+	if maxBit < 0 || (maxBit == 0 && ans[0] == 0) {
 		return "0"
 	}
-	var ans uint64
-	var dfs func(pos, cnt int, curProd int, curVal uint64)
-	dfs = func(pos, cnt int, curProd int, curVal uint64) {
-		if pos == n-1 {
-			if curProd < LIM {
-				curVal ^= 1 << curProd
-			}
-			if cnt >= k {
-				ans ^= curVal
-			}
-			return
-		}
-		nextProd := curProd * B[pos+1]
-		dfs(pos+1, cnt, nextProd, curVal)
-		val := curVal
-		if curProd < LIM {
-			val ^= 1 << curProd
-		}
-		dfs(pos+1, cnt+1, B[pos+1], val)
-	}
-	dfs(0, 0, B[0], 0)
-	if ans == 0 {
-		return "0"
-	}
-	out := ""
-	for ans > 0 {
-		if ans&1 == 1 {
-			out = "1" + out
+	out := make([]byte, maxBit+1)
+	for i := maxBit; i >= 0; i-- {
+		if ans[i] == 1 {
+			out[maxBit-i] = '1'
 		} else {
-			out = "0" + out
+			out[maxBit-i] = '0'
 		}
-		ans >>= 1
 	}
-	return out
+	return string(out)
 }
 
 func runBinary(bin, input string) (string, error) {
