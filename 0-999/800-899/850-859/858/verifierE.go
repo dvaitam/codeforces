@@ -1,13 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
-	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -24,26 +24,48 @@ func buildOracle() (string, error) {
 	return oracle, nil
 }
 
-func readCases(r io.Reader) ([]string, error) {
-	scanner := bufio.NewScanner(r)
-	cases := []string{}
-	var sb strings.Builder
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.TrimSpace(line) == "" {
-			if sb.Len() > 0 {
-				cases = append(cases, sb.String())
-				sb.Reset()
-			}
-			continue
-		}
-		sb.WriteString(line)
-		sb.WriteByte('\n')
+func generateCases() []string {
+	cases := []string{
+		"1\n1 1\n",
+		"1\na 0\n",
+		"2\n1 1\n2 0\n",
+		"2\na 1\nb 0\n",
+		"3\n1 1\n2 1\n3 0\n",
+		"4\nuser1 1\n2 1\n3 0\n4 0\n",
 	}
-	if sb.Len() > 0 {
+
+	rng := rand.New(rand.NewSource(858))
+	for t := 0; t < 200; t++ {
+		n := rng.Intn(40) + 1
+		var sb strings.Builder
+		sb.WriteString(strconv.Itoa(n))
+		sb.WriteByte('\n')
+		for i := 0; i < n; i++ {
+			op := rng.Intn(2)
+			nameType := rng.Intn(4)
+			name := ""
+			switch nameType {
+			case 0:
+				// valid positive integer in range [1, n]
+				name = strconv.Itoa(rng.Intn(n) + 1)
+			case 1:
+				// out of range integer
+				name = strconv.Itoa(n + rng.Intn(30) + 1)
+			case 2:
+				// non-numeric label
+				name = fmt.Sprintf("u%d", rng.Intn(1000))
+			default:
+				// potentially problematic numeric format
+				name = fmt.Sprintf("0%d", rng.Intn(100)+1)
+			}
+			sb.WriteString(name)
+			sb.WriteByte(' ')
+			sb.WriteString(strconv.Itoa(op))
+			sb.WriteByte('\n')
+		}
 		cases = append(cases, sb.String())
 	}
-	return cases, scanner.Err()
+	return cases
 }
 
 func main() {
@@ -59,18 +81,7 @@ func main() {
 	}
 	defer os.Remove(oracle)
 
-	f, err := os.Open("testcasesE.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	cases, err := readCases(f)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to read cases: %v\n", err)
-		os.Exit(1)
-	}
+	cases := generateCases()
 
 	for i, c := range cases {
 		idx := i + 1
@@ -96,7 +107,7 @@ func main() {
 		}
 		got := strings.TrimSpace(out.String())
 		if got != expected {
-			fmt.Printf("case %d failed\nexpected: %s\n got: %s\n", idx, expected, got)
+			fmt.Printf("case %d failed\nexpected: %s\n got: %s\ninput:\n%s\n", idx, expected, got, c)
 			os.Exit(1)
 		}
 	}
