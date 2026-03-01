@@ -3,11 +3,10 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +16,7 @@ type testCase struct {
 	input   string
 	caseCnt int
 	totalM  int
+	exp     []int64
 }
 
 func main() {
@@ -26,26 +26,8 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	ref, err := buildReferenceBinary()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
 	tests := generateTests()
 	for idx, tc := range tests {
-		refOut, err := runProgram(ref, tc.input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\ninput:\n%s\n", idx+1, err, tc.input)
-			os.Exit(1)
-		}
-		refVals, err := parseOutputs(refOut, tc.caseCnt)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to parse reference output on test %d: %v\noutput:\n%s\n", idx+1, err, refOut)
-			os.Exit(1)
-		}
-
 		gotOut, err := runProgram(bin, tc.input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "runtime error on test %d: %v\ninput:\n%s\nstdout/stderr:\n%s\n", idx+1, err, tc.input, gotOut)
@@ -58,9 +40,9 @@ func main() {
 		}
 
 		for caseIdx := 0; caseIdx < tc.caseCnt; caseIdx++ {
-			if refVals[caseIdx] != gotVals[caseIdx] {
+			if tc.exp[caseIdx] != gotVals[caseIdx] {
 				fmt.Fprintf(os.Stderr, "test %d case %d mismatch: expected %d got %d\ninput:\n%sreference output:\n%s\nparticipant output:\n%s\n",
-					idx+1, caseIdx+1, refVals[caseIdx], gotVals[caseIdx], tc.input, refOut, gotOut)
+					idx+1, caseIdx+1, tc.exp[caseIdx], gotVals[caseIdx], tc.input, formatExpected(tc.exp), gotOut)
 				os.Exit(1)
 			}
 		}
@@ -68,36 +50,13 @@ func main() {
 	fmt.Printf("All %d tests passed\n", len(tests))
 }
 
-func buildReferenceBinary() (string, error) {
-	dir, err := verifierDir()
-	if err != nil {
-		return "", err
+func formatExpected(exp []int64) string {
+	var sb strings.Builder
+	for _, v := range exp {
+		sb.WriteString(strconv.FormatInt(v, 10))
+		sb.WriteByte('\n')
 	}
-	tmp, err := os.CreateTemp("", "2066D1_ref_*.bin")
-	if err != nil {
-		return "", err
-	}
-	path := tmp.Name()
-	tmp.Close()
-
-	cmd := exec.Command("go", "build", "-o", path, "2066D1.go")
-	cmd.Dir = dir
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.Remove(path)
-		return "", fmt.Errorf("%v\n%s", err, out.String())
-	}
-	return path, nil
-}
-
-func verifierDir() (string, error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("unable to determine verifier directory")
-	}
-	return filepath.Dir(file), nil
+	return sb.String()
 }
 
 func runProgram(path, input string) (string, error) {
@@ -208,6 +167,7 @@ func makeTestCase(entries [][3]int) testCase {
 	sb.WriteString(strconv.Itoa(len(entries)))
 	sb.WriteByte('\n')
 	totalM := 0
+	exp := make([]int64, 0, len(entries))
 	for _, e := range entries {
 		n, c, m := e[0], e[1], e[2]
 		if c > n {
@@ -221,6 +181,7 @@ func makeTestCase(entries [][3]int) testCase {
 		}
 		sb.WriteString(fmt.Sprintf("%d %d %d\n", n, c, m))
 		totalM += m
+		exp = append(exp, choose(c*(n-1), m-c))
 		for i := 0; i < m; i++ {
 			if i > 0 {
 				sb.WriteByte(' ')
@@ -233,5 +194,24 @@ func makeTestCase(entries [][3]int) testCase {
 		input:   sb.String(),
 		caseCnt: len(entries),
 		totalM:  totalM,
+		exp:     exp,
 	}
+}
+
+const mod int64 = 1_000_000_007
+
+func choose(n, k int) int64 {
+	if k < 0 || k > n {
+		return 0
+	}
+	if k > n-k {
+		k = n - k
+	}
+	res := big.NewInt(1)
+	for i := 1; i <= k; i++ {
+		res.Mul(res, big.NewInt(int64(n-k+i)))
+		res.Div(res, big.NewInt(int64(i)))
+	}
+	res.Mod(res, big.NewInt(mod))
+	return res.Int64()
 }
