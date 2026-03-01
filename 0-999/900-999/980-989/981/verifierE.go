@@ -1,13 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -42,6 +41,40 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func formatCase(n int, ops [][3]int) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d %d\n", n, len(ops)))
+	for _, op := range ops {
+		sb.WriteString(fmt.Sprintf("%d %d %d\n", op[0], op[1], op[2]))
+	}
+	return sb.String()
+}
+
+func addHandcraftedTests(cases *[]string) {
+	*cases = append(*cases,
+		formatCase(1, [][3]int{{1, 1, 1}}),
+		formatCase(5, [][3]int{{1, 5, 3}}),
+		formatCase(5, [][3]int{{1, 5, 2}, {2, 5, 2}, {1, 3, 1}}),
+		formatCase(6, [][3]int{{1, 2, 1}, {2, 3, 1}, {3, 4, 1}, {4, 5, 1}, {5, 6, 1}}),
+	)
+}
+
+func addRandomTests(cases *[]string) {
+	rng := rand.New(rand.NewSource(981))
+	for t := 0; t < 300; t++ {
+		n := rng.Intn(20) + 1
+		q := rng.Intn(35) + 1
+		ops := make([][3]int, q)
+		for i := 0; i < q; i++ {
+			l := rng.Intn(n) + 1
+			r := rng.Intn(n-l+1) + l
+			v := rng.Intn(n) + 1
+			ops[i] = [3]int{l, r, v}
+		}
+		*cases = append(*cases, formatCase(n, ops))
+	}
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierE.go /path/to/binary")
@@ -55,57 +88,25 @@ func main() {
 	}
 	defer os.Remove(oracle)
 
-	file, err := os.Open("testcasesE.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
+	cases := make([]string, 0, 304)
+	addHandcraftedTests(&cases)
+	addRandomTests(&cases)
 
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for {
-		if !scanner.Scan() {
-			break
-		}
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		parts := strings.Fields(line)
-		if len(parts) != 2 {
-			fmt.Fprintf(os.Stderr, "test %d malformed\n", idx+1)
-			os.Exit(1)
-		}
-		n1, _ := strconv.Atoi(parts[0])
-		q, _ := strconv.Atoi(parts[1])
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d %d\n", n1, q))
-		for i := 0; i < q; i++ {
-			scanner.Scan()
-			l := strings.TrimSpace(scanner.Text())
-			sb.WriteString(l + "\n")
-		}
-		idx++
-		input := sb.String()
+	for idx, input := range cases {
 		exp, err := run(oracle, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
 		got, err := run(bin, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s\n", idx+1, err, input)
 			os.Exit(1)
 		}
 		if got != exp {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx, exp, got)
+			fmt.Fprintf(os.Stderr, "case %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", idx+1, input, exp, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d generated tests passed\n", len(cases))
 }
