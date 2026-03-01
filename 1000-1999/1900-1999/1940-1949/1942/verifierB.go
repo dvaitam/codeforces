@@ -6,20 +6,9 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
-
-func buildRef() (string, error) {
-	tmp := filepath.Join(os.TempDir(), "refB1942")
-	cmd := exec.Command("go", "build", "-o", tmp, "1942B.go")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return "", err
-	}
-	return tmp, nil
-}
 
 func runProg(path, input string) (string, error) {
 	cmd := exec.Command(path)
@@ -31,19 +20,18 @@ func runProg(path, input string) (string, error) {
 	return strings.TrimSpace(out.String()), err
 }
 
-func genTest(rng *rand.Rand) string {
+func genTest(rng *rand.Rand) (string, []int) {
 	n := rng.Intn(6) + 1
-	perm := rng.Perm(n)
+	p := rng.Perm(n)
 	a := make([]int, n)
 	present := make([]bool, n+1)
 	mex := 0
 	for i := 0; i < n; i++ {
-		// compute mex of prefix before p[i]
 		for present[mex] {
 			mex++
 		}
-		a[i] = mex - perm[i]
-		present[perm[i]] = true
+		a[i] = mex - p[i]
+		present[p[i]] = true
 	}
 
 	var buf bytes.Buffer
@@ -55,7 +43,45 @@ func genTest(rng *rand.Rand) string {
 		fmt.Fprint(&buf, v)
 	}
 	buf.WriteByte('\n')
-	return buf.String()
+	return buf.String(), a
+}
+
+func verifyOutput(out string, a []int) error {
+	fields := strings.Fields(out)
+	if len(fields) != len(a) {
+		return fmt.Errorf("expected %d numbers, got %d", len(a), len(fields))
+	}
+
+	n := len(a)
+	p := make([]int, n)
+	used := make([]bool, n)
+	for i, f := range fields {
+		v, err := strconv.Atoi(f)
+		if err != nil {
+			return fmt.Errorf("non-integer token %q", f)
+		}
+		if v < 0 || v >= n {
+			return fmt.Errorf("value out of range at index %d: %d", i, v)
+		}
+		if used[v] {
+			return fmt.Errorf("duplicate value %d", v)
+		}
+		used[v] = true
+		p[i] = v
+	}
+
+	present := make([]bool, n+1)
+	mex := 0
+	for i := 0; i < n; i++ {
+		for present[mex] {
+			mex++
+		}
+		if got := mex - p[i]; got != a[i] {
+			return fmt.Errorf("constraint mismatch at index %d: expected a[%d]=%d, got %d", i, i, a[i], got)
+		}
+		present[p[i]] = true
+	}
+	return nil
 }
 
 func main() {
@@ -64,28 +90,17 @@ func main() {
 		os.Exit(1)
 	}
 	target := os.Args[1]
-	ref, err := buildRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 
 	rng := rand.New(rand.NewSource(43))
 	for i := 0; i < 100; i++ {
-		test := genTest(rng)
-		expected, err := runProg(ref, test)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "reference error:", err)
-			os.Exit(1)
-		}
+		test, a := genTest(rng)
 		got, err := runProg(target, test)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "test %d execution error: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if expected != got {
-			fmt.Printf("test %d failed\ninput:\n%s\nexpected:%s\ngot:%s\n", i+1, test, expected, got)
+		if err := verifyOutput(got, a); err != nil {
+			fmt.Printf("test %d failed\ninput:\n%s\noutput:%s\nreason:%v\n", i+1, test, got, err)
 			os.Exit(1)
 		}
 	}
