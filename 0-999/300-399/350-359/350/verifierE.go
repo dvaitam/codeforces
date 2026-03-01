@@ -11,45 +11,111 @@ import (
 )
 
 type test struct {
-	input    string
-	expected string
+	input string
 }
 
-func solveE(n, m, k int, special []int) string {
-	vis := make([]int, n+1)
-	ss := special[0]
-	for i, x := range special {
-		vis[x] = 1
-		if i == 0 {
-			vis[x] = 2
+func maxEdges(n, k int) int {
+	return (n - k) + ((n-1)*(n-2))/2
+}
+
+func impossible(n, m, k int) bool {
+	if m < n-1 {
+		return true
+	}
+	if k == n {
+		return true
+	}
+	return m > maxEdges(n, k)
+}
+
+func parseInts(s string) ([]int, error) {
+	fields := strings.Fields(s)
+	vals := make([]int, len(fields))
+	for i, f := range fields {
+		v, err := strconv.Atoi(f)
+		if err != nil {
+			return nil, err
+		}
+		vals[i] = v
+	}
+	return vals, nil
+}
+
+func validateOutput(n, m, k int, special []int, out string) error {
+	vals, err := parseInts(out)
+	if err != nil {
+		return fmt.Errorf("output contains non-integer token: %w", err)
+	}
+	if len(vals) == 1 && vals[0] == -1 {
+		if impossible(n, m, k) {
+			return nil
+		}
+		return fmt.Errorf("printed -1 although a construction exists")
+	}
+	if impossible(n, m, k) {
+		return fmt.Errorf("construction is impossible, expected -1")
+	}
+	if len(vals)%2 != 0 {
+		return fmt.Errorf("edge list must contain pairs, got %d integers", len(vals))
+	}
+	edgesCnt := len(vals) / 2
+	if edgesCnt != m {
+		return fmt.Errorf("expected %d edges, got %d", m, edgesCnt)
+	}
+
+	forbiddenRoot := special[0]
+	otherSpecial := make(map[int]bool, k-1)
+	for i := 1; i < k; i++ {
+		otherSpecial[special[i]] = true
+	}
+
+	adj := make([][]int, n+1)
+	seen := make(map[[2]int]bool, m)
+	for i := 0; i < len(vals); i += 2 {
+		u, v := vals[i], vals[i+1]
+		if u < 1 || u > n || v < 1 || v > n {
+			return fmt.Errorf("edge (%d,%d) out of range 1..%d", u, v, n)
+		}
+		if u == v {
+			return fmt.Errorf("self-loop at %d", u)
+		}
+		a, b := u, v
+		if a > b {
+			a, b = b, a
+		}
+		key := [2]int{a, b}
+		if seen[key] {
+			return fmt.Errorf("duplicate edge (%d,%d)", a, b)
+		}
+		seen[key] = true
+
+		if (u == forbiddenRoot && otherSpecial[v]) || (v == forbiddenRoot && otherSpecial[u]) {
+			return fmt.Errorf("forbidden edge between %d and special node", forbiddenRoot)
+		}
+		adj[u] = append(adj[u], v)
+		adj[v] = append(adj[v], u)
+	}
+
+	// connectedness check
+	q := []int{1}
+	vis := make([]bool, n+1)
+	vis[1] = true
+	for head := 0; head < len(q); head++ {
+		u := q[head]
+		for _, v := range adj[u] {
+			if !vis[v] {
+				vis[v] = true
+				q = append(q, v)
+			}
 		}
 	}
-	a := make([]int, 0, n)
-	b := make([]int, 0, n)
 	for i := 1; i <= n; i++ {
-		if vis[i] != 2 {
-			a = append(a, i)
-		}
-		if vis[i] == 0 {
-			b = append(b, i)
+		if !vis[i] {
+			return fmt.Errorf("graph is not connected")
 		}
 	}
-	tot := (n - k) + ((n-1)*(n-2))/2
-	if m > tot || k == n {
-		return "-1"
-	}
-	var out strings.Builder
-	edgesLeft := m
-	for i := 0; i < len(a) && edgesLeft > 1; i++ {
-		for j := i + 1; j < len(a) && edgesLeft > 1; j++ {
-			fmt.Fprintf(&out, "%d %d\n", a[i], a[j])
-			edgesLeft--
-		}
-	}
-	for i := 0; i < edgesLeft; i++ {
-		fmt.Fprintf(&out, "%d %d\n", ss, b[i])
-	}
-	return strings.TrimSpace(out.String())
+
+	return nil
 }
 
 func generateTests() []test {
@@ -67,8 +133,7 @@ func generateTests() []test {
 				special = append(special, x)
 			}
 		}
-		tot := (n - k) + ((n-1)*(n-2))/2
-		m := rng.Intn(tot + 1) // may trigger -1
+		m := rng.Intn(maxEdges(n, k) + 2) // includes some impossible cases
 		var sb strings.Builder
 		fmt.Fprintf(&sb, "%d %d %d\n", n, m, k)
 		for i, v := range special {
@@ -78,8 +143,7 @@ func generateTests() []test {
 			sb.WriteString(strconv.Itoa(v))
 		}
 		sb.WriteByte('\n')
-		expected := solveE(n, m, k, special)
-		tests = append(tests, test{sb.String(), expected})
+		tests = append(tests, test{sb.String()})
 	}
 	return tests
 }
@@ -107,13 +171,21 @@ func main() {
 	bin := os.Args[1]
 	tests := generateTests()
 	for i, t := range tests {
+		parts, err := parseInts(t.input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "internal parse error: %v\n", err)
+			os.Exit(1)
+		}
+		n, m, k := parts[0], parts[1], parts[2]
+		special := parts[3:]
+
 		got, err := runBinary(bin, t.input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d runtime error: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(t.expected) {
-			fmt.Fprintf(os.Stderr, "case %d failed\ninput:\n%sexpected:%s\ngot:%s\n", i+1, t.input, t.expected, got)
+		if err := validateOutput(n, m, k, special, got); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%soutput:\n%s\n", i+1, err, t.input, got)
 			os.Exit(1)
 		}
 	}
