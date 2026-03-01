@@ -6,14 +6,10 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
-
-// refSource points to the local reference solution to avoid GOPATH resolution.
-const refSource = "2045G.go"
 
 type answer struct {
 	invalid bool
@@ -34,6 +30,7 @@ type testCase struct {
 	name    string
 	input   string
 	queries int
+	expect  []answer
 }
 
 func main() {
@@ -47,27 +44,9 @@ func realMain() int {
 	}
 	candidate := os.Args[1]
 
-	refBin, cleanup, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-	defer cleanup()
-
 	tests := buildTests()
 
 	for idx, tc := range tests {
-		refOut, err := runProgram(refBin, tc.input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference runtime error on test %d (%s): %v\ninput:\n%soutput:\n%s", idx+1, tc.name, err, tc.input, refOut)
-			return 1
-		}
-		refAns, err := parseOutput(refOut, tc.queries)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference produced invalid output on test %d (%s): %v\ninput:\n%soutput:\n%s", idx+1, tc.name, err, tc.input, refOut)
-			return 1
-		}
-
 		candOut, err := runProgram(candidate, tc.input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "candidate runtime error on test %d (%s): %v\ninput:\n%soutput:\n%s", idx+1, tc.name, err, tc.input, candOut)
@@ -79,31 +58,14 @@ func realMain() int {
 			return 1
 		}
 
-		if !equalAnswers(refAns, candAns) {
-			fmt.Fprintf(os.Stderr, "test %d (%s) failed\ninput:\n%sreference:\n%s\ncandidate:\n%s", idx+1, tc.name, tc.input, refOut, candOut)
+		if !equalAnswers(tc.expect, candAns) {
+			fmt.Fprintf(os.Stderr, "test %d (%s) failed\ninput:\n%sexpected:\n%s\ncandidate:\n%s", idx+1, tc.name, tc.input, formatAnswers(tc.expect), candOut)
 			return 1
 		}
 	}
 
 	fmt.Printf("All %d tests passed.\n", len(tests))
 	return 0
-}
-
-func buildReference() (string, func(), error) {
-	dir, err := os.MkdirTemp("", "cf-2045G-ref-")
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to create temp dir: %v", err)
-	}
-	binPath := filepath.Join(dir, "ref2045G.bin")
-	cmd := exec.Command("go", "build", "-o", binPath, refSource)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		_ = os.RemoveAll(dir)
-		return "", nil, fmt.Errorf("failed to build reference: %v\n%s", err, stderr.String())
-	}
-	cleanup := func() { _ = os.RemoveAll(dir) }
-	return binPath, cleanup, nil
 }
 
 func runProgram(bin, input string) (string, error) {
@@ -119,6 +81,24 @@ func runProgram(bin, input string) (string, error) {
 	cmd.Stderr = &out
 	err := cmd.Run()
 	return out.String(), err
+}
+
+func formatAnswers(ans []answer) string {
+	var sb strings.Builder
+	for i, a := range ans {
+		if i > 0 {
+			sb.WriteByte('\n')
+		}
+		if a.invalid {
+			sb.WriteString("INVALID")
+		} else {
+			sb.WriteString(strconv.FormatInt(a.val, 10))
+		}
+	}
+	if len(ans) > 0 {
+		sb.WriteByte('\n')
+	}
+	return sb.String()
 }
 
 func parseOutput(output string, expected int) ([]answer, error) {
@@ -174,11 +154,11 @@ func buildTests() []testCase {
 }
 
 func newTestCase(name, input string) testCase {
-	q, err := extractQueryCount(input)
+	gc, err := parseGridCase(input)
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse test %s: %v", name, err))
 	}
-	return testCase{name: name, input: input, queries: q}
+	return testCase{name: name, input: input, queries: len(gc.queries), expect: solveCase(gc)}
 }
 
 func extractQueryCount(input string) (int, error) {
@@ -328,7 +308,166 @@ func randomTestCase(rng *rand.Rand, idx int) testCase {
 
 func structuredTest(name string, gc gridCase) testCase {
 	input := buildInput(gc)
-	return testCase{name: name, input: input, queries: len(gc.queries)}
+	return testCase{name: name, input: input, queries: len(gc.queries), expect: solveCase(gc)}
+}
+
+func parseGridCase(input string) (gridCase, error) {
+	reader := strings.NewReader(input)
+	var gc gridCase
+	if _, err := fmt.Fscan(reader, &gc.R, &gc.C, &gc.X); err != nil {
+		return gridCase{}, fmt.Errorf("failed to read R C X: %v", err)
+	}
+	gc.cells = make([][]int, gc.R)
+	for i := 0; i < gc.R; i++ {
+		var row string
+		if _, err := fmt.Fscan(reader, &row); err != nil {
+			return gridCase{}, fmt.Errorf("failed to read row %d: %v", i+1, err)
+		}
+		if len(row) != gc.C {
+			return gridCase{}, fmt.Errorf("row %d has length %d, expected %d", i+1, len(row), gc.C)
+		}
+		gc.cells[i] = make([]int, gc.C)
+		for j := 0; j < gc.C; j++ {
+			if row[j] < '0' || row[j] > '9' {
+				return gridCase{}, fmt.Errorf("invalid digit in row %d", i+1)
+			}
+			gc.cells[i][j] = int(row[j] - '0')
+		}
+	}
+	var q int
+	if _, err := fmt.Fscan(reader, &q); err != nil {
+		return gridCase{}, fmt.Errorf("failed to read Q: %v", err)
+	}
+	gc.queries = make([]query, q)
+	for i := 0; i < q; i++ {
+		if _, err := fmt.Fscan(reader, &gc.queries[i].rs, &gc.queries[i].cs, &gc.queries[i].rf, &gc.queries[i].cf); err != nil {
+			return gridCase{}, fmt.Errorf("failed to read query %d: %v", i+1, err)
+		}
+	}
+	return gc, nil
+}
+
+func solveCase(gc gridCase) []answer {
+	wDiff := precomputeDiff(gc.X)
+	n := gc.R * gc.C
+	type edge struct {
+		u, v int
+		w    int64
+	}
+	edges := make([]edge, 0, n*4)
+	adj := make([][]int, n)
+	for r := 0; r < gc.R; r++ {
+		for c := 0; c < gc.C; c++ {
+			u := r*gc.C + c
+			hu := gc.cells[r][c]
+			if r > 0 {
+				v := (r-1)*gc.C + c
+				w := wDiff[hu-gc.cells[r-1][c]+9]
+				edges = append(edges, edge{u: u, v: v, w: w})
+				adj[u] = append(adj[u], v)
+			}
+			if r+1 < gc.R {
+				v := (r+1)*gc.C + c
+				w := wDiff[hu-gc.cells[r+1][c]+9]
+				edges = append(edges, edge{u: u, v: v, w: w})
+				adj[u] = append(adj[u], v)
+			}
+			if c > 0 {
+				v := r*gc.C + (c - 1)
+				w := wDiff[hu-gc.cells[r][c-1]+9]
+				edges = append(edges, edge{u: u, v: v, w: w})
+				adj[u] = append(adj[u], v)
+			}
+			if c+1 < gc.C {
+				v := r*gc.C + (c + 1)
+				w := wDiff[hu-gc.cells[r][c+1]+9]
+				edges = append(edges, edge{u: u, v: v, w: w})
+				adj[u] = append(adj[u], v)
+			}
+		}
+	}
+
+	reachable := make([][]bool, n)
+	for s := 0; s < n; s++ {
+		reachable[s] = make([]bool, n)
+		queue := []int{s}
+		reachable[s][s] = true
+		for head := 0; head < len(queue); head++ {
+			u := queue[head]
+			for _, v := range adj[u] {
+				if !reachable[s][v] {
+					reachable[s][v] = true
+					queue = append(queue, v)
+				}
+			}
+		}
+	}
+
+	const inf int64 = 1 << 60
+	res := make([]answer, len(gc.queries))
+	for i, q := range gc.queries {
+		s := (q.rs-1)*gc.C + (q.cs - 1)
+		t := (q.rf-1)*gc.C + (q.cf - 1)
+
+		dist := make([]int64, n)
+		for j := range dist {
+			dist[j] = inf
+		}
+		dist[s] = 0
+		for it := 0; it < n-1; it++ {
+			changed := false
+			for _, e := range edges {
+				if dist[e.u] == inf {
+					continue
+				}
+				cand := dist[e.u] + e.w
+				if cand < dist[e.v] {
+					dist[e.v] = cand
+					changed = true
+				}
+			}
+			if !changed {
+				break
+			}
+		}
+
+		neg := make([]bool, n)
+		queue := make([]int, 0, n)
+		for _, e := range edges {
+			if dist[e.u] == inf {
+				continue
+			}
+			if dist[e.u]+e.w < dist[e.v] {
+				if !neg[e.v] {
+					neg[e.v] = true
+					queue = append(queue, e.v)
+				}
+			}
+		}
+		for head := 0; head < len(queue); head++ {
+			u := queue[head]
+			for _, v := range adj[u] {
+				if !neg[v] {
+					neg[v] = true
+					queue = append(queue, v)
+				}
+			}
+		}
+
+		bad := false
+		for v := 0; v < n; v++ {
+			if neg[v] && reachable[v][t] {
+				bad = true
+				break
+			}
+		}
+		if bad {
+			res[i] = answer{invalid: true}
+		} else {
+			res[i] = answer{val: dist[t]}
+		}
+	}
+	return res
 }
 
 func buildInput(gc gridCase) string {
