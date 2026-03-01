@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 )
@@ -47,6 +48,50 @@ type Case struct {
 	s string
 	a string
 	b string
+}
+
+func parseAnswer(out string) (ok bool, perm string, err error) {
+	fields := strings.Fields(out)
+	if len(fields) == 0 {
+		return false, "", fmt.Errorf("empty output")
+	}
+	if fields[0] == "NO" {
+		return false, "", nil
+	}
+	if fields[0] != "YES" {
+		return false, "", fmt.Errorf("first token must be YES/NO, got %q", fields[0])
+	}
+	if len(fields) < 2 {
+		return true, "", fmt.Errorf("YES without permutation")
+	}
+	return true, fields[1], nil
+}
+
+func validatePermutation(c Case, perm string) error {
+	if len(perm) != c.k {
+		return fmt.Errorf("permutation length mismatch: got %d want %d", len(perm), c.k)
+	}
+	b := []byte(perm)
+	sort.Slice(b, func(i, j int) bool { return b[i] < b[j] })
+	for i := 0; i < c.k; i++ {
+		want := byte('a' + i)
+		if b[i] != want {
+			return fmt.Errorf("permutation is not a bijection over first %d letters", c.k)
+		}
+	}
+	t := make([]byte, len(c.s))
+	for i := range c.s {
+		idx := c.s[i] - 'a'
+		if idx < 0 || int(idx) >= c.k {
+			return fmt.Errorf("source string has char out of range: %q", c.s[i])
+		}
+		t[i] = perm[idx]
+	}
+	ts := string(t)
+	if ts < c.a || ts > c.b {
+		return fmt.Errorf("mapped string %q is outside [%q, %q]", ts, c.a, c.b)
+	}
+	return nil
 }
 
 func genCases() []Case {
@@ -105,8 +150,27 @@ func main() {
 			fmt.Fprintf(os.Stderr, "candidate failed on case %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if want != got {
+		wantOK, _, err := parseAnswer(want)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "reference produced invalid output on case %d: %v\noutput: %s\n", i+1, err, want)
+			os.Exit(1)
+		}
+		gotOK, gotPerm, err := parseAnswer(got)
+		if err != nil {
+			fmt.Printf("case %d failed\ninput:\n%sgot invalid output: %v\nraw output: %s\n", i+1, input, err, got)
+			os.Exit(1)
+		}
+		if wantOK != gotOK {
 			fmt.Printf("case %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input, want, got)
+			os.Exit(1)
+		}
+		if gotOK {
+			if err := validatePermutation(c, gotPerm); err != nil {
+				fmt.Printf("case %d failed\ninput:\n%sinvalid YES answer: %v\ngot: %s\n", i+1, input, err, got)
+				os.Exit(1)
+			}
+		}
+		if !wantOK && gotOK {
 			os.Exit(1)
 		}
 	}
