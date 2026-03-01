@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 )
 
@@ -199,6 +200,46 @@ func buildInput(t TestE) string {
 	return sb.String()
 }
 
+func normalizeOutput(out string) (string, error) {
+	trimmed := strings.TrimSpace(out)
+	if trimmed == "" {
+		return "", fmt.Errorf("empty output")
+	}
+
+	lines := strings.Split(trimmed, "\n")
+	var k int
+	if _, err := fmt.Sscanf(strings.TrimSpace(lines[0]), "%d", &k); err != nil {
+		return "", fmt.Errorf("invalid operation count line: %w", err)
+	}
+
+	ops := make([]string, 0, len(lines)-1)
+	for idx, raw := range lines[1:] {
+		var x, y, op int
+		if _, err := fmt.Sscanf(strings.TrimSpace(raw), "%d %d %d", &x, &y, &op); err != nil {
+			return "", fmt.Errorf("invalid operation line %d: %w", idx+2, err)
+		}
+		if x > y {
+			x, y = y, x
+		}
+		ops = append(ops, fmt.Sprintf("%d %d %d", x, y, op))
+	}
+
+	if len(ops) != k {
+		return "", fmt.Errorf("declared %d operations but found %d", k, len(ops))
+	}
+
+	sort.Strings(ops)
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("%d\n", k))
+	for i, op := range ops {
+		if i > 0 {
+			b.WriteByte('\n')
+		}
+		b.WriteString(op)
+	}
+	return strings.TrimSpace(b.String()), nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierE.go /path/to/binary")
@@ -213,9 +254,20 @@ func main() {
 			fmt.Printf("test %d: runtime error: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		exp := expected(t)
-		if strings.TrimSpace(got) != exp {
-			fmt.Printf("test %d failed\nexpected:\n%s\ngot:\n%s\n", i+1, exp, strings.TrimSpace(got))
+		expRaw := expected(t)
+		exp, err := normalizeOutput(expRaw)
+		if err != nil {
+			fmt.Printf("verifier bug on expected output at test %d: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		gotNorm, err := normalizeOutput(got)
+		if err != nil {
+			fmt.Printf("test %d failed: invalid contestant output: %v\nraw output:\n%s\n", i+1, err, strings.TrimSpace(got))
+			os.Exit(1)
+		}
+
+		if gotNorm != exp {
+			fmt.Printf("test %d failed\nexpected:\n%s\ngot:\n%s\n", i+1, exp, gotNorm)
 			os.Exit(1)
 		}
 	}
