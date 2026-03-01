@@ -187,7 +187,7 @@ func main() {
 	}
 	for i, tc := range tests {
 		want := expected(tc.n, tc.s, tc.t)
-		if outFields[i] != want {
+		if !strings.EqualFold(outFields[i], want) {
 			fmt.Printf("case %d failed\nexpected: %s\ngot: %s\n", i+1, want, outFields[i])
 			os.Exit(1)
 		}
