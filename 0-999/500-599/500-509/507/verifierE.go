@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"container/heap"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -200,6 +201,120 @@ func buildInput(t TestE) string {
 	return sb.String()
 }
 
+type operation struct {
+	x, y, z int
+}
+
+func parseOutput(out string) (int, []operation, error) {
+	trimmed := strings.TrimSpace(out)
+	if trimmed == "" {
+		return 0, nil, fmt.Errorf("empty output")
+	}
+
+	lines := strings.Split(trimmed, "\n")
+	var k int
+	if _, err := fmt.Sscanf(strings.TrimSpace(lines[0]), "%d", &k); err != nil {
+		return 0, nil, fmt.Errorf("invalid operation count line: %w", err)
+	}
+
+	ops := make([]operation, 0, len(lines)-1)
+	for idx, raw := range lines[1:] {
+		var x, y, z int
+		if _, err := fmt.Sscanf(strings.TrimSpace(raw), "%d %d %d", &x, &y, &z); err != nil {
+			return 0, nil, fmt.Errorf("invalid operation line %d: %w", idx+2, err)
+		}
+		ops = append(ops, operation{x, y, z})
+	}
+
+	if len(ops) != k {
+		return 0, nil, fmt.Errorf("declared %d operations but found %d", k, len(ops))
+	}
+
+	return k, ops, nil
+}
+
+func shortestDistance(n int, edges []edge) int {
+	g := make([][]int, n+1)
+	for _, e := range edges {
+		g[e.u] = append(g[e.u], e.v)
+		g[e.v] = append(g[e.v], e.u)
+	}
+	d := make([]int, n+1)
+	for i := range d {
+		d[i] = math.MaxInt32
+	}
+	q := []int{1}
+	d[1] = 0
+	for head := 0; head < len(q); head++ {
+		u := q[head]
+		for _, v := range g[u] {
+			if d[v] > d[u]+1 {
+				d[v] = d[u] + 1
+				q = append(q, v)
+			}
+		}
+	}
+	return d[n]
+}
+
+func validateContestantOutput(t TestE, optimalOps int, out string) error {
+	k, ops, err := parseOutput(out)
+	if err != nil {
+		return err
+	}
+	if k != optimalOps {
+		return fmt.Errorf("non-optimal operation count: got %d, expected %d", k, optimalOps)
+	}
+
+	edgeState := make(map[[2]int]int, t.m)
+	for _, e := range t.edges {
+		key := [2]int{min(e.u, e.v), max(e.u, e.v)}
+		edgeState[key] = e.z
+	}
+
+	used := make(map[[2]int]bool, len(ops))
+	for i, op := range ops {
+		if op.x < 1 || op.x > t.n || op.y < 1 || op.y > t.n || op.x == op.y {
+			return fmt.Errorf("operation %d has invalid endpoint", i+1)
+		}
+		if op.z != 0 && op.z != 1 {
+			return fmt.Errorf("operation %d has invalid value %d", i+1, op.z)
+		}
+		key := [2]int{min(op.x, op.y), max(op.x, op.y)}
+		cur, ok := edgeState[key]
+		if !ok {
+			return fmt.Errorf("operation %d targets non-existing edge", i+1)
+		}
+		if used[key] {
+			return fmt.Errorf("edge %d-%d modified more than once", key[0], key[1])
+		}
+		if cur == op.z {
+			return fmt.Errorf("operation %d does not change edge %d-%d", i+1, key[0], key[1])
+		}
+		used[key] = true
+		edgeState[key] = op.z
+	}
+
+	shortest := shortestDistance(t.n, t.edges)
+	onesEdges := make([]edge, 0)
+	onesCount := 0
+	for _, e := range t.edges {
+		key := [2]int{min(e.u, e.v), max(e.u, e.v)}
+		if edgeState[key] == 1 {
+			onesEdges = append(onesEdges, edge{e.u, e.v, 1})
+			onesCount++
+		}
+	}
+	if onesCount != shortest {
+		return fmt.Errorf("final graph has %d good edges, expected %d", onesCount, shortest)
+	}
+	if shortestDistance(t.n, onesEdges) != shortest {
+		return fmt.Errorf("good edges do not form a shortest path from 1 to %d", t.n)
+	}
+
+	return nil
+}
+
 func normalizeOutput(out string) (string, error) {
 	trimmed := strings.TrimSpace(out)
 	if trimmed == "" {
@@ -265,9 +380,14 @@ func main() {
 			fmt.Printf("test %d failed: invalid contestant output: %v\nraw output:\n%s\n", i+1, err, strings.TrimSpace(got))
 			os.Exit(1)
 		}
+		var optimalOps int
+		if _, err := fmt.Sscanf(strings.Split(exp, "\n")[0], "%d", &optimalOps); err != nil {
+			fmt.Printf("verifier bug on expected operation count at test %d: %v\n", i+1, err)
+			os.Exit(1)
+		}
 
-		if gotNorm != exp {
-			fmt.Printf("test %d failed\nexpected:\n%s\ngot:\n%s\n", i+1, exp, gotNorm)
+		if err := validateContestantOutput(t, optimalOps, gotNorm); err != nil {
+			fmt.Printf("test %d failed: %v\nexpected one valid optimal output example:\n%s\ngot:\n%s\n", i+1, err, exp, gotNorm)
 			os.Exit(1)
 		}
 	}
