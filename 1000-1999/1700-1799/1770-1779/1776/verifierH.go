@@ -45,24 +45,83 @@ func genCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
+func lisLength(arr []int) int {
+	d := make([]int, 0, len(arr))
+	for _, v := range arr {
+		lo, hi := 0, len(d)
+		for lo < hi {
+			mid := (lo + hi) / 2
+			if d[mid] >= v {
+				hi = mid
+			} else {
+				lo = mid + 1
+			}
+		}
+		if lo == len(d) {
+			d = append(d, v)
+		} else {
+			d[lo] = v
+		}
+	}
+	return len(d)
+}
+
+func expectedOutput(input string) (string, error) {
+	in := strings.NewReader(input)
+	var t int
+	if _, err := fmt.Fscan(in, &t); err != nil {
+		return "", err
+	}
+	out := make([]string, 0, t)
+	for ; t > 0; t-- {
+		var n int
+		if _, err := fmt.Fscan(in, &n); err != nil {
+			return "", err
+		}
+		a := make([]int, n)
+		for i := 0; i < n; i++ {
+			if _, err := fmt.Fscan(in, &a[i]); err != nil {
+				return "", err
+			}
+		}
+		pos := make([]int, n+1)
+		for i, v := range a {
+			pos[v] = i
+		}
+		mapped := make([]int, n)
+		for i := 0; i < n; i++ {
+			var x int
+			if _, err := fmt.Fscan(in, &x); err != nil {
+				return "", err
+			}
+			mapped[i] = pos[x]
+		}
+		ans := n - lisLength(mapped)
+		out = append(out, strconv.Itoa(ans))
+	}
+	return strings.Join(out, "\n"), nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierH.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	ref := "./_refH.bin"
-	if err := exec.Command("go", "build", "-o", ref, "1776H.go").Run(); err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
+
+	fixedCases := []string{
+		"1\n5\n4 5 2 3 1\n5 4 3 1 2\n",
 	}
-	defer os.Remove(ref)
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		input := genCase(rng)
-		exp, err := run(ref, input)
+		fixedCases = append(fixedCases, genCase(rng))
+	}
+
+	for i, input := range fixedCases {
+		exp, err := expectedOutput(input)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "reference runtime error:", err)
+			fmt.Fprintln(os.Stderr, "failed to compute expected output:", err)
 			os.Exit(1)
 		}
 		got, err := run(bin, input)
