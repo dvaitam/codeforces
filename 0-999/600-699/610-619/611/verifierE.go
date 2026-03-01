@@ -33,60 +33,39 @@ func expected(n int, strengths [3]int, criminals []int) int {
 	s := []int{strengths[0], strengths[1], strengths[2]}
 	sort.Ints(s)
 	a, b, c := s[0], s[1], s[2]
-	sort.Ints(criminals)
-	used := make([]bool, n)
-	remain := n
-	pa := n - 1
-	for pa >= 0 && criminals[pa] > a {
-		pa--
+	ms := append([]int(nil), criminals...)
+	sort.Ints(ms)
+
+	removeLE := func(limit int) bool {
+		idx := sort.Search(len(ms), func(i int) bool { return ms[i] > limit }) - 1
+		if idx < 0 {
+			return false
+		}
+		ms = append(ms[:idx], ms[idx+1:]...)
+		return true
 	}
-	pb := n - 1
-	for pb >= 0 && criminals[pb] > b {
-		pb--
-	}
-	r := n - 1
+
 	hours := 0
-	remove := func(limit int, p *int) bool {
-		for *p >= 0 && (used[*p] || criminals[*p] > limit) {
-			(*p)--
-		}
-		if *p >= 0 {
-			used[*p] = true
-			remain--
-			(*p)--
-			return true
-		}
-		return false
-	}
-	for remain > 0 {
-		for r >= 0 && used[r] {
-			r--
-		}
-		if r < 0 {
-			break
-		}
-		idx := r
-		x := criminals[idx]
-		used[idx] = true
-		remain--
-		r--
+	for len(ms) > 0 {
+		mx := ms[len(ms)-1]
+		ms = ms[:len(ms)-1]
 		hours++
-		if x > a+b+c {
+		if mx > a+b+c {
 			return -1
 		}
-		if x > b+c {
-			continue
-		}
-		if x > c {
-			if x > a+c {
-				remove(a, &pa)
+		if mx <= c {
+			if removeLE(b) {
+				removeLE(a)
 			} else {
-				remove(b, &pb)
+				removeLE(a + b)
 			}
-			continue
+		} else if mx <= a+b {
+			removeLE(c)
+		} else if mx <= a+c {
+			removeLE(b)
+		} else if mx <= b+c {
+			removeLE(a)
 		}
-		remove(b, &pb)
-		remove(a, &pa)
 	}
 	return hours
 }
