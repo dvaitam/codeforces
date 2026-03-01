@@ -26,7 +26,7 @@ func buildOracle() (string, error) {
 
 func genCase(r *rand.Rand) string {
 	n := r.Intn(6) + 1
-	m := r.Intn(6) + 1
+	m := r.Intn(5) + 2
 	k := 2
 	var sb strings.Builder
 	sb.WriteString("1\n")
