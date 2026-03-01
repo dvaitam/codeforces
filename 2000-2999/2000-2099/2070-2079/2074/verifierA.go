@@ -23,6 +23,11 @@ type testCase struct {
 	u int
 }
 
+type point struct {
+	x int
+	y int
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierA.go /path/to/binary")
@@ -73,7 +78,61 @@ func commandFor(path string) *exec.Cmd {
 }
 
 func isSquare(tc testCase) bool {
-	return tc.l == tc.r && tc.r == tc.d && tc.d == tc.u
+	pts := [4]point{
+		{x: -tc.l, y: 0},
+		{x: tc.r, y: 0},
+		{x: 0, y: -tc.d},
+		{x: 0, y: tc.u},
+	}
+
+	for a := 0; a < 4; a++ {
+		for b := 0; b < 4; b++ {
+			if b == a {
+				continue
+			}
+			for c := 0; c < 4; c++ {
+				if c == a || c == b {
+					continue
+				}
+				d := 6 - a - b - c // 0+1+2+3 == 6
+				if isSquareOrder(pts[a], pts[b], pts[c], pts[d]) {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+func isSquareOrder(a, b, c, d point) bool {
+	v1 := vec(a, b)
+	v2 := vec(b, c)
+	v3 := vec(c, d)
+	v4 := vec(d, a)
+
+	s1 := norm2(v1)
+	s2 := norm2(v2)
+	s3 := norm2(v3)
+	s4 := norm2(v4)
+
+	if s1 == 0 || s1 != s2 || s2 != s3 || s3 != s4 {
+		return false
+	}
+
+	return dot(v1, v2) == 0 && dot(v2, v3) == 0 && dot(v3, v4) == 0 && dot(v4, v1) == 0
+}
+
+func vec(a, b point) point {
+	return point{x: b.x - a.x, y: b.y - a.y}
+}
+
+func norm2(v point) int {
+	return v.x*v.x + v.y*v.y
+}
+
+func dot(a, b point) int {
+	return a.x*b.x + a.y*b.y
 }
 
 func runWithInput(cmd *exec.Cmd, input string) (string, error) {
