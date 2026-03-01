@@ -12,11 +12,6 @@ import (
 
 const MOD int = 1000000007
 
-type State struct {
-	x, y int
-	grid []string
-}
-
 type testcase struct {
 	n    int
 	m    int
@@ -126,83 +121,54 @@ const testcasesRaw = `4 2 RR RR .. .R
 
 var testcases = mustParseTestcases(testcasesRaw)
 
-func serialize(g []string) string {
-	s := make([]byte, 0, len(g)*(len(g[0])+1))
-	for _, row := range g {
-		s = append(s, row...)
-		s = append(s, '\n')
-	}
-	return string(s)
-}
-
 func countPaths(g []string) int {
 	n := len(g)
 	m := len(g[0])
-	start := State{0, 0, append([]string(nil), g...)}
-	q := []State{start}
-	ways := map[string]int{serialize(start.grid) + fmt.Sprintf("%d,%d", 0, 0): 1}
-	res := 0
-
-	for len(q) > 0 {
-		cur := q[0]
-		q = q[1:]
-		key := serialize(cur.grid) + fmt.Sprintf("%d,%d", cur.x, cur.y)
-		w := ways[key]
-		if cur.x == n-1 && cur.y == m-1 {
-			res = (res + w) % MOD
-			continue
-		}
-		for _, d := range [][2]int{{1, 0}, {0, 1}} {
-			nx := cur.x + d[0]
-			ny := cur.y + d[1]
-			if nx >= n || ny >= m {
-				continue
+	if n == 1 && m == 1 {
+		return 1
+	}
+	D := make([][]int, n+2)
+	R := make([][]int, n+2)
+	f := make([][]int, n+2)
+	gdp := make([][]int, n+2)
+	for i := 0; i < n+2; i++ {
+		D[i] = make([]int, m+2)
+		R[i] = make([]int, m+2)
+		f[i] = make([]int, m+2)
+		gdp[i] = make([]int, m+2)
+	}
+	for i := 1; i <= n; i++ {
+		for j := 1; j <= m; j++ {
+			if g[i-1][j-1] == 'R' {
+				D[i][j] = 1
+				R[i][j] = 1
 			}
-			ng := make([]string, n)
-			copy(ng, cur.grid)
-			if d[0] == 1 {
-				if ng[nx][ny] == 'R' {
-					k := nx
-					for k < n && ng[k][ny] == 'R' {
-						k++
-					}
-					if k == n {
-						continue
-					}
-					b := []byte(ng[k])
-					b[ny] = 'R'
-					ng[k] = string(b)
-					for t := k - 1; t >= nx; t-- {
-						row := []byte(ng[t])
-						row[ny] = '.'
-						ng[t] = string(row)
-					}
-				}
-			} else {
-				if ng[nx][ny] == 'R' {
-					k := ny
-					for k < m && ng[nx][k] == 'R' {
-						k++
-					}
-					if k == m {
-						continue
-					}
-					row := []byte(ng[nx])
-					row[k] = 'R'
-					for t := k - 1; t >= ny; t-- {
-						row[t] = '.'
-					}
-					ng[nx] = string(row)
-				}
-			}
-			nk := serialize(ng) + fmt.Sprintf("%d,%d", nx, ny)
-			if _, ok := ways[nk]; !ok {
-				q = append(q, State{nx, ny, ng})
-			}
-			ways[nk] = (ways[nk] + w) % MOD
 		}
 	}
-	return res
+	for i := n; i >= 1; i-- {
+		for j := m; j >= 1; j-- {
+			D[i][j] += D[i+1][j]
+			R[i][j] += R[i][j+1]
+		}
+	}
+	f[1][1], gdp[1][1] = 1, 1
+	if n >= 2 {
+		f[2][1] = MOD - 1
+	}
+	if m >= 2 {
+		gdp[1][2] = MOD - 1
+	}
+	for i := 1; i <= n; i++ {
+		for j := 1; j <= m; j++ {
+			f[i][j] = (f[i][j] + f[i-1][j] + gdp[i-1][j]) % MOD
+			tgtCol := m - R[i][j+1] + 1
+			gdp[i][tgtCol] = (gdp[i][tgtCol] - f[i][j] + MOD) % MOD
+			gdp[i][j] = (gdp[i][j] + gdp[i][j-1] + f[i][j-1]) % MOD
+			tgtRow := n - D[i+1][j] + 1
+			f[tgtRow][j] = (f[tgtRow][j] - gdp[i][j] + MOD) % MOD
+		}
+	}
+	return (f[n][m] + gdp[n][m]) % MOD
 }
 
 func mustParseTestcases(raw string) []testcase {
@@ -242,9 +208,6 @@ func mustParseTestcases(raw string) []testcase {
 }
 
 func solve(tc testcase) int {
-	if tc.grid[0][0] == 'R' {
-		return 0
-	}
 	return countPaths(tc.grid)
 }
 
