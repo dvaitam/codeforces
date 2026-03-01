@@ -4,12 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 )
 
-// solve tries to decide if string s can be split into a words "A", b words "B",
-// c words "AB" and d words "BA". The approach implemented here only checks some
-// necessary conditions using greedy pair counts. It may not cover all edge
-// cases of the original problem.
 func solve(a, b, c, d int, s string) bool {
 	n := len(s)
 	countA := 0
@@ -23,43 +20,45 @@ func solve(a, b, c, d int, s string) bool {
 		return false
 	}
 
-	// maximum number of disjoint pairs of form "AB" greedy
-	maxAB := 0
-	for i := 0; i+1 < n; {
-		if s[i] == 'A' && s[i+1] == 'B' {
-			maxAB++
-			i += 2
-		} else {
-			i++
+	tot := 0
+	l := 0
+	var A, B []int
+	for i := 0; i < n; i++ {
+		if i == n-1 || s[i] == s[i+1] {
+			length := i - l + 1
+			if length%2 == 1 {
+				tot += length / 2
+			} else {
+				x := length / 2
+				if s[l] == 'A' {
+					A = append(A, x)
+				} else {
+					B = append(B, x)
+				}
+			}
+			l = i + 1
 		}
 	}
 
-	// maximum number of disjoint pairs of form "BA" greedy
-	maxBA := 0
-	for i := 0; i+1 < n; {
-		if s[i] == 'B' && s[i+1] == 'A' {
-			maxBA++
-			i += 2
+	sort.Ints(A)
+	sort.Ints(B)
+
+	for _, x := range A {
+		if c >= x {
+			c -= x
 		} else {
-			i++
+			tot += x - 1
+		}
+	}
+	for _, x := range B {
+		if d >= x {
+			d -= x
+		} else {
+			tot += x - 1
 		}
 	}
 
-	// maximum number of disjoint pairs of either form
-	maxPairs := 0
-	for i := 0; i+1 < n; {
-		if s[i] != s[i+1] {
-			maxPairs++
-			i += 2
-		} else {
-			i++
-		}
-	}
-
-	if c+d > maxPairs || c > maxAB || d > maxBA {
-		return false
-	}
-	return true
+	return c+d <= tot
 }
 
 func main() {
