@@ -23,8 +23,22 @@ func runBinary(path, input string) (string, error) {
 
 func generateTests() []string {
 	r := rand.New(rand.NewSource(2))
-	tests := make([]string, 0, 100)
-	for len(tests) < 100 {
+	tests := make([]string, 0, 108)
+
+	// Fixed test cases from problem examples and edge cases
+	fixed := []string{
+		"1\n1 0 0 0\nB\n",
+		"1\n0 0 1 0\nAB\n",
+		"1\n1 1 0 1\nABAB\n",
+		"1\n1 0 1 1\nABAAB\n",
+		"1\n1 1 2 2\nBAABBABBAA\n",
+		"1\n1 1 2 3\nABABABBAABAB\n",
+		"1\n2 3 5 4\nAABAABBABAAABABBABBBABB\n",
+		"1\n1 3 3 10\nBBABABABABBBABABABABABAAABABA\n",
+	}
+	tests = append(tests, fixed...)
+
+	for len(tests) < 108 {
 		n := r.Intn(10) + 1 // length of string
 		c := r.Intn(n/2 + 1)
 		d := r.Intn((n-2*c)/2 + 1)
