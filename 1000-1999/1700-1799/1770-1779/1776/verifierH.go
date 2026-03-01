@@ -45,27 +45,6 @@ func genCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
-func lisLength(arr []int) int {
-	d := make([]int, 0, len(arr))
-	for _, v := range arr {
-		lo, hi := 0, len(d)
-		for lo < hi {
-			mid := (lo + hi) / 2
-			if d[mid] >= v {
-				hi = mid
-			} else {
-				lo = mid + 1
-			}
-		}
-		if lo == len(d) {
-			d = append(d, v)
-		} else {
-			d[lo] = v
-		}
-	}
-	return len(d)
-}
-
 func expectedOutput(input string) (string, error) {
 	in := strings.NewReader(input)
 	var t int
@@ -86,17 +65,27 @@ func expectedOutput(input string) (string, error) {
 		}
 		pos := make([]int, n+1)
 		for i, v := range a {
-			pos[v] = i
+			pos[v] = i + 1
 		}
-		mapped := make([]int, n)
+		b := make([]int, n)
 		for i := 0; i < n; i++ {
-			var x int
-			if _, err := fmt.Fscan(in, &x); err != nil {
+			if _, err := fmt.Fscan(in, &b[i]); err != nil {
 				return "", err
 			}
-			mapped[i] = pos[x]
 		}
-		ans := n - lisLength(mapped)
+		// Find longest suffix of b where positions in a are strictly decreasing
+		// (i.e., elements appear in a-order as a contiguous suffix)
+		currentMin := 1 << 30
+		k := 0
+		for m := n - 1; m >= 0; m-- {
+			thisPos := pos[b[m]]
+			if thisPos >= currentMin {
+				break
+			}
+			currentMin = thisPos
+			k++
+		}
+		ans := n - k
 		out = append(out, strconv.Itoa(ans))
 	}
 	return strings.Join(out, "\n"), nil
