@@ -34,7 +34,7 @@ func generateTests() []string {
 		"1\n1 1 2 2\nBAABBABBAA\n",
 		"1\n1 1 2 3\nABABABBAABAB\n",
 		"1\n2 3 5 4\nAABAABBABAAABABBABBBABB\n",
-		"1\n1 3 3 10\nBBABABABABBBABABABABABAAABABA\n",
+		"1\n1 3 3 10\nBBABABABABBBABABABABABABAABABA\n",
 	}
 	tests = append(tests, fixed...)
 
