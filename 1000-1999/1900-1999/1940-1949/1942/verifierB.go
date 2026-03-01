@@ -27,11 +27,11 @@ func genTest(rng *rand.Rand) (string, []int) {
 	present := make([]bool, n+1)
 	mex := 0
 	for i := 0; i < n; i++ {
+		present[p[i]] = true
 		for present[mex] {
 			mex++
 		}
 		a[i] = mex - p[i]
-		present[p[i]] = true
 	}
 
 	var buf bytes.Buffer
@@ -73,13 +73,13 @@ func verifyOutput(out string, a []int) error {
 	present := make([]bool, n+1)
 	mex := 0
 	for i := 0; i < n; i++ {
+		present[p[i]] = true
 		for present[mex] {
 			mex++
 		}
 		if got := mex - p[i]; got != a[i] {
 			return fmt.Errorf("constraint mismatch at index %d: expected a[%d]=%d, got %d", i, i, a[i], got)
 		}
-		present[p[i]] = true
 	}
 	return nil
 }
