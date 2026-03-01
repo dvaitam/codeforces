@@ -208,9 +208,13 @@ func parseTests() ([]testCase, error) {
 
 func buildInput(tc testCase) string {
 	var sb strings.Builder
+	sb.WriteString("1\n")
 	sb.WriteString(strconv.Itoa(len(tc.arr)))
-	for _, v := range tc.arr {
-		sb.WriteByte(' ')
+	sb.WriteByte('\n')
+	for i, v := range tc.arr {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
 		sb.WriteString(strconv.FormatInt(v, 10))
 	}
 	sb.WriteByte('\n')
