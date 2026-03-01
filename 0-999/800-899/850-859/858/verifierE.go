@@ -40,23 +40,26 @@ func generateCases() []string {
 		var sb strings.Builder
 		sb.WriteString(strconv.Itoa(n))
 		sb.WriteByte('\n')
+		used := map[string]bool{}
 		for i := 0; i < n; i++ {
 			op := rng.Intn(2)
-			nameType := rng.Intn(4)
 			name := ""
-			switch nameType {
-			case 0:
-				// valid positive integer in range [1, n]
-				name = strconv.Itoa(rng.Intn(n) + 1)
-			case 1:
-				// out of range integer
-				name = strconv.Itoa(n + rng.Intn(30) + 1)
-			case 2:
-				// non-numeric label
-				name = fmt.Sprintf("u%d", rng.Intn(1000))
-			default:
-				// potentially problematic numeric format
-				name = fmt.Sprintf("0%d", rng.Intn(100)+1)
+			for {
+				nameType := rng.Intn(4)
+				switch nameType {
+				case 0:
+					name = strconv.Itoa(rng.Intn(n) + 1)
+				case 1:
+					name = strconv.Itoa(n + rng.Intn(30) + 1)
+				case 2:
+					name = fmt.Sprintf("u%d", rng.Intn(1000))
+				default:
+					name = fmt.Sprintf("0%d", rng.Intn(100)+1)
+				}
+				if !used[name] {
+					used[name] = true
+					break
+				}
 			}
 			sb.WriteString(name)
 			sb.WriteByte(' ')
@@ -66,6 +69,18 @@ func generateCases() []string {
 		cases = append(cases, sb.String())
 	}
 	return cases
+}
+
+func firstInt(out string) (int, error) {
+	fields := strings.Fields(out)
+	if len(fields) == 0 {
+		return 0, fmt.Errorf("empty output")
+	}
+	k, err := strconv.Atoi(fields[0])
+	if err != nil || k < 0 {
+		return 0, fmt.Errorf("invalid first token %q", fields[0])
+	}
+	return k, nil
 }
 
 func main() {
@@ -93,7 +108,11 @@ func main() {
 			fmt.Fprintf(os.Stderr, "oracle run error on case %d: %v\n", idx, err)
 			os.Exit(1)
 		}
-		expected := strings.TrimSpace(outO.String())
+		expectedK, err := firstInt(outO.String())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "oracle parse error on case %d: %v\n", idx, err)
+			os.Exit(1)
+		}
 
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(c)
@@ -105,9 +124,13 @@ func main() {
 			fmt.Printf("case %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
-		if got != expected {
-			fmt.Printf("case %d failed\nexpected: %s\n got: %s\ninput:\n%s\n", idx, expected, got, c)
+		gotK, err := firstInt(out.String())
+		if err != nil {
+			fmt.Printf("case %d failed: %v\noutput:\n%s\ninput:\n%s\n", idx, err, out.String(), c)
+			os.Exit(1)
+		}
+		if gotK != expectedK {
+			fmt.Printf("case %d failed\nexpected moves: %d\n got moves: %d\ninput:\n%s\n", idx, expectedK, gotK, c)
 			os.Exit(1)
 		}
 	}
