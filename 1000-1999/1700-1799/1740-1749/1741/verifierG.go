@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 )
@@ -27,9 +28,21 @@ func genCases() []Case {
 	for i := range cases {
 		n := rng.Intn(5) + 2
 		maxEdges := n * (n - 1) / 2
-		m := rng.Intn(maxEdges) + 1
+		m := rng.Intn(maxEdges-(n-1)+1) + (n - 1)
 		edgeSet := make(map[[2]int]bool)
 		edges := make([][2]int, 0, m)
+
+		// Build a random spanning tree first to guarantee connectivity.
+		for v := 2; v <= n; v++ {
+			u := rng.Intn(v-1) + 1
+			a, b := u, v
+			if a > b {
+				a, b = b, a
+			}
+			edgeSet[[2]int{a, b}] = true
+			edges = append(edges, [2]int{a, b})
+		}
+
 		for len(edges) < m {
 			a := rng.Intn(n) + 1
 			b := rng.Intn(n) + 1
@@ -48,17 +61,25 @@ func genCases() []Case {
 		f := rng.Intn(n) + 1
 		h := make([]int, f)
 		for j := 0; j < f; j++ {
-			h[j] = rng.Intn(n) + 1
+			h[j] = rng.Intn(n-1) + 2
 		}
-		k := rng.Intn(f) + 1
+		k := rng.Intn(min(6, f)) + 1
 		p := make([]int, k)
-		used := rand.Perm(f)[:k]
+		used := rng.Perm(f)[:k]
+		sort.Ints(used)
 		for j := 0; j < k; j++ {
 			p[j] = used[j] + 1
 		}
 		cases[i] = Case{n: n, m: m, edges: edges, f: f, h: h, k: k, p: p}
 	}
 	return cases
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func buildRef() (string, error) {
