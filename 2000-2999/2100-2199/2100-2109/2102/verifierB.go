@@ -6,8 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -16,29 +14,6 @@ import (
 type testCase struct {
 	n int
 	a []int64
-}
-
-func buildOracle() (string, func(), error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", nil, fmt.Errorf("cannot determine verifier path")
-	}
-	dir := filepath.Dir(file)
-	tmpDir, err := os.MkdirTemp("", "oracle-2102B-")
-	if err != nil {
-		return "", nil, err
-	}
-	outPath := filepath.Join(tmpDir, "oracleB")
-	cmd := exec.Command("go", "build", "-o", outPath, "2102B.go")
-	cmd.Dir = dir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		os.RemoveAll(tmpDir)
-		return "", nil, fmt.Errorf("failed to build oracle: %v\n%s", err, out)
-	}
-	cleanup := func() {
-		os.RemoveAll(tmpDir)
-	}
-	return outPath, cleanup, nil
 }
 
 func runBinary(bin, input string) (string, error) {
@@ -110,6 +85,54 @@ func compareAnswers(expected, actual []string) error {
 	return nil
 }
 
+func abs(x int64) int64 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func referenceAnswer(tc testCase) string {
+	possibleM := []int64{tc.a[0], -tc.a[0]}
+	k := (tc.n + 1) / 2
+	need := k - 1
+	for _, m := range possibleM {
+		alwaysLess := 0
+		canBeLess := 0
+		for i := 1; i < tc.n; i++ {
+			p := abs(tc.a[i])
+			vNeg := -p
+			vPos := p
+			numLess := 0
+			if vNeg < m {
+				numLess++
+			}
+			if vPos < m {
+				numLess++
+			}
+			if numLess == 2 {
+				alwaysLess++
+			} else if numLess == 1 {
+				canBeLess++
+			}
+		}
+		minLess := alwaysLess
+		maxLess := alwaysLess + canBeLess
+		if need >= minLess && need <= maxLess {
+			return "yes"
+		}
+	}
+	return "no"
+}
+
+func expectedAnswers(tests []testCase) []string {
+	ans := make([]string, len(tests))
+	for i, tc := range tests {
+		ans[i] = referenceAnswer(tc)
+	}
+	return ans
+}
+
 func deterministicTests() []testCase {
 	return []testCase{
 		{n: 3, a: []int64{2, 3, 1}},                    // sample yes
@@ -166,13 +189,6 @@ func main() {
 	}
 	target := os.Args[1]
 
-	oracle, cleanup, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
 	tests := deterministicTests()
 	const nLimit = 100_000
 	used := totalN(tests)
@@ -182,23 +198,13 @@ func main() {
 
 	input := buildInput(tests)
 
-	expOut, err := runBinary(oracle, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "oracle failed: %v\ninput:\n%s", err, input)
-		os.Exit(1)
-	}
-
 	actOut, err := runBinary(target, input)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "target runtime error: %v\ninput:\n%s", err, input)
 		os.Exit(1)
 	}
 
-	expectedAns, err := parseOutput(expOut, len(tests))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "oracle output invalid: %v\n%s", err, expOut)
-		os.Exit(1)
-	}
+	expectedAns := expectedAnswers(tests)
 	actualAns, err := parseOutput(actOut, len(tests))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "target output invalid: %v\n%s", err, actOut)
