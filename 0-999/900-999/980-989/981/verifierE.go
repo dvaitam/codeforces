@@ -6,23 +6,9 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
-
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleE")
-	cmd := exec.Command("go", "build", "-o", oracle, "981E.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
-}
 
 func run(bin, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -40,6 +26,43 @@ func run(bin, input string) (string, error) {
 		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
 	}
 	return strings.TrimSpace(out.String()), nil
+}
+
+func normalizeOutput(output string) (string, error) {
+	fields := strings.Fields(output)
+	if len(fields) == 0 {
+		return "", fmt.Errorf("empty output")
+	}
+	k, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return "", fmt.Errorf("bad count: %w", err)
+	}
+	if k < 0 {
+		return "", fmt.Errorf("negative count")
+	}
+	if len(fields) != k+1 {
+		return "", fmt.Errorf("count/value mismatch: k=%d, values=%d", k, len(fields)-1)
+	}
+	vals := make([]int, k)
+	for i := 0; i < k; i++ {
+		v, err := strconv.Atoi(fields[i+1])
+		if err != nil {
+			return "", fmt.Errorf("bad value at position %d: %w", i+1, err)
+		}
+		vals[i] = v
+	}
+	for i := 1; i < k; i++ {
+		if vals[i] <= vals[i-1] {
+			return "", fmt.Errorf("values must be strictly increasing")
+		}
+	}
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(k))
+	for _, v := range vals {
+		sb.WriteByte('\n')
+		sb.WriteString(strconv.Itoa(v))
+	}
+	return sb.String(), nil
 }
 
 func formatCase(n int, ops [][3]int) string {
@@ -158,35 +181,29 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
 	cases := make([]string, 0, 304)
 	addHandcraftedTests(&cases)
 	addRandomTests(&cases)
 
 	for idx, input := range cases {
-		exp, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", idx+1, err)
-			os.Exit(1)
-		}
-		brute, err := bruteExpected(input)
+		exp, err := bruteExpected(input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "brute-force error on case %d: %v\ninput:\n%s\n", idx+1, err, input)
-			os.Exit(1)
-		}
-		if exp != brute {
-			fmt.Fprintf(os.Stderr, "oracle mismatch on case %d\ninput:\n%sexpected by brute:\n%s\ngoracle output:\n%s\n", idx+1, input, brute, exp)
 			os.Exit(1)
 		}
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s\n", idx+1, err, input)
+			os.Exit(1)
+		}
+		got, err = normalizeOutput(got)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: invalid output format: %v\ninput:\n%s\nraw output:\n%s\n", idx+1, err, input, got)
+			os.Exit(1)
+		}
+		exp, err = normalizeOutput(exp)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "internal verifier error on case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
 		if got != exp {
