@@ -10,8 +10,6 @@ import (
 	"time"
 )
 
-const refPath = "2000-2999/2100-2199/2120-2129/2122/2122A.go"
-
 type testCase struct {
 	n, m int
 }
@@ -25,12 +23,7 @@ func main() {
 
 	tests := buildTests()
 	input := renderInput(tests)
-
-	expect, err := runBinary(refPath, input)
-	if err != nil {
-		fmt.Printf("reference runtime error: %v\ninput:\n%s\n", err, input)
-		os.Exit(1)
-	}
+	expLines := expectedLines(tests)
 
 	actual, err := runBinary(bin, input)
 	if err != nil {
@@ -38,12 +31,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	expLines := normalizeLines(expect)
 	actLines := normalizeLines(actual)
-	if len(expLines) != len(tests) {
-		fmt.Printf("reference produced %d lines, expected %d\n", len(expLines), len(tests))
-		os.Exit(1)
-	}
 	if len(actLines) != len(tests) {
 		fmt.Printf("output has %d lines, expected %d\ninput:\n%s\nactual:\n%s\n", len(actLines), len(tests), input, actual)
 		os.Exit(1)
@@ -56,6 +44,18 @@ func main() {
 		}
 	}
 	fmt.Println("all tests passed")
+}
+
+func expectedLines(tests []testCase) []string {
+	ans := make([]string, len(tests))
+	for i, tc := range tests {
+		if tc.n == 1 || tc.m == 1 || (tc.n == 2 && tc.m == 2) {
+			ans[i] = "NO"
+		} else {
+			ans[i] = "YES"
+		}
+	}
+	return ans
 }
 
 func buildTests() []testCase {
