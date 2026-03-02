@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"container/heap"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strconv"
@@ -171,25 +171,49 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+func buildInput(n, k int, costs []int64) string {
+	var sb strings.Builder
+	sb.WriteString(strconv.Itoa(n))
+	sb.WriteByte(' ')
+	sb.WriteString(strconv.Itoa(k))
+	for i := 0; i < n; i++ {
+		sb.WriteByte(' ')
+		sb.WriteString(strconv.FormatInt(costs[i], 10))
+	}
+	return sb.String()
+}
+
+func generateCases() []string {
+	cases := []string{
+		buildInput(1, 0, []int64{7}),
+		buildInput(2, 0, []int64{5, 5}),
+		buildInput(5, 0, []int64{1, 2, 3, 4, 5}),
+		buildInput(5, 4, []int64{100, 1, 100, 1, 100}),
+		buildInput(6, 2, []int64{9, 9, 1, 1, 9, 1}),
+	}
+
+	rng := rand.New(rand.NewSource(853))
+	for tc := 0; tc < 200; tc++ {
+		n := 1 + rng.Intn(100)
+		k := rng.Intn(100)
+		costs := make([]int64, n)
+		for i := 0; i < n; i++ {
+			costs[i] = 1 + int64(rng.Intn(1_000_000_000))
+		}
+		cases = append(cases, buildInput(n, k, costs))
+	}
+
+	return cases
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierA.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
 	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
+	for _, line := range generateCases() {
 		idx++
 		got, err := run(bin, line+"\n")
 		if err != nil {
@@ -201,10 +225,6 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\nexpected %s got %s\n", idx, err, expected, got)
 			os.Exit(1)
 		}
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
 	}
 	fmt.Printf("All %d tests passed\n", idx)
 }
