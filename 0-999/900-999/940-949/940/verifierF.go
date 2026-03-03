@@ -1,12 +1,13 @@
 package main
 
 import (
-    "bufio"
     "bytes"
     "fmt"
+	"math/rand"
     "os"
     "os/exec"
     "strings"
+	"time"
 )
 
 func buildOracle() (string, error) {
@@ -36,6 +37,30 @@ func runProgram(bin, input string) (string, error) {
     return strings.TrimSpace(out.String()), nil
 }
 
+func generateCase(r *rand.Rand) string {
+	n := r.Intn(10) + 1
+	m := r.Intn(10) + 1
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
+	for i := 0; i < n; i++ {
+		sb.WriteString(fmt.Sprintf("%d ", r.Intn(20)+1))
+	}
+	sb.WriteString("\n")
+	for i := 0; i < m; i++ {
+		op := r.Intn(2) + 1
+		if op == 1 {
+			l := r.Intn(n) + 1
+			r_ := l + r.Intn(n-l+1)
+			sb.WriteString(fmt.Sprintf("%d %d %d\n", op, l, r_))
+		} else {
+			pos := r.Intn(n) + 1
+			val := r.Intn(20) + 1
+			sb.WriteString(fmt.Sprintf("%d %d %d\n", op, pos, val))
+		}
+	}
+	return sb.String()
+}
+
 func main() {
     if len(os.Args) != 2 {
         fmt.Println("usage: go run verifierF.go /path/to/binary")
@@ -49,41 +74,26 @@ func main() {
     }
     defer os.Remove(oracle)
 
-    f, err := os.Open("testcasesF.txt")
-    if err != nil {
-        fmt.Fprintln(os.Stderr, "failed to open testcases:", err)
-        os.Exit(1)
-    }
-    defer f.Close()
-
-    scanner := bufio.NewScanner(f)
-    idx := 0
-    for scanner.Scan() {
-        line := strings.TrimSpace(scanner.Text())
-        if line == "" {
-            continue
-        }
-        idx++
-        input := line + "\n"
+    r := rand.New(rand.NewSource(time.Now().UnixNano()))
+    for i := 1; i <= 100; i++ {
+        input := generateCase(r)
         exp, err := runProgram(oracle, input)
         if err != nil {
-            fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", idx, err)
+            fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", i, err)
+			fmt.Fprintf(os.Stderr, "Input:\n%s\n", input)
             os.Exit(1)
         }
         got, err := runProgram(bin, input)
         if err != nil {
-            fmt.Fprintf(os.Stderr, "case %d: %v\n", idx, err)
+            fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i, err)
+			fmt.Fprintf(os.Stderr, "Input:\n%s\n", input)
             os.Exit(1)
         }
         if got != exp {
-            fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx, exp, got)
+            fmt.Fprintf(os.Stderr, "case %d failed: expected %q got %q\n", i, exp, got)
+			fmt.Fprintf(os.Stderr, "Input:\n%s\n", input)
             os.Exit(1)
         }
     }
-    if err := scanner.Err(); err != nil {
-        fmt.Fprintln(os.Stderr, "scanner error:", err)
-        os.Exit(1)
-    }
-    fmt.Printf("All %d tests passed\n", idx)
+    fmt.Println("All 100 tests passed")
 }
-

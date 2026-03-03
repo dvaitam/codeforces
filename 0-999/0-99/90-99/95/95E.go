@@ -55,7 +55,9 @@ func main() {
        fmt.Fscan(in, &u, &v)
        u--
        v--
-       uf.Union(u, v)
+       if u >= 0 && u < n && v >= 0 && v < n {
+           uf.Union(u, v)
+       }
    }
    // count component sizes
    comp := make(map[int]int)
@@ -70,18 +72,14 @@ func main() {
    }
    // generate lucky numbers <= n
    luckies := genLuckies(n)
-   // check zero roads
-   for _, L := range luckies {
-       if freq[L] > 0 {
-           fmt.Println(0)
-           return
-       }
-   }
-   const INF = 1e9
+   
+   const INF int = 1e9
    dp := make([]int, n+1)
    for i := 1; i <= n; i++ {
        dp[i] = INF
    }
+   dp[0] = 0
+
    // bounded knapsack with cost = components count
    for s, f := range freq {
        old := make([]int, n+1)
@@ -113,13 +111,13 @@ func main() {
    for _, L := range luckies {
        if L <= n && dp[L] < INF {
            // roads = components -1
-           ans = min(ans, dp[L]-1)
+           ans = min(ans, dp[L])
        }
    }
    if ans == INF {
-       fmt.Println(-1)
+       fmt.Println("-1")
    } else {
-       fmt.Println(ans)
+       fmt.Println(ans - 1)
    }
 }
 

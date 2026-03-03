@@ -1,151 +1,122 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
-var (
-	nGlobal int
-	aGlobal int
-	bGlobal int
-	hGlobal []int
-	shoot   []int
-)
+// Oracle solver using DFS with pruning
+func solve(n, a, b int, h []int) int {
+	hCopy := make([]int, n+2)
+	for i := 1; i <= n; i++ {
+		hCopy[i] = h[i-1]
+	}
+	ans := 1000
 
-func dfs(l, balls, last int) bool {
-	if balls == 0 {
-		for i := 1; i <= nGlobal; i++ {
-			if hGlobal[i] >= 0 {
-				return false
+	var dfs func(int, int)
+	dfs = func(idx, sum int) {
+		if sum >= ans {
+			return
+		}
+		if idx == n {
+			if hCopy[n-1] < 0 && hCopy[n] < 0 {
+				ans = sum
 			}
+			return
 		}
-		return true
-	}
-	if l <= nGlobal && hGlobal[l] < 0 {
-		return dfs(l+1, balls, last)
-	}
-	lb := last
-	if l > 2 && l > lb {
-		lb = l
-	}
-	if lb < 2 {
-		lb = 2
-	}
-	ub := nGlobal - 1
-	if l+1 < ub {
-		ub = l + 1
-	}
-	for i := lb; i <= ub; i++ {
-		shoot[balls] = i
-		hGlobal[i] -= aGlobal
-		hGlobal[i-1] -= bGlobal
-		hGlobal[i+1] -= bGlobal
-		if dfs(l, balls-1, i) {
-			return true
-		}
-		hGlobal[i] += aGlobal
-		hGlobal[i-1] += bGlobal
-		hGlobal[i+1] += bGlobal
-	}
-	return false
-}
 
-// solve uses BFS to find the optimal sequence of shots
-func solve(n, a, b int, h []int) (int, []int) {
-	type node struct {
-		h   []int
-		seq []int
-	}
-	serialize := func(arr []int) string {
-		var sb strings.Builder
-		for i, v := range arr {
-			if i > 0 {
-				sb.WriteByte(',')
-			}
-			sb.WriteString(fmt.Sprint(v))
+		needed := 0
+		if hCopy[idx-1] >= 0 {
+			needed = hCopy[idx-1]/b + 1
 		}
-		return sb.String()
-	}
-	start := make([]int, n)
-	copy(start, h)
-	vis := map[string]bool{serialize(start): true}
-	q := []node{{h: start}}
-	for len(q) > 0 {
-		cur := q[0]
-		q = q[1:]
-		allDead := true
-		for _, v := range cur.h {
-			if v >= 0 {
-				allDead = false
+
+		oldPrev := hCopy[idx-1]
+		oldCur := hCopy[idx]
+		oldNext := hCopy[idx+1]
+
+		for i := needed; i <= 16; i++ {
+			hCopy[idx-1] -= i * b
+			hCopy[idx] -= i * a
+			hCopy[idx+1] -= i * b
+
+			dfs(idx+1, sum+i)
+
+			hCopy[idx-1] = oldPrev
+			hCopy[idx] = oldCur
+			hCopy[idx+1] = oldNext
+
+			if hCopy[idx-1] < 0 && hCopy[idx] < 0 && hCopy[idx+1] < 0 && idx < n-1 {
 				break
 			}
 		}
-		if allDead {
-			return len(cur.seq), cur.seq
-		}
-		for i := 1; i < n-1; i++ {
-			nxt := make([]int, n)
-			copy(nxt, cur.h)
-			nxt[i] -= a
-			nxt[i-1] -= b
-			nxt[i+1] -= b
-			key := serialize(nxt)
-			if !vis[key] {
-				vis[key] = true
-				seq := append(append([]int(nil), cur.seq...), i+1)
-				q = append(q, node{h: nxt, seq: seq})
-			}
-		}
 	}
-	return -1, nil
+	dfs(2, 0)
+	return ans
 }
 
-func generateCase(rng *rand.Rand) (string, string) {
-	n := rng.Intn(3) + 3 // 3..5
-	a := rng.Intn(5) + 2
-	b := rng.Intn(a-1) + 1
-	heights := make([]int, n)
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d %d %d\n", n, a, b))
+func runCase(exe string, n, a, b int, h []int) error {
+	input := fmt.Sprintf("%d %d %d\n", n, a, b)
 	for i := 0; i < n; i++ {
-		heights[i] = rng.Intn(4) + 1
-		sb.WriteString(fmt.Sprintf("%d", heights[i]))
+		input += fmt.Sprintf("%d", h[i])
 		if i+1 < n {
-			sb.WriteByte(' ')
+			input += " "
 		}
 	}
-	sb.WriteByte('\n')
-	ans, seq := solve(n, a, b, heights)
-	var exp strings.Builder
-	exp.WriteString(fmt.Sprintf("%d\n", ans))
-	for i, v := range seq {
-		exp.WriteString(fmt.Sprintf("%d", v))
-		if i+1 < len(seq) {
-			exp.WriteByte(' ')
-		}
-	}
-	return sb.String(), exp.String()
-}
+	input += "\n"
 
-func runCase(exe, input, expected string) error {
 	cmd := exec.Command(exe)
 	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("runtime error: %v\n%s", err, string(out))
 	}
-	got := strings.TrimSpace(out.String())
-	if got != expected {
-		return fmt.Errorf("expected\n%s\ngot\n%s", expected, got)
+
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if len(lines) < 2 {
+		return fmt.Errorf("output should have at least 2 lines, got %d", len(lines))
 	}
+
+	gotT, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+	if err != nil {
+		return fmt.Errorf("invalid t: %v", err)
+	}
+
+	expectedT := solve(n, a, b, h)
+	if gotT != expectedT {
+		return fmt.Errorf("incorrect minimum shots: expected t=%d, got %d", expectedT, gotT)
+	}
+
+	fields := strings.Fields(lines[1])
+	if len(fields) != gotT {
+		return fmt.Errorf("shot count mismatch: expected %d shots, got %d", gotT, len(fields))
+	}
+
+	curH := make([]int, n)
+	copy(curH, h)
+	for _, s := range fields {
+		idx, err := strconv.Atoi(s)
+		if err != nil {
+			return fmt.Errorf("invalid shot index %q: %v", s, err)
+		}
+		if idx < 2 || idx > n-1 {
+			return fmt.Errorf("shot index %d out of range [2, %d]", idx, n-1)
+		}
+		curH[idx-1] -= a
+		curH[idx-2] -= b
+		curH[idx] -= b
+	}
+
+	for i := 0; i < n; i++ {
+		if curH[i] >= 0 {
+			return fmt.Errorf("archer %d still alive with health %d", i+1, curH[i])
+		}
+	}
+
 	return nil
 }
 
@@ -156,10 +127,27 @@ func main() {
 	}
 	exe := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 100; i++ {
-		in, exp := generateCase(rng)
-		if err := runCase(exe, in, exp); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
+
+	// Hardcoded failing case: n=5, a=3, b=2, h=[2, 4, 3, 3, 1]
+	// Optimal t is 4 (e.g., 2 2 4 4). 3 is impossible because archer 4 health becomes 0.
+	if err := runCase(exe, 5, 3, 2, []int{2, 4, 3, 3, 1}); err != nil {
+		fmt.Fprintf(os.Stderr, "Case [2 4 3 3 1] failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	for i := 0; i < 50; i++ {
+		n := rng.Intn(3) + 3 
+		if i > 40 {
+			n = rng.Intn(8) + 3
+		}
+		a := rng.Intn(5) + 2
+		b := rng.Intn(a-1) + 1
+		h := make([]int, n)
+		for j := 0; j < n; j++ {
+			h[j] = rng.Intn(15) + 1
+		}
+		if err := runCase(exe, n, a, b, h); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%d %d %d\n%v\n", i+1, err, n, a, b, h)
 			os.Exit(1)
 		}
 	}

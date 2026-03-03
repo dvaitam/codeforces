@@ -26,6 +26,7 @@ func abs(x int64) int64 {
 func check(n int, m int64, s []byte, b []int64) bool {
 	anchors := make([]anchor, 0, 2*n+2)
 	anchors = append(anchors, anchor{idx: 0, typ: 0, val: 0})
+	anchors = append(anchors, anchor{idx: n, typ: 1, val: 0})
 	for i := 1; i <= n; i++ {
 		ch := s[i-1]
 		if ch == 'P' {

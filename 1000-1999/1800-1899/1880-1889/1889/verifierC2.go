@@ -68,8 +68,16 @@ func main() {
 	}
 	defer os.Remove(oracle)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	
+	hardCase := "1\n6 4 2\n4 5\n5 6\n5 5\n5 5\n"
+	
 	for i := 1; i <= 100; i++ {
-		input := genCase(r)
+		var input string
+		if i == 1 {
+			input = hardCase
+		} else {
+			input = genCase(r)
+		}
 		expect, err := run(oracle, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", i, err)

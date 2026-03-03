@@ -84,27 +84,27 @@ func main() {
 	addVal := func(x int) {
 		f := freq[x]
 		cntFreq[f]--
-		freq[x]++
-		cntFreq[f+1]++
-		for mex <= n && cntFreq[mex] > 0 {
-			mex++
+		if f > 0 && cntFreq[f] == 0 && f < mex {
+			mex = f
 		}
+		freq[x]++
+		cntFreq[freq[x]]++
 	}
 	removeVal := func(x int) {
 		f := freq[x]
 		cntFreq[f]--
+		if f > 0 && cntFreq[f] == 0 && f < mex {
+			mex = f
+		}
 		freq[x]--
-		cntFreq[f-1]++
-		for mex > 1 && cntFreq[mex-1] == 0 {
-			mex--
-		}
-		for mex <= n && cntFreq[mex] > 0 {
-			mex++
-		}
+		cntFreq[freq[x]]++
 	}
 
 	// sort queries using Mo's algorithm with updates
-	block := int(math.Pow(float64(n), 2.0/3.0)) + 1
+	block := int(math.Pow(float64(n), 2.0/3.0))
+	if block == 0 {
+		block = 1
+	}
 	sort.Slice(queries, func(i, j int) bool {
 		a, b := queries[i], queries[j]
 		if a.l/block != b.l/block {
@@ -130,14 +130,14 @@ func main() {
 			ct++
 		}
 		for ct > qu.t {
-			up := updates[ct-1]
+			ct--
+			up := updates[ct]
 			pos := up.pos
 			if cl <= pos && pos <= cr {
 				removeVal(arr[pos])
 				addVal(up.prev)
 			}
 			arr[pos] = up.prev
-			ct--
 		}
 		for cl > qu.l {
 			cl--

@@ -1,54 +1,137 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
+	"time"
 )
 
-type testCaseC1 struct {
-	n   int
-	s   string
-	exp string
+type testCase struct {
+	n int
+	s string
 }
 
-func solveC1(n int, s string) string {
-	return s
-}
-
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+func runCase(bin string, tc testCase) error {
+	cmd := exec.Command(bin)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
 	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
 	}
-	return strings.TrimSpace(out.String()), nil
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	defer cmd.Process.Kill()
+
+	reader := bufio.NewReader(stdout)
+	writer := bufio.NewWriter(stdin)
+
+	fmt.Fprintf(writer, "%d\n", tc.n)
+	writer.Flush()
+
+	totalSubstrings := 0
+	queriesCount := 0
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				return fmt.Errorf("unexpected EOF")
+			}
+			return err
+		}
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		if strings.HasPrefix(line, "?") {
+			queriesCount++
+			if queriesCount > 3 {
+				return fmt.Errorf("too many queries")
+			}
+			var l, r int
+			_, err := fmt.Sscanf(line, "? %d %d", &l, &r)
+			if err != nil {
+				return fmt.Errorf("invalid query format: %s", line)
+			}
+			if l < 1 || r > tc.n || l > r {
+				return fmt.Errorf("invalid query range: %d %d", l, r)
+			}
+
+			num := (r - l + 1) * (r - l + 2) / 2
+			totalSubstrings += num
+			if totalSubstrings > (tc.n+1)*(tc.n+1) {
+				return fmt.Errorf("too many substrings: %d", totalSubstrings)
+			}
+
+			substrings := []string{}
+			for i := l - 1; i < r; i++ {
+				for j := i + 1; j <= r; j++ {
+					sub := tc.s[i:j]
+					chars := strings.Split(sub, "")
+					sort.Strings(chars)
+					substrings = append(substrings, strings.Join(chars, ""))
+				}
+			}
+			rand.Shuffle(len(substrings), func(i, j int) {
+				substrings[i], substrings[j] = substrings[j], substrings[i]
+			})
+			for _, sub := range substrings {
+				fmt.Fprintln(writer, sub)
+			}
+			writer.Flush()
+		} else if strings.HasPrefix(line, "!") {
+			got := strings.TrimSpace(line[1:])
+			if got != tc.s {
+				return fmt.Errorf("wrong answer: expected %s, got %s", tc.s, got)
+			}
+			break
+		} else {
+			return fmt.Errorf("unexpected output: %s", line)
+		}
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Wait()
+	}()
+
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(2 * time.Second):
+		return fmt.Errorf("timeout")
+	}
 }
 
-func generateTests() []testCaseC1 {
-	rng := rand.New(rand.NewSource(3))
-	cases := make([]testCaseC1, 100)
-	letters := []rune("abcdefghijklmnopqrstuvwxyz")
-	for i := range cases {
+func generateTests() []testCase {
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	cases := []testCase{
+		{n: 1, s: "a"},
+		{n: 2, s: "ab"},
+		{n: 3, s: "abc"},
+	}
+	letters := "abcdefghijklmnopqrstuvwxyz"
+	for i := 0; i < 20; i++ {
 		n := rng.Intn(10) + 1
+		if i > 15 {
+			n = rng.Intn(90) + 10
+		}
 		var sb strings.Builder
 		for j := 0; j < n; j++ {
-			sb.WriteRune(letters[rng.Intn(len(letters))])
+			sb.WriteByte(letters[rng.Intn(len(letters))])
 		}
-		s := sb.String()
-		cases[i] = testCaseC1{n: n, s: s, exp: solveC1(n, s)}
+		cases = append(cases, testCase{n: n, s: sb.String()})
 	}
 	return cases
 }
@@ -61,14 +144,8 @@ func main() {
 	bin := os.Args[1]
 	cases := generateTests()
 	for i, tc := range cases {
-		input := fmt.Sprintf("%d\n%s\n", tc.n, tc.s)
-		got, err := run(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		if strings.TrimSpace(got) != tc.exp {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", i+1, tc.exp, got)
+		if err := runCase(bin, tc); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed (n=%d, s=%s): %v\n", i+1, tc.n, tc.s, err)
 			os.Exit(1)
 		}
 	}

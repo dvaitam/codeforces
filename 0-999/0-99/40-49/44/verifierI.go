@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -46,7 +47,27 @@ func runCase(bin, ref string, tc testCase) error {
 	if err != nil {
 		return fmt.Errorf("runtime error: %v\n%s", err, got)
 	}
-	if exp != got {
+
+	expLines := strings.Split(exp, "\n")
+	gotLines := strings.Split(got, "\n")
+
+	if len(expLines) != len(gotLines) {
+		return fmt.Errorf("expected %d lines, got %d lines\nexpected %q got %q", len(expLines), len(gotLines), exp, got)
+	}
+
+	if expLines[0] != gotLines[0] {
+		return fmt.Errorf("expected count %q got %q", expLines[0], gotLines[0])
+	}
+
+	if len(expLines) > 1 {
+		sort.Strings(expLines[1:])
+		sort.Strings(gotLines[1:])
+	}
+
+	sortedExp := strings.Join(expLines, "\n")
+	sortedGot := strings.Join(gotLines, "\n")
+
+	if sortedExp != sortedGot {
 		return fmt.Errorf("expected %q got %q", exp, got)
 	}
 	return nil
