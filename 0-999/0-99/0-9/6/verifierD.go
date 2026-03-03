@@ -39,21 +39,20 @@ func solve(n, a, b int, h []int) int {
 		oldCur := hCopy[idx]
 		oldNext := hCopy[idx+1]
 
-		for i := needed; i <= 16; i++ {
-			hCopy[idx-1] -= i * b
-			hCopy[idx] -= i * a
-			hCopy[idx+1] -= i * b
+		for i := needed; ; i++ {
+			hCopy[idx-1] = oldPrev - i*b
+			hCopy[idx] = oldCur - i*a
+			hCopy[idx+1] = oldNext - i*b
 
 			dfs(idx+1, sum+i)
 
-			hCopy[idx-1] = oldPrev
-			hCopy[idx] = oldCur
-			hCopy[idx+1] = oldNext
-
-			if hCopy[idx-1] < 0 && hCopy[idx] < 0 && hCopy[idx+1] < 0 && idx < n-1 {
+			if hCopy[idx-1] < 0 && hCopy[idx] < 0 && hCopy[idx+1] < 0 {
 				break
 			}
 		}
+		hCopy[idx-1] = oldPrev
+		hCopy[idx] = oldCur
+		hCopy[idx+1] = oldNext
 	}
 	dfs(2, 0)
 	return ans
@@ -128,8 +127,8 @@ func main() {
 	exe := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	// Hardcoded failing case: n=5, a=3, b=2, h=[2, 4, 3, 3, 1]
-	// Optimal t is 4 (e.g., 2 2 4 4). 3 is impossible because archer 4 health becomes 0.
+	// Hardcoded case: n=5, a=3, b=2, h=[2, 4, 3, 3, 1]
+	// Optimal t is 4. Kill condition is health < 0 (strictly).
 	if err := runCase(exe, 5, 3, 2, []int{2, 4, 3, 3, 1}); err != nil {
 		fmt.Fprintf(os.Stderr, "Case [2 4 3 3 1] failed: %v\n", err)
 		os.Exit(1)
@@ -140,7 +139,7 @@ func main() {
 		if i > 40 {
 			n = rng.Intn(8) + 3
 		}
-		a := rng.Intn(5) + 2
+		a := rng.Intn(9) + 2
 		b := rng.Intn(a-1) + 1
 		h := make([]int, n)
 		for j := 0; j < n; j++ {
