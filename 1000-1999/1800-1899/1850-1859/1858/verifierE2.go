@@ -49,29 +49,59 @@ func randomCase(rng *rand.Rand) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d\n", q)
 	arrLen := 0
-	history := 0
+	type change struct {
+		op  byte // '+' or '-'
+		val int  // x for +, k for -
+	}
+	var hist []change
 	for i := 0; i < q; i++ {
-		opType := rng.Intn(4)
-		if opType == 0 || arrLen == 0 { // push
+		canPop := arrLen > 0
+		canRollback := len(hist) > 0
+
+		if !canPop && !canRollback {
+			// Must push or query
+			if rng.Intn(2) == 0 {
+				x := rng.Intn(1000000) + 1
+				fmt.Fprintf(&sb, "+ %d\n", x)
+				hist = append(hist, change{'+', x})
+				arrLen++
+			} else {
+				sb.WriteString("?\n")
+			}
+			continue
+		}
+
+		switch rng.Intn(4) {
+		case 0: // push
 			x := rng.Intn(1000000) + 1
 			fmt.Fprintf(&sb, "+ %d\n", x)
+			hist = append(hist, change{'+', x})
 			arrLen++
-			history++
-			continue
+		case 1: // pop
+			if canPop {
+				k := rng.Intn(arrLen) + 1
+				fmt.Fprintf(&sb, "- %d\n", k)
+				hist = append(hist, change{'-', k})
+				arrLen -= k
+			} else {
+				sb.WriteString("?\n")
+			}
+		case 2: // rollback
+			if canRollback {
+				sb.WriteString("!\n")
+				last := hist[len(hist)-1]
+				hist = hist[:len(hist)-1]
+				if last.op == '+' {
+					arrLen--
+				} else {
+					arrLen += last.val
+				}
+			} else {
+				sb.WriteString("?\n")
+			}
+		case 3: // query
+			sb.WriteString("?\n")
 		}
-		if opType == 1 && arrLen > 0 { // pop
-			k := rng.Intn(arrLen) + 1
-			fmt.Fprintf(&sb, "- %d\n", k)
-			arrLen -= k
-			history++
-			continue
-		}
-		if opType == 2 && history > 0 { // rollback
-			sb.WriteString("!\n")
-			history--
-			continue
-		}
-		sb.WriteString("?\n")
 	}
 	return sb.String()
 }
