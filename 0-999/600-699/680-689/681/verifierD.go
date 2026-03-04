@@ -82,13 +82,23 @@ func solve(n int, edges []edge, gifts []int) string {
 func generateCase(rng *rand.Rand) (string, string) {
 	n := rng.Intn(6) + 1
 	edges := make([]edge, 0, n-1)
+	parent := make([]int, n+1)
 	for i := 2; i <= n; i++ {
 		p := rng.Intn(i-1) + 1
 		edges = append(edges, edge{p, i})
+		parent[i] = p
 	}
 	gifts := make([]int, n+1)
 	for i := 1; i <= n; i++ {
-		gifts[i] = rng.Intn(n + 2)
+		// Generate valid gifts as required by statement:
+		// each a[i] must be an ancestor of i (possibly itself).
+		u := i
+		anc := []int{u}
+		for parent[u] != 0 {
+			u = parent[u]
+			anc = append(anc, u)
+		}
+		gifts[i] = anc[rng.Intn(len(anc))]
 	}
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d %d\n", n, len(edges)))
