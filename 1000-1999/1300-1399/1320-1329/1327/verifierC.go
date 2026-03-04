@@ -6,30 +6,97 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
-func expectedPath(n, m int) string {
-	var sb strings.Builder
-	for i := 0; i < n-1; i++ {
-		sb.WriteByte('U')
+type testCase struct {
+	n      int
+	m      int
+	k      int
+	starts [][2]int
+	ends   [][2]int
+}
+
+func validate(tc testCase, out string) error {
+	toks := strings.Fields(out)
+	if len(toks) == 0 {
+		return fmt.Errorf("empty output")
 	}
-	for i := 0; i < m-1; i++ {
-		sb.WriteByte('L')
+	if toks[0] == "-1" {
+		// A construction always exists within 2*n*m (standard full-grid sweep).
+		return fmt.Errorf("reported impossible, but a valid sequence always exists")
 	}
-	for i := 1; i <= n; i++ {
-		if i%2 == 1 {
-			for j := 0; j < m-1; j++ {
-				sb.WriteByte('R')
-			}
-		} else {
-			for j := 0; j < m-1; j++ {
-				sb.WriteByte('L')
+	l, err := strconv.Atoi(toks[0])
+	if err != nil {
+		return fmt.Errorf("invalid first token (operations count)")
+	}
+	if l < 0 || l > 2*tc.n*tc.m {
+		return fmt.Errorf("invalid operations count %d", l)
+	}
+	path := ""
+	if l > 0 {
+		if len(toks) != 2 {
+			return fmt.Errorf("expected count and path only")
+		}
+		path = toks[1]
+		if len(path) != l {
+			return fmt.Errorf("count/path length mismatch: %d vs %d", l, len(path))
+		}
+		for i := 0; i < len(path); i++ {
+			c := path[i]
+			if c != 'U' && c != 'D' && c != 'L' && c != 'R' {
+				return fmt.Errorf("invalid move character %q", c)
 			}
 		}
-		sb.WriteByte('D')
+	} else if len(toks) != 1 {
+		return fmt.Errorf("unexpected extra output tokens")
 	}
-	return sb.String()
+
+	pos := make([][2]int, tc.k)
+	seen := make([]bool, tc.k)
+	for i := 0; i < tc.k; i++ {
+		pos[i] = tc.starts[i]
+		if pos[i] == tc.ends[i] {
+			seen[i] = true
+		}
+	}
+
+	for i := 0; i < len(path); i++ {
+		mv := path[i]
+		for j := 0; j < tc.k; j++ {
+			x, y := pos[j][0], pos[j][1]
+			switch mv {
+			case 'U':
+				if x > 1 {
+					x--
+				}
+			case 'D':
+				if x < tc.n {
+					x++
+				}
+			case 'L':
+				if y > 1 {
+					y--
+				}
+			case 'R':
+				if y < tc.m {
+					y++
+				}
+			}
+			pos[j] = [2]int{x, y}
+			if pos[j] == tc.ends[j] {
+				seen[j] = true
+			}
+		}
+	}
+
+	for i := 0; i < tc.k; i++ {
+		if !seen[i] {
+			return fmt.Errorf("chip %d never visits target", i+1)
+		}
+	}
+	return nil
 }
 
 func main() {
@@ -40,16 +107,11 @@ func main() {
 	binary := os.Args[1]
 	rand.Seed(3)
 	t := 100
-	ns := make([]int, t)
-	ms := make([]int, t)
-	ks := make([]int, t)
-	starts := make([][][2]int, t)
-	ends := make([][][2]int, t)
+	tests := make([]testCase, t)
 	for i := 0; i < t; i++ {
 		n := rand.Intn(5) + 1
 		m := rand.Intn(5) + 1
-		k := rand.Intn(5)
-		ns[i], ms[i], ks[i] = n, m, k
+		k := rand.Intn(5) + 1
 		st := make([][2]int, k)
 		ed := make([][2]int, k)
 		for j := 0; j < k; j++ {
@@ -58,23 +120,21 @@ func main() {
 		for j := 0; j < k; j++ {
 			ed[j] = [2]int{rand.Intn(n) + 1, rand.Intn(m) + 1}
 		}
-		starts[i] = st
-		ends[i] = ed
+		tests[i] = testCase{n: n, m: m, k: k, starts: st, ends: ed}
 	}
 
 	for idx := 0; idx < t; idx++ {
-		n, m, k := ns[idx], ms[idx], ks[idx]
+		tc := tests[idx]
+		n, m, k := tc.n, tc.m, tc.k
 		var input strings.Builder
 		input.WriteString(fmt.Sprintf("%d %d %d\n", n, m, k))
 		for j := 0; j < k; j++ {
-			input.WriteString(fmt.Sprintf("%d %d\n", starts[idx][j][0], starts[idx][j][1]))
+			input.WriteString(fmt.Sprintf("%d %d\n", tc.starts[j][0], tc.starts[j][1]))
 		}
 		for j := 0; j < k; j++ {
-			input.WriteString(fmt.Sprintf("%d %d\n", ends[idx][j][0], ends[idx][j][1]))
+			input.WriteString(fmt.Sprintf("%d %d\n", tc.ends[j][0], tc.ends[j][1]))
 		}
 		in := input.String()
-		wantPath := expectedPath(n, m)
-		want := fmt.Sprintf("%d\n%s\n", len(wantPath), wantPath)
 
 		cmd := exec.Command(binary)
 		cmd.Stdin = strings.NewReader(in)
@@ -86,9 +146,8 @@ func main() {
 			os.Exit(1)
 		}
 		got := strings.TrimSpace(out.String())
-		want = strings.TrimSpace(want)
-		if got != want {
-			fmt.Printf("Wrong answer on test %d\nExpected:\n%s\nGot:\n%s\n", idx+1, want, got)
+		if err := validate(tc, got); err != nil {
+			fmt.Printf("Wrong answer on test %d: %v\nInput:\n%s\nGot:\n%s\n", idx+1, err, in, got)
 			os.Exit(1)
 		}
 	}
