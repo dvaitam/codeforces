@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strconv"
@@ -78,70 +78,85 @@ func validateOutput(n int, a, b []int64, out string) error {
 	return nil
 }
 
+type testCase struct {
+	a []int64
+	b []int64
+}
+
+func buildInput(tc testCase) string {
+	n := len(tc.a)
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d\n", n)
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.FormatInt(tc.a[i], 10))
+	}
+	sb.WriteByte('\n')
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.FormatInt(tc.b[i], 10))
+	}
+	sb.WriteByte('\n')
+	return sb.String()
+}
+
+func edgeCases() []testCase {
+	return []testCase{
+		{a: []int64{1}, b: []int64{1}},
+		{a: []int64{1, 2}, b: []int64{2, 1}},
+		{a: []int64{5, 1, 1}, b: []int64{1, 5, 1}},
+		{a: []int64{1, 1, 100, 100}, b: []int64{100, 100, 1, 1}},
+		{a: []int64{1, 2, 3, 4, 5}, b: []int64{5, 4, 3, 2, 1}},
+		{a: []int64{1_000_000_000, 1, 1, 1, 1}, b: []int64{1, 1_000_000_000, 1, 1, 1}},
+	}
+}
+
+func randomCase(rng *rand.Rand) testCase {
+	n := rng.Intn(40) + 1
+	a := make([]int64, n)
+	b := make([]int64, n)
+	for i := 0; i < n; i++ {
+		a[i] = int64(rng.Intn(1_000_000_000) + 1)
+		b[i] = int64(rng.Intn(1_000_000_000) + 1)
+	}
+	return testCase{a: a, b: b}
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierD.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-
-	file, err := os.Open("testcasesD.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
+	rng := rand.New(rand.NewSource(1))
+	tests := edgeCases()
+	for i := 0; i < 120; i++ {
+		tests = append(tests, randomCase(rng))
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
-		fields := strings.Fields(line)
-		if len(fields) < 1 {
-			fmt.Printf("test %d invalid line\n", idx)
+	for idx, tc := range tests {
+		testNum := idx + 1
+		input := buildInput(tc)
+		got, err := run(bin, input)
+		if err != nil {
+			fmt.Printf("test %d: %v\n", testNum, err)
 			os.Exit(1)
 		}
-		n, _ := strconv.Atoi(fields[0])
-		if len(fields) != 1+2*n {
-			fmt.Printf("test %d wrong number of values\n", idx)
-			os.Exit(1)
-		}
+		n := len(tc.a)
 		aVals := make([]int64, n+1)
 		bVals := make([]int64, n+1)
 		for i := 0; i < n; i++ {
-			v, err := strconv.ParseInt(fields[1+i], 10, 64)
-			if err != nil {
-				fmt.Printf("test %d invalid A value\n", idx)
-				os.Exit(1)
-			}
-			aVals[i+1] = v
-		}
-		for i := 0; i < n; i++ {
-			v, err := strconv.ParseInt(fields[1+n+i], 10, 64)
-			if err != nil {
-				fmt.Printf("test %d invalid B value\n", idx)
-				os.Exit(1)
-			}
-			bVals[i+1] = v
-		}
-		input := fmt.Sprintf("%d\n%s\n%s\n", n, strings.Join(fields[1:1+n], " "), strings.Join(fields[1+n:], " "))
-		got, err := run(bin, input)
-		if err != nil {
-			fmt.Printf("test %d: %v\n", idx, err)
-			os.Exit(1)
+			aVals[i+1] = tc.a[i]
+			bVals[i+1] = tc.b[i]
 		}
 		if err := validateOutput(n, aVals, bVals, got); err != nil {
-			fmt.Printf("test %d failed: %v\ninput:\n%s got: %s\n", idx, err, input, got)
+			fmt.Printf("test %d failed: %v\ninput:\n%s got: %s\n", testNum, err, input, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(tests))
 }
