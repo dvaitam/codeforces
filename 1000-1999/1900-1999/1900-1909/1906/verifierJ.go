@@ -44,6 +44,11 @@ func main() {
 		fmt.Println("Accepted")
 		return
 	}
+	if err := compareAnswer(want, candOut); err != nil {
+		return fmt.Errorf("%v\nexpected:\n%d\ncandidate output:\n%s", err, want, candOut)
+	}
+	return nil
+}
 
 	if err := verifySingleCase(candidate, inBytes); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -199,7 +204,12 @@ func runRandomTests(candidate string) error {
 }
 
 func runProgram(bin string, input []byte) (string, error) {
-	cmd := exec.Command(bin)
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = bytes.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
