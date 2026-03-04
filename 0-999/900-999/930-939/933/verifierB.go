@@ -82,7 +82,8 @@ func main() {
 	}
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	edge := [][2]int64{{0, 2}, {1, 2}, {12345, 2}, {12345, 3}, {999999999999999999, 2000}}
+	// Follow problem constraints: 1 <= p <= 1e18, 2 <= k <= 2000.
+	edge := [][2]int64{{1, 2}, {2, 2}, {12345, 2}, {12345, 3}, {999999999999999999, 2000}}
 	for idx, e := range edge {
 		if err := runCaseB(bin, e[0], e[1]); err != nil {
 			fmt.Fprintf(os.Stderr, "edge case %d failed: %v\n", idx+1, err)
