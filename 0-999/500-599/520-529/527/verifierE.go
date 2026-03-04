@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -16,102 +18,91 @@ type testCase struct {
 	edges []edge
 }
 
-func solve(tc testCase) string {
-	n := tc.n
-	adj := make([]int, n+1)
-	for i := 1; i <= n; i++ {
-		adj[i] = -1
+func normalize(u, v int) edge {
+	if u > v {
+		u, v = v, u
 	}
-	apr := make([]int, n+1)
-	tem := []int{}
-	to := []int{}
-	nxt := []int{}
-	vis := []bool{}
-	vise := []bool{}
-	cntege := 0
-	var addDir func(u, v int)
-	addDir = func(u, v int) {
-		e := len(to)
-		to = append(to, v)
-		nxt = append(nxt, adj[u])
-		adj[u] = e
-		vis = append(vis, false)
-		vise = append(vise, false)
-	}
-	addEdge := func(u, v int) {
-		addDir(u, v)
-		addDir(v, u)
-		cntege++
-	}
+	return edge{u, v}
+}
+
+func minP(tc testCase) int {
+	deg := make([]int, tc.n+1)
 	for _, e := range tc.edges {
-		addEdge(e.u, e.v)
-		apr[e.u]++
-		apr[e.v]++
-	}
-	for i := 1; i <= n; i++ {
-		if apr[i]%2 != 0 {
-			tem = append(tem, i)
-		}
-	}
-	for i := 0; i < len(tem); i += 2 {
-		if i+1 < len(tem) {
-			addEdge(tem[i], tem[i+1])
+		if e.u == e.v {
+			deg[e.u] += 2
 		} else {
-			addEdge(tem[i], tem[i])
+			deg[e.u]++
+			deg[e.v]++
 		}
 	}
-	iter := make([]int, n+1)
-	copy(iter, adj)
-	nodeSt := []int{1}
-	edgeSt := []int{-1}
-	res := []int{}
-	for len(nodeSt) > 0 {
-		v := nodeSt[len(nodeSt)-1]
-		if iter[v] != -1 {
-			e := iter[v]
-			iter[v] = nxt[e]
-			if vis[e] {
-				continue
-			}
-			vis[e] = true
-			vis[e^1] = true
-			nodeSt = append(nodeSt, to[e])
-			edgeSt = append(edgeSt, e)
-		} else {
-			nodeSt = nodeSt[:len(nodeSt)-1]
-			e := edgeSt[len(edgeSt)-1]
-			edgeSt = edgeSt[:len(edgeSt)-1]
-			if e != -1 {
-				res = append(res, e)
-			}
+	odd := 0
+	for i := 1; i <= tc.n; i++ {
+		if deg[i]%2 != 0 {
+			odd++
 		}
 	}
-	z := 0
-	for _, e := range res {
-		z++
-		if z%2 == 1 {
-			vise[e] = true
-		} else {
-			vise[e^1] = true
+	p := len(tc.edges) + odd/2
+	if p%2 != 0 {
+		p++
+	}
+	return p
+}
+
+func validateOutput(tc testCase, out string) error {
+	fields := strings.Fields(out)
+	if len(fields) == 0 {
+		return errors.New("empty output")
+	}
+	p64, err := strconv.ParseInt(fields[0], 10, 64)
+	if err != nil || p64 < 0 {
+		return fmt.Errorf("invalid p: %q", fields[0])
+	}
+	p := int(p64)
+	if len(fields) != 1+2*p {
+		return fmt.Errorf("expected %d edge endpoints after p, got %d tokens", 2*p, len(fields)-1)
+	}
+
+	if p != minP(tc) {
+		return fmt.Errorf("non-minimal p: got %d, expected %d", p, minP(tc))
+	}
+
+	need := make(map[edge]int)
+	for _, e := range tc.edges {
+		need[normalize(e.u, e.v)]++
+	}
+	have := make(map[edge]int)
+	inDeg := make([]int, tc.n+1)
+	outDeg := make([]int, tc.n+1)
+
+	pos := 1
+	for i := 0; i < p; i++ {
+		u64, errU := strconv.ParseInt(fields[pos], 10, 64)
+		v64, errV := strconv.ParseInt(fields[pos+1], 10, 64)
+		pos += 2
+		if errU != nil || errV != nil {
+			return fmt.Errorf("invalid edge on line %d", i+2)
+		}
+		u, v := int(u64), int(v64)
+		if u < 1 || u > tc.n || v < 1 || v > tc.n {
+			return fmt.Errorf("edge endpoint out of range on line %d: %d %d", i+2, u, v)
+		}
+		outDeg[u]++
+		inDeg[v]++
+		have[normalize(u, v)]++
+	}
+
+	for e, cnt := range need {
+		if have[e] < cnt {
+			return fmt.Errorf("missing original edge multiplicity for (%d,%d): need %d, got %d", e.u, e.v, cnt, have[e])
 		}
 	}
-	if cntege%2 != 0 {
-		addDir(1, 1)
-		e2 := len(to)
-		addDir(1, 1)
-		cntege++
-		vise[e2] = true
-	}
-	var sb strings.Builder
-	fmt.Fprintln(&sb, cntege)
-	for u := 1; u <= n; u++ {
-		for e := adj[u]; e != -1; e = nxt[e] {
-			if vise[e] {
-				fmt.Fprintf(&sb, "%d %d\n", u, to[e])
-			}
+
+	for v := 1; v <= tc.n; v++ {
+		if inDeg[v]%2 != 0 || outDeg[v]%2 != 0 {
+			return fmt.Errorf("parity failed at vertex %d: in=%d out=%d", v, inDeg[v], outDeg[v])
 		}
 	}
-	return strings.TrimSpace(sb.String())
+	return nil
 }
 
 func generateTests() []testCase {
@@ -119,14 +110,19 @@ func generateTests() []testCase {
 	tests := make([]testCase, 0, 100)
 	for len(tests) < 100 {
 		n := rnd.Intn(6) + 2
-		m := rnd.Intn(8) + 1
-		edges := make([]edge, m)
-		for i := 0; i < m; i++ {
+		edges := make([]edge, 0, 16)
+		// Start from a random tree so the graph is connected.
+		for v := 2; v <= n; v++ {
+			u := rnd.Intn(v-1) + 1
+			edges = append(edges, edge{u, v})
+		}
+		extra := rnd.Intn(8) // extra edges: loops/multi-edges allowed by statement
+		for i := 0; i < extra; i++ {
 			u := rnd.Intn(n) + 1
 			v := rnd.Intn(n) + 1
-			edges[i] = edge{u, v}
+			edges = append(edges, edge{u, v})
 		}
-		tests = append(tests, testCase{n, edges})
+		tests = append(tests, testCase{n: n, edges: edges})
 	}
 	return tests
 }
@@ -145,7 +141,6 @@ func main() {
 			fmt.Fprintf(&sb, "%d %d\n", e.u, e.v)
 		}
 		input := sb.String()
-		expected := solve(tc)
 		cmd := exec.Command(binary)
 		cmd.Stdin = strings.NewReader(input)
 		var out bytes.Buffer
@@ -155,9 +150,8 @@ func main() {
 			os.Exit(1)
 		}
 		got := strings.TrimSpace(out.String())
-		want := strings.TrimSpace(expected)
-		if got != want {
-			fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\n got:\n%s\n", i+1, input, want, got)
+		if err := validateOutput(tc, got); err != nil {
+			fmt.Printf("test %d failed: %v\ninput:\n%s got:\n%s\n", i+1, err, input, got)
 			os.Exit(1)
 		}
 	}
