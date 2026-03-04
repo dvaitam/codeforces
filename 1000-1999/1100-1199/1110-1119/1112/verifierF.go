@@ -25,14 +25,16 @@ func buildOracle() (string, error) {
 }
 
 func genCase(r *rand.Rand) string {
-	n := r.Intn(5) + 1
+	// Problem constraints: n >= 2
+	n := r.Intn(5) + 2
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", n))
 	for i := 1; i <= n; i++ {
 		if i > 1 {
 			sb.WriteByte(' ')
 		}
-		sb.WriteString(fmt.Sprint(r.Intn(10) + 1))
+		// Problem constraints: 0 <= c_i <= 1e9
+		sb.WriteString(fmt.Sprint(r.Intn(11)))
 	}
 	sb.WriteByte('\n')
 	for i := 2; i <= n; i++ {
