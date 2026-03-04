@@ -3,14 +3,13 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-const ref1906J = "./1906J.go"
+const mod = 998244353
 
 func main() {
 	if len(os.Args) != 2 {
@@ -19,34 +18,26 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	input, err := io.ReadAll(os.Stdin)
+	inBytes, err := readAllStdin()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to read input:", err)
+		fmt.Fprintln(os.Stderr, "failed to read stdin:", err)
 		os.Exit(1)
 	}
-
-	refBin, cleanup, err := buildReference(ref1906J)
+	n, a, err := parseInput(inBytes)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
+		fmt.Fprintln(os.Stderr, "invalid input:", err)
 		os.Exit(1)
 	}
-	defer cleanup()
-
-	refOut, err := runProgram(refBin, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference runtime error: %v\n", err)
-		os.Exit(1)
-	}
-	candOut, err := runProgram(candidate, input)
+	want := solveExpected(n, a)
+	candOut, err := runProgram(candidate, inBytes)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "candidate runtime error: %v\n", err)
 		os.Exit(1)
 	}
-
-	if err := compareTokens(refOut, candOut); err != nil {
+	if err := compareAnswer(want, candOut); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, "reference output:")
-		fmt.Fprintln(os.Stderr, refOut)
+		fmt.Fprintln(os.Stderr, "expected:")
+		fmt.Fprintln(os.Stderr, want)
 		fmt.Fprintln(os.Stderr, "candidate output:")
 		fmt.Fprintln(os.Stderr, candOut)
 		os.Exit(1)
@@ -55,24 +46,79 @@ func main() {
 	fmt.Println("Accepted")
 }
 
-func buildReference(src string) (string, func(), error) {
-	dir, err := os.MkdirTemp("", "verifier-1906J-")
+func readAllStdin() ([]byte, error) {
+	var buf bytes.Buffer
+	_, err := buf.ReadFrom(os.Stdin)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
-	bin := filepath.Join(dir, "ref.bin")
-	cmd := exec.Command("go", "build", "-o", bin, src)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		os.RemoveAll(dir)
-		return "", nil, fmt.Errorf("go build failed: %v\n%s", err, stderr.String())
+	return buf.Bytes(), nil
+}
+
+func parseInput(input []byte) (int, []int, error) {
+	fields := strings.Fields(string(input))
+	if len(fields) < 1 {
+		return 0, nil, fmt.Errorf("missing n")
 	}
-	return bin, func() { os.RemoveAll(dir) }, nil
+	n, err := strconv.Atoi(fields[0])
+	if err != nil || n < 2 {
+		return 0, nil, fmt.Errorf("invalid n")
+	}
+	if len(fields) != n+1 {
+		return 0, nil, fmt.Errorf("expected %d permutation values, got %d", n, len(fields)-1)
+	}
+	a := make([]int, n+1)
+	seen := make([]bool, n+1)
+	for i := 1; i <= n; i++ {
+		v, err := strconv.Atoi(fields[i])
+		if err != nil || v < 1 || v > n {
+			return 0, nil, fmt.Errorf("invalid a[%d]", i)
+		}
+		if seen[v] {
+			return 0, nil, fmt.Errorf("a is not a permutation")
+		}
+		seen[v] = true
+		a[i] = v
+	}
+	if a[1] != 1 {
+		return 0, nil, fmt.Errorf("a1 must be 1")
+	}
+	return n, a, nil
+}
+
+func add(x *int, y int) {
+	*x += y
+	if *x >= mod {
+		*x -= mod
+	}
+}
+
+func solveExpected(n int, a []int) int {
+	f := make([]int, n+1)
+	f[1] = 1
+	for i := 1; i < n; i++ {
+		p, s := 1, 0
+		for j := i; j <= n; j++ {
+			x := int((int64(f[j]) * int64(p)) % mod)
+			f[j] = x
+			p = int((int64(p) * 2) % mod)
+			add(&f[j], s)
+			if j < n && a[j+1] < a[j] {
+				s = 0
+			}
+			add(&s, x)
+		}
+	}
+	return f[n]
 }
 
 func runProgram(bin string, input []byte) (string, error) {
-	cmd := exec.Command(bin)
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = bytes.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -80,16 +126,17 @@ func runProgram(bin string, input []byte) (string, error) {
 	return out.String(), cmd.Run()
 }
 
-func compareTokens(expected, got string) error {
-	refFields := strings.Fields(expected)
-	candFields := strings.Fields(got)
-	if len(refFields) != len(candFields) {
-		return fmt.Errorf("output length mismatch: expected %d tokens, got %d", len(refFields), len(candFields))
+func compareAnswer(expected int, got string) error {
+	fields := strings.Fields(got)
+	if len(fields) == 0 {
+		return fmt.Errorf("empty candidate output")
 	}
-	for i := range refFields {
-		if refFields[i] != candFields[i] {
-			return fmt.Errorf("mismatch at token %d: expected %s, got %s", i+1, refFields[i], candFields[i])
-		}
+	v, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return fmt.Errorf("first output token is not an integer")
+	}
+	if v != expected {
+		return fmt.Errorf("wrong answer: expected %d, got %d", expected, v)
 	}
 	return nil
 }
