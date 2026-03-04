@@ -6,8 +6,8 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
-	"time"
 )
 
 func runCandidate(bin, input string) (string, error) {
@@ -30,56 +30,100 @@ func runCandidate(bin, input string) (string, error) {
 
 type edge struct{ u, v int }
 
-func solve(n int, edges []edge, gifts []int) string {
+type testCase struct {
+	n     int
+	edges []edge
+	gifts []int
+}
+
+func hasSolution(tc testCase) bool {
+	n := tc.n
 	children := make([][]int, n+1)
 	parent := make([]int, n+1)
-	for _, e := range edges {
+	for _, e := range tc.edges {
 		children[e.u] = append(children[e.u], e.v)
 		parent[e.v] = e.u
 	}
-	listVal := make([]bool, n+1)
-	q := make([]int, n)
-	head, tail := 0, 0
-	for i := 1; i <= n; i++ {
-		if gifts[i] >= 1 && gifts[i] <= n {
-			listVal[gifts[i]] = true
-		}
-		if parent[i] == 0 {
-			q[tail] = i
-			tail++
-			for head < tail {
-				u := q[head]
-				head++
-				for _, v := range children[u] {
-					q[tail] = v
-					tail++
-				}
-			}
-		}
-	}
-	var ans []int
-	for i := tail - 1; i >= 0; i-- {
-		u := q[i]
-		if gifts[u] != u {
+	for u := 1; u <= n; u++ {
+		if tc.gifts[u] != u {
 			p := parent[u]
-			if p == 0 || gifts[p] != gifts[u] {
-				return "-1"
+			if p == 0 || tc.gifts[p] != tc.gifts[u] {
+				return false
 			}
 		}
-		if listVal[u] {
-			ans = append(ans, u)
-		}
 	}
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d", len(ans)))
-	for _, x := range ans {
-		sb.WriteByte('\n')
-		sb.WriteString(fmt.Sprintf("%d", x))
-	}
-	return sb.String()
+	return true
 }
 
-func generateCase(rng *rand.Rand) (string, string) {
+func validateOutput(tc testCase, out string) error {
+	toks := strings.Fields(strings.TrimSpace(out))
+	if len(toks) == 0 {
+		return fmt.Errorf("empty output")
+	}
+	if toks[0] == "-1" {
+		if len(toks) != 1 {
+			return fmt.Errorf("invalid -1 output format")
+		}
+		if hasSolution(tc) {
+			return fmt.Errorf("reported -1 but a solution exists")
+		}
+		return nil
+	}
+
+	if !hasSolution(tc) {
+		return fmt.Errorf("solution exists check failed: expected -1 for this case")
+	}
+
+	k, err := strconv.Atoi(toks[0])
+	if err != nil || k < 1 || k > tc.n {
+		return fmt.Errorf("invalid k")
+	}
+	if len(toks) != k+1 {
+		return fmt.Errorf("expected %d listed vertices, got %d", k, len(toks)-1)
+	}
+
+	pos := make([]int, tc.n+1)
+	for i := range pos {
+		pos[i] = -1
+	}
+	for i := 0; i < k; i++ {
+		v, err := strconv.Atoi(toks[i+1])
+		if err != nil || v < 1 || v > tc.n {
+			return fmt.Errorf("invalid listed vertex")
+		}
+		if pos[v] != -1 {
+			return fmt.Errorf("duplicate vertex in list")
+		}
+		pos[v] = i
+	}
+
+	parent := make([]int, tc.n+1)
+	for _, e := range tc.edges {
+		parent[e.v] = e.u
+	}
+
+	for u := 1; u <= tc.n; u++ {
+		bestPos := int(1e9)
+		bestNode := -1
+		x := u
+		for x != 0 {
+			if pos[x] != -1 && pos[x] < bestPos {
+				bestPos = pos[x]
+				bestNode = x
+			}
+			x = parent[x]
+		}
+		if bestNode == -1 {
+			return fmt.Errorf("man %d has no ancestor in list", u)
+		}
+		if bestNode != tc.gifts[u] {
+			return fmt.Errorf("wish mismatch for %d: expected %d got %d", u, tc.gifts[u], bestNode)
+		}
+	}
+	return nil
+}
+
+func generateCase(rng *rand.Rand) (string, testCase) {
 	n := rng.Intn(6) + 1
 	edges := make([]edge, 0, n-1)
 	parent := make([]int, n+1)
@@ -112,7 +156,7 @@ func generateCase(rng *rand.Rand) (string, string) {
 		}
 	}
 	sb.WriteByte('\n')
-	return sb.String(), solve(n, edges, gifts)
+	return sb.String(), testCase{n: n, edges: edges, gifts: gifts}
 }
 
 func main() {
@@ -121,16 +165,16 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	rng := rand.New(rand.NewSource(1))
 	for i := 0; i < 100; i++ {
-		input, exp := generateCase(rng)
+		input, tc := generateCase(rng)
 		out, err := runCandidate(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if out != exp {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected:\n%s\n\ngot:\n%s\ninput:\n%s", i+1, exp, out, input)
+		if err := validateOutput(tc, out); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ngot:\n%s\ninput:\n%s", i+1, err, out, input)
 			os.Exit(1)
 		}
 	}
