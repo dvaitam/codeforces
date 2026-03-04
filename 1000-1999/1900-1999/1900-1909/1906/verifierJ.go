@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"runtime"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -53,7 +54,7 @@ func main() {
 
 func prepareProgram(path string) (string, func(), error) {
 	ext := strings.ToLower(filepath.Ext(path))
-	if ext != ".go" && ext != ".cpp" {
+	if ext != ".go" && ext != ".cpp" && ext != ".cc" && ext != ".cxx" {
 		return path, nil, nil
 	}
 
@@ -75,6 +76,14 @@ func prepareProgram(path string) (string, func(), error) {
 	if err := cmd.Run(); err != nil {
 		os.RemoveAll(dir)
 		return "", nil, fmt.Errorf("%v\n%s", err, out.String())
+	}
+	// On Windows some toolchains may append ".exe" even when -o has no extension.
+	if runtime.GOOS == "windows" {
+		if _, err := os.Stat(bin); err != nil {
+			if _, errExe := os.Stat(bin + ".exe"); errExe == nil {
+				bin += ".exe"
+			}
+		}
 	}
 	return bin, func() { _ = os.RemoveAll(dir) }, nil
 }
@@ -198,12 +207,7 @@ func runRandomTests(candidate string) error {
 }
 
 func runProgram(bin string, input []byte) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = bytes.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
