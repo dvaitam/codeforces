@@ -6,6 +6,7 @@ click.scpt
 deploy.sh
 nohup.out
 *.bin
+*.exe
 \~/
 nohup_backfill.log
 run.log
