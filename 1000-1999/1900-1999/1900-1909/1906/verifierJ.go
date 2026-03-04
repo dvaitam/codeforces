@@ -44,12 +44,6 @@ func main() {
 		fmt.Println("Accepted")
 		return
 	}
-	if err := compareAnswer(want, candOut); err != nil {
-		return fmt.Errorf("%v\nexpected:\n%d\ncandidate output:\n%s", err, want, candOut)
-	}
-	return nil
-}
-
 	if err := verifySingleCase(candidate, inBytes); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
