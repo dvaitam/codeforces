@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -17,7 +18,14 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierJ.go /path/to/binary")
 		os.Exit(1)
 	}
-	candidate := os.Args[1]
+	candidate, cleanup, err := prepareProgram(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "failed to prepare candidate:", err)
+		os.Exit(1)
+	}
+	if cleanup != nil {
+		defer cleanup()
+	}
 
 	inBytes, err := readAllStdin()
 	if err != nil {
@@ -36,12 +44,45 @@ func main() {
 		fmt.Println("Accepted")
 		return
 	}
+	if err := compareAnswer(want, candOut); err != nil {
+		return fmt.Errorf("%v\nexpected:\n%d\ncandidate output:\n%s", err, want, candOut)
+	}
+	return nil
+}
 
 	if err := verifySingleCase(candidate, inBytes); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	fmt.Println("Accepted")
+}
+
+func prepareProgram(path string) (string, func(), error) {
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext != ".go" && ext != ".cpp" {
+		return path, nil, nil
+	}
+
+	dir, err := os.MkdirTemp("", "verifier-1906J-cand-*")
+	if err != nil {
+		return "", nil, err
+	}
+	bin := filepath.Join(dir, "cand.bin")
+
+	var cmd *exec.Cmd
+	if ext == ".go" {
+		cmd = exec.Command("go", "build", "-o", bin, path)
+	} else {
+		cmd = exec.Command("g++", "-O2", "-std=c++17", "-o", bin, path)
+	}
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		os.RemoveAll(dir)
+		return "", nil, fmt.Errorf("%v\n%s", err, out.String())
+	}
+	return bin, func() { _ = os.RemoveAll(dir) }, nil
 }
 
 func verifySingleCase(candidate string, inBytes []byte) error {
