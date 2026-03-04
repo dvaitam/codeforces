@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strconv"
@@ -23,27 +24,40 @@ func main() {
 		fmt.Fprintln(os.Stderr, "failed to read stdin:", err)
 		os.Exit(1)
 	}
+
+	// Two modes:
+	// 1) stdin provided: verify exactly that test case.
+	// 2) empty stdin: run built-in randomized tests.
+	if len(strings.Fields(string(inBytes))) == 0 {
+		if err := runRandomTests(candidate); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		fmt.Println("Accepted")
+		return
+	}
+
+	if err := verifySingleCase(candidate, inBytes); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	fmt.Println("Accepted")
+}
+
+func verifySingleCase(candidate string, inBytes []byte) error {
 	n, a, err := parseInput(inBytes)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "invalid input:", err)
-		os.Exit(1)
+		return fmt.Errorf("invalid input: %v", err)
 	}
 	want := solveExpected(n, a)
 	candOut, err := runProgram(candidate, inBytes)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "candidate runtime error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("candidate runtime error: %v", err)
 	}
 	if err := compareAnswer(want, candOut); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, "expected:")
-		fmt.Fprintln(os.Stderr, want)
-		fmt.Fprintln(os.Stderr, "candidate output:")
-		fmt.Fprintln(os.Stderr, candOut)
-		os.Exit(1)
+		return fmt.Errorf("%v\nexpected:\n%d\ncandidate output:\n%s", err, want, candOut)
 	}
-
-	fmt.Println("Accepted")
+	return nil
 }
 
 func readAllStdin() ([]byte, error) {
@@ -110,6 +124,42 @@ func solveExpected(n int, a []int) int {
 		}
 	}
 	return f[n]
+}
+
+func genCase(rng *rand.Rand) []byte {
+	n := rng.Intn(60) + 2
+	perm := make([]int, 0, n)
+	perm = append(perm, 1)
+	rest := make([]int, 0, n-1)
+	for i := 2; i <= n; i++ {
+		rest = append(rest, i)
+	}
+	rng.Shuffle(len(rest), func(i, j int) {
+		rest[i], rest[j] = rest[j], rest[i]
+	})
+	perm = append(perm, rest...)
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d\n", n))
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(perm[i]))
+	}
+	sb.WriteByte('\n')
+	return []byte(sb.String())
+}
+
+func runRandomTests(candidate string) error {
+	rng := rand.New(rand.NewSource(1))
+	for tc := 1; tc <= 100; tc++ {
+		in := genCase(rng)
+		if err := verifySingleCase(candidate, in); err != nil {
+			return fmt.Errorf("case %d failed: %v\ninput:\n%s", tc, err, string(in))
+		}
+	}
+	return nil
 }
 
 func runProgram(bin string, input []byte) (string, error) {
