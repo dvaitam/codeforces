@@ -63,32 +63,29 @@ func verifyCase(s, out string) error {
 			grid[r][c] = 1
 			grid[r][c+1] = 1
 		}
-		// clear full rows
+		// clear full rows and cols simultaneously
+		var fullRow, fullCol [4]bool
 		for i := 0; i < 4; i++ {
-			full := true
+			fullRow[i] = true
 			for j := 0; j < 4; j++ {
 				if grid[i][j] == 0 {
-					full = false
+					fullRow[i] = false
 					break
-				}
-			}
-			if full {
-				for j := 0; j < 4; j++ {
-					grid[i][j] = 0
 				}
 			}
 		}
-		// clear full cols
 		for j := 0; j < 4; j++ {
-			full := true
+			fullCol[j] = true
 			for i := 0; i < 4; i++ {
 				if grid[i][j] == 0 {
-					full = false
+					fullCol[j] = false
 					break
 				}
 			}
-			if full {
-				for i := 0; i < 4; i++ {
+		}
+		for i := 0; i < 4; i++ {
+			for j := 0; j < 4; j++ {
+				if fullRow[i] || fullCol[j] {
 					grid[i][j] = 0
 				}
 			}

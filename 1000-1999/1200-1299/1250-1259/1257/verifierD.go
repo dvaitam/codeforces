@@ -70,6 +70,7 @@ func generateCase(rng *rand.Rand) (string, []string) {
 		}
 		sb.WriteByte('\n')
 		m := rng.Intn(5) + 1
+		sb.WriteString(fmt.Sprintf("%d\n", m))
 		heroes := make([][2]int, m)
 		for i := 0; i < m; i++ {
 			p := rng.Intn(9) + 1

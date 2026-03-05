@@ -111,56 +111,6 @@ const testcasesB = `4 ae a cdba cdba
 3 kerognmtj tj jqi
 3 hft ftckgopqiw wvaldbnmeu`
 
-type pair struct {
-	vis  int
-	next rune
-}
-
-// Embedded solver from 638B.go.
-func solve(frags []string) string {
-	nodes := make(map[rune]*pair)
-	get := func(r rune) *pair {
-		if p, ok := nodes[r]; ok {
-			return p
-		}
-		p := &pair{}
-		nodes[r] = p
-		return p
-	}
-	for _, s := range frags {
-		for j := 0; j+1 < len(s); j++ {
-			u := rune(s[j])
-			v := rune(s[j+1])
-			get(u).next = v
-			get(v).vis = 2
-		}
-		u0 := rune(s[0])
-		if get(u0).vis != 2 {
-			get(u0).vis = 1
-		}
-	}
-
-	ans := make([]rune, 0, len(nodes))
-	var dfs func(rune)
-	dfs = func(u rune) {
-		p := get(u)
-		p.vis = 3
-		v := p.next
-		if v != 0 && get(v).vis != 3 {
-			dfs(v)
-		}
-		ans = append(ans, u)
-	}
-	for u := 'a'; u <= 'z'; u++ {
-		if get(u).vis == 1 {
-			dfs(u)
-		}
-	}
-	for i, j := 0, len(ans)-1; i < j; i, j = i+1, j-1 {
-		ans[i], ans[j] = ans[j], ans[i]
-	}
-	return string(ans)
-}
 
 type testCase struct {
 	n     int
@@ -202,6 +152,40 @@ func runCandidate(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+// validate checks that out is a valid minimum-length answer for the given fragments.
+func validate(frags []string, out string) string {
+	// Count distinct letters across all fragments (minimum required length).
+	letterSet := make(map[rune]bool)
+	for _, f := range frags {
+		for _, c := range f {
+			letterSet[c] = true
+		}
+	}
+	minLen := len(letterSet)
+
+	if len(out) != minLen {
+		return fmt.Sprintf("length %d, want %d", len(out), minLen)
+	}
+
+	// All characters in output must be distinct.
+	seen := make(map[rune]bool)
+	for _, c := range out {
+		if seen[c] {
+			return fmt.Sprintf("duplicate character %c", c)
+		}
+		seen[c] = true
+	}
+
+	// Every fragment must be a substring of output.
+	for _, f := range frags {
+		if !strings.Contains(out, f) {
+			return fmt.Sprintf("fragment %q not found in %q", f, out)
+		}
+	}
+
+	return ""
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: verifierB /path/to/binary")
@@ -216,7 +200,6 @@ func main() {
 	}
 
 	for idx, tc := range cases {
-		expect := solve(tc.frags)
 		var sb strings.Builder
 		fmt.Fprintf(&sb, "%d\n", tc.n)
 		for _, s := range tc.frags {
@@ -229,8 +212,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if got != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, expect, got)
+		if msg := validate(tc.frags, got); msg != "" {
+			fmt.Fprintf(os.Stderr, "case %d failed: %s\nfragments: %v\ngot: %s\n", idx+1, msg, tc.frags, got)
 			os.Exit(1)
 		}
 	}

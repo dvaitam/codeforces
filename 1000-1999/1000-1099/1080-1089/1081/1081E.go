@@ -15,7 +15,7 @@ func main() {
    if _, err := fmt.Fscan(reader, &n); err != nil {
        return
    }
-   a := make([]int64, n)
+   a := make([]int64, n+1)
    // read odd positions
    for i := 1; i < n; i += 2 {
        fmt.Fscan(reader, &a[i])

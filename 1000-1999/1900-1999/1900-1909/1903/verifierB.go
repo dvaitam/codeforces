@@ -1,22 +1,83 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
-	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
+	"time"
 )
 
-const ref1903B = "1000-1999/1900-1999/1900-1909/1903/1903B.go"
+func getRefPath() string {
+	_, file, _, _ := runtime.Caller(0)
+	return filepath.Join(filepath.Dir(file), "1903B.go")
+}
 
 type testCase struct {
 	n      int
 	matrix [][]int
+}
+
+func generateInput() ([]byte, []testCase) {
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	t := 100
+	var sb bytes.Buffer
+	fmt.Fprintf(&sb, "%d\n", t)
+	tests := make([]testCase, t)
+	
+	for i := 0; i < t; i++ {
+		n := rng.Intn(10) + 2
+		fmt.Fprintf(&sb, "%d\n", n)
+		
+		matrix := make([][]int, n)
+		for r := 0; r < n; r++ {
+			matrix[r] = make([]int, n)
+		}
+		
+		if rng.Intn(2) == 0 {
+			// YES case
+			a := make([]int, n)
+			for j := 0; j < n; j++ {
+				a[j] = rng.Intn(1 << 30)
+			}
+			for r := 0; r < n; r++ {
+				for c := 0; c < n; c++ {
+					if r == c {
+						matrix[r][c] = 0
+					} else {
+						matrix[r][c] = a[r] | a[c]
+					}
+				}
+			}
+		} else {
+			// Random case (usually NO)
+			for r := 0; r < n; r++ {
+				for c := r + 1; c < n; c++ {
+					val := rng.Intn(1 << 30)
+					matrix[r][c] = val
+					matrix[c][r] = val
+				}
+			}
+		}
+		
+		for r := 0; r < n; r++ {
+			for c := 0; c < n; c++ {
+				if c > 0 {
+					sb.WriteByte(' ')
+				}
+				fmt.Fprintf(&sb, "%d", matrix[r][c])
+			}
+			sb.WriteByte('\n')
+		}
+		tests[i] = testCase{n: n, matrix: matrix}
+	}
+	
+	return sb.Bytes(), tests
 }
 
 func main() {
@@ -26,18 +87,9 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	input, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to read input:", err)
-		os.Exit(1)
-	}
-	tests, err := parseInput(input)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	input, tests := generateInput()
 
-	refBin, cleanup, err := buildReference(ref1903B)
+	refBin, cleanup, err := buildReference(getRefPath())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
 		os.Exit(1)
@@ -68,33 +120,6 @@ func main() {
 	}
 
 	fmt.Println("Accepted")
-}
-
-func parseInput(data []byte) ([]testCase, error) {
-	reader := bufio.NewReader(bytes.NewReader(data))
-	var t int
-	if _, err := fmt.Fscan(reader, &t); err != nil {
-		return nil, fmt.Errorf("failed to read t: %v", err)
-	}
-	tests := make([]testCase, t)
-	for i := 0; i < t; i++ {
-		var n int
-		if _, err := fmt.Fscan(reader, &n); err != nil {
-			return nil, fmt.Errorf("test %d: failed to read n: %v", i+1, err)
-		}
-		matrix := make([][]int, n)
-		for r := 0; r < n; r++ {
-			row := make([]int, n)
-			for c := 0; c < n; c++ {
-				if _, err := fmt.Fscan(reader, &row[c]); err != nil {
-					return nil, fmt.Errorf("test %d: failed to read M[%d][%d]: %v", i+1, r+1, c+1, err)
-				}
-			}
-			matrix[r] = row
-		}
-		tests[i] = testCase{n: n, matrix: matrix}
-	}
-	return tests, nil
 }
 
 func parseReference(out string, tests []testCase) ([]bool, error) {
@@ -210,10 +235,16 @@ func buildReference(src string) (string, func(), error) {
 }
 
 func runProgram(bin string, input []byte) (string, error) {
-	cmd := exec.Command(bin)
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = bytes.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
-	return out.String(), cmd.Run()
+	err := cmd.Run()
+	return out.String(), err
 }

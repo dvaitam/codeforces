@@ -4,81 +4,101 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 )
 
-type edge struct {
-	to int
-	w  int64
-}
-
-const inf int64 = 1<<62 - 1
-
 func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
-	defer out.Flush()
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
+	const maxCapacity = 1024 * 1024
+	buf := make([]byte, maxCapacity)
+	scanner.Buffer(buf, maxCapacity)
 
-	var t int
-	fmt.Fscan(in, &t)
-	for ; t > 0; t-- {
-		var n, m int
-		fmt.Fscan(in, &n, &m)
+	var scanInt = func() int {
+		scanner.Scan()
+		val, _ := strconv.Atoi(scanner.Text())
+		return val
+	}
+
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
+
+	if !scanner.Scan() {
+		return
+	}
+	t, _ := strconv.Atoi(scanner.Text())
+
+	for i := 0; i < t; i++ {
+		n := scanInt()
+		m := scanInt()
 
 		b := make([]int64, n+1)
-		for i := 1; i <= n; i++ {
-			fmt.Fscan(in, &b[i])
+		for j := 1; j <= n; j++ {
+			b[j] = int64(scanInt())
 		}
 
-		adj := make([][]edge, n+1)
-		for i := 0; i < m; i++ {
-			var s, t int
-			var w int64
-			fmt.Fscan(in, &s, &t, &w)
-			adj[s] = append(adj[s], edge{to: t, w: w})
+		type Edge struct {
+			to int
+			w  int64
+		}
+		adj := make([][]Edge, n+1)
+
+		for j := 0; j < m; j++ {
+			u := scanInt()
+			v := scanInt()
+			w := int64(scanInt())
+			adj[u] = append(adj[u], Edge{v, w})
 		}
 
-		need := make([]int64, n+1)
-		final := make([]int64, n+1)
-		for i := 1; i <= n; i++ {
-			need[i] = inf
-			final[i] = inf
-		}
-		need[n] = 0
-		final[n] = 0
+		dp := make([]int64, n+1)
 
-		for v := n - 1; v >= 1; v-- {
-			bestEntry := inf
-			bestFinal := inf
-			for _, e := range adj[v] {
-				to := e.to
-				if need[to] == inf {
+		check := func(x int64) bool {
+			for k := 1; k <= n; k++ {
+				dp[k] = -1
+			}
+
+			if b[1] >= x {
+				dp[1] = x
+			} else {
+				dp[1] = b[1]
+			}
+
+			for u := 1; u < n; u++ {
+				if dp[u] == -1 {
 					continue
 				}
-				L := need[to]
-				if L < e.w {
-					L = e.w
-				}
-				entry := L - b[v]
-				if entry < 0 {
-					entry = 0
-				}
-				finalCand := final[to]
-				if finalCand < L {
-					finalCand = L
-				}
-				if entry < bestEntry || (entry == bestEntry && finalCand < bestFinal) {
-					bestEntry = entry
-					bestFinal = finalCand
+				cur := dp[u]
+				for _, e := range adj[u] {
+					if e.w <= cur {
+						nextBat := cur + b[e.to]
+						if nextBat > x {
+							nextBat = x
+						}
+						if nextBat > dp[e.to] {
+							dp[e.to] = nextBat
+						}
+					}
 				}
 			}
-			need[v] = bestEntry
-			final[v] = bestFinal
+			return dp[n] != -1
 		}
 
-		if need[1] != 0 {
-			fmt.Fprintln(out, -1)
+		const maxVal int64 = 200000000000000 // 2 * 10^14 max possible answer
+		if !check(maxVal) {
+			fmt.Fprintln(writer, -1)
 		} else {
-			fmt.Fprintln(out, final[1])
+			low, high := int64(0), maxVal
+			ans := int64(-1)
+			for low <= high {
+				mid := low + (high-low)/2
+				if check(mid) {
+					ans = mid
+					high = mid - 1
+				} else {
+					low = mid + 1
+				}
+			}
+			fmt.Fprintln(writer, ans)
 		}
 	}
 }

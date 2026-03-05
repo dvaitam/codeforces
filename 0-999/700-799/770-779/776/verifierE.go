@@ -12,7 +12,7 @@ import (
 
 const mod = 1000000007
 
-func phi(n int64) int64 {
+func phiExact(n int64) int64 {
 	res := n
 	m := n
 	for i := int64(2); i*i <= m; i++ {
@@ -26,7 +26,16 @@ func phi(n int64) int64 {
 	if m > 1 {
 		res = res / m * (m - 1)
 	}
-	return res % mod
+	return res
+}
+
+func solveExpected(n, k int64) int64 {
+	k = (k + 1) / 2
+	for k > 0 && n != 1 {
+		n = phiExact(n)
+		k--
+	}
+	return n % mod
 }
 
 func run(bin, in string) (string, error) {
@@ -51,7 +60,7 @@ func main() {
 		n := int64(i*100 + 1)
 		k := int64(i%10 + 1)
 		inp := fmt.Sprintf("%d %d\n", n, k)
-		exp := fmt.Sprintf("%d", phi(n))
+		exp := fmt.Sprintf("%d", solveExpected(n, k))
 		got, err := run(bin, inp)
 		if err != nil {
 			fmt.Printf("Test %d: execution error: %v\nOutput:\n%s\n", i, err, got)

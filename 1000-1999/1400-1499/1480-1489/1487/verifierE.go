@@ -34,6 +34,19 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), err
 }
 
+func genPairs(rng *rand.Rand, na, nb int) [][2]int {
+	type pair = [2]int
+	all := make([]pair, 0, na*nb)
+	for x := 1; x <= na; x++ {
+		for y := 1; y <= nb; y++ {
+			all = append(all, pair{x, y})
+		}
+	}
+	rng.Shuffle(len(all), func(i, j int) { all[i], all[j] = all[j], all[i] })
+	m := rng.Intn(len(all) + 1)
+	return all[:m]
+}
+
 func generateCase(rng *rand.Rand) string {
 	n1 := rng.Intn(5) + 1
 	n2 := rng.Intn(5) + 1
@@ -57,20 +70,20 @@ func generateCase(rng *rand.Rand) string {
 		sb.WriteString(fmt.Sprintf("%d ", rng.Intn(10)+1))
 	}
 	sb.WriteByte('\n')
-	m1 := rng.Intn(n1*n2 + 1)
-	sb.WriteString(fmt.Sprintf("%d\n", m1))
-	for i := 0; i < m1; i++ {
-		sb.WriteString(fmt.Sprintf("%d %d\n", rng.Intn(n1)+1, rng.Intn(n2)+1))
+	pairs12 := genPairs(rng, n1, n2)
+	sb.WriteString(fmt.Sprintf("%d\n", len(pairs12)))
+	for _, p := range pairs12 {
+		sb.WriteString(fmt.Sprintf("%d %d\n", p[0], p[1]))
 	}
-	m2 := rng.Intn(n2*n3 + 1)
-	sb.WriteString(fmt.Sprintf("%d\n", m2))
-	for i := 0; i < m2; i++ {
-		sb.WriteString(fmt.Sprintf("%d %d\n", rng.Intn(n2)+1, rng.Intn(n3)+1))
+	pairs23 := genPairs(rng, n2, n3)
+	sb.WriteString(fmt.Sprintf("%d\n", len(pairs23)))
+	for _, p := range pairs23 {
+		sb.WriteString(fmt.Sprintf("%d %d\n", p[0], p[1]))
 	}
-	m3 := rng.Intn(n3*n4 + 1)
-	sb.WriteString(fmt.Sprintf("%d\n", m3))
-	for i := 0; i < m3; i++ {
-		sb.WriteString(fmt.Sprintf("%d %d\n", rng.Intn(n3)+1, rng.Intn(n4)+1))
+	pairs34 := genPairs(rng, n3, n4)
+	sb.WriteString(fmt.Sprintf("%d\n", len(pairs34)))
+	for _, p := range pairs34 {
+		sb.WriteString(fmt.Sprintf("%d %d\n", p[0], p[1]))
 	}
 	return sb.String()
 }

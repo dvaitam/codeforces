@@ -284,14 +284,6 @@ func solveCase(c inputCase) int64 {
 	best := widthAll * heightAll
 
 	for _, p := range pts {
-		if n-1 == 0 {
-			best = minInt64(best, 1)
-			continue
-		}
-		if n-1 == 1 {
-			best = minInt64(best, 1)
-			continue
-		}
 		minXO := minX1
 		if p.x == minX1 && cntMinX == 1 {
 			minXO = minX2
@@ -311,6 +303,15 @@ func solveCase(c inputCase) int64 {
 		width := maxXO - minXO + 1
 		height := maxYO - minYO + 1
 		area := width * height
+		// If the bounding box is fully packed (area == n-1), the moved
+		// monster must extend the rectangle by at least one row or column.
+		if area == int64(n-1) {
+			ext := width
+			if height < ext {
+				ext = height
+			}
+			area += ext
+		}
 		best = minInt64(best, area)
 	}
 	return best

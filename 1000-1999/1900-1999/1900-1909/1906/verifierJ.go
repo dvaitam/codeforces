@@ -212,7 +212,8 @@ func runProgram(bin string, input []byte) (string, error) {
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
-	return out.String(), cmd.Run()
+	err := cmd.Run()
+	return out.String(), err
 }
 
 func compareAnswer(expected int, got string) error {
