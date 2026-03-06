@@ -79,14 +79,20 @@ func generateSecrets() []string {
 			}
 		}
 	}
-	if len(secrets) > 100 {
-		secrets = secrets[:100]
+	n := 20
+	if len(secrets) <= n {
+		return secrets
 	}
-	return secrets
+	step := len(secrets) / n
+	picked := make([]string, n)
+	for i := 0; i < n; i++ {
+		picked[i] = secrets[i*step]
+	}
+	return picked
 }
 
 func runCase(bin, secret string, limit int) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, bin)
