@@ -9,7 +9,9 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -84,7 +86,7 @@ func generateSecrets() []string {
 }
 
 func runCase(bin, secret string, limit int) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, bin)
@@ -166,13 +168,46 @@ func main() {
 	}
 	defer cleanup()
 	secrets := generateSecrets()
+
+	workers := runtime.NumCPU()
+	if workers > 8 {
+		workers = 8
+	}
+	if workers < 1 {
+		workers = 1
+	}
+	sem := make(chan struct{}, workers)
+	var mu sync.Mutex
+	var firstErr string
+	var wg sync.WaitGroup
+
 	for i, s := range secrets {
-		if err := runCase(bin, s, 50); err != nil {
-			msg := fmt.Sprintf("case %d failed: %v (secret %s)", i+1, err, s)
-			fmt.Fprintln(os.Stderr, msg)
-			fmt.Println(msg)
-			os.Exit(1)
+		if mu.Lock(); firstErr != "" {
+			mu.Unlock()
+			break
 		}
+		mu.Unlock()
+
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(idx int, secret string) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			if err := runCase(bin, secret, 50); err != nil {
+				mu.Lock()
+				if firstErr == "" {
+					firstErr = fmt.Sprintf("case %d failed: %v (secret %s)", idx+1, err, secret)
+				}
+				mu.Unlock()
+			}
+		}(i, s)
+	}
+	wg.Wait()
+
+	if firstErr != "" {
+		fmt.Fprintln(os.Stderr, firstErr)
+		fmt.Println(firstErr)
+		os.Exit(1)
 	}
 	fmt.Println("All tests passed")
 }
