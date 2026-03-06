@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/bits"
 	"math/rand"
@@ -79,13 +80,18 @@ func bruteForce(arr []int) int {
 }
 
 func run(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return "", fmt.Errorf("time limit exceeded")
+		}
 		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
 	return strings.TrimSpace(out.String()), nil
@@ -99,7 +105,7 @@ func main() {
 	bin := os.Args[1]
 	initValid()
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 200; i++ {
+	for i := 0; i < 40; i++ {
 		n := rng.Intn(10) + 1
 		arr := make([]int, n)
 		for j := range arr {

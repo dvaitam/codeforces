@@ -1,45 +1,35 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func runCmd(path string, input []byte) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	} else {
-		cmd = exec.Command(path)
-	}
-	cmd.Stdin = bytes.NewReader(input)
-	out, err := cmd.CombinedOutput()
-	return string(out), err
-}
-
-func genTest() []byte {
-	t := rand.Intn(3) + 1
+func genTest(rng *rand.Rand) string {
+	t := rng.Intn(3) + 1
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", t))
 	for i := 0; i < t; i++ {
-		n := rand.Intn(5) + 1
+		n := rng.Intn(8) + 1
 		maxEdges := n * (n - 1) / 2
-		m := rand.Intn(maxEdges + 1)
-		if m > 5 {
-			m = 5
+		m := rng.Intn(maxEdges + 1)
+		if m > 8 {
+			m = 8
 		}
 		sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
 		used := make(map[[2]int]bool)
 		for j := 0; j < m; j++ {
 			var x, y int
 			for {
-				x = rand.Intn(n-1) + 1
-				y = rand.Intn(n-x) + x + 1
+				x = rng.Intn(n-1) + 1
+				y = rng.Intn(n-x) + x + 1
 				if !used[[2]int{x, y}] {
 					used[[2]int{x, y}] = true
 					break
@@ -48,46 +38,130 @@ func genTest() []byte {
 			sb.WriteString(fmt.Sprintf("%d %d\n", x, y))
 		}
 	}
-	return []byte(sb.String())
+	return sb.String()
+}
+
+type testCase struct {
+	n, m  int
+	edges [][2]int
+}
+
+func parseInput(input string) []testCase {
+	sc := bufio.NewScanner(strings.NewReader(input))
+	sc.Split(bufio.ScanWords)
+	next := func() int {
+		sc.Scan()
+		v, _ := strconv.Atoi(sc.Text())
+		return v
+	}
+	t := next()
+	cases := make([]testCase, t)
+	for i := 0; i < t; i++ {
+		n := next()
+		m := next()
+		edges := make([][2]int, m)
+		for j := 0; j < m; j++ {
+			edges[j] = [2]int{next(), next()}
+		}
+		cases[i] = testCase{n, m, edges}
+	}
+	return cases
+}
+
+func verify(tc testCase, output string) error {
+	sc := bufio.NewScanner(strings.NewReader(output))
+	sc.Split(bufio.ScanWords)
+	next := func() (int, bool) {
+		if !sc.Scan() {
+			return 0, false
+		}
+		v, err := strconv.Atoi(sc.Text())
+		if err != nil {
+			return 0, false
+		}
+		return v, true
+	}
+
+	k, ok := next()
+	if !ok {
+		return fmt.Errorf("missing k")
+	}
+	if 7*k > 4*tc.n {
+		return fmt.Errorf("too many closed: %d (limit %d*4/7)", k, tc.n)
+	}
+
+	closed := make(map[int]bool)
+	for i := 0; i < k; i++ {
+		v, ok := next()
+		if !ok {
+			return fmt.Errorf("expected %d closed spots, got %d", k, i)
+		}
+		if v < 1 || v > tc.n {
+			return fmt.Errorf("spot %d out of range [1,%d]", v, tc.n)
+		}
+		if closed[v] {
+			return fmt.Errorf("duplicate spot %d", v)
+		}
+		closed[v] = true
+	}
+
+	hasIn := make([]bool, tc.n+1)
+	hasOut := make([]bool, tc.n+1)
+	for _, e := range tc.edges {
+		u, v := e[0], e[1]
+		if closed[u] || closed[v] {
+			continue
+		}
+		hasOut[u] = true
+		hasIn[v] = true
+	}
+	for v := 1; v <= tc.n; v++ {
+		if !closed[v] && hasIn[v] && hasOut[v] {
+			return fmt.Errorf("remaining vertex %d has both incoming and outgoing edges (path of length >=2 exists)", v)
+		}
+	}
+	return nil
 }
 
 func main() {
-	var cand string
-	if len(os.Args) == 2 {
-		cand = os.Args[1]
-	} else if len(os.Args) == 3 && os.Args[1] == "--" {
-		cand = os.Args[2]
-	} else {
+	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierE.go /path/to/binary")
-		return
+		os.Exit(1)
 	}
-	ref := "./refE.bin"
-	if err := exec.Command("go", "build", "-o", ref, "1368E.go").Run(); err != nil {
-		fmt.Println("failed to build reference solution:", err)
-		return
-	}
-	defer os.Remove(ref)
-	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < 100; i++ {
-		input := genTest()
-		want, err := runCmd(ref, input)
-		if err != nil {
-			fmt.Println("reference failed:", err)
+	bin := os.Args[1]
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < 200; i++ {
+		input := genTest(rng)
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(input)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\nstderr: %s\ninput:\n%s", i+1, err, stderr.String(), input)
 			os.Exit(1)
 		}
-		got, err := runCmd(cand, input)
-		if err != nil {
-			fmt.Printf("candidate runtime error on test %d: %v\n", i+1, err)
-			fmt.Println("input:\n", string(input))
-			os.Exit(1)
-		}
-		if strings.TrimSpace(want) != strings.TrimSpace(got) {
-			fmt.Printf("wrong answer on test %d\n", i+1)
-			fmt.Println("input:\n", string(input))
-			fmt.Println("expected:\n", want)
-			fmt.Println("got:\n", got)
-			os.Exit(1)
+
+		cases := parseInput(input)
+		sc := bufio.NewScanner(strings.NewReader(stdout.String()))
+		for ci, tc := range cases {
+			var lines []string
+			// Read k line
+			if !sc.Scan() {
+				fmt.Fprintf(os.Stderr, "case %d subcase %d: missing output\ninput:\n%s", i+1, ci+1, input)
+				os.Exit(1)
+			}
+			lines = append(lines, sc.Text())
+			// Read closed spots line
+			if sc.Scan() {
+				lines = append(lines, sc.Text())
+			}
+			caseOutput := strings.Join(lines, " ")
+			if err := verify(tc, caseOutput); err != nil {
+				fmt.Fprintf(os.Stderr, "case %d subcase %d: %v\ninput:\n%sgot:\n%s\n", i+1, ci+1, err, input, stdout.String())
+				os.Exit(1)
+			}
 		}
 	}
-	fmt.Println("All tests passed.")
+	fmt.Println("All tests passed")
 }
