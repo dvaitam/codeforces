@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -16,18 +17,17 @@ type testCase struct {
 }
 
 func runBinary(path, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	} else {
-		cmd = exec.Command(path)
-	}
+	cmd := exec.Command(path)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
+	var stderr bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &stderr
 	err := cmd.Run()
-	return out.String(), err
+	if err != nil {
+		return out.String(), fmt.Errorf("%v\n%s", err, stderr.String())
+	}
+	return out.String(), nil
 }
 
 func randWord(rng *rand.Rand, length int) string {
@@ -129,12 +129,45 @@ func validateOutput(tc testCase, out string) error {
 	return nil
 }
 
+func buildIfGo(path string) (string, func(), error) {
+	if strings.HasSuffix(path, ".go") {
+		pattern := "solbin*"
+		if runtime.GOOS == "windows" {
+			pattern = "solbin*.exe"
+		}
+		tmp, err := os.CreateTemp("", pattern)
+		if err != nil {
+			return "", nil, err
+		}
+		tmp.Close()
+		if out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput(); err != nil {
+			_ = os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
+		}
+		return tmp.Name(), func() { _ = os.Remove(tmp.Name()) }, nil
+	}
+	return path, func() {}, nil
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
-	candidate := os.Args[1]
+	argIdx := 1
+	if os.Args[1] == "--" {
+		argIdx = 2
+	}
+	if len(os.Args) <= argIdx {
+		fmt.Println("usage: go run verifierB.go /path/to/binary")
+		os.Exit(1)
+	}
+	candidate, cleanup, err := buildIfGo(os.Args[argIdx])
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
+	defer cleanup()
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	for i := 0; i < 100; i++ {
