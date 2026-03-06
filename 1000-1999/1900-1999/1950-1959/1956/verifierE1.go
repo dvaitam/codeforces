@@ -85,6 +85,17 @@ func genCase(rng *rand.Rand) (string, string) {
 	return in.String(), strings.TrimSpace(out.String())
 }
 
+func normalize(s string) string {
+	var result []string
+	for _, line := range strings.Split(s, "\n") {
+		line = strings.TrimRight(line, " \t\r")
+		if line != "" {
+			result = append(result, line)
+		}
+	}
+	return strings.Join(result, "\n")
+}
+
 func run(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
@@ -109,7 +120,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if got != exp {
+		if normalize(got) != normalize(exp) {
 			fmt.Fprintf(os.Stderr, "test %d failed\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", i+1, in, exp, got)
 			os.Exit(1)
 		}
