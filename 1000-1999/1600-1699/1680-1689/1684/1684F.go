@@ -41,11 +41,11 @@ func main() {
 		}
 		pairs := make([]Pair, 0)
 		for _, v := range pos {
-			for j := 0; j+1 < len(v); j++ {
-				x := v[j]
-				y := v[j+1]
-				if mx[x] >= y {
-					pairs = append(pairs, Pair{x, y})
+			for i := 0; i < len(v); i++ {
+				for j := i + 1; j < len(v); j++ {
+					if mx[v[i]] >= v[j] {
+						pairs = append(pairs, Pair{v[i], v[j]})
+					}
 				}
 			}
 		}
