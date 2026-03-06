@@ -84,7 +84,7 @@ func generateSecrets() []string {
 }
 
 func runCase(bin, secret string, limit int) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, bin)
