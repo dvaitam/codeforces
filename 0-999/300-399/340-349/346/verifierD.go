@@ -47,103 +47,61 @@ func (pq *PQ) Pop() interface{} {
 }
 
 func expectedOrders(n int, edges [][2]int, s, t int) int {
-	fwd := make([][]int, n+1)
-	rev := make([][]int, n+1)
-	for _, e := range edges {
-		u, v := e[0], e[1]
-		fwd[u] = append(fwd[u], v)
-		rev[v] = append(rev[v], u)
-	}
-	reachS := make([]bool, n+1)
-	q := []int{s}
-	reachS[s] = true
-	for qi := 0; qi < len(q); qi++ {
-		u := q[qi]
-		for _, v := range fwd[u] {
-			if !reachS[v] {
-				reachS[v] = true
-				q = append(q, v)
-			}
-		}
-	}
-	reachT := make([]bool, n+1)
-	q = []int{t}
-	reachT[t] = true
-	for qi := 0; qi < len(q); qi++ {
-		u := q[qi]
-		for _, v := range rev[u] {
-			if !reachT[v] {
-				reachT[v] = true
-				q = append(q, v)
-			}
-		}
-	}
-	if !reachS[t] {
-		return -1
-	}
-	good := make([]bool, n+1)
-	for i := 1; i <= n; i++ {
-		good[i] = reachS[i] && reachT[i]
-	}
-	deg := make([]int, n+1)
-	revGood := make([][]int, n+1)
-	for u := 1; u <= n; u++ {
-		if !good[u] {
-			continue
-		}
-		for _, v := range fwd[u] {
-			if good[v] {
-				deg[u]++
-				revGood[v] = append(revGood[v], u)
-			}
-		}
+	if s == t {
+		return 0
 	}
 
-	f := make([]int, n+1)
-	minF := make([]int, n+1)
-	maxF := make([]int, n+1)
-	cnt := make([]int, n+1)
-	for i := 1; i <= n; i++ {
-		f[i] = INF
-		minF[i] = INF
+	revAdj := make([][]int, n+1)
+	outDeg := make([]int, n+1)
+	for _, e := range edges {
+		u, v := e[0], e[1]
+		revAdj[v] = append(revAdj[v], u)
+		outDeg[u]++
 	}
-	f[t] = 0
+
+	dist := make([]int, n+1)
+	processedCount := make([]int, n+1)
+	for i := range dist {
+		dist[i] = INF
+	}
+	dist[t] = 0
 	pq := &PQ{}
 	heap.Init(pq)
 	heap.Push(pq, Item{v: t, f: 0})
 	for pq.Len() > 0 {
 		it := heap.Pop(pq).(Item)
-		v := it.v
-		fv := it.f
-		if fv != f[v] {
+		u := it.v
+		d := it.f
+		if d > dist[u] {
 			continue
 		}
-		for _, u := range revGood[v] {
-			cnt[u]++
-			if fv < minF[u] {
-				minF[u] = fv
+		if u == s {
+			return dist[s]
+		}
+		for _, v := range revAdj[u] {
+			processedCount[v]++
+
+			// Strategy 1: give order at v to go to u (best settled neighbor)
+			costOrder := d + 1
+			if costOrder < dist[v] {
+				dist[v] = costOrder
+				heap.Push(pq, Item{v: v, f: costOrder})
 			}
-			if fv > maxF[u] {
-				maxF[u] = fv
-			}
-			if cnt[u] == deg[u] {
-				noOrder := maxF[u]
-				order := minF[u] + 1
-				cand := noOrder
-				if order < cand {
-					cand = order
-				}
-				if cand < f[u] {
-					f[u] = cand
-					heap.Push(pq, Item{v: u, f: cand})
+
+			// Strategy 2: don't give order (only when ALL out-neighbors settled)
+			// Since we process in increasing cost order, d is the max among settled neighbors
+			if processedCount[v] == outDeg[v] {
+				if d < dist[v] {
+					dist[v] = d
+					heap.Push(pq, Item{v: v, f: d})
 				}
 			}
 		}
 	}
-	if f[s] >= INF {
+	if dist[s] >= INF {
 		return -1
 	}
-	return f[s]
+	return dist[s]
 }
 
 func generateCase(rng *rand.Rand) string {
