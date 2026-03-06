@@ -18,14 +18,14 @@ func main() {
 		fmt.Fscan(in, &n, &m, &l)
 
 		totalSum := int64(0)
-		minOdd := -1
+		minOdd := int64(-1)
 		for i := 0; i < l; i++ {
 			var x int
 			fmt.Fscan(in, &x)
 			totalSum += int64(x)
 			if x%2 == 1 {
-				if minOdd == -1 || x < minOdd {
-					minOdd = x
+				if minOdd == -1 || int64(x) < minOdd {
+					minOdd = int64(x)
 				}
 			}
 		}
@@ -40,73 +40,46 @@ func main() {
 			adj[v] = append(adj[v], u)
 		}
 
-		dist := make([]int, n)
+		const INF = int64(1e18)
+		dist := make([][2]int64, n)
 		for i := range dist {
-			dist[i] = -1
+			dist[i] = [2]int64{INF, INF}
 		}
-		color := make([]int8, n)
-		for i := range color {
-			color[i] = -1
-		}
+		dist[0][0] = 0
 
-		queue := make([]int, 0, n)
-		dist[0] = 0
-		color[0] = 0
-		queue = append(queue, 0)
-		isBipartite := true
+		type state struct {
+			v, p int
+		}
+		queue := []state{{0, 0}}
 		for head := 0; head < len(queue); head++ {
-			v := queue[head]
-			for _, to := range adj[v] {
-				if dist[to] == -1 {
-					dist[to] = dist[v] + 1
-					color[to] = 1 - color[v]
-					queue = append(queue, to)
-				} else if color[to] == color[v] {
-					isBipartite = false
+			s := queue[head]
+			c := dist[s.v][s.p]
+			np := 1 - s.p
+			for _, to := range adj[s.v] {
+				if dist[to][np] <= c+1 {
+					continue
 				}
-			}
-		}
-
-		maxEven, maxOdd := int64(-1), int64(-1)
-		if isBipartite {
-			if totalSum%2 == 0 {
-				maxEven = totalSum
-				if minOdd != -1 {
-					maxOdd = totalSum - int64(minOdd)
-				}
-			} else {
-				maxOdd = totalSum
-				if minOdd != -1 {
-					maxEven = totalSum - int64(minOdd)
-				}
+				dist[to][np] = c + 1
+				queue = append(queue, state{to, np})
 			}
 		}
 
 		ans := make([]byte, n)
 		for i := 0; i < n; i++ {
-			d := int64(dist[i])
 			reachable := false
-			if dist[i] == -1 {
-				reachable = false
-			} else if i == 0 {
+			sp := int(totalSum % 2)
+			if dist[i][sp] <= totalSum {
 				reachable = true
-			} else if !isBipartite {
-				reachable = d <= totalSum
-			} else {
-				if d%2 == 0 {
-					reachable = maxEven >= d && maxEven != -1
-				} else {
-					reachable = maxOdd >= d && maxOdd != -1
-				}
 			}
-
+			if minOdd != -1 && dist[i][1-sp] <= totalSum-minOdd {
+				reachable = true
+			}
 			if reachable {
 				ans[i] = '1'
 			} else {
 				ans[i] = '0'
 			}
 		}
-
 		fmt.Fprintln(out, string(ans))
 	}
 }

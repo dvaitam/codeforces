@@ -3,20 +3,83 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math/bits"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+func countDivisors(x int) int {
+	count := 1
+	for p := 2; p*p <= x; p++ {
+		if x%p == 0 {
+			e := 0
+			for x%p == 0 {
+				x /= p
+				e++
+			}
+			count *= (e + 1)
+		}
 	}
+	if x > 1 {
+		count *= 2
+	}
+	return count
+}
+
+var validNums []int
+
+func initValid() {
+	for x := 1; x <= 1000; x++ {
+		if countDivisors(x) <= 7 {
+			validNums = append(validNums, x)
+		}
+	}
+}
+
+func bruteForce(arr []int) int {
+	n := len(arr)
+	best := -1
+	for mask := 1; mask < (1 << n); mask++ {
+		cnt := bits.OnesCount(uint(mask))
+		if best != -1 && cnt >= best {
+			continue
+		}
+		exponents := make(map[int]int)
+		for i := 0; i < n; i++ {
+			if mask&(1<<i) == 0 {
+				continue
+			}
+			x := arr[i]
+			for p := 2; p*p <= x; p++ {
+				for x%p == 0 {
+					exponents[p]++
+					x /= p
+				}
+			}
+			if x > 1 {
+				exponents[x]++
+			}
+		}
+		perfect := true
+		for _, e := range exponents {
+			if e%2 != 0 {
+				perfect = false
+				break
+			}
+		}
+		if perfect {
+			best = cnt
+		}
+	}
+	return best
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
@@ -28,47 +91,38 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func verifyCase(bin string, arr []int) error {
-	n := len(arr)
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d\n", n))
-	for i, v := range arr {
-		if i > 0 {
-			sb.WriteByte(' ')
-		}
-		sb.WriteString(fmt.Sprintf("%d", v))
-	}
-	sb.WriteByte('\n')
-	input := sb.String()
-	expected, err := run("1325E.go", input)
-	if err != nil {
-		return fmt.Errorf("reference failed: %v", err)
-	}
-	got, err := run(bin, input)
-	if err != nil {
-		return err
-	}
-	if strings.TrimSpace(got) != strings.TrimSpace(expected) {
-		return fmt.Errorf("expected %s got %s", expected, got)
-	}
-	return nil
-}
-
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierE.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+	initValid()
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 200; i++ {
 		n := rng.Intn(10) + 1
 		arr := make([]int, n)
 		for j := range arr {
-			arr[j] = rng.Intn(1000) + 1
+			arr[j] = validNums[rng.Intn(len(validNums))]
 		}
-		if err := verifyCase(bin, arr); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("%d\n", n))
+		for j, v := range arr {
+			if j > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(fmt.Sprintf("%d", v))
+		}
+		sb.WriteByte('\n')
+		input := sb.String()
+		expected := strconv.Itoa(bruteForce(arr))
+		got, err := run(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
+			os.Exit(1)
+		}
+		if got != expected {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, expected, got, input)
 			os.Exit(1)
 		}
 	}
