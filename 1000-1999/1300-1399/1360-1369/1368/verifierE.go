@@ -12,97 +12,86 @@ import (
 	"time"
 )
 
-func genTest(rng *rand.Rand) string {
-	t := rng.Intn(3) + 1
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d\n", t))
-	for i := 0; i < t; i++ {
-		n := rng.Intn(8) + 1
-		maxEdges := n * (n - 1) / 2
-		m := rng.Intn(maxEdges + 1)
-		if m > 8 {
-			m = 8
-		}
-		sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
-		used := make(map[[2]int]bool)
-		for j := 0; j < m; j++ {
-			var x, y int
-			for {
-				x = rng.Intn(n-1) + 1
-				y = rng.Intn(n-x) + x + 1
-				if !used[[2]int{x, y}] {
-					used[[2]int{x, y}] = true
-					break
-				}
-			}
-			sb.WriteString(fmt.Sprintf("%d %d\n", x, y))
-		}
-	}
-	return sb.String()
-}
-
 type testCase struct {
 	n, m  int
 	edges [][2]int
 }
 
-func parseInput(input string) []testCase {
-	sc := bufio.NewScanner(strings.NewReader(input))
-	sc.Split(bufio.ScanWords)
-	next := func() int {
-		sc.Scan()
-		v, _ := strconv.Atoi(sc.Text())
-		return v
-	}
-	t := next()
+func genTests(rng *rand.Rand) (string, []testCase) {
+	t := rng.Intn(3) + 1
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d\n", t))
 	cases := make([]testCase, t)
-	for i := 0; i < t; i++ {
-		n := next()
-		m := next()
-		edges := make([][2]int, m)
-		for j := 0; j < m; j++ {
-			edges[j] = [2]int{next(), next()}
+	for ci := 0; ci < t; ci++ {
+		n := rng.Intn(8) + 2
+		outDeg := make([]int, n+1)
+		var edges [][2]int
+		maxAttempts := n * n
+		for a := 0; a < maxAttempts && len(edges) < 2*n; a++ {
+			x := rng.Intn(n-1) + 1
+			y := rng.Intn(n-x) + x + 1
+			if outDeg[x] >= 2 {
+				continue
+			}
+			dup := false
+			for _, e := range edges {
+				if e[0] == x && e[1] == y {
+					dup = true
+					break
+				}
+			}
+			if dup {
+				continue
+			}
+			outDeg[x]++
+			edges = append(edges, [2]int{x, y})
 		}
-		cases[i] = testCase{n, m, edges}
+		m := len(edges)
+		sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
+		for _, e := range edges {
+			sb.WriteString(fmt.Sprintf("%d %d\n", e[0], e[1]))
+		}
+		cases[ci] = testCase{n, m, edges}
 	}
-	return cases
+	return sb.String(), cases
 }
 
-func verify(tc testCase, output string) error {
-	sc := bufio.NewScanner(strings.NewReader(output))
-	sc.Split(bufio.ScanWords)
-	next := func() (int, bool) {
-		if !sc.Scan() {
-			return 0, false
-		}
-		v, err := strconv.Atoi(sc.Text())
-		if err != nil {
-			return 0, false
-		}
-		return v, true
+func verify(tc testCase, scanner *bufio.Scanner) error {
+	if !scanner.Scan() {
+		return fmt.Errorf("missing k line")
 	}
-
-	k, ok := next()
-	if !ok {
-		return fmt.Errorf("missing k")
+	k, err := strconv.Atoi(strings.TrimSpace(scanner.Text()))
+	if err != nil {
+		return fmt.Errorf("bad k: %v", err)
 	}
 	if 7*k > 4*tc.n {
-		return fmt.Errorf("too many closed: %d (limit %d*4/7)", k, tc.n)
+		return fmt.Errorf("too many closed: %d (need 7*k <= 4*%d = %d)", k, tc.n, 4*tc.n)
 	}
 
 	closed := make(map[int]bool)
-	for i := 0; i < k; i++ {
-		v, ok := next()
-		if !ok {
-			return fmt.Errorf("expected %d closed spots, got %d", k, i)
+	if k > 0 {
+		if !scanner.Scan() {
+			return fmt.Errorf("missing closed spots line")
 		}
-		if v < 1 || v > tc.n {
-			return fmt.Errorf("spot %d out of range [1,%d]", v, tc.n)
+		parts := strings.Fields(scanner.Text())
+		if len(parts) != k {
+			return fmt.Errorf("expected %d spots, got %d tokens", k, len(parts))
 		}
-		if closed[v] {
-			return fmt.Errorf("duplicate spot %d", v)
+		for _, p := range parts {
+			v, err := strconv.Atoi(p)
+			if err != nil {
+				return fmt.Errorf("bad spot: %v", err)
+			}
+			if v < 1 || v > tc.n {
+				return fmt.Errorf("spot %d out of range [1,%d]", v, tc.n)
+			}
+			if closed[v] {
+				return fmt.Errorf("duplicate spot %d", v)
+			}
+			closed[v] = true
 		}
-		closed[v] = true
+	} else {
+		scanner.Scan()
 	}
 
 	hasIn := make([]bool, tc.n+1)
@@ -117,7 +106,7 @@ func verify(tc testCase, output string) error {
 	}
 	for v := 1; v <= tc.n; v++ {
 		if !closed[v] && hasIn[v] && hasOut[v] {
-			return fmt.Errorf("remaining vertex %d has both incoming and outgoing edges (path of length >=2 exists)", v)
+			return fmt.Errorf("vertex %d has both in and out edges — path of length >=2 exists", v)
 		}
 	}
 	return nil
@@ -131,7 +120,7 @@ func main() {
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 200; i++ {
-		input := genTest(rng)
+		input, cases := genTests(rng)
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(input)
 		var stdout, stderr bytes.Buffer
@@ -141,23 +130,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\nstderr: %s\ninput:\n%s", i+1, err, stderr.String(), input)
 			os.Exit(1)
 		}
-
-		cases := parseInput(input)
 		sc := bufio.NewScanner(strings.NewReader(stdout.String()))
 		for ci, tc := range cases {
-			var lines []string
-			// Read k line
-			if !sc.Scan() {
-				fmt.Fprintf(os.Stderr, "case %d subcase %d: missing output\ninput:\n%s", i+1, ci+1, input)
-				os.Exit(1)
-			}
-			lines = append(lines, sc.Text())
-			// Read closed spots line
-			if sc.Scan() {
-				lines = append(lines, sc.Text())
-			}
-			caseOutput := strings.Join(lines, " ")
-			if err := verify(tc, caseOutput); err != nil {
+			if err := verify(tc, sc); err != nil {
 				fmt.Fprintf(os.Stderr, "case %d subcase %d: %v\ninput:\n%sgot:\n%s\n", i+1, ci+1, err, input, stdout.String())
 				os.Exit(1)
 			}
