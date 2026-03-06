@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -99,26 +101,35 @@ func runCase(bin, secret string, limit int) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+	cleanup := func() {
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+		_ = cmd.Wait()
+	}
 	reader := bufio.NewReader(stdout)
 	queries := 0
 	for {
-		line, err := reader.ReadString('\n')
+		var guess string
+		_, err = fmt.Fscan(reader, &guess)
 		if err != nil {
 			if ctx.Err() == context.DeadlineExceeded {
 				return fmt.Errorf("time limit")
 			}
+			if errors.Is(err, io.EOF) {
+				cleanup()
+				return fmt.Errorf("program terminated before guessing secret stderr:%s", stderr.String())
+			}
+			cleanup()
 			return fmt.Errorf("read error: %v stderr:%s", err, stderr.String())
 		}
-		line = strings.TrimSpace(line)
-		if len(line) == 0 {
-			continue
-		}
-		guess := line
 		if len(guess) != 4 {
+			cleanup()
 			return fmt.Errorf("invalid guess %q", guess)
 		}
 		for i := 0; i < 4; i++ {
 			if guess[i] < '0' || guess[i] > '9' {
+				cleanup()
 				return fmt.Errorf("invalid guess %q", guess)
 			}
 		}
@@ -137,6 +148,7 @@ func runCase(bin, secret string, limit int) error {
 			return nil
 		}
 		if queries >= limit {
+			cleanup()
 			return fmt.Errorf("too many queries: %d", queries)
 		}
 	}
@@ -144,7 +156,7 @@ func runCase(bin, secret string, limit int) error {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierB.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin, cleanup, err := buildIfGo(os.Args[1])
@@ -156,7 +168,9 @@ func main() {
 	secrets := generateSecrets()
 	for i, s := range secrets {
 		if err := runCase(bin, s, 50); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v (secret %s)\n", i+1, err, s)
+			msg := fmt.Sprintf("case %d failed: %v (secret %s)", i+1, err, s)
+			fmt.Fprintln(os.Stderr, msg)
+			fmt.Println(msg)
 			os.Exit(1)
 		}
 	}
