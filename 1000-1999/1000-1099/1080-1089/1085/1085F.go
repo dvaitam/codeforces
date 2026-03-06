@@ -91,49 +91,53 @@ func main() {
        bits[t].Add(i, 1)
        cnt[t]++
    }
-   // function to compute answer
-   calc := func() int {
-       res := 0
-       for t := 0; t < 3; t++ {
-           if cnt[lose[t]] == 0 {
-               res += cnt[t]
-           } else if cnt[win[t]] == 0 {
-               // none
-           } else {
-               // both exist
-               // lose positions
-               l1 := bits[lose[t]].Kth(1)
-               l2 := bits[lose[t]].Kth(cnt[lose[t]])
-               w1 := bits[win[t]].Kth(1)
-               w2 := bits[win[t]].Kth(cnt[win[t]])
-               lo := min(l1, w1)
-               hi := max(l2, w2)
-               before := bits[t].Sum(lo - 1)
-               after := bits[t].Sum(n) - bits[t].Sum(hi)
-               res += before + after
-           }
-       }
-       return res
-   }
+	// function to compute answer
+	calc := func() int {
+		res := 0
+		for t := 0; t < 3; t++ {
+			y := lose[t] // type that beats t (nemesis)
+			z := win[t]  // type that t beats (helper that also beats y)
+			if cnt[y] == 0 {
+				res += cnt[t]
+			} else if cnt[z] == 0 {
+				// no helper to eliminate nemesis
+			} else {
+				total := bits[t].Sum(n)
+				fy := bits[y].Kth(1)
+				fz := bits[z].Kth(1)
+				if fz > fy {
+					total -= bits[t].Sum(fz) - bits[t].Sum(fy)
+				}
+				ly := bits[y].Kth(cnt[y])
+				lz := bits[z].Kth(cnt[z])
+				if ly > lz {
+					total -= bits[t].Sum(ly) - bits[t].Sum(lz)
+				}
+				res += total
+			}
+		}
+		return res
+	}
    // initial
    fmt.Fprintln(out, calc())
-   for i := 0; i < q; i++ {
-       var p int
-       var c byte
-       fmt.Fscan(in, &p, &c)
-       old := idx[sbytes[p]]
-       if byte(c) == sbytes[p] {
-           fmt.Fprintln(out, calc())
-           continue
-       }
-       // remove old
-       bits[old].Add(p, -1)
-       cnt[old]--
-       // add new
-       sbytes[p] = c
-       t := idx[c]
-       bits[t].Add(p, 1)
-       cnt[t]++
-       fmt.Fprintln(out, calc())
-   }
+	for i := 0; i < q; i++ {
+		var p int
+		var ch string
+		fmt.Fscan(in, &p, &ch)
+		c := ch[0]
+		old := idx[sbytes[p]]
+		if c == sbytes[p] {
+			fmt.Fprintln(out, calc())
+			continue
+		}
+		// remove old
+		bits[old].Add(p, -1)
+		cnt[old]--
+		// add new
+		sbytes[p] = c
+		t := idx[c]
+		bits[t].Add(p, 1)
+		cnt[t]++
+		fmt.Fprintln(out, calc())
+	}
 }

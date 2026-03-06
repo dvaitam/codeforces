@@ -6,20 +6,50 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func buildRef() (string, error) {
-	ref := "refE.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "321E.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, string(out))
+func solveCase(n, k int, u [][]int) int {
+	cost := make([][]int, n)
+	for i := range cost {
+		cost[i] = make([]int, n)
 	}
-	return ref, nil
+	for l := 0; l < n; l++ {
+		s := 0
+		for r := l; r < n; r++ {
+			for i := l; i < r; i++ {
+				s += u[i][r]
+			}
+			cost[l][r] = s
+		}
+	}
+
+	const INF = 1 << 60
+	prev := make([]int, n)
+	for i := 0; i < n; i++ {
+		prev[i] = cost[0][i]
+	}
+	curr := make([]int, n)
+	for j := 1; j < k; j++ {
+		for i := 0; i < n; i++ {
+			curr[i] = INF
+		}
+		for i := j; i < n; i++ {
+			for p := j - 1; p < i; p++ {
+				val := prev[p] + cost[p+1][i]
+				if val < curr[i] {
+					curr[i] = val
+				}
+			}
+		}
+		copy(prev, curr)
+	}
+	return prev[n-1]
 }
 
-func generateCase(rng *rand.Rand) string {
+func generateCase(rng *rand.Rand) (string, string) {
 	n := rng.Intn(5) + 2
 	k := rng.Intn(n) + 1
 	if k > 4 {
@@ -27,38 +57,27 @@ func generateCase(rng *rand.Rand) string {
 	}
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d %d\n", n, k))
-	mat := make([][]int, n)
+	u := make([][]int, n)
 	for i := 0; i < n; i++ {
-		mat[i] = make([]int, n)
+		u[i] = make([]int, n)
 		for j := 0; j < n; j++ {
 			if j < i {
-				mat[i][j] = mat[j][i]
-			} else if j == i {
-				mat[i][j] = 0
-			} else {
-				mat[i][j] = rng.Intn(10)
+				u[i][j] = u[j][i]
+			} else if j > i {
+				u[i][j] = rng.Intn(10)
 			}
-			sb.WriteString(fmt.Sprintf("%d", mat[i][j]))
+			sb.WriteString(fmt.Sprintf("%d", u[i][j]))
 			if j+1 < n {
 				sb.WriteByte(' ')
 			}
 		}
 		sb.WriteByte('\n')
 	}
-	return sb.String()
+	expected := strconv.Itoa(solveCase(n, k, u))
+	return sb.String(), expected
 }
 
-func runCase(exe, ref, input string) error {
-	cmdRef := exec.Command(ref)
-	cmdRef.Stdin = strings.NewReader(input)
-	var refOut bytes.Buffer
-	cmdRef.Stdout = &refOut
-	cmdRef.Stderr = &refOut
-	if err := cmdRef.Run(); err != nil {
-		return fmt.Errorf("reference runtime error: %v\n%s", err, refOut.String())
-	}
-	expected := strings.TrimSpace(refOut.String())
-
+func run(exe, input string) (string, error) {
 	cmd := exec.Command(exe)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
@@ -66,13 +85,9 @@ func runCase(exe, ref, input string) error {
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\nstderr: %s", err, stderr.String())
+		return "", fmt.Errorf("runtime error: %v\nstderr: %s", err, stderr.String())
 	}
-	got := strings.TrimSpace(out.String())
-	if got != expected {
-		return fmt.Errorf("expected %q got %q", expected, got)
-	}
-	return nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
@@ -81,17 +96,16 @@ func main() {
 		os.Exit(1)
 	}
 	exe := os.Args[1]
-	ref, err := buildRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		in := generateCase(rng)
-		if err := runCase(exe, ref, in); err != nil {
+		in, expected := generateCase(rng)
+		got, err := run(exe, in)
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
+			os.Exit(1)
+		}
+		if got != expected {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %q got %q\ninput:\n%s", i+1, expected, got, in)
 			os.Exit(1)
 		}
 	}
