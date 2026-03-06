@@ -28,7 +28,81 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-const reference = "541A.go"
+// bruteForce computes the optimal efficiency and returns it.
+func bruteForce(vids [][2]int, chans []struct{ a, b, c int }) int64 {
+	var best int64
+	for _, v := range vids {
+		for _, ch := range chans {
+			lo := v[0]
+			if ch.a > lo {
+				lo = ch.a
+			}
+			hi := v[1]
+			if ch.b < hi {
+				hi = ch.b
+			}
+			if hi > lo {
+				eff := int64(hi-lo) * int64(ch.c)
+				if eff > best {
+					best = eff
+				}
+			}
+		}
+	}
+	return best
+}
+
+func verify(expEff int64, got string, vids [][2]int, chans []struct{ a, b, c int }) error {
+	gotLines := strings.Fields(got)
+	if len(gotLines) == 0 {
+		return fmt.Errorf("empty output")
+	}
+	var gotEff int64
+	if _, err := fmt.Sscan(gotLines[0], &gotEff); err != nil {
+		return fmt.Errorf("cannot parse efficiency: %v", err)
+	}
+	if gotEff != expEff {
+		return fmt.Errorf("expected %d got %d", expEff, gotEff)
+	}
+	if gotEff == 0 {
+		return nil
+	}
+	// Verify the claimed (vi, cj) actually achieves gotEff
+	if len(gotLines) < 3 {
+		return fmt.Errorf("missing video/channel line")
+	}
+	var vi, cj int
+	if _, err := fmt.Sscan(gotLines[1], &vi); err != nil {
+		return fmt.Errorf("cannot parse video index: %v", err)
+	}
+	if _, err := fmt.Sscan(gotLines[2], &cj); err != nil {
+		return fmt.Errorf("cannot parse channel index: %v", err)
+	}
+	if vi < 1 || vi > len(vids) {
+		return fmt.Errorf("video index %d out of range", vi)
+	}
+	if cj < 1 || cj > len(chans) {
+		return fmt.Errorf("channel index %d out of range", cj)
+	}
+	v := vids[vi-1]
+	ch := chans[cj-1]
+	lo := v[0]
+	if ch.a > lo {
+		lo = ch.a
+	}
+	hi := v[1]
+	if ch.b < hi {
+		hi = ch.b
+	}
+	if hi <= lo {
+		return fmt.Errorf("video %d and channel %d do not intersect", vi, cj)
+	}
+	actual := int64(hi-lo) * int64(ch.c)
+	if actual != gotEff {
+		return fmt.Errorf("claimed efficiency %d but pair (%d,%d) achieves %d", gotEff, vi, cj, actual)
+	}
+	return nil
+}
 
 func main() {
 	if len(os.Args) != 2 {
@@ -62,18 +136,14 @@ func main() {
 			sb.WriteString(fmt.Sprintf("%d %d %d\n", chans[j].a, chans[j].b, chans[j].c))
 		}
 		input := sb.String()
-		exp, err := run(reference, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
-			os.Exit(1)
-		}
+		expEff := bruteForce(vids, chans)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(exp) {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, exp, got, input)
+		if err := verify(expEff, got, vids, chans); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ngot %s\ninput:\n%s", i+1, err, got, input)
 			os.Exit(1)
 		}
 	}

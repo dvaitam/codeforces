@@ -52,11 +52,26 @@ func run(bin, input string) (string, error) {
 
 func genCase(rng *rand.Rand) (string, string) {
 	letters := []byte{'^', '>', 'v', '<'}
+	pos := map[byte]int{'^': 0, '>': 1, 'v': 2, '<': 3}
 	start := letters[rng.Intn(4)]
-	end := letters[rng.Intn(4)]
 	n := rng.Int63n(1_000_000_000 + 1)
+	s := pos[start]
+	step := int(n % 4)
+	cw := (s + step) % 4
+	ccw := (s - step + 4) % 4
+	var end byte
+	var exp string
+	if cw == ccw {
+		end = letters[cw]
+		exp = "undefined"
+	} else if rng.Intn(2) == 0 {
+		end = letters[cw]
+		exp = "cw"
+	} else {
+		end = letters[ccw]
+		exp = "ccw"
+	}
 	input := fmt.Sprintf("%c %c\n%d\n", start, end, n)
-	exp := expect(start, end, n)
 	return input, exp
 }
 

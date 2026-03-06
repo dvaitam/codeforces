@@ -6,9 +6,6 @@ import (
 	"os"
 )
 
-const MOD = 1024
-const INF int64 = 1 << 60
-
 func main() {
 	in := bufio.NewReader(os.Stdin)
 	out := bufio.NewWriter(os.Stdout)
@@ -20,38 +17,37 @@ func main() {
 		var a, b int
 		var x, y int64
 		fmt.Fscan(in, &a, &b, &x, &y)
-		dist := make([]int64, MOD)
-		inQueue := make([]bool, MOD)
-		for i := 0; i < MOD; i++ {
-			dist[i] = INF
+
+		if a == b {
+			fmt.Fprintln(out, 0)
+			continue
 		}
-		init := a % MOD
-		dist[init] = 0
-		queue := []int{init}
-		inQueue[init] = true
-		head := 0
-		for head < len(queue) {
-			u := queue[head]
-			head++
-			inQueue[u] = false
-			nexts := []int{(u + 1) % MOD, u ^ 1}
-			costs := []int64{x, y}
-			for idx, v := range nexts {
-				cand := dist[u] + costs[idx]
-				if cand < dist[v] {
-					dist[v] = cand
-					if !inQueue[v] {
-						queue = append(queue, v)
-						inQueue[v] = true
-					}
+
+		if a > b {
+			// Can only decrease by 1 via XOR when a is odd (odd XOR 1 = odd-1)
+			if a%2 == 1 && b == a-1 {
+				fmt.Fprintln(out, y)
+			} else {
+				fmt.Fprintln(out, -1)
+			}
+			continue
+		}
+
+		// a < b: move from a up to b
+		// At even k: both +1 and XOR go to k+1, so cost is min(x, y)
+		// At odd k: XOR goes to k-1 (wrong direction), so must use +1, cost x
+		var ans int64
+		for k := a; k < b; k++ {
+			if k%2 == 0 {
+				if x < y {
+					ans += x
+				} else {
+					ans += y
 				}
+			} else {
+				ans += x
 			}
 		}
-		result := dist[b%MOD]
-		if result >= INF/2 {
-			fmt.Fprintln(out, -1)
-		} else {
-			fmt.Fprintln(out, result)
-		}
+		fmt.Fprintln(out, ans)
 	}
 }

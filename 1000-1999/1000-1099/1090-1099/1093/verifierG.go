@@ -26,15 +26,6 @@ func runExe(path, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func buildRef() (string, error) {
-	ref := "refG.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1093G.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build reference failed: %v: %s", err, string(out))
-	}
-	return ref, nil
-}
-
 type query struct {
 	t    int
 	a1   int
@@ -79,18 +70,58 @@ func genCase(r *rand.Rand) caseG {
 	return caseG{n: n, k: k, points: points, q: q, qs: qs}
 }
 
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func manhattan(a, b []int) int {
+	d := 0
+	for i := range a {
+		d += abs(a[i] - b[i])
+	}
+	return d
+}
+
+// bruteExpected simulates the queries and returns expected answers for type-2 queries.
+func bruteExpected(tc caseG) []int {
+	// deep copy points
+	pts := make([][]int, tc.n)
+	for i, p := range tc.points {
+		cp := make([]int, len(p))
+		copy(cp, p)
+		pts[i] = cp
+	}
+	var answers []int
+	for _, q := range tc.qs {
+		if q.t == 1 {
+			cp := make([]int, len(q.vals))
+			copy(cp, q.vals)
+			pts[q.a1-1] = cp
+		} else {
+			l, r := q.a1-1, q.a2-1
+			best := 0
+			for i := l; i <= r; i++ {
+				for j := i + 1; j <= r; j++ {
+					if d := manhattan(pts[i], pts[j]); d > best {
+						best = d
+					}
+				}
+			}
+			answers = append(answers, best)
+		}
+	}
+	return answers
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("Usage: go run verifierG.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	ref, err := buildRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
@@ -121,19 +152,32 @@ func main() {
 			}
 		}
 		input := sb.String()
-		exp, err := runExe(ref, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference runtime error on case %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
+
+		expected := bruteExpected(tc)
+
 		got, err := runExe(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "candidate runtime error on case %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(exp) != strings.TrimSpace(got) {
-			fmt.Fprintf(os.Stderr, "case %d failed\ninput:\n%sexpected:%s\n got:%s\n", i+1, input, exp, got)
+
+		gotLines := strings.Fields(strings.TrimSpace(got))
+		if len(gotLines) != len(expected) {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %d answers, got %d\ninput:\n%s",
+				i+1, len(expected), len(gotLines), input)
 			os.Exit(1)
+		}
+		for j, line := range gotLines {
+			var val int
+			if _, err := fmt.Sscan(line, &val); err != nil || val != expected[j] {
+				expStrs := make([]string, len(expected))
+				for ei, ev := range expected {
+					expStrs[ei] = fmt.Sprintf("%d", ev)
+				}
+				fmt.Fprintf(os.Stderr, "case %d failed\ninput:\n%sexpected: %s\ngot: %s\n",
+					i+1, input, strings.Join(expStrs, " "), got)
+				os.Exit(1)
+			}
 		}
 	}
 	fmt.Println("All tests passed")

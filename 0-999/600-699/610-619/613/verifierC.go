@@ -58,8 +58,40 @@ func genCases() []Case {
 	return cases
 }
 
+func isPalindrome(s string) bool {
+	n := len(s)
+	for i := 0; i < n/2; i++ {
+		if s[i] != s[n-1-i] {
+			return false
+		}
+	}
+	return true
+}
+
+func countCuts(s string) int {
+	n := len(s)
+	count := 0
+	doubled := s + s
+	for k := 0; k < n; k++ {
+		if isPalindrome(doubled[k : k+n]) {
+			count++
+		}
+	}
+	return count
+}
+
+func parseInput(input string) (n int, counts []int) {
+	fields := strings.Fields(input)
+	fmt.Sscan(fields[0], &n)
+	counts = make([]int, n)
+	for i := 0; i < n; i++ {
+		fmt.Sscan(fields[1+i], &counts[i])
+	}
+	return
+}
+
 func runCase(bin, ref string, c Case) error {
-	expected, err := runBinary(ref, c.input)
+	expOut, err := runBinary(ref, c.input)
 	if err != nil {
 		return fmt.Errorf("reference failed: %v", err)
 	}
@@ -67,8 +99,74 @@ func runCase(bin, ref string, c Case) error {
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(expected) != strings.TrimSpace(got) {
-		return fmt.Errorf("expected %s got %s", expected, got)
+
+	// Parse expected cut count (first line of reference)
+	expLines := strings.SplitN(strings.TrimSpace(expOut), "\n", 2)
+	var expCuts int
+	fmt.Sscan(expLines[0], &expCuts)
+
+	// Parse candidate output
+	gotLines := strings.SplitN(strings.TrimSpace(got), "\n", 2)
+	if len(gotLines) == 0 {
+		return fmt.Errorf("empty output")
+	}
+	var gotCuts int
+	if _, err := fmt.Sscan(gotLines[0], &gotCuts); err != nil {
+		return fmt.Errorf("cannot parse cut count: %v", err)
+	}
+	if gotCuts != expCuts {
+		return fmt.Errorf("expected %d cuts got %d", expCuts, gotCuts)
+	}
+	if gotCuts == 0 {
+		// Just need any necklace with correct counts
+		if len(gotLines) < 2 {
+			return fmt.Errorf("missing necklace line")
+		}
+		// verify counts
+		n, counts := parseInput(c.input)
+		necklace := strings.TrimSpace(gotLines[1])
+		got2 := make([]int, n)
+		for _, ch := range necklace {
+			idx := int(ch - 'a')
+			if idx < 0 || idx >= n {
+				return fmt.Errorf("invalid character %c", ch)
+			}
+			got2[idx]++
+		}
+		for i := 0; i < n; i++ {
+			if got2[i] != counts[i] {
+				return fmt.Errorf("wrong bead count for color %c: expected %d got %d", 'a'+i, counts[i], got2[i])
+			}
+		}
+		return nil
+	}
+
+	// Verify candidate necklace
+	if len(gotLines) < 2 {
+		return fmt.Errorf("missing necklace line")
+	}
+	necklace := strings.TrimSpace(gotLines[1])
+	n, counts := parseInput(c.input)
+
+	// Check bead counts
+	got2 := make([]int, n)
+	for _, ch := range necklace {
+		idx := int(ch - 'a')
+		if idx < 0 || idx >= n {
+			return fmt.Errorf("invalid character %c", ch)
+		}
+		got2[idx]++
+	}
+	for i := 0; i < n; i++ {
+		if got2[i] != counts[i] {
+			return fmt.Errorf("wrong bead count for color %c: expected %d got %d", 'a'+i, counts[i], got2[i])
+		}
+	}
+
+	// Check actual cut count
+	actual := countCuts(necklace)
+	if actual != gotCuts {
+		return fmt.Errorf("necklace has %d beautiful cuts but claimed %d", actual, gotCuts)
 	}
 	return nil
 }

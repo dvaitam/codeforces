@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"container/heap"
 	"fmt"
 	"math/rand"
 	"os"
@@ -29,45 +28,34 @@ func runCandidate(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-type MinHeap []int
-
-func (h MinHeap) Len() int            { return len(h) }
-func (h MinHeap) Less(i, j int) bool  { return h[i] < h[j] }
-func (h MinHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
-func (h *MinHeap) Push(x interface{}) { *h = append(*h, x.(int)) }
-func (h *MinHeap) Pop() interface{} {
-	old := *h
-	x := old[len(old)-1]
-	*h = old[:len(old)-1]
-	return x
-}
-
 func solveCase(arr []int) string {
-	h := &MinHeap{}
-	heap.Init(h)
-	posOdd := 0
-	var score int64
-	for i, v := range arr {
-		if i%2 == 0 { // odd index (1-based)
-			if v >= 0 {
-				score += int64(v)
-				posOdd++
-			} else {
-				heap.Push(h, -v)
-			}
-		} else {
-			if v > 0 {
-				if posOdd > 0 {
-					score += int64(v)
-					posOdd--
-				} else if h.Len() > 0 && v > (*h)[0] {
-					score += int64(v - (*h)[0])
-					heap.Pop(h)
-				}
-			}
+	// Key insight: we can score any subset of cards from positions 3..n (1-indexed),
+	// OR score card 1 plus any subset of cards from positions 2..n.
+	// Optimal: take all positive cards in the chosen range.
+	n := len(arr)
+	var sumPos2, sumPos3 int64
+	for i := 1; i < n; i++ {
+		if arr[i] > 0 {
+			sumPos2 += int64(arr[i])
 		}
 	}
-	return fmt.Sprintf("%d", score)
+	for i := 2; i < n; i++ {
+		if arr[i] > 0 {
+			sumPos3 += int64(arr[i])
+		}
+	}
+	var a1 int64
+	if n > 0 {
+		a1 = int64(arr[0])
+	}
+	ans := sumPos3
+	if a1+sumPos2 > ans {
+		ans = a1 + sumPos2
+	}
+	if ans < 0 {
+		ans = 0
+	}
+	return fmt.Sprintf("%d", ans)
 }
 
 func genCase(rng *rand.Rand) (string, string) {

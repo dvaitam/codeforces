@@ -266,7 +266,12 @@ func main() {
 			sb.WriteString(strconv.Itoa(v))
 		}
 		sb.WriteByte('\n')
-		sb.WriteString(dirs)
+		for j, c := range dirs {
+			if j > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteByte(byte(c))
+		}
 		sb.WriteByte('\n')
 
 		got, err := runCandidate(bin, sb.String())

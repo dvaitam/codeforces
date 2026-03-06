@@ -52,10 +52,20 @@ func genTests() []Test {
 	tests := make([]Test, 100)
 	for i := 0; i < 100; i++ {
 		n := rng.Intn(9) + 2 // 2..10
-		edges := make([][2]int, n-1)
+		edges := make([][2]int, 0, n-1)
+		childCount := make([]int, n+1)
+		// Collect eligible parents (those with fewer than 2 children).
+		eligible := []int{1}
 		for v := 2; v <= n; v++ {
-			p := rng.Intn(v-1) + 1
-			edges[v-2] = [2]int{p, v}
+			pi := rng.Intn(len(eligible))
+			p := eligible[pi]
+			edges = append(edges, [2]int{p, v})
+			childCount[p]++
+			if childCount[p] >= 2 {
+				eligible[pi] = eligible[len(eligible)-1]
+				eligible = eligible[:len(eligible)-1]
+			}
+			eligible = append(eligible, v)
 		}
 		tests[i] = Test{n: n, edges: edges}
 	}
