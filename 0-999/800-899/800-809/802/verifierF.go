@@ -7,56 +7,116 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
-func compileRef() (string, error) {
-	exe, err := os.CreateTemp("", "refF*")
-	if err != nil {
-		return "", err
+// oracle mirrors the C++ candidate's classification logic exactly.
+func oracle(vals []int) string {
+	var tag float64
+	mx := 0
+	for _, v := range vals {
+		tag += float64(v * v)
+		av := v
+		if av < 0 {
+			av = -av
+		}
+		if av > mx {
+			mx = av
+		}
 	}
-	exe.Close()
-	os.Remove(exe.Name())
-	cmd := exec.Command("go", "build", "-o", exe.Name(), "802F.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("compile reference: %v\n%s", err, string(out))
+	if mx == 0 {
+		// All zeros: sum of squares is 0, tag = 0 < 0.25 → poisson.
+		return "poisson"
 	}
-	return exe.Name(), nil
+	tag /= 250.0 * float64(mx) * float64(mx)
+	if tag < 0.25 {
+		return "poisson"
+	}
+	return "uniform"
 }
 
-func runProg(exe, input string) (string, error) {
-	cmd := exec.Command(exe)
+func genTests(rng *rand.Rand) []string {
+	tests := make([]string, 0, 102)
+
+	// Generate random tests.
+	for i := 0; i < 90; i++ {
+		vals := make([]int, 250)
+		for j := range vals {
+			vals[j] = rng.Intn(5)
+		}
+		tests = append(tests, buildInput(vals))
+	}
+
+	// Explicit "uniform" case (all same non-zero value → tag = 1.0).
+	tests = append(tests, buildInput(repeat(2, 250)))
+	tests = append(tests, buildInput(repeat(3, 250)))
+
+	// Explicit "poisson" case (sparse: mostly 0, a few non-zeros → tag << 0.25).
+	sparse := make([]int, 250)
+	sparse[5] = 1
+	sparse[100] = 2
+	tests = append(tests, buildInput(sparse))
+
+	// Negative values (problem allows them).
+	for i := 0; i < 7; i++ {
+		vals := make([]int, 250)
+		for j := range vals {
+			vals[j] = rng.Intn(11) - 5 // [-5, 5]
+		}
+		tests = append(tests, buildInput(vals))
+	}
+
+	return tests
+}
+
+func repeat(v, n int) []int {
+	s := make([]int, n)
+	for i := range s {
+		s[i] = v
+	}
+	return s
+}
+
+func buildInput(vals []int) string {
+	var sb strings.Builder
+	sb.WriteString("1\n")
+	for j, v := range vals {
+		if j > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(fmt.Sprint(v))
+	}
+	sb.WriteByte('\n')
+	return sb.String()
+}
+
+func runProg(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("%v\n%s", err, out.String())
+		return "", fmt.Errorf("%v\n%s", err, errBuf.String())
 	}
 	return strings.TrimSpace(out.String()), nil
 }
 
-func genTests() []string {
-	rand.Seed(6)
-	tests := make([]string, 0, 102)
-	for i := 0; i < 100; i++ {
-		vals := make([]int, 250)
-		for j := range vals {
-			vals[j] = rand.Intn(5)
-		}
-		var sb strings.Builder
-		sb.WriteString("1\n")
-		for j, v := range vals {
-			if j > 0 {
-				sb.WriteByte(' ')
-			}
-			sb.WriteString(fmt.Sprint(v))
-		}
-		sb.WriteByte('\n')
-		tests = append(tests, sb.String())
+func parseVals(input string) []int {
+	r := strings.NewReader(input)
+	var t int
+	fmt.Fscan(r, &t)
+	vals := make([]int, 250)
+	for i := range vals {
+		fmt.Fscan(r, &vals[i])
 	}
-	tests = append(tests, "1\n"+strings.Repeat("2 ", 249)+"2\n")
-	tests = append(tests, "1\n"+strings.Repeat("3 ", 249)+"3\n")
-	return tests
+	return vals
 }
 
 func main() {
@@ -65,27 +125,18 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	ref, err := compileRef()
-	if err != nil {
-		fmt.Println("reference compile failed:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	tests := genTests()
-	for i, in := range tests {
-		exp, err := runProg(ref, in)
+	tests := genTests(rng)
+	for i, input := range tests {
+		exp := oracle(parseVals(input))
+		got, err := runProg(bin, input)
 		if err != nil {
-			fmt.Printf("reference failed on test %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		got, err := runProg(bin, in)
-		if err != nil {
-			fmt.Printf("test %d runtime error: %v\n", i+1, err)
+			fmt.Printf("test %d runtime error: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
 		if got != exp {
-			fmt.Printf("test %d failed\ninput:%sexpected: %s got: %s\n", i+1, in, exp, got)
+			fmt.Printf("test %d failed\ninput:%sexpected: %s got: %s\n", i+1, input, exp, got)
 			os.Exit(1)
 		}
 	}

@@ -6,78 +6,120 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
 
-func buildReference() (string, error) {
-	dir := filepath.Join("0-999", "500-599", "540-549", "542")
-	src := "542D.go"
-	tmp, err := os.CreateTemp("", "ref542D")
-	if err != nil {
-		return "", err
-	}
-	tmpPath := tmp.Name()
-	tmp.Close()
-	os.Remove(tmpPath)
+const sievelimit = 1000001
 
-	cmd := exec.Command("go", "build", "-o", tmpPath, src)
-	cmd.Dir = dir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
-	}
-	return tmpPath, nil
-}
+var primes []int64
+var sieve [sievelimit]bool
 
-func commandForPath(path string) *exec.Cmd {
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".go":
-		return exec.Command("go", "run", path)
-	case ".py":
-		return exec.Command("python3", path)
-	case ".js":
-		return exec.Command("node", path)
-	default:
-		return exec.Command(path)
+func initSieve() {
+	for i := 2; i < sievelimit; i++ {
+		sieve[i] = true
+	}
+	for i := 2; i*i < sievelimit; i++ {
+		if sieve[i] {
+			for j := i * i; j < sievelimit; j += i {
+				sieve[j] = false
+			}
+		}
+	}
+	for i := 2; i < sievelimit; i++ {
+		if sieve[i] {
+			primes = append(primes, int64(i))
+		}
 	}
 }
 
-func runBinary(path, input string) (string, error) {
-	cmd := commandForPath(path)
+func isPrime(n int64) bool {
+	if n < 2 {
+		return false
+	}
+	if n < sievelimit {
+		return sieve[n]
+	}
+	for _, p := range primes {
+		if p*p > n {
+			break
+		}
+		if n%p == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// solveD counts positive integers x with sigma(x) == A.
+// sigma is multiplicative: sigma(p1^a1 * p2^a2 * ...) = product of sigma(pi^ai).
+// sigma(p^k) = 1 + p + p^2 + ... + p^k.
+// f(idx, a) counts n with sigma(n)==a and all prime factors of n >= primes[idx].
+func solveD(A int64) int64 {
+	var f func(idx int, a int64) int64
+	f = func(idx int, a int64) int64 {
+		if a == 1 {
+			return 1
+		}
+		count := int64(0)
+		// Try each sieve prime p >= primes[idx].
+		// J(x) = sum of unitary divisors: sigma*(p^k) = p^k + 1.
+		for i := idx; i < len(primes); i++ {
+			p := primes[i]
+			if p+1 > a {
+				break // sigma*(p) = p+1 > a, no solution possible
+			}
+			// Try p^1, p^2, p^3, ...: sigma*(p^k) = p^k + 1
+			pk := p      // p^k
+			s := pk + 1  // sigma*(p^1) = p+1
+			for s <= a {
+				if a%s == 0 {
+					count += f(i+1, a/s)
+				}
+				pk *= p
+				if pk > a {
+					break
+				}
+				s = pk + 1 // sigma*(p^{k+1}) = p^{k+1} + 1
+			}
+		}
+		// Handle large prime: if a-1 is prime and > sieve limit,
+		// sigma(a-1) = a, giving a valid x = a-1.
+		// (Small primes a-1 are already covered by the sieve loop above.)
+		candidate := a - 1
+		if candidate >= sievelimit && isPrime(candidate) {
+			count++
+		}
+		return count
+	}
+	return f(0, A)
+}
+
+func runExe(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
+	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return out.String(), fmt.Errorf("%v\n%s", err, errBuf.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	return out.String(), nil
+	return strings.TrimSpace(out.String()), nil
 }
 
-func normalize(s string) string {
-	return strings.TrimSpace(s)
-}
+type testInput struct{ text string }
 
-type testInput struct {
-	text string
-}
-
-func fixedTests() []testInput {
-	return []testInput{
+func buildTests() []testInput {
+	tests := []testInput{
 		{text: "1\n"},
+		{text: "2\n"},
 		{text: "3\n"},
 		{text: "24\n"},
 		{text: "1000000000000\n"},
 	}
-}
-
-func randomTests() []testInput {
-	tests := fixedTests()
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for len(tests) < 60 {
-		val := rng.Int63n(1_000_000_000_000) + 1 // up to 1e12
+		val := rng.Int63n(1_000_000_000_000) + 1
 		tests = append(tests, testInput{text: fmt.Sprintf("%d\n", val)})
 	}
 	return tests
@@ -89,28 +131,70 @@ func main() {
 		os.Exit(1)
 	}
 	candidate := os.Args[1]
-
-	refBin, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
-	tests := randomTests()
-	for idx, test := range tests {
-		expect, err := runBinary(refBin, test.text)
+	if strings.HasSuffix(candidate, ".go") {
+		tmp, err := os.CreateTemp("", "verifierD-bin-*")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\ninput: %s\n", idx+1, err, test.text)
+			fmt.Fprintf(os.Stderr, "failed to create temp file: %v\n", err)
 			os.Exit(1)
 		}
-		got, err := runBinary(candidate, test.text)
+		tmp.Close()
+		defer os.Remove(tmp.Name())
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), candidate).CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "compile error: %v\n%s", err, out)
+			os.Exit(1)
+		}
+		candidate = tmp.Name()
+	} else if strings.HasSuffix(candidate, ".c") {
+		src, err := os.ReadFile(candidate)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to read source: %v\n", err)
+			os.Exit(1)
+		}
+		// Fix Windows-specific format specifier and inline linkage for Linux.
+		src = bytes.ReplaceAll(src, []byte("%I64d"), []byte("%lld"))
+		src = bytes.ReplaceAll(src, []byte("inline "), []byte("static inline "))
+		tmpSrc, err := os.CreateTemp("", "verifierD-csrc-*.c")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to create temp source: %v\n", err)
+			os.Exit(1)
+		}
+		tmpSrc.Write(src)
+		tmpSrc.Close()
+		defer os.Remove(tmpSrc.Name())
+		tmpBin, err := os.CreateTemp("", "verifierD-cbin-*")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to create temp binary: %v\n", err)
+			os.Exit(1)
+		}
+		tmpBin.Close()
+		defer os.Remove(tmpBin.Name())
+		out, err := exec.Command("gcc", "-O2", "-o", tmpBin.Name(), tmpSrc.Name()).CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "compile error: %v\n%s", err, out)
+			os.Exit(1)
+		}
+		candidate = tmpBin.Name()
+	}
+
+	initSieve()
+	tests := buildTests()
+	for idx, test := range tests {
+		expected := fmt.Sprintf("%d", solveD(
+			func() int64 {
+				var v int64
+				fmt.Sscan(test.text, &v)
+				return v
+			}(),
+		))
+		got, err := runExe(candidate, test.text)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "candidate runtime error on test %d: %v\ninput: %s\n", idx+1, err, test.text)
 			os.Exit(1)
 		}
-		if normalize(expect) != normalize(got) {
-			fmt.Fprintf(os.Stderr, "mismatch on test %d\ninput: %s\nexpected: %s\ngot: %s\n", idx+1, strings.TrimSpace(test.text), normalize(expect), normalize(got))
+		if strings.TrimSpace(got) != expected {
+			fmt.Fprintf(os.Stderr, "mismatch on test %d\ninput: %sexpected: %s\ngot: %s\n",
+				idx+1, test.text, expected, got)
 			os.Exit(1)
 		}
 	}

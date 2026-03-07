@@ -52,7 +52,7 @@ func genCases() ([]byte, []testCase) {
 		}
 		a := make([]int, n)
 		for i := 0; i < n; i++ {
-			a[i] = rand.Intn(50)
+			a[i] = rand.Intn(n + 1)
 		}
 		cases = append(cases, testCase{n: n, a: a})
 		totalN += n

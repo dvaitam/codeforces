@@ -13,15 +13,59 @@ import (
 )
 
 const (
-	refSource     = "./2061F1.go"
 	randomTests   = 120
-	maxTotalLen   = 180000 // keep runtime reasonable (limit in statement is 4e5)
+	maxTotalLen   = 180000
 	maxCaseLength = 2000
 )
 
 type testCase struct {
 	s string
 	t string
+}
+
+// solveCase implements the correct greedy algorithm (translated from the C++ reference).
+// It returns the minimum number of adjacent block swaps, or -1 if impossible.
+func solveCase(s, t string) int {
+	n := len(s)
+	ans := 0
+	var ch byte
+	c := 0
+
+	for i := 0; i < n; i++ {
+		x := s[i]
+		if c > 0 {
+			x = ch
+			c--
+		}
+		if x != t[i] {
+			if i > 0 && t[i-1] != t[i] {
+				return -1
+			}
+			p := i + c + 1
+			for p < n && s[p] == x {
+				p++
+			}
+			if p >= n {
+				return -1
+			}
+			q := p + 1
+			for q < n && s[q] == s[p] {
+				q++
+			}
+			l1 := p - i
+			l2 := q - p
+			ans++
+			for k := i + 1; k < i+l2; k++ {
+				if t[k] != t[k-1] {
+					return -1
+				}
+			}
+			i = i + l2 - 1
+			c = l1
+			ch = x
+		}
+	}
+	return ans
 }
 
 func main() {
@@ -31,74 +75,45 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, err := buildReference()
-	if err != nil {
-		fail("failed to build reference: %v", err)
-	}
-	defer os.Remove(refBin)
-
 	tests := generateTests()
 	input := buildInput(tests)
 
-	expectRaw, err := runProgram(exec.Command(refBin), input)
-	if err != nil {
-		fail("reference failed: %v\n%s", err, expectRaw)
-	}
 	gotRaw, err := runProgram(commandFor(candidate), input)
 	if err != nil {
 		fail("candidate failed: %v\n%s", err, gotRaw)
 	}
 
-	expect, err := parseOutputs(expectRaw, len(tests))
-	if err != nil {
-		fail("could not parse reference output: %v", err)
-	}
 	got, err := parseOutputs(gotRaw, len(tests))
 	if err != nil {
 		fail("could not parse candidate output: %v", err)
 	}
 
-	if len(expect) != len(got) {
-		fail("output length mismatch: expected %d tokens, got %d", len(expect), len(got))
-	}
-	for i := range expect {
-		if expect[i] != got[i] {
-			fail("mismatch at test %d: expected %d, got %d", i+1, expect[i], got[i])
+	for i, tc := range tests {
+		expected := solveCase(tc.s, tc.t)
+		if expected != got[i] {
+			fail("mismatch at test %d (s=%q t=%q): expected %d, got %d",
+				i+1, tc.s, tc.t, expected, got[i])
 		}
 	}
 
 	fmt.Printf("All %d test cases passed.\n", len(tests))
 }
 
-func buildReference() (string, error) {
-	tmp, err := os.CreateTemp("", "2061F1-ref-*")
-	if err != nil {
-		return "", err
-	}
-	tmp.Close()
-
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, out.String())
-	}
-	return tmp.Name(), nil
-}
-
 func generateTests() []testCase {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	tests := make([]testCase, 0, randomTests+6)
+	tests := make([]testCase, 0, randomTests+10)
 
-	// Deterministic coverage, including sample-like strings.
+	// Deterministic coverage.
 	tests = append(tests,
 		testCase{s: "0", t: "0"},
 		testCase{s: "1", t: "1"},
 		testCase{s: "01", t: "10"},
-		testCase{s: "111000", t: "010101"},
+		testCase{s: "10", t: "01"},
+		testCase{s: "111000", t: "000111"},
 		testCase{s: "000111", t: "111000"},
+		testCase{s: "000110", t: "111000"},
+		testCase{s: "00011", t: "00011"},
+		testCase{s: "0000011111", t: "1111100000"},
 	)
 
 	totalLen := 0

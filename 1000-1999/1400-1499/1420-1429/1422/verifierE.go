@@ -64,7 +64,7 @@ func solveCase(s string) string {
 			length[i] += length[r]
 		}
 		isEmpty[i] = (length[i] == 0)
-		maxPref := 5
+		maxPref := 10
 		if length[i] <= maxPref {
 			var tmp []byte
 			for j := 0; j < t; j++ {
@@ -143,7 +143,7 @@ func solveCase(s string) string {
 		if L <= 10 {
 			out.WriteString(pref[i])
 		} else {
-			out.WriteString(pref[i])
+			out.WriteString(pref[i][:5])
 			out.WriteString("...")
 			out.WriteString(suff[i])
 		}

@@ -236,11 +236,10 @@ func upsertProblem(ctx context.Context, db *sql.DB, asset problemAsset, alloc *i
 			id = alloc.next()
 			_, err = db.ExecContext(
 				stmtCtx,
-				`INSERT INTO problems (id, contest_id, index_name, title, statement, reference_solution, verifier) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+				`INSERT INTO problems (id, contest_id, index_name, statement, reference_solution, verifier) VALUES ($1, $2, $3, $4, $5, $6)`,
 				id,
 				asset.Contest,
 				asset.Index,
-				asset.Title,
 				asset.Statement,
 				asset.Solution,
 				asset.Verifier,
@@ -248,10 +247,9 @@ func upsertProblem(ctx context.Context, db *sql.DB, asset problemAsset, alloc *i
 		} else {
 			_, err = db.ExecContext(
 				stmtCtx,
-				`INSERT INTO problems (contest_id, index_name, title, statement, reference_solution, verifier) VALUES ($1, $2, $3, $4, $5, $6)`,
+				`INSERT INTO problems (contest_id, index_name, statement, reference_solution, verifier) VALUES ($1, $2, $3, $4, $5)`,
 				asset.Contest,
 				asset.Index,
-				asset.Title,
 				asset.Statement,
 				asset.Solution,
 				asset.Verifier,
@@ -264,8 +262,7 @@ func upsertProblem(ctx context.Context, db *sql.DB, asset problemAsset, alloc *i
 	defer cancel()
 	_, err = db.ExecContext(
 		stmtCtx,
-		`UPDATE problems SET title = $1, statement = $2, reference_solution = $3, verifier = $4 WHERE id = $5`,
-		asset.Title,
+		`UPDATE problems SET statement = $1, reference_solution = $2, verifier = $3 WHERE id = $4`,
 		asset.Statement,
 		asset.Solution,
 		asset.Verifier,
@@ -278,6 +275,12 @@ func deriveTitle(p problemFile, data []byte) string {
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.EqualFold(line, "description:") {
+			continue
+		}
+		if idx := strings.Index(strings.ToLower(line), "time limit per test"); idx > 0 {
+			line = strings.TrimSpace(line[:idx])
+		}
 		if line != "" {
 			return line
 		}

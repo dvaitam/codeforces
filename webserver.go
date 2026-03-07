@@ -1680,6 +1680,12 @@ func deriveTitleFromBytes(p problemFile, data []byte) string {
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.EqualFold(line, "description:") {
+			continue
+		}
+		if idx := strings.Index(strings.ToLower(line), "time limit per test"); idx > 0 {
+			line = strings.TrimSpace(line[:idx])
+		}
 		if line != "" {
 			return line
 		}
@@ -1752,20 +1758,20 @@ func upsertProblemAsset(ctx context.Context, d *sql.DB, asset problemAsset, allo
 		if alloc.needsManual {
 			id = alloc.next()
 			_, err = d.ExecContext(ctx2,
-				`INSERT INTO problems (id, contest_id, index_name, title, statement, reference_solution, verifier) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-				id, asset.Contest, asset.Index, asset.Title, asset.Statement, asset.Solution, asset.Verifier)
+				`INSERT INTO problems (id, contest_id, index_name, statement, reference_solution, verifier) VALUES ($1,$2,$3,$4,$5,$6)`,
+				id, asset.Contest, asset.Index, asset.Statement, asset.Solution, asset.Verifier)
 		} else {
 			_, err = d.ExecContext(ctx2,
-				`INSERT INTO problems (contest_id, index_name, title, statement, reference_solution, verifier) VALUES ($1,$2,$3,$4,$5,$6)`,
-				asset.Contest, asset.Index, asset.Title, asset.Statement, asset.Solution, asset.Verifier)
+				`INSERT INTO problems (contest_id, index_name, statement, reference_solution, verifier) VALUES ($1,$2,$3,$4,$5)`,
+				asset.Contest, asset.Index, asset.Statement, asset.Solution, asset.Verifier)
 		}
 		return "inserted", err
 	}
 	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err = d.ExecContext(ctx2,
-		`UPDATE problems SET title=$1, statement=$2, reference_solution=$3, verifier=$4 WHERE id=$5`,
-		asset.Title, asset.Statement, asset.Solution, asset.Verifier, id)
+		`UPDATE problems SET statement=$1, reference_solution=$2, verifier=$3 WHERE id=$4`,
+		asset.Statement, asset.Solution, asset.Verifier, id)
 	return "updated", err
 }
 

@@ -74,7 +74,7 @@ func genTests() []Test {
 	for i := 0; i < 100; i++ {
 		tests = append(tests, randCase(rng))
 	}
-	tests = append(tests, Test{"1\n0\n1\n1\n1\n0\n"})
+	tests = append(tests, Test{"1\n0\n1\n1\n1\n1 0\n"})
 	tests = append(tests, Test{"2\n1 1\n1\n1\n1\n2\n1\n1 0\n"})
 	tests = append(tests, Test{"3\n0 0 0\n1\n1\n1\n2\n1 2\n3\n1 0\n2 -1\n3 2\n"})
 	tests = append(tests, Test{"1\n5\n1\n1\n2\n1\n1 1\n"})

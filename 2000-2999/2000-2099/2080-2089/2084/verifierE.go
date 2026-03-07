@@ -7,15 +7,91 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
 )
 
+const mod int64 = 1_000_000_007
+
 type testCase struct {
 	n   int
 	arr []int
+}
+
+// mex returns the minimum excludant of a slice.
+func mex(a []int) int {
+	seen := make(map[int]bool, len(a))
+	for _, v := range a {
+		seen[v] = true
+	}
+	for i := 0; ; i++ {
+		if !seen[i] {
+			return i
+		}
+	}
+}
+
+// value computes sum of MEX over all non-empty subsegments of a.
+func value(a []int) int64 {
+	n := len(a)
+	var total int64
+	for l := 0; l < n; l++ {
+		for r := l; r < n; r++ {
+			total += int64(mex(a[l : r+1]))
+		}
+	}
+	return total % mod
+}
+
+// bruteForce enumerates all completions of arr (positions with -1 filled by
+// missing values) and sums their values mod MOD.
+func bruteForce(tc testCase) int64 {
+	n := tc.n
+	arr := tc.arr
+
+	missingSet := make([]bool, n)
+	for i := range missingSet {
+		missingSet[i] = true
+	}
+	for _, v := range arr {
+		if v != -1 {
+			missingSet[v] = false
+		}
+	}
+
+	missing := []int{}
+	for v := 0; v < n; v++ {
+		if missingSet[v] {
+			missing = append(missing, v)
+		}
+	}
+	freePos := []int{}
+	for i, v := range arr {
+		if v == -1 {
+			freePos = append(freePos, i)
+		}
+	}
+
+	filled := make([]int, n)
+	copy(filled, arr)
+
+	var total int64
+	var permute func(k int)
+	permute = func(k int) {
+		if k == len(missing) {
+			total = (total + value(filled)) % mod
+			return
+		}
+		for i := k; i < len(missing); i++ {
+			missing[k], missing[i] = missing[i], missing[k]
+			filled[freePos[k]] = missing[k]
+			permute(k + 1)
+			missing[k], missing[i] = missing[i], missing[k]
+		}
+	}
+	permute(0)
+	return total
 }
 
 func main() {
@@ -25,26 +101,8 @@ func main() {
 	}
 	candidate := os.Args[len(os.Args)-1]
 
-	refBin, cleanup, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
 	tests := generateTests()
 	input := buildInput(tests)
-
-	refOut, err := runProgram(refBin, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference failed: %v\n%s", err, refOut)
-		os.Exit(1)
-	}
-	refVals, err := parseOutputs(refOut, len(tests))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not parse reference output: %v\n", err)
-		os.Exit(1)
-	}
 
 	candOut, err := runCandidate(candidate, input)
 	if err != nil {
@@ -57,43 +115,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	for i := range refVals {
-		if refVals[i] != candVals[i] {
-			fmt.Fprintf(os.Stderr, "wrong answer on test %d: expected %d got %d\n", i+1, refVals[i], candVals[i])
+	for i, tc := range tests {
+		expected := bruteForce(tc)
+		if expected != candVals[i] {
+			fmt.Fprintf(os.Stderr, "wrong answer on test %d (n=%d arr=%v): expected %d got %d\n",
+				i+1, tc.n, tc.arr, expected, candVals[i])
 			os.Exit(1)
 		}
 	}
 
 	fmt.Printf("All %d tests passed.\n", len(tests))
-}
-
-func buildReference() (string, func(), error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", nil, fmt.Errorf("cannot determine verifier location")
-	}
-	dir := filepath.Dir(file)
-	tmpDir, err := os.MkdirTemp("", "ref-2084E-")
-	if err != nil {
-		return "", nil, err
-	}
-	outPath := filepath.Join(tmpDir, "oracle2084E")
-	cmd := exec.Command("go", "build", "-o", outPath, "2084E.go")
-	cmd.Dir = dir
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
-	if err := cmd.Run(); err != nil {
-		os.RemoveAll(tmpDir)
-		return "", nil, fmt.Errorf("%v\n%s", err, buf.String())
-	}
-	cleanup := func() { os.RemoveAll(tmpDir) }
-	return outPath, cleanup, nil
-}
-
-func runProgram(path, input string) (string, error) {
-	cmd := exec.Command(path)
-	return runWithInput(cmd, input)
 }
 
 func runCandidate(path, input string) (string, error) {
@@ -147,31 +178,19 @@ func parseOutputs(out string, t int) ([]int64, error) {
 func generateTests() []testCase {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	var tests []testCase
-	totalN := 0
-	const maxSumN = 5000
 
-	add := func(tc testCase) {
-		if totalN+tc.n > maxSumN {
-			return
-		}
-		tests = append(tests, tc)
-		totalN += tc.n
-	}
-
-	// Sample-based deterministic cases
+	// Sample-based deterministic cases from the problem statement.
+	add := func(tc testCase) { tests = append(tests, tc) }
 	add(testCase{n: 2, arr: []int{0, -1}})
 	add(testCase{n: 2, arr: []int{-1, -1}})
 	add(testCase{n: 3, arr: []int{2, 0, 1}})
 	add(testCase{n: 3, arr: []int{-1, 2, -1}})
 	add(testCase{n: 5, arr: []int{-1, 0, -1, 2, -1}})
 
-	for len(tests) < 120 && totalN < maxSumN {
-		n := rng.Intn(20) + 1
-		if totalN+n > maxSumN {
-			n = maxSumN - totalN
-		}
-		tc := randomCase(rng, n)
-		add(tc)
+	// Random small cases — keep n ≤ 7 so brute force (n! permutations) is fast.
+	for len(tests) < 200 {
+		n := rng.Intn(7) + 1
+		add(randomCase(rng, n))
 	}
 
 	return tests

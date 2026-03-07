@@ -65,6 +65,63 @@ func genCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
+// score computes the optimality of a keyboard for the given words.
+// keyboard is a 12-letter permutation of a-l.
+// words is a slice of (cost, word) pairs.
+func score(keyboard string, words [][2]string) (int, error) {
+	if len(keyboard) != 12 {
+		return 0, fmt.Errorf("keyboard length %d != 12", len(keyboard))
+	}
+	pos := make(map[rune]int)
+	for i, ch := range keyboard {
+		if ch < 'a' || ch > 'l' {
+			return 0, fmt.Errorf("invalid character %c in keyboard", ch)
+		}
+		if _, dup := pos[ch]; dup {
+			return 0, fmt.Errorf("duplicate character %c in keyboard", ch)
+		}
+		pos[ch] = i
+	}
+	if len(pos) != 12 {
+		return 0, fmt.Errorf("keyboard does not contain all 12 letters")
+	}
+	total := 0
+	for _, w := range words {
+		var cost int
+		fmt.Sscan(w[0], &cost)
+		word := w[1]
+		easy := true
+		for j := 0; j+1 < len(word); j++ {
+			p1, p2 := pos[rune(word[j])], pos[rune(word[j+1])]
+			diff := p1 - p2
+			if diff < 0 {
+				diff = -diff
+			}
+			if diff != 1 {
+				easy = false
+				break
+			}
+		}
+		if easy {
+			total += cost
+		}
+	}
+	return total, nil
+}
+
+// parseWords extracts (cost, word) pairs from the test input.
+func parseWords(input string) [][2]string {
+	lines := strings.Split(strings.TrimSpace(input), "\n")
+	var words [][2]string
+	for _, line := range lines[1:] {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 {
+			words = append(words, [2]string{fields[0], fields[1]})
+		}
+	}
+	return words
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierF.go /path/to/binary")
@@ -81,6 +138,8 @@ func main() {
 	rng := rand.New(rand.NewSource(5))
 	for i := 0; i < 100; i++ {
 		input := genCase(rng)
+		words := parseWords(input)
+
 		want, err := runProg(ref, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\n", i+1, err)
@@ -91,8 +150,20 @@ func main() {
 			fmt.Fprintf(os.Stderr, "candidate failed on test %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(want) != strings.TrimSpace(got) {
-			fmt.Printf("test %d failed\ninput:\n%sexpected:%s\nactual:%s\n", i+1, input, want, got)
+
+		wantScore, err := score(strings.TrimSpace(want), words)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "invalid reference output on test %d: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		gotScore, err := score(strings.TrimSpace(got), words)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "invalid candidate output on test %d: %v\ninput:\n%s\noutput: %s\n", i+1, err, input, got)
+			os.Exit(1)
+		}
+		if gotScore != wantScore {
+			fmt.Printf("test %d failed\ninput:\n%sexpected:%s (score %d)\nactual:%s (score %d)\n",
+				i+1, input, want, wantScore, got, gotScore)
 			os.Exit(1)
 		}
 	}

@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
@@ -74,33 +75,50 @@ func genTest(rng *rand.Rand) Test {
 }
 
 func solve(t Test) string {
-	sum := 0
+	H := 0
 	for _, v := range t.a {
-		sum += v
+		H += v
 	}
+	L := H - t.r
+	R := H - t.l
+	type box struct{ h, b int }
+	boxes := make([]box, t.n)
+	for i := 0; i < t.n; i++ {
+		boxes[i] = box{t.a[i], t.b[i]}
+	}
+	sort.Slice(boxes, func(i, j int) bool {
+		if boxes[i].b != boxes[j].b {
+			return boxes[i].b < boxes[j].b
+		}
+		return boxes[i].h > boxes[j].h
+	})
 	const negInf = -1 << 30
-	dp := make([]int, sum+1)
+	dp := make([]int, H+1)
 	for i := range dp {
 		dp[i] = negInf
 	}
 	dp[0] = 0
-	for i := 0; i < t.n; i++ {
-		h := t.a[i]
-		imp := t.b[i] == 1
-		for s := sum - h; s >= 0; s-- {
-			if dp[s] == negInf {
+	for _, bx := range boxes {
+		for j := H; j >= bx.h; j-- {
+			if dp[j-bx.h] == negInf {
 				continue
 			}
 			gain := 0
-			if imp && s >= t.l && s <= t.r {
+			if bx.b == 1 && j >= L && j <= R {
 				gain = 1
 			}
-			if v := dp[s] + gain; v > dp[s+h] {
-				dp[s+h] = v
+			if v := dp[j-bx.h] + gain; v > dp[j] {
+				dp[j] = v
 			}
 		}
 	}
-	return fmt.Sprintf("%d", dp[sum])
+	ans := 0
+	for _, v := range dp {
+		if v > ans {
+			ans = v
+		}
+	}
+	return fmt.Sprintf("%d", ans)
 }
 
 func main() {

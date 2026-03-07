@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -67,6 +68,68 @@ func genTests() [][]byte {
 	return tests
 }
 
+func parseRefOps(s string) (int, error) {
+	r := bufio.NewReader(strings.NewReader(strings.TrimSpace(s)))
+	var m int
+	if _, err := fmt.Fscan(r, &m); err != nil {
+		return 0, fmt.Errorf("parse ops: %v", err)
+	}
+	return m, nil
+}
+
+func parseCandidate(s string) (int, []int, error) {
+	r := bufio.NewReader(strings.NewReader(strings.TrimSpace(s)))
+	var m int
+	if _, err := fmt.Fscan(r, &m); err != nil {
+		return 0, nil, fmt.Errorf("parse ops: %v", err)
+	}
+	var arr []int
+	for {
+		var v int
+		if _, err := fmt.Fscan(r, &v); err != nil {
+			break
+		}
+		arr = append(arr, v)
+	}
+	return m, arr, nil
+}
+
+func parseInput(s string) []int {
+	r := bufio.NewReader(strings.NewReader(s))
+	var t, n int
+	fmt.Fscan(r, &t, &n)
+	arr := make([]int, n)
+	for i := range arr {
+		fmt.Fscan(r, &arr[i])
+	}
+	return arr
+}
+
+func check(gotOps, expOps int, gotArr, inArr []int) error {
+	n := len(inArr)
+	if len(gotArr) != n {
+		return fmt.Errorf("expected array of length %d, got %d", n, len(gotArr))
+	}
+	if gotOps != expOps {
+		return fmt.Errorf("wrong op count: expected %d, got %d", expOps, gotOps)
+	}
+	diffs := 0
+	for i := range inArr {
+		if inArr[i] != gotArr[i] {
+			diffs++
+		}
+	}
+	if diffs != gotOps {
+		return fmt.Errorf("array differs in %d positions from input, but claimed %d ops", diffs, gotOps)
+	}
+	for i := 1; i < n-1; i++ {
+		if gotArr[i] > gotArr[i-1] && gotArr[i] > gotArr[i+1] {
+			return fmt.Errorf("local maximum at index %d (value %d)", i, gotArr[i])
+		}
+	}
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("Usage: go run verifierB.go /path/to/binary")
@@ -82,18 +145,31 @@ func main() {
 
 	tests := genTests()
 	for i, tc := range tests {
-		exp, err := runExe(ref, tc)
+		expOut, err := runExe(ref, tc)
 		if err != nil {
-			fmt.Printf("reference runtime error on test %d: %v\n%s", i+1, err, exp)
+			fmt.Printf("reference runtime error on test %d: %v\n%s", i+1, err, expOut)
 			os.Exit(1)
 		}
-		got, err := runExe(bin, tc)
+		expOps, err := parseRefOps(expOut)
 		if err != nil {
-			fmt.Printf("candidate runtime error on test %d: %v\n%s", i+1, err, got)
+			fmt.Printf("failed to parse reference output on test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(exp) != strings.TrimSpace(got) {
-			fmt.Printf("test %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, string(tc), exp, got)
+
+		gotOut, err := runExe(bin, tc)
+		if err != nil {
+			fmt.Printf("candidate runtime error on test %d: %v\n%s", i+1, err, gotOut)
+			os.Exit(1)
+		}
+		gotOps, gotArr, err := parseCandidate(gotOut)
+		if err != nil {
+			fmt.Printf("failed to parse candidate output on test %d: %v\n", i+1, err)
+			os.Exit(1)
+		}
+
+		inArr := parseInput(string(tc))
+		if err := check(gotOps, expOps, gotArr, inArr); err != nil {
+			fmt.Printf("test %d failed: %v\ninput:\n%sexpected ops: %d\ngot:\n%s\n", i+1, err, string(tc), expOps, gotOut)
 			os.Exit(1)
 		}
 	}

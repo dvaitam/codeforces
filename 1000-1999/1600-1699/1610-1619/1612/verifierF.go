@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"container/list"
 	"fmt"
 	"math/rand"
 	"os"
@@ -40,39 +39,44 @@ func bfs(n, m int, good map[pair]bool) int {
 			dist[i][j] = -1
 		}
 	}
-	q := list.New()
-	q.PushBack(state{1, 1})
+	queue := []state{{1, 1}}
 	dist[1][1] = 0
-	for q.Len() > 0 {
-		e := q.Front()
-		q.Remove(e)
-		s := e.Value.(state)
+	for len(queue) > 0 {
+		s := queue[0]
+		queue = queue[1:]
 		d := dist[s.a][s.b]
 		if s.a == n && s.b == m {
 			return d
 		}
-		best := 0
+		// Best power: max over all (i,j) with i<=a, j<=b
+		best := s.a + s.b
 		for i := 1; i <= s.a; i++ {
 			for j := 1; j <= s.b; j++ {
-				p := i + j
-				if good[pair{i, j}] {
-					p++
-				}
-				if p > best {
-					best = p
+				if good[pair{i, j}] && i+j+1 > best {
+					best = i + j + 1
 				}
 			}
 		}
-		if s.a < n && best >= s.a+1 && dist[s.a+1][s.b] == -1 {
-			dist[s.a+1][s.b] = d + 1
-			q.PushBack(state{s.a + 1, s.b})
+		// Jump directly to the maximum reachable armor index
+		na := best
+		if na > n {
+			na = n
 		}
-		if s.b < m && best >= s.b+1 && dist[s.a][s.b+1] == -1 {
-			dist[s.a][s.b+1] = d + 1
-			q.PushBack(state{s.a, s.b + 1})
+		if na > s.a && dist[na][s.b] == -1 {
+			dist[na][s.b] = d + 1
+			queue = append(queue, state{na, s.b})
+		}
+		// Jump directly to the maximum reachable weapon index
+		nb := best
+		if nb > m {
+			nb = m
+		}
+		if nb > s.b && dist[s.a][nb] == -1 {
+			dist[s.a][nb] = d + 1
+			queue = append(queue, state{s.a, nb})
 		}
 	}
-	return -1
+	return dist[n][m]
 }
 
 func parse(output string) (int, error) {

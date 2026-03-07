@@ -13,12 +13,7 @@ import (
 type query struct{ typ, id int }
 
 func runCandidate(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -30,28 +25,28 @@ func runCandidate(bin, input string) (string, error) {
 }
 
 func solveA(n, k int, t []int, qs []query) []string {
-	displayed := make([]query, 0, k)
+	// displayed holds friend IDs sorted by score descending, len <= k
+	displayed := make([]int, 0, k)
 	inDisp := make([]bool, n+1)
 	res := make([]string, 0, len(qs))
 	for _, q := range qs {
 		if q.typ == 1 {
-			if k == 0 {
-				continue
-			}
+			id := q.id
+			score := t[id]
 			if len(displayed) < k {
-				displayed = append(displayed, query{q.id, t[q.id]})
-				for i := len(displayed) - 1; i > 0 && displayed[i].id != 0 && displayed[i].typ > displayed[i-1].typ; i-- {
+				displayed = append(displayed, id)
+				for i := len(displayed) - 1; i > 0 && t[displayed[i]] > t[displayed[i-1]]; i-- {
 					displayed[i], displayed[i-1] = displayed[i-1], displayed[i]
 				}
-				inDisp[q.id] = true
-			} else if t[q.id] > displayed[len(displayed)-1].typ {
-				rem := displayed[len(displayed)-1].id
+				inDisp[id] = true
+			} else if k > 0 && score > t[displayed[k-1]] {
+				rem := displayed[k-1]
 				inDisp[rem] = false
-				displayed[len(displayed)-1] = query{q.id, t[q.id]}
-				for i := len(displayed) - 1; i > 0 && displayed[i].typ > displayed[i-1].typ; i-- {
+				displayed[k-1] = id
+				for i := k - 1; i > 0 && t[displayed[i]] > t[displayed[i-1]]; i-- {
 					displayed[i], displayed[i-1] = displayed[i-1], displayed[i]
 				}
-				inDisp[q.id] = true
+				inDisp[id] = true
 			}
 		} else {
 			if inDisp[q.id] {
@@ -66,7 +61,7 @@ func solveA(n, k int, t []int, qs []query) []string {
 
 func generateCase(rng *rand.Rand) (string, []string) {
 	n := rng.Intn(6) + 1
-	k := rng.Intn(n + 1)
+	k := rng.Intn(n) + 1
 	q := rng.Intn(10) + 1
 	t := make([]int, n+1)
 	usedT := make(map[int]bool)
@@ -80,15 +75,23 @@ func generateCase(rng *rand.Rand) (string, []string) {
 	}
 	qs := make([]query, 0, q)
 	used := make([]bool, n+1)
+	usedCount := 0
 	haveType2 := false
 	for len(qs) < q {
-		if !haveType2 || rng.Intn(2) == 0 && len(qs) < q-1 && len(qs) < n {
-			// type1
+		remaining := q - len(qs)
+		canType1 := usedCount < n && remaining > 1
+		if !haveType2 && !canType1 {
+			// forced type2 to avoid infinite loop
+			id := rng.Intn(n) + 1
+			qs = append(qs, query{2, id})
+			haveType2 = true
+		} else if canType1 && (haveType2 || rng.Intn(2) == 0) {
 			id := rng.Intn(n) + 1
 			if used[id] {
 				continue
 			}
 			used[id] = true
+			usedCount++
 			qs = append(qs, query{1, id})
 		} else {
 			id := rng.Intn(n) + 1
@@ -120,6 +123,21 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+	if strings.HasSuffix(bin, ".go") {
+		tmp, err := os.CreateTemp("", "verifier-bin-*")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to create temp file: %v\n", err)
+			os.Exit(1)
+		}
+		tmp.Close()
+		defer os.Remove(tmp.Name())
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), bin).CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "compile error: %v\n%s", err, out)
+			os.Exit(1)
+		}
+		bin = tmp.Name()
+	}
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input, outLines := generateCase(rng)

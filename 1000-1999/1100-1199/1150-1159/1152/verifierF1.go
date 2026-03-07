@@ -14,12 +14,7 @@ import (
 const MOD = 1000000007
 
 func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -32,37 +27,31 @@ func run(bin, input string) (string, error) {
 }
 
 func expected(n, k, m int) int64 {
-	dp := make([]int64, n+2)
-	dp2 := make([]int64, n+2)
-	for M := 1; M <= n; M++ {
-		dp[M] = 1
+	// Bitmask DP: state = (mask of chosen planets, last chosen planet, both 0-indexed)
+	// Movement rule: from planet x (0-indexed), can go to y (0-indexed) if y <= x+m and y not visited.
+	type state struct{ mask, last int }
+	dp := make(map[state]int64, n)
+	for s := 0; s < n; s++ {
+		dp[state{1 << s, s}] = 1
 	}
-	for i := 1; i < k; i++ {
-		for idx := 1; idx <= n; idx++ {
-			dp2[idx] = 0
-		}
-		for M := i; M <= n; M++ {
-			v := dp[M]
-			if v == 0 {
-				continue
-			}
-			stay := int64(M - i)
-			if stay > 0 {
-				dp2[M] = (dp2[M] + v*stay) % MOD
-			}
-			end := M + m
-			if end > n {
-				end = n
-			}
-			for y := M + 1; y <= end; y++ {
-				dp2[y] = (dp2[y] + v) % MOD
+	for step := 1; step < k; step++ {
+		ndp := make(map[state]int64, len(dp))
+		for st, ways := range dp {
+			for y := 0; y < n; y++ {
+				if st.mask>>y&1 != 0 {
+					continue
+				}
+				if y <= st.last+m {
+					ns := state{st.mask | (1 << y), y}
+					ndp[ns] = (ndp[ns] + ways) % MOD
+				}
 			}
 		}
-		dp, dp2 = dp2, dp
+		dp = ndp
 	}
 	var ans int64
-	for M := k; M <= n; M++ {
-		ans = (ans + dp[M]) % MOD
+	for _, ways := range dp {
+		ans = (ans + ways) % MOD
 	}
 	return ans
 }
@@ -84,6 +73,21 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+	if strings.HasSuffix(bin, ".go") {
+		tmp, err := os.CreateTemp("", "verifierF1-bin-*")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to create temp file: %v\n", err)
+			os.Exit(1)
+		}
+		tmp.Close()
+		defer os.Remove(tmp.Name())
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), bin).CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "compile error: %v\n%s", err, out)
+			os.Exit(1)
+		}
+		bin = tmp.Name()
+	}
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	fixed := [][3]int{
 		{3, 3, 1},

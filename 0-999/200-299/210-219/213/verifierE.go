@@ -33,140 +33,37 @@ func genCaseE(rng *rand.Rand) caseE {
 	return caseE{n, m, a, b}
 }
 
-func matchPat(plBase, glBase, plTxt, glTxt []int, i, j int) bool {
-	s := i - j
-	if plBase[j] == 0 {
-		if plTxt[i] > s {
-			return false
-		}
-	} else {
-		if plTxt[i] != s+(j-plBase[j]) {
-			return false
-		}
-	}
-	if glBase[j] == 0 {
-		if glTxt[i] > s {
-			return false
-		}
-	} else {
-		if glTxt[i] != s+(j-glBase[j]) {
-			return false
-		}
-	}
-	return true
-}
-
-func matchTxt(plPat, glPat, plTxt, glTxt []int, i, j int) bool {
-	s := i - j
-	if plPat[j] == 0 {
-		if plTxt[i] > s {
-			return false
-		}
-	} else {
-		if plTxt[i] != s+(j-plPat[j]) {
-			return false
-		}
-	}
-	if glPat[j] == 0 {
-		if glTxt[i] > s {
-			return false
-		}
-	} else {
-		if glTxt[i] != s+(j-glPat[j]) {
-			return false
-		}
-	}
-	return true
-}
-
+// solveE counts distinct d in [0, m-n] such that (a[0]+d, ..., a[n-1]+d)
+// is a subsequence of b. Brute-force is fine for the small cases generated here.
 func solveE(tc caseE) int {
 	n := tc.n
 	m := tc.m
-	a := append([]int{0}, tc.a...)
-	b := append([]int{0}, tc.b...)
-	P := make([]int, m+2)
-	for i := 1; i <= m; i++ {
-		P[b[i]] = i
+	a := tc.a
+	b := tc.b
+	// pos[v] = 1-based position of value v in b
+	pos := make([]int, m+1)
+	for i, v := range b {
+		pos[v] = i + 1
 	}
-	T := make([]int, m+1)
-	for v := 1; v <= m; v++ {
-		T[v] = P[v]
-	}
-	plPat := make([]int, n+1)
-	glPat := make([]int, n+1)
-	stack := make([]int, 0, n)
-	for i := 1; i <= n; i++ {
-		for len(stack) > 0 && a[stack[len(stack)-1]] >= a[i] {
-			stack = stack[:len(stack)-1]
-		}
-		if len(stack) == 0 {
-			plPat[i] = 0
-		} else {
-			plPat[i] = stack[len(stack)-1]
-		}
-		stack = append(stack, i)
-	}
-	stack = stack[:0]
-	for i := 1; i <= n; i++ {
-		for len(stack) > 0 && a[stack[len(stack)-1]] <= a[i] {
-			stack = stack[:len(stack)-1]
-		}
-		if len(stack) == 0 {
-			glPat[i] = 0
-		} else {
-			glPat[i] = stack[len(stack)-1]
-		}
-		stack = append(stack, i)
-	}
-	plTxt := make([]int, m+1)
-	glTxt := make([]int, m+1)
-	stack = stack[:0]
-	for i := 1; i <= m; i++ {
-		for len(stack) > 0 && T[stack[len(stack)-1]] >= T[i] {
-			stack = stack[:len(stack)-1]
-		}
-		if len(stack) == 0 {
-			plTxt[i] = 0
-		} else {
-			plTxt[i] = stack[len(stack)-1]
-		}
-		stack = append(stack, i)
-	}
-	stack = stack[:0]
-	for i := 1; i <= m; i++ {
-		for len(stack) > 0 && T[stack[len(stack)-1]] <= T[i] {
-			stack = stack[:len(stack)-1]
-		}
-		if len(stack) == 0 {
-			glTxt[i] = 0
-		} else {
-			glTxt[i] = stack[len(stack)-1]
-		}
-		stack = append(stack, i)
-	}
-	pi := make([]int, n+1)
-	for i := 2; i <= n; i++ {
-		j := pi[i-1]
-		for j > 0 && !matchPat(plPat, glPat, plPat, glPat, i, j+1) {
-			j = pi[j]
-		}
-		if matchPat(plPat, glPat, plPat, glPat, i, j+1) {
-			j++
-		}
-		pi[i] = j
-	}
-	q := 0
 	count := 0
-	for i := 1; i <= m; i++ {
-		for q > 0 && !matchTxt(plPat, glPat, plTxt, glTxt, i, q+1) {
-			q = pi[q]
+	for d := 0; d <= m-n; d++ {
+		// verify a[i]+d in [1,m] and positions are strictly increasing
+		ok := true
+		prev := 0
+		for i := 0; i < n; i++ {
+			v := a[i] + d
+			if v < 1 || v > m {
+				ok = false
+				break
+			}
+			if pos[v] <= prev {
+				ok = false
+				break
+			}
+			prev = pos[v]
 		}
-		if matchTxt(plPat, glPat, plTxt, glTxt, i, q+1) {
-			q++
-		}
-		if q == n {
+		if ok {
 			count++
-			q = pi[q]
 		}
 	}
 	return count

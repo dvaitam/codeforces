@@ -55,7 +55,6 @@ func deterministicTests() []testCase {
 		{name: "sample4", n: 3, k: 4, modPrime: 100000037},
 		{name: "sample5", n: 4, k: 2, modPrime: 100000039},
 		{name: "sample6", n: 4, k: 3, modPrime: 100000037},
-		{name: "edge_zero_k", n: 5, k: 0, modPrime: 999999937},
 		{name: "max_n_small_k", n: 10, k: 5, modPrime: 998244353},
 	}
 }

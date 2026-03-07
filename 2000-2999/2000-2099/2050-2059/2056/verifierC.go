@@ -9,10 +9,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
-const refSource = "2000-2999/2000-2099/2050-2059/2056/2056C.go"
+const refSourceRel = "2000-2999/2000-2099/2050-2059/2056/2056C.go"
 
 func main() {
 	if len(os.Args) != 2 {
@@ -20,15 +21,8 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	inputData, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		fail("failed to read input: %v", err)
-	}
-
-	tests, err := parseInput(inputData)
-	if err != nil {
-		fail("failed to parse input: %v", err)
-	}
+	tests := buildTests()
+	input := buildInput(tests)
 
 	refBin, err := buildReference()
 	if err != nil {
@@ -36,11 +30,11 @@ func main() {
 	}
 	defer os.Remove(refBin)
 
-	if _, err := runProgram(exec.Command(refBin), inputData); err != nil {
+	if _, err := runProgram(exec.Command(refBin), []byte(input)); err != nil {
 		fail("reference execution failed: %v", err)
 	}
 
-	candOut, err := runProgram(commandFor(candidate), inputData)
+	candOut, err := runProgram(commandFor(candidate), []byte(input))
 	if err != nil {
 		fail("candidate execution failed: %v", err)
 	}
@@ -56,19 +50,22 @@ type testCase struct {
 	n int
 }
 
-func parseInput(data []byte) ([]testCase, error) {
-	reader := bufio.NewReader(bytes.NewReader(data))
-	var t int
-	if _, err := fmt.Fscan(reader, &t); err != nil {
-		return nil, err
+func buildTests() []testCase {
+	// Test all valid n values: 6..100
+	var tests []testCase
+	for n := 6; n <= 100; n++ {
+		tests = append(tests, testCase{n: n})
 	}
-	tests := make([]testCase, t)
-	for i := 0; i < t; i++ {
-		if _, err := fmt.Fscan(reader, &tests[i].n); err != nil {
-			return nil, err
-		}
+	return tests
+}
+
+func buildInput(tests []testCase) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d\n", len(tests))
+	for _, tc := range tests {
+		fmt.Fprintf(&sb, "%d\n", tc.n)
 	}
-	return tests, nil
+	return sb.String()
 }
 
 func validateOutputs(out string, tests []testCase) error {
@@ -87,7 +84,7 @@ func validateOutputs(out string, tests []testCase) error {
 			}
 		}
 		if err := checkPalindromic(arr, tc.n); err != nil {
-			return fmt.Errorf("test %d: %v", idx+1, err)
+			return fmt.Errorf("test %d (n=%d): %v", idx+1, tc.n, err)
 		}
 	}
 	if extra, err := readToken(reader); err == nil {
@@ -102,7 +99,6 @@ func checkPalindromic(a []int, n int) error {
 	if len(a) != n {
 		return fmt.Errorf("array length mismatch: expected %d, got %d", n, len(a))
 	}
-	// Compute longest palindromic subsequence length.
 	lpsLen := longestPalSubseqLength(a)
 	count := countPalSubseqLength(a, lpsLen)
 	if count.Cmp(big.NewInt(int64(n))) <= 0 {
@@ -149,7 +145,6 @@ func countPalSubseqLength(a []int, target int) *big.Int {
 		}
 	}
 
-	// Base cases len = 1
 	for i := 0; i < n; i++ {
 		counts[i][i][0].SetInt64(1)
 		if target >= 1 {
@@ -157,7 +152,6 @@ func countPalSubseqLength(a []int, target int) *big.Int {
 		}
 	}
 
-	// Fill for lengths >= 2
 	for length := 2; length <= n; length++ {
 		for i := 0; i+length-1 < n; i++ {
 			j := i + length - 1
@@ -195,13 +189,22 @@ func getCount(counts [][][]big.Int, i, j, l int) *big.Int {
 }
 
 func buildReference() (string, error) {
+	refPath := refSourceRel
+	if _, file, _, ok := runtime.Caller(0); ok {
+		dir := filepath.Dir(file)
+		candidate := filepath.Join(dir, "2056C.go")
+		if _, err := os.Stat(candidate); err == nil {
+			refPath = candidate
+		}
+	}
+
 	tmp, err := os.CreateTemp("", "2056C-ref-*")
 	if err != nil {
 		return "", err
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), refPath)
 	var combined bytes.Buffer
 	cmd.Stdout = &combined
 	cmd.Stderr = &combined

@@ -6,79 +6,66 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
 )
 
 type query struct {
-	x int
-	y int
-	z int
+	x, y, z int // 1-based
 }
 
 type testCase struct {
 	n       int
-	q       int
-	a       []int64
+	b       []int64
 	queries []query
 }
 
-func buildOracle() (string, func(), error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", nil, fmt.Errorf("cannot determine verifier path")
+func simulate(a []int64, qs []query) []int64 {
+	c := make([]int64, len(a))
+	copy(c, a)
+	for _, q := range qs {
+		x, y, z := q.x-1, q.y-1, q.z-1
+		v := c[x]
+		if c[y] < v {
+			v = c[y]
+		}
+		c[z] = v
 	}
-	dir := filepath.Dir(file)
-	tmpDir, err := os.MkdirTemp("", "oracle-2115B-")
-	if err != nil {
-		return "", nil, err
-	}
-	outPath := filepath.Join(tmpDir, "oracleB")
-	cmd := exec.Command("go", "build", "-o", outPath, "2115B.go")
-	cmd.Dir = dir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		os.RemoveAll(tmpDir)
-		return "", nil, fmt.Errorf("failed to build oracle: %v\n%s", err, out)
-	}
-	cleanup := func() {
-		os.RemoveAll(tmpDir)
-	}
-	return outPath, cleanup, nil
+	return c
 }
 
-func runBinary(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+// solveRef returns a valid initial array for tc, or nil if impossible.
+func solveRef(tc testCase) []int64 {
+	d := make([]int64, tc.n)
+	copy(d, tc.b)
+	for i := len(tc.queries) - 1; i >= 0; i-- {
+		o := tc.queries[i]
+		req := d[o.z-1]
+		d[o.z-1] = 0
+		if req > d[o.x-1] {
+			d[o.x-1] = req
+		}
+		if req > d[o.y-1] {
+			d[o.y-1] = req
+		}
 	}
-	cmd.Stdin = strings.NewReader(input)
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+	sim := simulate(d, tc.queries)
+	for i := 0; i < tc.n; i++ {
+		if sim[i] != tc.b[i] {
+			return nil
+		}
 	}
-	return stdout.String(), nil
+	return d
 }
 
 func buildInput(tests []testCase) string {
 	var sb strings.Builder
-	totalN := 0
-	for _, tc := range tests {
-		totalN += tc.n
-	}
-	sb.Grow(totalN*16 + len(tests)*32)
 	sb.WriteString(strconv.Itoa(len(tests)))
 	sb.WriteByte('\n')
 	for _, tc := range tests {
-		sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.q))
-		for i, v := range tc.a {
+		sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, len(tc.queries)))
+		for i, v := range tc.b {
 			if i > 0 {
 				sb.WriteByte(' ')
 			}
@@ -92,90 +79,125 @@ func buildInput(tests []testCase) string {
 	return sb.String()
 }
 
-func parseOutput(out string, tests []testCase) ([][]int64, error) {
+func runBinary(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+	}
+	return stdout.String(), nil
+}
+
+// parseOutputs parses the candidate's output for all tests.
+// nil slice means the candidate said "-1" (impossible) for that test.
+func parseOutputs(out string, tests []testCase) ([][]int64, error) {
 	tokens := strings.Fields(out)
 	idx := 0
 	res := make([][]int64, len(tests))
 	for i, tc := range tests {
-		if idx+tc.n > len(tokens) {
-			return nil, fmt.Errorf("test %d: not enough numbers in output", i+1)
+		if idx >= len(tokens) {
+			return nil, fmt.Errorf("test %d: missing output", i+1)
 		}
-		arr := make([]int64, tc.n)
-		for j := 0; j < tc.n; j++ {
-			v, err := strconv.ParseInt(tokens[idx+j], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("test %d: invalid integer %q", i+1, tokens[idx+j])
+		if tokens[idx] == "-1" {
+			res[i] = nil
+			idx++
+		} else {
+			if idx+tc.n > len(tokens) {
+				return nil, fmt.Errorf("test %d: not enough numbers (got first token %q, need %d numbers)", i+1, tokens[idx], tc.n)
 			}
-			arr[j] = v
+			arr := make([]int64, tc.n)
+			for j := 0; j < tc.n; j++ {
+				v, err := strconv.ParseInt(tokens[idx+j], 10, 64)
+				if err != nil {
+					return nil, fmt.Errorf("test %d: invalid integer %q at position %d", i+1, tokens[idx+j], j+1)
+				}
+				if v < 0 || v > 1_000_000_000 {
+					return nil, fmt.Errorf("test %d: value %d out of range [0, 10^9]", i+1, v)
+				}
+				arr[j] = v
+			}
+			idx += tc.n
+			res[i] = arr
 		}
-		idx += tc.n
-		res[i] = arr
 	}
 	if idx != len(tokens) {
-		return nil, fmt.Errorf("extra tokens detected after parsing output")
+		return nil, fmt.Errorf("extra tokens after parsing all tests")
 	}
 	return res, nil
 }
 
-func compareAnswers(expected, actual [][]int64) error {
-	if len(expected) != len(actual) {
-		return fmt.Errorf("answer test count mismatch")
-	}
-	for i := range expected {
-		if len(expected[i]) != len(actual[i]) {
-			return fmt.Errorf("test %d length mismatch", i+1)
+func validate(tc testCase, ans []int64) error {
+	if ans == nil {
+		// Candidate says impossible; verify with solveRef.
+		if solveRef(tc) != nil {
+			return fmt.Errorf("candidate said -1 but a valid answer exists")
 		}
-		for j := range expected[i] {
-			if expected[i][j] != actual[i][j] {
-				return fmt.Errorf("test %d position %d mismatch: expected %d, got %d", i+1, j+1, expected[i][j], actual[i][j])
-			}
+		return nil
+	}
+	// Candidate says ans; simulate forward and check equals b.
+	sim := simulate(ans, tc.queries)
+	for i := 0; i < tc.n; i++ {
+		if sim[i] != tc.b[i] {
+			return fmt.Errorf("simulation mismatch at position %d: expected %d, got %d", i+1, tc.b[i], sim[i])
 		}
 	}
 	return nil
 }
 
-func deterministicTests() []testCase {
-	return []testCase{
-		{n: 1, q: 0, a: []int64{5}},
-		{n: 3, q: 2, a: []int64{1, 2, 3}, queries: []query{{1, 1, 1}, {1, 2, 2}}},
-		{n: 5, q: 4, a: []int64{10, 20, 30, 40, 50}, queries: []query{{1, 5, 3}, {2, 4, 4}, {3, 3, 1}, {1, 1, 1}}},
+func generateTests(rng *rand.Rand) []testCase {
+	tests := []testCase{
+		// Known impossible: min(c[2],c[1])→c[2], b=[1,2] requires min(...)=2>b[1]=1, impossible.
+		{n: 2, b: []int64{1, 2}, queries: []query{{2, 1, 2}}},
+		// n=1, no ops.
+		{n: 1, b: []int64{1000000000}, queries: nil},
+		// n=1, self-assign.
+		{n: 1, b: []int64{42}, queries: []query{{1, 1, 1}}},
 	}
-}
 
-func randomTests(totalN int) []testCase {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	tests := make([]testCase, 0, 128)
-	used := 0
-	for used < totalN {
-		remain := totalN - used
-		n := rng.Intn(min(2000, remain)) + 1
-		q := rng.Intn(200) // keep small for input size
+	// Valid tests: start from known a, simulate to get b.
+	for i := 0; i < 60; i++ {
+		n := rng.Intn(10) + 1
+		q := rng.Intn(15)
 		a := make([]int64, n)
-		for i := 0; i < n; i++ {
-			a[i] = rng.Int63n(1_000_000) - 500_000
+		for j := range a {
+			a[j] = rng.Int63n(1_000_000_000) + 1
 		}
 		qs := make([]query, q)
-		for i := 0; i < q; i++ {
-			l := rng.Intn(n) + 1
-			r := rng.Intn(n) + 1
-			if l > r {
-				l, r = r, l
+		for j := range qs {
+			qs[j] = query{
+				x: rng.Intn(n) + 1,
+				y: rng.Intn(n) + 1,
+				z: rng.Intn(n) + 1,
 			}
-			z := rng.Intn(n) + 1
-			qs[i] = query{x: l, y: r, z: z}
 		}
-		tests = append(tests, testCase{n: n, q: q, a: a, queries: qs})
-		used += n
+		b := simulate(a, qs)
+		tests = append(tests, testCase{n: n, b: b, queries: qs})
 	}
-	return tests
-}
 
-func totalN(tests []testCase) int {
-	sum := 0
-	for _, tc := range tests {
-		sum += tc.n
+	// Random tests (mix of valid and invalid).
+	for i := 0; i < 40; i++ {
+		n := rng.Intn(8) + 1
+		q := rng.Intn(10)
+		b := make([]int64, n)
+		for j := range b {
+			b[j] = rng.Int63n(20) + 1
+		}
+		qs := make([]query, q)
+		for j := range qs {
+			qs[j] = query{
+				x: rng.Intn(n) + 1,
+				y: rng.Intn(n) + 1,
+				z: rng.Intn(n) + 1,
+			}
+		}
+		tests = append(tests, testCase{n: n, b: b, queries: qs})
 	}
-	return sum
+
+	return tests
 }
 
 func main() {
@@ -183,57 +205,46 @@ func main() {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
-	target := os.Args[1]
-
-	oracle, cleanup, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+	bin := os.Args[1]
+	if strings.HasSuffix(bin, ".go") {
+		tmp, err := os.CreateTemp("", "verifierB-bin-*")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to create temp file: %v\n", err)
+			os.Exit(1)
+		}
+		tmp.Close()
+		defer os.Remove(tmp.Name())
+		out, err := exec.Command("go", "build", "-o", tmp.Name(), bin).CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "compile error: %v\n%s", err, out)
+			os.Exit(1)
+		}
+		bin = tmp.Name()
 	}
-	defer cleanup()
 
-	tests := deterministicTests()
-	const nLimit = 100_000
-	used := totalN(tests)
-	if used < nLimit {
-		tests = append(tests, randomTests(nLimit-used)...)
-	}
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	tests := generateTests(rng)
 
 	input := buildInput(tests)
-
-	expOut, err := runBinary(oracle, input)
+	out, err := runBinary(bin, input)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "oracle failed: %v\ninput:\n%s", err, input)
+		fmt.Fprintf(os.Stderr, "runtime error: %v\n", err)
 		os.Exit(1)
 	}
-	expectedAns, err := parseOutput(expOut, tests)
+
+	answers, err := parseOutputs(out, tests)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "oracle output invalid: %v\n%s", err, expOut)
+		fmt.Fprintf(os.Stderr, "output parse error: %v\n", err)
 		os.Exit(1)
 	}
 
-	actOut, err := runBinary(target, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "target runtime error: %v\ninput:\n%s", err, input)
-		os.Exit(1)
-	}
-	actualAns, err := parseOutput(actOut, tests)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "target output invalid: %v\n%s", err, actOut)
-		os.Exit(1)
+	for i, tc := range tests {
+		if err := validate(tc, answers[i]); err != nil {
+			fmt.Fprintf(os.Stderr, "test %d failed: %v\n", i+1, err)
+			fmt.Fprintf(os.Stderr, "input:\n%s", buildInput([]testCase{tc}))
+			os.Exit(1)
+		}
 	}
 
-	if err := compareAnswers(expectedAns, actualAns); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\ninput:\n%s", err, input)
-		os.Exit(1)
-	}
-
-	fmt.Println("All tests passed.")
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
+	fmt.Printf("All %d tests passed.\n", len(tests))
 }

@@ -328,7 +328,7 @@ func buildInput(tc testCase) string {
 }
 
 func runCase(bin string, idx int, tc testCase) error {
-	ok, idxs := solveExpected(tc.arr)
+	ok, _ := solveExpected(tc.arr)
 	input := buildInput(tc)
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
@@ -361,8 +361,16 @@ func runCase(bin string, idx int, tc testCase) error {
 	if err1 != nil || err2 != nil || err3 != nil {
 		return fmt.Errorf("case %d failed: invalid indices", idx)
 	}
-	if i1 != idxs[0] || i2 != idxs[1] || i3 != idxs[2] {
-		return fmt.Errorf("case %d failed: expected %d %d %d got %d %d %d", idx, idxs[0], idxs[1], idxs[2], i1, i2, i3)
+	n := len(tc.arr)
+	if i1 < 1 || i2 < 1 || i3 < 1 || i1 > n || i2 > n || i3 > n {
+		return fmt.Errorf("case %d failed: indices out of range: %d %d %d", idx, i1, i2, i3)
+	}
+	if !(i1 < i2 && i2 < i3) {
+		return fmt.Errorf("case %d failed: indices not strictly increasing: %d %d %d", idx, i1, i2, i3)
+	}
+	p1, p2, p3 := tc.arr[i1-1], tc.arr[i2-1], tc.arr[i3-1]
+	if !(p1 < p2 && p3 < p2) {
+		return fmt.Errorf("case %d failed: condition p[i]<p[j]>p[k] not satisfied: p[%d]=%d p[%d]=%d p[%d]=%d", idx, i1, p1, i2, p2, i3, p3)
 	}
 	return nil
 }
