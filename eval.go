@@ -115,6 +115,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	db.SetMaxIdleConns(0) // don't reuse connections that may be in a bad state
 	// Ensure provider column exists for older deployments
 	execWrite(db, nil, "adding provider column", `ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS provider VARCHAR(255)`)
 	defer db.Close()
