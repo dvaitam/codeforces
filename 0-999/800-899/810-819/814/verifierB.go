@@ -2,25 +2,56 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+func validate(n int, a, b []int, output string) error {
+	fields := strings.Fields(output)
+	if len(fields) != n {
+		return fmt.Errorf("expected %d values, got %d", n, len(fields))
 	}
-	oracle := filepath.Join(dir, "oracleB")
-	cmd := exec.Command("go", "build", "-o", oracle, "814B.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	p := make([]int, n)
+	for i, f := range fields {
+		v, err := strconv.Atoi(f)
+		if err != nil {
+			return fmt.Errorf("invalid integer %q", f)
+		}
+		p[i] = v
 	}
-	return oracle, nil
+
+	freq := make([]int, n+1)
+	for _, v := range p {
+		if v < 1 || v > n {
+			return fmt.Errorf("value %d out of range [1,%d]", v, n)
+		}
+		freq[v]++
+	}
+	for v := 1; v <= n; v++ {
+		if freq[v] != 1 {
+			return fmt.Errorf("value %d appears %d times (not a permutation)", v, freq[v])
+		}
+	}
+
+	da, db := 0, 0
+	for i := 0; i < n; i++ {
+		if p[i] != a[i] {
+			da++
+		}
+		if p[i] != b[i] {
+			db++
+		}
+	}
+	if da != 1 {
+		return fmt.Errorf("differs from a in %d positions (need exactly 1)", da)
+	}
+	if db != 1 {
+		return fmt.Errorf("differs from b in %d positions (need exactly 1)", db)
+	}
+	return nil
 }
 
 func main() {
@@ -29,12 +60,6 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
 	file, err := os.Open("testcasesB.txt")
 	if err != nil {
@@ -50,55 +75,47 @@ func main() {
 			break
 		}
 		a := make([]int, n)
-		for i := 0; i < n; i++ {
+		for i := range a {
 			fmt.Fscan(reader, &a[i])
 		}
 		b := make([]int, n)
-		for i := 0; i < n; i++ {
+		for i := range b {
 			fmt.Fscan(reader, &b[i])
 		}
 		idx++
+
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d\n", n))
-		for i := 0; i < n; i++ {
+		for i, v := range a {
 			if i > 0 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(fmt.Sprintf("%d", a[i]))
+			sb.WriteString(strconv.Itoa(v))
 		}
 		sb.WriteByte('\n')
-		for i := 0; i < n; i++ {
+		for i, v := range b {
 			if i > 0 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(fmt.Sprintf("%d", b[i]))
+			sb.WriteString(strconv.Itoa(v))
 		}
 		sb.WriteByte('\n')
 		input := sb.String()
 
-		cmdO := exec.Command(oracle)
-		cmdO.Stdin = strings.NewReader(input)
-		var outO bytes.Buffer
-		cmdO.Stdout = &outO
-		if err := cmdO.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "oracle runtime error: %v\n", err)
-			os.Exit(1)
-		}
-		expected := strings.TrimSpace(outO.String())
-
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
+		var outBuf strings.Builder
+		var errBuf strings.Builder
+		cmd.Stdout = &outBuf
+		cmd.Stderr = &errBuf
 		if err := cmd.Run(); err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
+			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\nstderr: %s\n", idx, err, errBuf.String())
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
-		if got != expected {
-			fmt.Printf("test %d failed\nexpected: %s\ngot: %s\n", idx, expected, got)
+
+		got := strings.TrimSpace(outBuf.String())
+		if err := validate(n, a, b, got); err != nil {
+			fmt.Fprintf(os.Stderr, "test %d failed\ninput:\n%sgot: %s\nreason: %v\n", idx, input, got, err)
 			os.Exit(1)
 		}
 	}
