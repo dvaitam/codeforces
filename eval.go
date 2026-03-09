@@ -691,7 +691,7 @@ func sendPrompt(provider, model, apiKey, prompt string, useResponses bool) strin
 	lowerProvider := strings.ToLower(provider)
 
 	// Determine if we should use the Responses API for this provider
-	useResp := useResponses && (lowerProvider == "openai" || lowerProvider == "openrouter")
+	useResp := lowerProvider == "openai" || (useResponses && lowerProvider == "openrouter")
 
 	if lowerProvider == "gemini" || lowerProvider == "vertex" {
 		gemReq := map[string]interface{}{
@@ -705,6 +705,12 @@ func sendPrompt(provider, model, apiKey, prompt string, useResponses bool) strin
 		body, err = json.Marshal(gemReq)
 	} else if useResp {
 		respReq := map[string]interface{}{"model": model, "input": prompt}
+		if lowerProvider == "openai" {
+			respReq["reasoning"] = map[string]interface{}{
+				"effort":  "high",
+				"summary": "medium",
+			}
+		}
 		body, err = json.Marshal(respReq)
 	} else {
 		messages := []Message{{Role: "user", Content: prompt}}

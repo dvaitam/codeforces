@@ -38,7 +38,7 @@ func minCostSeq(s string, memo map[string]int) int {
 	for i := 0; i < n-1; i++ {
 		if s[i] == '(' && s[i+1] == ')' {
 			t := s[:i] + s[i+2:]
-			c := n - (i + 1) + minCostSeq(t, memo)
+			c := n - (i + 2) + minCostSeq(t, memo)
 			if c < best {
 				best = c
 			}

@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"math/bits"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -12,127 +11,105 @@ import (
 	"time"
 )
 
-func det(mat [][]int64) int64 {
-	n := len(mat)
-	if n == 0 {
-		return 1
-	}
-	M := make([][]int64, n)
-	for i := range mat {
-		M[i] = make([]int64, n)
-		copy(M[i], mat[i])
-	}
-	for k := 0; k < n; k++ {
-		if M[k][k] == 0 {
-			return 0
-		}
-		for i := k + 1; i < n; i++ {
-			for j := k + 1; j < n; j++ {
-				num := M[i][j]*M[k][k] - M[i][k]*M[k][j]
-				den := int64(1)
-				if k > 0 {
-					den = M[k-1][k-1]
-				}
-				M[i][j] = num / den
-			}
-			M[i][k] = 0
-		}
-	}
-	return M[n-1][n-1]
-}
 
+// countWays enumerates all spanning trees of the graph and counts those with exactly k leaves.
 func countWays(n int, edges [][2]int, k int) int64 {
-	adj := make([][]bool, n)
-	for i := 0; i < n; i++ {
-		adj[i] = make([]bool, n)
-	}
+	// deduplicate edges
+	type Edge [2]int
+	seen := make(map[Edge]bool)
+	var deduped [][2]int
 	for _, e := range edges {
-		u, v := e[0], e[1]
-		adj[u][v] = true
-		adj[v][u] = true
+		a, b := e[0], e[1]
+		if a > b {
+			a, b = b, a
+		}
+		key := Edge{a, b}
+		if !seen[key] {
+			seen[key] = true
+			deduped = append(deduped, [2]int{a, b})
+		}
 	}
+	edges = deduped
+
+	m := len(edges)
+	need := n - 1
 	var total int64
-	fullMask := 1 << n
-	for mask := 0; mask < fullMask; mask++ {
-		if bits.OnesCount(uint(mask)) != k {
-			continue
-		}
-		rmask := (fullMask - 1) ^ mask
-		prod := int64(1)
-		valid := true
-		for v := 0; v < n; v++ {
-			if mask&(1<<v) != 0 {
-				deg := 0
-				for u := 0; u < n; u++ {
-					if rmask&(1<<u) != 0 && adj[v][u] {
-						deg++
-					}
+	sel := make([]int, 0, need)
+
+	var rec func(start int)
+	rec = func(start int) {
+		if len(sel) == need {
+			// check acyclicity via union-find; n-1 acyclic edges => spanning tree
+			parent := make([]int, n)
+			for i := range parent {
+				parent[i] = i
+			}
+			var find func(int) int
+			find = func(x int) int {
+				if parent[x] != x {
+					parent[x] = find(parent[x])
 				}
-				if deg == 0 {
-					valid = false
-					break
+				return parent[x]
+			}
+			deg := make([]int, n)
+			for _, idx := range sel {
+				u, v := edges[idx][0], edges[idx][1]
+				pu, pv := find(u), find(v)
+				if pu == pv {
+					return // cycle => not a tree
 				}
-				prod *= int64(deg)
+				parent[pu] = pv
+				deg[u]++
+				deg[v]++
 			}
-		}
-		if !valid {
-			continue
-		}
-		var rverts []int
-		for v := 0; v < n; v++ {
-			if rmask&(1<<v) != 0 {
-				rverts = append(rverts, v)
-			}
-		}
-		rlen := len(rverts)
-		tcount := int64(1)
-		if rlen > 1 {
-			L := make([][]int64, rlen)
-			for i := range L {
-				L[i] = make([]int64, rlen)
-			}
-			for i := 0; i < rlen; i++ {
-				for j := i + 1; j < rlen; j++ {
-					u := rverts[i]
-					v := rverts[j]
-					if adj[u][v] {
-						L[i][i]++
-						L[j][j]++
-						L[i][j]--
-						L[j][i]--
-					}
+			leaves := 0
+			for i := 0; i < n; i++ {
+				if deg[i] == 1 {
+					leaves++
 				}
 			}
-			sz := rlen - 1
-			M := make([][]int64, sz)
-			for i := 0; i < sz; i++ {
-				M[i] = make([]int64, sz)
-				for j := 0; j < sz; j++ {
-					M[i][j] = L[i][j]
-				}
+			if leaves == k {
+				total++
 			}
-			tcount = det(M)
-			if tcount == 0 {
-				continue
-			}
+			return
 		}
-		total += prod * tcount
+		if m-start < need-len(sel) {
+			return
+		}
+		for i := start; i < m; i++ {
+			sel = append(sel, i)
+			rec(i + 1)
+			sel = sel[:len(sel)-1]
+		}
 	}
+	rec(0)
 	return total
 }
 
 func generateGraph(rng *rand.Rand) (string, int64) {
 	n := rng.Intn(5) + 3
-	// build connected graph
-	edges := make([][2]int, 0)
+	// build connected graph with no duplicate edges
+	type Edge [2]int
+	edgeSet := make(map[Edge]bool)
+	var edges [][2]int
+	addEdge := func(a, b int) {
+		if a > b {
+			a, b = b, a
+		}
+		key := Edge{a, b}
+		if !edgeSet[key] {
+			edgeSet[key] = true
+			edges = append(edges, [2]int{a, b})
+		}
+	}
 	for i := 1; i < n; i++ {
 		p := rng.Intn(i)
-		edges = append(edges, [2]int{p, i})
+		addEdge(p, i)
 	}
 	for i := 0; i < n; i++ {
 		for j := i + 1; j < n; j++ {
 			if rng.Float64() < 0.3 {
-				edges = append(edges, [2]int{i, j})
+				addEdge(i, j)
 			}
 		}
 	}
