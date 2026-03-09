@@ -708,7 +708,7 @@ func sendPrompt(provider, model, apiKey, prompt string, useResponses bool) strin
 		if lowerProvider == "openai" {
 			respReq["reasoning"] = map[string]interface{}{
 				"effort":  "high",
-				"summary": "medium",
+				"summary": "auto",
 			}
 		}
 		body, err = json.Marshal(respReq)
@@ -879,7 +879,13 @@ func sendPrompt(provider, model, apiKey, prompt string, useResponses bool) strin
 
 		if useResp {
 			var respBody struct {
-				OutputText string `json:"output_text"`
+				Output []struct {
+					Type    string `json:"type"`
+					Content []struct {
+						Type string `json:"type"`
+						Text string `json:"text"`
+					} `json:"content"`
+				} `json:"output"`
 			}
 			if err = json.Unmarshal(bodyBytes, &respBody); err != nil {
 				fmt.Printf("Error decoding response (attempt %d): %v\n", attempt, err)
@@ -889,7 +895,21 @@ func sendPrompt(provider, model, apiKey, prompt string, useResponses bool) strin
 				time.Sleep(time.Second * time.Duration(attempt))
 				continue
 			}
-			if respBody.OutputText == "" {
+			text := ""
+			for _, item := range respBody.Output {
+				if item.Type == "message" {
+					for _, c := range item.Content {
+						if c.Type == "output_text" {
+							text = c.Text
+							break
+						}
+					}
+				}
+				if text != "" {
+					break
+				}
+			}
+			if text == "" {
 				fmt.Printf("No response from API (attempt %d)\n", attempt)
 				if attempt == maxRetries {
 					return ""
@@ -897,7 +917,7 @@ func sendPrompt(provider, model, apiKey, prompt string, useResponses bool) strin
 				time.Sleep(time.Second * time.Duration(attempt))
 				continue
 			}
-			return respBody.OutputText
+			return text
 		}
 
 		var apiResp Response
