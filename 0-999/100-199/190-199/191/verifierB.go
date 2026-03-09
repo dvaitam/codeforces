@@ -31,30 +31,21 @@ func runCandidate(bin string, input string) (string, error) {
 
 func solve(n, k int, b int64, a []int64) int {
 	can := func(x int) bool {
-		drains := make([]int64, 0, n)
-		if x < n {
-			for i := 1; i <= n; i++ {
-				if i == x || i == n {
-					continue
-				}
-				drains = append(drains, a[i-1])
-			}
-		} else {
-			for i := 1; i < n; i++ {
-				if i == x {
-					continue
-				}
-				drains = append(drains, a[i-1])
-			}
+		// Worst square is always achievable (accepted at no cost to admin)
+		if x == n {
+			return true
 		}
-		need := k - 1
-		if need <= 0 {
-			return b < a[x-1]
-		}
-		if len(drains) == 0 {
-			return b < a[x-1]
+		// Drain: use k-1 days to apply for the most expensive squares (excluding x and n),
+		// forcing admin to spend money. Then on day k, apply for x.
+		drains := make([]int64, 0, n-2)
+		for i := 1; i <= n; i++ {
+			if i == x || i == n {
+				continue
+			}
+			drains = append(drains, a[i-1])
 		}
 		sort.Slice(drains, func(i, j int) bool { return drains[i] > drains[j] })
+		need := k - 1
 		var s int64
 		for i := 0; i < need && i < len(drains); i++ {
 			s += drains[i]
@@ -62,20 +53,18 @@ func solve(n, k int, b int64, a []int64) int {
 				break
 			}
 		}
+		// After draining s bourles, admin has b-s left.
+		// Opposition gets x if admin can't block: b-s < a[x-1], i.e. s > b-a[x-1].
 		return s > b-a[x-1]
 	}
-	l, r := 1, n
-	ans := n
-	for l <= r {
-		mid := (l + r) / 2
-		if can(mid) {
-			ans = mid
-			r = mid - 1
-		} else {
-			l = mid + 1
+	// Linear scan: can(x) is not necessarily monotone (e.g. can(1) may be true
+	// because a[0]>b even when can(2..n-1) are false).
+	for x := 1; x <= n; x++ {
+		if can(x) {
+			return x
 		}
 	}
-	return ans
+	return n
 }
 
 func generateCase(rng *rand.Rand) (string, string) {

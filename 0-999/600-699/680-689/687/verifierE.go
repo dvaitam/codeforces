@@ -1,14 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
+	"time"
 )
 
 func buildOracle() (string, error) {
@@ -42,6 +42,35 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+// genCase generates a random directed graph with n vertices and up to maxEdges edges.
+// The graph has no self-loops and at most one edge between any unordered pair.
+func genCase(rng *rand.Rand, n, maxEdges int) string {
+	type edge struct{ u, v int }
+	edgeSet := make(map[[2]int]bool)
+	var edges []edge
+	attempts := maxEdges * 4
+	for len(edges) < maxEdges && attempts > 0 {
+		attempts--
+		u := rng.Intn(n) + 1
+		v := rng.Intn(n) + 1
+		if u == v {
+			continue
+		}
+		key := [2]int{u, v}
+		if edgeSet[key] {
+			continue
+		}
+		edgeSet[key] = true
+		edges = append(edges, edge{u, v})
+	}
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d %d\n", n, len(edges))
+	for _, e := range edges {
+		fmt.Fprintf(&sb, "%d %d\n", e.u, e.v)
+	}
+	return sb.String()
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierE.go /path/to/binary")
@@ -55,57 +84,61 @@ func main() {
 	}
 	defer os.Remove(oracle)
 
-	file, err := os.Open("testcasesE.txt")
-	if err != nil {
-		fmt.Println("could not open testcasesE.txt:", err)
-		os.Exit(1)
-	}
-	defer file.Close()
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	scanner := bufio.NewScanner(file)
+	// Fixed cases from the problem (if any known samples existed).
+	// n=1,m=0 edge case.
+	fixed := []string{
+		"1 0\n",
+		"2 1\n1 2\n",
+		"2 2\n1 2\n2 1\n",
+		"3 3\n1 2\n2 3\n3 1\n",
+		"4 4\n1 2\n2 3\n3 4\n4 1\n",
+	}
+
 	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
+	for _, input := range fixed {
 		idx++
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
-			fmt.Printf("bad test case %d\n", idx)
-			os.Exit(1)
-		}
-		n, _ := strconv.Atoi(fields[0])
-		m, _ := strconv.Atoi(fields[1])
-		if len(fields) != 2+2*m {
-			fmt.Printf("bad test case %d\n", idx)
-			os.Exit(1)
-		}
-		var input strings.Builder
-		fmt.Fprintf(&input, "%d %d\n", n, m)
-		for i := 0; i < m; i++ {
-			u := fields[2+2*i]
-			v := fields[2+2*i+1]
-			fmt.Fprintf(&input, "%s %s\n", u, v)
-		}
-		exp, err := run(oracle, input.String())
+		exp, err := run(oracle, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on test %d: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "oracle error on fixed test %d: %v\n", idx, err)
 			os.Exit(1)
 		}
-		got, err := run(bin, input.String())
+		got, err := run(bin, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d failed: %v\n", idx, err)
+			fmt.Fprintf(os.Stderr, "fixed test %d failed: %v\ninput:\n%s", idx, err, input)
 			os.Exit(1)
 		}
 		if got != exp {
-			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx, exp, got)
+			fmt.Printf("fixed test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", idx, input, exp, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Println("scanner error:", err)
-		os.Exit(1)
+
+	// Random small tests.
+	for idx < 300 {
+		idx++
+		n := rng.Intn(8) + 1
+		maxEdges := rng.Intn(n*(n-1)/2+1) + 1
+		if n == 1 {
+			maxEdges = 0
+		}
+		input := genCase(rng, n, maxEdges)
+		exp, err := run(oracle, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "oracle error on test %d: %v\ninput:\n%s", idx, err, input)
+			os.Exit(1)
+		}
+		got, err := run(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d failed: %v\ninput:\n%s", idx, err, input)
+			os.Exit(1)
+		}
+		if got != exp {
+			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", idx, input, exp, got)
+			os.Exit(1)
+		}
 	}
+
 	fmt.Printf("All %d tests passed\n", idx)
 }

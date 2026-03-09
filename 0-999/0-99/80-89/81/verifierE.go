@@ -1,13 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Pair struct{ first, second int }
@@ -23,7 +24,7 @@ func (a Pair) less(b Pair) bool {
 
 var (
 	n        int
-	f, s     []int
+	fArr, s  []int
 	tag, pre []int
 	c        [][]int
 	dp, cdp  [][]Pair
@@ -77,10 +78,10 @@ func solve(v0 int) {
 	v := v0
 	for tag[v] == 0 {
 		tag[v] = 1
-		v = f[v]
+		v = fArr[v]
 	}
 	circ := []int{v}
-	for u := f[v]; u != v; u = f[u] {
+	for u := fArr[v]; u != v; u = fArr[u] {
 		circ = append(circ, u)
 	}
 	for _, u := range circ {
@@ -166,10 +167,11 @@ func solve(v0 int) {
 	todo = append(todo, how...)
 }
 
-func expected(lines []string) string {
-	n, _ = strconv.Atoi(strings.TrimSpace(lines[0]))
-	f = make([]int, n+1)
-	s = make([]int, n+1)
+// reference returns the optimal (t, e) for the given input.
+func reference(nVal int, fa, sx []int) (int, int) {
+	n = nVal
+	fArr = fa
+	s = sx
 	tag = make([]int, n+1)
 	pre = make([]int, n+1)
 	c = make([][]int, n+1)
@@ -180,13 +182,8 @@ func expected(lines []string) string {
 		dp[i] = make([]Pair, 2)
 		cdp[i] = make([]Pair, 2)
 	}
-	for i := 0; i < n; i++ {
-		parts := strings.Fields(lines[1+i])
-		fi, _ := strconv.Atoi(parts[0])
-		si, _ := strconv.Atoi(parts[1])
-		f[i+1] = fi
-		s[i+1] = si
-		c[fi] = append(c[fi], i+1)
+	for i := 1; i <= n; i++ {
+		c[fArr[i]] = append(c[fArr[i]], i)
 	}
 	ans = Pair{0, 0}
 	todo = []Pair{}
@@ -195,12 +192,114 @@ func expected(lines []string) string {
 			solve(i)
 		}
 	}
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d %d\n", ans.first, ans.second))
-	for _, p := range todo {
-		sb.WriteString(fmt.Sprintf("%d %d\n", p.first, p.second))
+	return ans.first, ans.second
+}
+
+func runBin(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
 	}
-	return strings.TrimSpace(sb.String())
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func makeInput(nVal int, fa, sx []int) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d\n", nVal)
+	for i := 1; i <= nVal; i++ {
+		fmt.Fprintf(&sb, "%d %d\n", fa[i], sx[i])
+	}
+	return sb.String()
+}
+
+// validate checks that the candidate output is a valid answer.
+func validate(output string, nVal int, fa, sx []int, optT, optE int) error {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) == 0 {
+		return fmt.Errorf("empty output")
+	}
+	parts := strings.Fields(lines[0])
+	if len(parts) != 2 {
+		return fmt.Errorf("first line must have 2 numbers, got %q", lines[0])
+	}
+	gotT, err1 := strconv.Atoi(parts[0])
+	gotE, err2 := strconv.Atoi(parts[1])
+	if err1 != nil || err2 != nil {
+		return fmt.Errorf("cannot parse first line: %q", lines[0])
+	}
+	if gotT != optT {
+		return fmt.Errorf("wrong number of pairs: got %d, want %d", gotT, optT)
+	}
+	if gotE != optE {
+		return fmt.Errorf("wrong number of boy-girl pairs: got %d, want %d", gotE, optE)
+	}
+	if len(lines) != 1+gotT {
+		return fmt.Errorf("expected %d pair lines, got %d", gotT, len(lines)-1)
+	}
+	used := make(map[int]bool)
+	boyGirl := 0
+	for i := 0; i < gotT; i++ {
+		pparts := strings.Fields(lines[1+i])
+		if len(pparts) != 2 {
+			return fmt.Errorf("pair line %d: expected 2 numbers, got %q", i+1, lines[1+i])
+		}
+		a, e1 := strconv.Atoi(pparts[0])
+		b, e2 := strconv.Atoi(pparts[1])
+		if e1 != nil || e2 != nil {
+			return fmt.Errorf("pair line %d: cannot parse numbers", i+1)
+		}
+		if a < 1 || a > nVal || b < 1 || b > nVal {
+			return fmt.Errorf("pair line %d: student index out of range (%d, %d)", i+1, a, b)
+		}
+		if a == b {
+			return fmt.Errorf("pair line %d: student paired with themselves (%d)", i+1, a)
+		}
+		// pair {a,b} is valid if f[a]=b or f[b]=a
+		if fa[a] != b && fa[b] != a {
+			return fmt.Errorf("pair line %d: invalid pair (%d, %d): neither is the other's best friend", i+1, a, b)
+		}
+		if used[a] {
+			return fmt.Errorf("pair line %d: student %d appears more than once", i+1, a)
+		}
+		if used[b] {
+			return fmt.Errorf("pair line %d: student %d appears more than once", i+1, b)
+		}
+		used[a] = true
+		used[b] = true
+		if sx[a] != sx[b] {
+			boyGirl++
+		}
+	}
+	if boyGirl != gotE {
+		return fmt.Errorf("declared e=%d but counted %d boy-girl pairs", gotE, boyGirl)
+	}
+	return nil
+}
+
+func generateTest(rng *rand.Rand) (int, []int, []int) {
+	nVal := rng.Intn(10) + 2
+	fa := make([]int, nVal+1)
+	sx := make([]int, nVal+1)
+	for i := 1; i <= nVal; i++ {
+		for {
+			fa[i] = rng.Intn(nVal) + 1
+			if fa[i] != i {
+				break
+			}
+		}
+		sx[i] = rng.Intn(2) + 1
+	}
+	return nVal, fa, sx
 }
 
 func main() {
@@ -209,77 +308,49 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesE.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	// Fixed test cases from problem statement
+	type fixedCase struct {
+		nVal int
+		fa   []int // 1-indexed
+		sx   []int // 1-indexed
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	var lines []string
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.TrimSpace(line) == "" {
-			if len(lines) == 0 {
-				continue
-			}
-			idx++
-			expect := expected(lines)
-			var input bytes.Buffer
-			for _, l := range lines {
-				input.WriteString(strings.TrimSpace(l))
-				input.WriteByte('\n')
-			}
-			cmd := exec.Command(bin)
-			cmd.Stdin = bytes.NewReader(input.Bytes())
-			var out bytes.Buffer
-			var stderr bytes.Buffer
-			cmd.Stdout = &out
-			cmd.Stderr = &stderr
-			err := cmd.Run()
-			if err != nil {
-				fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
-				os.Exit(1)
-			}
-			got := strings.TrimSpace(out.String())
-			if got != expect {
-				fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx, expect, got)
-				os.Exit(1)
-			}
-			lines = lines[:0]
-			continue
-		}
-		lines = append(lines, line)
+	fixed := []fixedCase{
+		// Sample: n=4, pairs (1->2,s=1),(2->3,s=2),(3->4,s=1),(4->2,s=1)
+		{4, []int{0, 2, 3, 4, 2}, []int{0, 1, 2, 1, 1}},
 	}
-	if len(lines) > 0 {
-		idx++
-		expect := expected(lines)
-		var input bytes.Buffer
-		for _, l := range lines {
-			input.WriteString(strings.TrimSpace(l))
-			input.WriteByte('\n')
-		}
-		cmd := exec.Command(bin)
-		cmd.Stdin = bytes.NewReader(input.Bytes())
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		err := cmd.Run()
+
+	total := 0
+	for _, fc := range fixed {
+		optT, optE := reference(fc.nVal, fc.fa, fc.sx)
+		input := makeInput(fc.nVal, fc.fa, fc.sx)
+		got, err := runBin(bin, input)
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
+			fmt.Fprintf(os.Stderr, "fixed case %d failed: %v\ninput:\n%s", total+1, err, input)
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
-		if got != expect {
-			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx, expect, got)
+		if err := validate(got, fc.nVal, fc.fa, fc.sx, optT, optE); err != nil {
+			fmt.Fprintf(os.Stderr, "fixed case %d failed: %v\noutput:\n%s\ninput:\n%s", total+1, err, got, input)
 			os.Exit(1)
 		}
+		total++
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
+
+	for total < 200 {
+		nVal, fa, sx := generateTest(rng)
+		optT, optE := reference(nVal, fa, sx)
+		input := makeInput(nVal, fa, sx)
+		got, err := runBin(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", total+1, err, input)
+			os.Exit(1)
+		}
+		if err := validate(got, nVal, fa, sx, optT, optE); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\noutput:\n%s\ninput:\n%s", total+1, err, got, input)
+			os.Exit(1)
+		}
+		total++
 	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", total)
 }

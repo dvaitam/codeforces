@@ -83,25 +83,18 @@ func mstEdges(edges []Edge, n int, x int) []int {
 	return ws
 }
 
-type MSTInfo struct {
-	weights []int
-	prefix  []int64
-}
-
-func buildInfo(ws []int) MSTInfo {
-	prefix := make([]int64, len(ws)+1)
-	for i, w := range ws {
-		prefix[i+1] = prefix[i] + int64(w)
+func isConnected(n int, edges []Edge) bool {
+	dsu := NewDSU(n + 1)
+	for _, e := range edges {
+		dsu.union(e.u, e.v)
 	}
-	return MSTInfo{weights: ws, prefix: prefix}
-}
-
-func (info MSTInfo) cost(x int) int64 {
-	w := info.weights
-	idx := sort.Search(len(w), func(i int) bool { return w[i] > x })
-	sumLess := info.prefix[idx]
-	total := info.prefix[len(w)]
-	return int64(x)*int64(idx) - sumLess + (total - sumLess) - int64(x)*int64(len(w)-idx)
+	root := dsu.find(1)
+	for i := 2; i <= n; i++ {
+		if dsu.find(i) != root {
+			return false
+		}
+	}
+	return true
 }
 
 func runCandidate(bin, input string) (string, error) {
@@ -122,71 +115,40 @@ func runCandidate(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func solveE(n, m int, edges []Edge, p, k, a, b, c int, q []int) int64 {
-	boundariesMap := make(map[int]struct{})
-	boundariesMap[0] = struct{}{}
-	boundariesMap[c] = struct{}{}
-	weights := make([]int, m)
-	for i, e := range edges {
-		weights[i] = e.w
-	}
-	for i := 0; i < m; i++ {
-		for j := i; j < m; j++ {
-			v := (weights[i] + weights[j] + 1) / 2
-			if v < 0 {
-				v = 0
-			}
-			if v > c {
-				v = c
-			}
-			boundariesMap[v] = struct{}{}
-		}
-	}
-	boundaries := make([]int, 0, len(boundariesMap))
-	for v := range boundariesMap {
-		boundaries = append(boundaries, v)
-	}
-	sort.Ints(boundaries)
-	starts := make([]int, 0)
-	for _, v := range boundaries {
-		if v < c {
-			starts = append(starts, v)
-		}
-	}
-	starts = append(starts, c)
-	infos := make([]MSTInfo, len(starts))
-	for i, st := range starts {
-		if st == c {
-			infos[i] = MSTInfo{}
-		} else {
-			ws := mstEdges(edges, n, st)
-			infos[i] = buildInfo(ws)
-		}
-	}
+// solveE computes the XOR of minimum spanning tree costs for each query.
+// For each query x, the optimal MST minimises sum |w_i - x|, found by
+// Kruskal sorting edges by |w - x|.
+func solveE(n int, edges []Edge, qs []int) int64 {
 	var xorResult int64
-	for _, x := range q {
-		idx := sort.Search(len(starts), func(i int) bool { return starts[i] > x }) - 1
-		if idx < 0 {
-			idx = 0
+	for _, x := range qs {
+		ws := mstEdges(edges, n, x)
+		var cost int64
+		for _, w := range ws {
+			cost += int64(abs(w - x))
 		}
-		ans := infos[idx].cost(x)
-		xorResult ^= ans
+		xorResult ^= cost
 	}
 	return xorResult
 }
 
 func generateCase(r *rand.Rand) (string, string) {
-	n := r.Intn(5) + 2
-	m := r.Intn(5) + n - 1
-	edges := make([]Edge, m)
-	for i := 0; i < m; i++ {
-		u := r.Intn(n) + 1
-		v := r.Intn(n) + 1
-		for v == u {
-			v = r.Intn(n) + 1
+	var n, m int
+	var edges []Edge
+	for {
+		n = r.Intn(5) + 2
+		m = r.Intn(5) + n - 1
+		edges = make([]Edge, m)
+		for i := 0; i < m; i++ {
+			u := r.Intn(n) + 1
+			v := r.Intn(n) + 1
+			for v == u {
+				v = r.Intn(n) + 1
+			}
+			edges[i] = Edge{u: u, v: v, w: r.Intn(20)}
 		}
-		w := r.Intn(20)
-		edges[i] = Edge{u: u, v: v, w: w}
+		if isConnected(n, edges) {
+			break
+		}
 	}
 	p := r.Intn(3) + 1
 	k := p + r.Intn(3)
@@ -200,7 +162,7 @@ func generateCase(r *rand.Rand) (string, string) {
 	for i := p; i < k; i++ {
 		q[i] = (q[i-1]*a + b) % c
 	}
-	expect := fmt.Sprintf("%d", solveE(n, m, edges, p, k, a, b, c, q))
+	expect := fmt.Sprintf("%d", solveE(n, edges, q))
 	input := fmt.Sprintf("%d %d\n", n, m)
 	for i := 0; i < m; i++ {
 		input += fmt.Sprintf("%d %d %d\n", edges[i].u, edges[i].v, edges[i].w)

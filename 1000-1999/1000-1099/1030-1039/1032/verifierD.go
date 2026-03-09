@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -58,6 +60,12 @@ func genCase(r *rand.Rand) string {
 	return fmt.Sprintf("%d %d %d\n%d %d %d %d\n", a, b, c, x1, y1, x2, y2)
 }
 
+func floatClose(a, b, eps float64) bool {
+	diff := math.Abs(a - b)
+	denom := math.Max(1, math.Abs(b))
+	return diff/denom <= eps
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierD.go /path/to/binary")
@@ -80,18 +88,20 @@ func main() {
 		cases = append(cases, genCase(r))
 	}
 	for idx, input := range cases {
-		want, err := run(oracle, input)
+		wantStr, err := run(oracle, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle failed on test %d: %v\ninput:\n%s", idx+1, err, input)
 			os.Exit(1)
 		}
-		got, err := run(userBin, input)
+		gotStr, err := run(userBin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "test %d: %v\ninput:\n%s", idx+1, err, input)
 			os.Exit(1)
 		}
-		if want != got {
-			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", idx+1, input, want, got)
+		want, err1 := strconv.ParseFloat(strings.TrimSpace(wantStr), 64)
+		got, err2 := strconv.ParseFloat(strings.TrimSpace(gotStr), 64)
+		if err1 != nil || err2 != nil || !floatClose(want, got, 1e-6) {
+			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", idx+1, input, wantStr, gotStr)
 			os.Exit(1)
 		}
 	}

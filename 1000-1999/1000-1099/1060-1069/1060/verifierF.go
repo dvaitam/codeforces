@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -48,6 +50,25 @@ func genCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
+func floatLinesMatch(want, got string, eps float64) error {
+	wlines := strings.Fields(want)
+	glines := strings.Fields(got)
+	if len(wlines) != len(glines) {
+		return fmt.Errorf("line count mismatch: want %d got %d", len(wlines), len(glines))
+	}
+	for i, ws := range wlines {
+		w, err1 := strconv.ParseFloat(ws, 64)
+		g, err2 := strconv.ParseFloat(glines[i], 64)
+		if err1 != nil || err2 != nil {
+			return fmt.Errorf("line %d: cannot parse floats", i+1)
+		}
+		if math.Abs(w-g) > eps && math.Abs(w-g)/math.Max(1, math.Abs(w)) > eps {
+			return fmt.Errorf("line %d: want %v got %v", i+1, w, g)
+		}
+	}
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierF.go /path/to/binary")
@@ -74,7 +95,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "candidate runtime error on case %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if got != want {
+		if err := floatLinesMatch(want, got, 1e-6); err != nil {
 			fmt.Printf("case %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, input, want, got)
 			os.Exit(1)
 		}

@@ -43,7 +43,7 @@ func dfs(n int) float64 {
    if f, ok := memo[s]; ok {
        return f
    }
-   const Inf = math.Inf(1)
+   Inf := math.Inf(1)
    // c[1..3] stores minimal expected for removing each color
    c := [4]float64{0, Inf, Inf, Inf}
    an := aData[n-1]

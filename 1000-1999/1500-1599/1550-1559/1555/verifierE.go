@@ -25,7 +25,7 @@ func buildOracle() (string, error) {
 }
 
 func generate(rng *rand.Rand) (int, int, [][3]int) {
-	n := rng.Intn(10) + 1
+	n := rng.Intn(9) + 1
 	m := rng.Intn(30) + 2
 	segs := make([][3]int, n)
 	for i := range segs {
@@ -34,7 +34,10 @@ func generate(rng *rand.Rand) (int, int, [][3]int) {
 		w := rng.Intn(100) + 1
 		segs[i] = [3]int{l, r, w}
 	}
-	return n, m, segs
+	// Always add one spanning segment to guarantee a good subset exists.
+	w := rng.Intn(100) + 1
+	segs = append(segs, [3]int{1, m, w})
+	return len(segs), m, segs
 }
 
 func runCase(bin, oracle string, n, m int, segs [][3]int) error {

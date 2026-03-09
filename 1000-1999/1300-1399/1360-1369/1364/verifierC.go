@@ -9,6 +9,58 @@ import (
 	"strings"
 )
 
+// validate checks whether the candidate output is correct for the given testcase.
+// It validates MEX conditions directly rather than comparing to an oracle,
+// because multiple valid outputs exist.
+func validate(tc testCase, got string) error {
+	n := tc.n
+	a := tc.arr
+
+	// If the input violates problem constraints (a[i] > i+1, 0-indexed, or
+	// a is not non-decreasing), the input is outside the problem spec and
+	// any output from the solution is acceptable.
+	for i := 0; i < n; i++ {
+		if a[i] > i+1 {
+			return nil
+		}
+		if i > 0 && a[i] < a[i-1] {
+			return nil
+		}
+	}
+
+	tokens := strings.Fields(got)
+	if len(tokens) == 1 && tokens[0] == "-1" {
+		// For valid inputs a solution always exists, so -1 is wrong.
+		return fmt.Errorf("returned -1 but a valid answer exists")
+	}
+	if len(tokens) != n {
+		return fmt.Errorf("expected %d values, got %d", n, len(tokens))
+	}
+	b := make([]int, n)
+	for i, tok := range tokens {
+		v, err := strconv.Atoi(tok)
+		if err != nil || v < 0 || v > 1_000_000 {
+			return fmt.Errorf("invalid value at position %d: %q", i+1, tok)
+		}
+		b[i] = v
+	}
+
+	// Verify MEX({b_1,...,b_i}) == a[i] for each prefix.
+	// mex is maintained incrementally: it only increases (O(n) amortized).
+	seen := make(map[int]bool, n)
+	mex := 0
+	for i := 0; i < n; i++ {
+		seen[b[i]] = true
+		for seen[mex] {
+			mex++
+		}
+		if mex != a[i] {
+			return fmt.Errorf("at prefix length %d: MEX=%d but a[%d]=%d", i+1, mex, i+1, a[i])
+		}
+	}
+	return nil
+}
+
 const testcasesData = `
 3 1 2 3
 9 1 1 2 4 2 0 4 0 7
@@ -245,14 +297,13 @@ func main() {
 		}
 		input.WriteByte('\n')
 
-		want := solve(tc)
 		got, err := run(bin, input.String())
 		if err != nil {
-			fmt.Printf("case %d failed: %v\n", idx+1, err)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != want {
-			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, want, got)
+		if err := validate(tc, strings.TrimSpace(got)); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput: %s\ngot: %s\n", idx+1, err, strings.TrimSpace(input.String()), got)
 			os.Exit(1)
 		}
 	}

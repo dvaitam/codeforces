@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -55,6 +56,80 @@ func genCase(r *rand.Rand) string {
 	return sb.String()
 }
 
+// check validates that the candidate output is a correct answer given the input
+// and that its count matches the oracle's count (minimality).
+func check(caseNum int, input, oracleOut, candOut string) error {
+	inLines := strings.Fields(input)
+	idx := 0
+	n, _ := strconv.Atoi(inLines[idx])
+	idx++
+	k, _ := strconv.Atoi(inLines[idx])
+	idx++
+	ls := make([]int, n+1)
+	rs := make([]int, n+1)
+	for i := 1; i <= n; i++ {
+		ls[i], _ = strconv.Atoi(inLines[idx])
+		idx++
+		rs[i], _ = strconv.Atoi(inLines[idx])
+		idx++
+	}
+
+	// Parse oracle count (first line)
+	oLines := strings.Split(strings.TrimSpace(oracleOut), "\n")
+	oracleM, err := strconv.Atoi(strings.TrimSpace(oLines[0]))
+	if err != nil {
+		return fmt.Errorf("case %d: bad oracle output: %v", caseNum, err)
+	}
+
+	// Parse candidate output
+	cLines := strings.Split(strings.TrimSpace(candOut), "\n")
+	if len(cLines) < 1 {
+		return fmt.Errorf("case %d: empty candidate output", caseNum)
+	}
+	candM, err := strconv.Atoi(strings.TrimSpace(cLines[0]))
+	if err != nil {
+		return fmt.Errorf("case %d: bad candidate count: %v", caseNum, err)
+	}
+	if candM != oracleM {
+		return fmt.Errorf("case %d: candidate removed %d segments, oracle removed %d (not minimum)", caseNum, candM, oracleM)
+	}
+
+	removed := make(map[int]bool)
+	if candM > 0 {
+		if len(cLines) < 2 {
+			return fmt.Errorf("case %d: missing indices line", caseNum)
+		}
+		parts := strings.Fields(cLines[1])
+		if len(parts) != candM {
+			return fmt.Errorf("case %d: expected %d indices, got %d", caseNum, candM, len(parts))
+		}
+		for _, p := range parts {
+			v, err := strconv.Atoi(p)
+			if err != nil || v < 1 || v > n {
+				return fmt.Errorf("case %d: invalid index %q", caseNum, p)
+			}
+			if removed[v] {
+				return fmt.Errorf("case %d: duplicate index %d", caseNum, v)
+			}
+			removed[v] = true
+		}
+	}
+
+	// Verify no bad points remain
+	for x := 1; x <= 200; x++ {
+		cnt := 0
+		for i := 1; i <= n; i++ {
+			if !removed[i] && ls[i] <= x && x <= rs[i] {
+				cnt++
+			}
+		}
+		if cnt > k {
+			return fmt.Errorf("case %d: point %d still covered by %d > %d segments after removal", caseNum, x, cnt, k)
+		}
+	}
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierD1.go /path/to/binary")
@@ -81,8 +156,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
-			fmt.Printf("case %d failed\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i, input, expect, got)
+		if err := check(i, input, expect, got); err != nil {
+			fmt.Printf("%v\ninput:\n%sexpected:\n%s\ngot:\n%s\n", err, input, expect, got)
 			os.Exit(1)
 		}
 	}

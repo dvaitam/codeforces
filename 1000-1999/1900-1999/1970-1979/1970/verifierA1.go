@@ -99,17 +99,18 @@ func runProgram(target, input string) (string, error) {
 
 func generateTests() []testCase {
 	var tests []testCase
+	// Only balanced sequences are valid per problem constraints.
 	tests = append(tests,
-		buildTest(""),
 		buildTest("()"),
-		buildTest(")()("),
 		buildTest("(())"),
+		buildTest("()()"),
 		buildTest("((()))"),
+		buildTest("()(())"),
 	)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for len(tests) < 60 {
-		length := rng.Intn(40) + 1
-		tests = append(tests, buildTest(randomString(rng, length)))
+		k := rng.Intn(20) + 1 // length = 2k
+		tests = append(tests, buildTest(randomBalanced(rng, k)))
 	}
 	return tests
 }
@@ -118,17 +119,32 @@ func buildTest(s string) testCase {
 	return testCase{input: fmt.Sprintf("%s\n", s)}
 }
 
-func randomString(rng *rand.Rand, n int) string {
-	if n == 0 {
-		return ""
-	}
+// randomBalanced generates a uniformly-random balanced parentheses sequence of length 2k.
+func randomBalanced(rng *rand.Rand, k int) string {
+	n := 2 * k
 	var b strings.Builder
 	b.Grow(n)
+	open := 0
 	for i := 0; i < n; i++ {
+		remaining := n - i
+		// Must close: all remaining characters must be ')' to balance.
+		if open == remaining {
+			b.WriteByte(')')
+			open--
+			continue
+		}
+		// Must open: no open brackets to close yet.
+		if open == 0 {
+			b.WriteByte('(')
+			open++
+			continue
+		}
 		if rng.Intn(2) == 0 {
 			b.WriteByte('(')
+			open++
 		} else {
 			b.WriteByte(')')
+			open--
 		}
 	}
 	return b.String()

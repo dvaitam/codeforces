@@ -6,20 +6,11 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 )
 
-type testCase struct {
-	name  string
-	input string
-}
-
 type cell struct {
-	r int64
-	c int64
-	a int64
+	r, c, a int64
 }
 
 type gameCase struct {
@@ -29,78 +20,49 @@ type gameCase struct {
 	pts []cell
 }
 
-var problemDir string
-
-func init() {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		panic("unable to locate verifier path")
-	}
-	problemDir = filepath.Dir(file)
+type testCase struct {
+	name     string
+	input    string
+	expected string
 }
 
-func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierF.go /path/to/binary")
-		os.Exit(1)
+// solveF implements the game theory directly:
+// group cells by r%(K+1), XOR stone counts mod (K+1) per group;
+// if any group has a non-zero XOR, Anda (first player) wins.
+func solveF(cs gameCase) string {
+	k := cs.K + 1
+	mp := make(map[int64]int64)
+	for _, p := range cs.pts {
+		r := p.r % k
+		x := p.a % k
+		mp[r] ^= x
 	}
-	target := os.Args[1]
-
-	refBin, cleanup, err := buildReferenceBinary()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
-	tests := buildTests()
-	for i, tc := range tests {
-		exp, err := runProgram(refBin, tc.input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference runtime error on case %d (%s): %v\ninput:\n%s", i+1, tc.name, err, tc.input)
-			os.Exit(1)
-		}
-		got, err := runProgram(target, tc.input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "runtime error on case %d (%s): %v\ninput:\n%s", i+1, tc.name, err, tc.input)
-			os.Exit(1)
-		}
-		if got != exp {
-			fmt.Fprintf(os.Stderr, "wrong answer on case %d (%s)\nexpected:\n%s\n\ngot:\n%s\ninput:\n%s", i+1, tc.name, exp, got, tc.input)
-			os.Exit(1)
+	for _, v := range mp {
+		if v != 0 {
+			return "Anda"
 		}
 	}
-
-	fmt.Printf("Accepted (%d tests)\n", len(tests))
+	return "Kamu"
 }
 
-func buildReferenceBinary() (string, func(), error) {
-	tmp, err := os.CreateTemp("", "cf-2045F-ref-*")
-	if err != nil {
-		return "", nil, err
+func packCases(name string, cases []gameCase) testCase {
+	var inp, exp strings.Builder
+	fmt.Fprintf(&inp, "%d\n", len(cases))
+	for _, cs := range cases {
+		fmt.Fprintf(&inp, "%d %d %d\n", cs.N, cs.M, cs.K)
+		for _, p := range cs.pts {
+			fmt.Fprintf(&inp, "%d %d %d\n", p.r, p.c, p.a)
+		}
+		exp.WriteString(solveF(cs))
+		exp.WriteByte('\n')
 	}
-	tmp.Close()
-	os.Remove(tmp.Name())
-
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), "2045F.go")
-	cmd.Dir = problemDir
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", nil, fmt.Errorf("go build error: %v\n%s", err, stderr.String())
-	}
-	cleanup := func() {
-		_ = os.Remove(tmp.Name())
-	}
-	return tmp.Name(), cleanup, nil
+	return testCase{name: name, input: inp.String(), expected: strings.TrimSpace(exp.String())}
 }
 
 func runProgram(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
+	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
@@ -109,32 +71,21 @@ func runProgram(bin, input string) (string, error) {
 	return strings.TrimSpace(stdout.String()), nil
 }
 
-func buildTests() []testCase {
-	rng := rand.New(rand.NewSource(2045007))
-	var tests []testCase
-
-	tests = append(tests, sampleTest())
-	tests = append(tests, singlePileTests())
-	tests = append(tests, layeredRowsTest())
-	tests = append(tests, randomPack("random-small", rng, 10, 10, 10))
-	tests = append(tests, randomPack("random-mid", rng, 8, 2000, 8000))
-	tests = append(tests, randomPack("random-largeK", rng, 5, 50000, 120000))
-	tests = append(tests, skewedHeavyCase(rng))
-
-	return tests
-}
-
 func sampleTest() testCase {
-	input := "3\n2 2 4\n1 1 3\n2 1 2\n100 2 1\n4 1 10\n4 4 10\n10 5 2\n1 1 4\n3 1 2\n4 2 5\n2 2 1\n5 3 4\n"
-	return testCase{name: "sample", input: input}
+	cases := []gameCase{
+		{N: 2, M: 2, K: 4, pts: []cell{{1, 1, 3}, {2, 1, 2}}},
+		{N: 100, M: 2, K: 1, pts: []cell{{4, 1, 10}, {4, 4, 10}}},
+		{N: 10, M: 5, K: 2, pts: []cell{{1, 1, 4}, {3, 1, 2}, {4, 2, 5}, {2, 2, 1}, {5, 3, 4}}},
+	}
+	return packCases("sample", cases)
 }
 
 func singlePileTests() testCase {
 	cases := []gameCase{
-		{N: 1, M: 1, K: 1, pts: []cell{{r: 1, c: 1, a: 1}}},
-		{N: 5, M: 1, K: 2, pts: []cell{{r: 3, c: 2, a: 7}}},
-		{N: 1_000_000_000, M: 1, K: 200000, pts: []cell{{r: 1, c: 1, a: 1}}},
-		{N: 1_000_000_000, M: 1, K: 3, pts: []cell{{r: 1_000_000_000, c: 1, a: 5}}},
+		{N: 1, M: 1, K: 1, pts: []cell{{1, 1, 1}}},
+		{N: 5, M: 1, K: 2, pts: []cell{{3, 2, 7}}},
+		{N: 1_000_000_000, M: 1, K: 200000, pts: []cell{{1, 1, 1}}},
+		{N: 1_000_000_000, M: 1, K: 3, pts: []cell{{1_000_000_000, 1, 5}}},
 	}
 	return packCases("single-pile", cases)
 }
@@ -143,39 +94,25 @@ func layeredRowsTest() testCase {
 	cases := []gameCase{
 		{
 			N: 15, M: 4, K: 3,
-			pts: []cell{
-				{r: 15, c: 1, a: 3},
-				{r: 12, c: 5, a: 4},
-				{r: 9, c: 2, a: 6},
-				{r: 6, c: 3, a: 8},
-			},
+			pts: []cell{{15, 1, 3}, {12, 5, 4}, {9, 2, 6}, {6, 3, 8}},
 		},
 		{
 			N: 50, M: 6, K: 7,
-			pts: []cell{
-				{r: 5, c: 1, a: 10},
-				{r: 10, c: 5, a: 12},
-				{r: 20, c: 7, a: 15},
-				{r: 30, c: 10, a: 9},
-				{r: 40, c: 15, a: 20},
-				{r: 45, c: 25, a: 11},
-			},
+			pts: []cell{{5, 1, 10}, {10, 5, 12}, {20, 7, 15}, {30, 10, 9}, {40, 15, 20}, {45, 25, 11}},
 		},
 	}
 	return packCases("layered-rows", cases)
 }
 
-func randomPack(name string, rng *rand.Rand, t int, maxM int, maxN int64) testCase {
-	cases := make([]gameCase, 0, t)
-	for i := 0; i < t; i++ {
-		cases = append(cases, randomCase(rng, maxM, maxN))
-	}
-	return packCases(name, cases)
-}
-
 func randomCase(rng *rand.Rand, maxM int, maxN int64) gameCase {
-	M := 1 + rng.Intn(maxM)
 	N := int64(1 + rng.Intn(int(maxN)))
+	// A triangular grid of size N has N*(N+1)/2 distinct cells.
+	// Cap M so the unique-cell sampling loop always terminates.
+	available := N * (N + 1) / 2
+	if available > int64(maxM) {
+		available = int64(maxM)
+	}
+	M := int(1 + rng.Intn(int(available)))
 	K := int64(1 + rng.Intn(200000))
 	pts := make([]cell, 0, M)
 	used := make(map[int64]struct{})
@@ -188,9 +125,17 @@ func randomCase(rng *rand.Rand, maxM int, maxN int64) gameCase {
 		}
 		used[key] = struct{}{}
 		a := int64(1 + rng.Intn(1_000_000_000))
-		pts = append(pts, cell{r: r, c: c, a: a})
+		pts = append(pts, cell{r, c, a})
 	}
 	return gameCase{N: N, M: M, K: K, pts: pts}
+}
+
+func randomPack(name string, rng *rand.Rand, t int, maxM int, maxN int64) testCase {
+	cases := make([]gameCase, 0, t)
+	for i := 0; i < t; i++ {
+		cases = append(cases, randomCase(rng, maxM, maxN))
+	}
+	return packCases(name, cases)
 }
 
 func skewedHeavyCase(rng *rand.Rand) testCase {
@@ -209,19 +154,43 @@ func skewedHeavyCase(rng *rand.Rand) testCase {
 		}
 		used[key] = struct{}{}
 		a := int64(1 + rng.Intn(1_000_000_000))
-		pts = append(pts, cell{r: r, c: c, a: a})
+		pts = append(pts, cell{r, c, a})
 	}
 	return packCases("skewed-heavy", []gameCase{{N: N, M: M, K: K, pts: pts}})
 }
 
-func packCases(name string, cases []gameCase) testCase {
-	var b strings.Builder
-	fmt.Fprintf(&b, "%d\n", len(cases))
-	for _, cs := range cases {
-		fmt.Fprintf(&b, "%d %d %d\n", cs.N, cs.M, cs.K)
-		for _, p := range cs.pts {
-			fmt.Fprintf(&b, "%d %d %d\n", p.r, p.c, p.a)
+func buildTests(rng *rand.Rand) []testCase {
+	return []testCase{
+		sampleTest(),
+		singlePileTests(),
+		layeredRowsTest(),
+		randomPack("random-small", rng, 10, 10, 10),
+		randomPack("random-mid", rng, 8, 2000, 8000),
+		randomPack("random-largeK", rng, 5, 50000, 120000),
+		skewedHeavyCase(rng),
+	}
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("usage: go run verifierF.go /path/to/binary")
+		os.Exit(1)
+	}
+	target := os.Args[1]
+	rng := rand.New(rand.NewSource(2045007))
+	tests := buildTests(rng)
+
+	for i, tc := range tests {
+		got, err := runProgram(target, tc.input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "runtime error on case %d (%s): %v\ninput:\n%s", i+1, tc.name, err, tc.input)
+			os.Exit(1)
+		}
+		if got != tc.expected {
+			fmt.Fprintf(os.Stderr, "wrong answer on case %d (%s)\nexpected:\n%s\ngot:\n%s\ninput:\n%s",
+				i+1, tc.name, tc.expected, got, tc.input)
+			os.Exit(1)
 		}
 	}
-	return testCase{name: name, input: b.String()}
+	fmt.Printf("Accepted (%d tests)\n", len(tests))
 }

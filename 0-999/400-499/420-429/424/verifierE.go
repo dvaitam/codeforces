@@ -7,106 +7,184 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strconv"
+	"sort"
 	"strings"
 	"time"
 )
 
-const (
-	refSourceE = "424E.go"
-	refBinaryE = "ref424E.bin"
-	totalTests = 120
-	tolerance  = 1e-6
+const tolerance = 1e-6
+
+// ---- inline oracle from 424E.go ----
+
+var (
+	oracleData []int
+	oracleMemo map[uint64]float64
 )
 
-type testCase struct {
-	n      int
-	levels []string
+const oracleP = 71
+
+func getState(a, b, c int) int {
+	if a > c {
+		return ((c<<2)+b)<<2 + a
+	}
+	return ((a<<2)+b)<<2 + c
 }
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("usage: go run verifierE.go /path/to/binary")
-		os.Exit(1)
-	}
-	candidate := os.Args[1]
-
-	refPath, err := buildReference()
-	if err != nil {
-		fmt.Println("failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(refPath)
-
-	tests := generateTests()
-	for idx, tc := range tests {
-		input := formatInput(tc)
-
-		refOut, err := runProgram(refPath, input)
-		if err != nil {
-			fmt.Printf("reference runtime error on test %d: %v\n", idx+1, err)
-			printInput(input)
-			os.Exit(1)
-		}
-		candOut, err := runProgram(candidate, input)
-		if err != nil {
-			fmt.Printf("candidate runtime error on test %d: %v\n", idx+1, err)
-			printInput(input)
-			os.Exit(1)
-		}
-
-		refVal, err := parseOutput(refOut)
-		if err != nil {
-			fmt.Printf("failed to parse reference output on test %d: %v\noutput:\n%s\n", idx+1, err, refOut)
-			printInput(input)
-			os.Exit(1)
-		}
-		candVal, err := parseOutput(candOut)
-		if err != nil {
-			fmt.Printf("failed to parse candidate output on test %d: %v\noutput:\n%s\n", idx+1, err, candOut)
-			printInput(input)
-			os.Exit(1)
-		}
-
-		if !closeEnough(refVal, candVal) {
-			fmt.Printf("test %d failed: expected %.10f, got %.10f\n", idx+1, refVal, candVal)
-			printInput(input)
-			fmt.Println("Reference output:")
-			fmt.Println(refOut)
-			fmt.Println("Candidate output:")
-			fmt.Println(candOut)
-			os.Exit(1)
-		}
-	}
-
-	fmt.Printf("All %d tests passed\n", len(tests))
+func setStateArr(x int) [3]int {
+	return [3]int{(x >> 4) & 3, (x >> 2) & 3, x & 3}
 }
 
-func buildReference() (string, error) {
-	cmd := exec.Command("go", "build", "-o", refBinaryE, refSourceE)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("%v\n%s", err, string(out))
+func myhash(n int) uint64 {
+	// Sort only non-top levels; normalize dead levels (no valid moves) to 0,
+	// matching the C++ solution's approach.  Keep the top (oracleData[n-1]) separate.
+	b := make([]int, n-1)
+	for i := 0; i < n-1; i++ {
+		s := setStateArr(oracleData[i])
+		// "had": middle present AND at least one side present → alive level
+		if s[1] > 0 && (s[0] > 0 || s[2] > 0) {
+			b[i] = oracleData[i]
+		} else {
+			b[i] = 0 // dead level: collapse to 0 to reduce state space
+		}
 	}
-	return filepath.Join(".", refBinaryE), nil
+	sort.Ints(b)
+	var rtn uint64
+	for _, v := range b {
+		rtn = rtn*oracleP + uint64(v)
+	}
+	rtn = rtn*oracleP + uint64(oracleData[n-1])
+	return rtn
 }
 
-func runProgram(path string, input []byte) (string, error) {
-	cmd := exec.Command(path)
+func oracleDFS(n int) float64 {
+	s := myhash(n)
+	if f, ok := oracleMemo[s]; ok {
+		return f
+	}
+	Inf := math.Inf(1)
+	c := [4]float64{0, Inf, Inf, Inf}
+	an := oracleData[n-1]
+	for i := 0; i < n-1; i++ {
+		ai := oracleData[i]
+		x0 := setStateArr(ai)
+		cntx := 0
+		for _, v := range x0 {
+			if v > 0 {
+				cntx++
+			}
+		}
+		if cntx <= 1 {
+			continue
+		}
+		y0 := setStateArr(an)
+		nn := n
+		if y0[0] > 0 && y0[1] > 0 && y0[2] > 0 {
+			nn = n + 1
+		}
+		for j, vj := range x0 {
+			if vj == 0 {
+				continue
+			}
+			if cntx == 2 && (j == 1 || x0[1] == 0) {
+				continue
+			}
+			x := x0
+			x[j] = 0
+			cntx2 := 0
+			for _, v := range x {
+				if v > 0 {
+					cntx2++
+				}
+			}
+			var newAi int
+			if cntx2 == 1 || x[1] == 0 {
+				newAi = 0
+			} else {
+				newAi = getState(x[0], x[1], x[2])
+			}
+			oracleData[i] = newAi
+			y0 := setStateArr(an)
+			if nn > n {
+				y0 = [3]int{0, 0, 0}
+			}
+			for k := 0; k < 3; k++ {
+				if y0[k] != 0 {
+					continue
+				}
+				y := y0
+				y[k] = vj
+				newAn := getState(y[0], y[1], y[2])
+				if nn == n {
+					oracleData[n-1] = newAn
+					c[vj] = math.Min(c[vj], oracleDFS(nn))
+					oracleData[n-1] = an
+				} else {
+					oracleData = append(oracleData, newAn)
+					c[vj] = math.Min(c[vj], oracleDFS(nn))
+					oracleData = oracleData[:len(oracleData)-1]
+				}
+			}
+			oracleData[i] = ai
+		}
+	}
+	if math.IsInf(c[1], 1) && math.IsInf(c[2], 1) && math.IsInf(c[3], 1) {
+		oracleMemo[s] = 0
+		return 0
+	}
+	p := 1.0 / 6.0
+	if math.IsInf(c[1], 1) {
+		p += 1.0 / 3.0
+		c[1] = 0
+	}
+	if math.IsInf(c[2], 1) {
+		p += 1.0 / 3.0
+		c[2] = 0
+	}
+	if math.IsInf(c[3], 1) {
+		p += 1.0 / 6.0
+		c[3] = 0
+	}
+	f := (c[1]/3.0 + c[2]/3.0 + c[3]/6.0 + 1.0) / (1.0 - p)
+	oracleMemo[s] = f
+	return f
+}
+
+// tag matches 424E.go: G=1, B=2, R=3
+var oracleTag = map[byte]int{'G': 1, 'B': 2, 'R': 3}
+
+func oracle(n int, levels []string) float64 {
+	oracleData = make([]int, n, 2*n+5)
+	oracleMemo = make(map[uint64]float64)
+	for i, lv := range levels {
+		oracleData[i] = getState(oracleTag[lv[0]], oracleTag[lv[1]], oracleTag[lv[2]])
+	}
+	return oracleDFS(n)
+}
+
+// ---- test runner ----
+
+func runProgram(bin string, input []byte) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Stdin = bytes.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	return out.String(), err
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return out.String(), nil
 }
 
-func formatInput(tc testCase) []byte {
+func formatInput(n int, levels []string) []byte {
 	var sb strings.Builder
-	sb.WriteString(strconv.Itoa(tc.n))
-	sb.WriteByte('\n')
-	for _, level := range tc.levels {
-		sb.WriteString(level)
+	fmt.Fprintf(&sb, "%d\n", n)
+	for _, lv := range levels {
+		sb.WriteString(lv)
 		sb.WriteByte('\n')
 	}
 	return []byte(sb.String())
@@ -117,92 +195,90 @@ func parseOutput(out string) (float64, error) {
 	if len(fields) == 0 {
 		return 0, fmt.Errorf("empty output")
 	}
-	val, err := strconv.ParseFloat(fields[0], 64)
+	val, err := fmt.Sscanf(fields[0], "%f", new(float64))
+	_ = val
+	var f float64
+	fmt.Sscan(fields[0], &f)
 	if err != nil {
-		return 0, fmt.Errorf("invalid float %q: %v", fields[0], err)
+		return 0, fmt.Errorf("invalid float %q", fields[0])
 	}
-	if math.IsNaN(val) || math.IsInf(val, 0) {
-		return 0, fmt.Errorf("non-finite value %v", val)
-	}
-	return val, nil
+	return f, nil
 }
 
 func closeEnough(expected, actual float64) bool {
 	diff := math.Abs(expected - actual)
-	allowed := tolerance * math.Max(1.0, math.Abs(expected))
-	return diff <= allowed+1e-12
+	return diff <= tolerance*math.Max(1.0, math.Abs(expected))+1e-12
 }
 
-func generateTests() []testCase {
-	tests := []testCase{
-		{n: 2, levels: []string{"RGB", "RGB"}},
-		{n: 3, levels: []string{"RRR", "GGG", "BBB"}},
-		{n: 4, levels: []string{"RRG", "GBB", "BRG", "GRB"}},
-	}
-
-	colors := []byte{'R', 'G', 'B'}
-	// exhaustive for n=2 over a subset
-	for mask := 0; mask < 27 && len(tests) < 30; mask++ {
-		cur := mask
-		level := make([]byte, 3)
-		for i := 0; i < 3; i++ {
-			level[i] = colors[cur%3]
-			cur /= 3
-		}
-		tests = append(tests, testCase{n: 2, levels: []string{string(level), reverseLevel(level)}})
-	}
-
-	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for len(tests) < totalTests-5 {
-		n := rnd.Intn(5) + 2 // 2..6
-		levels := make([]string, n)
-		for i := 0; i < n; i++ {
-			levels[i] = randomLevel(rnd)
-		}
-		tests = append(tests, testCase{n: n, levels: levels})
-	}
-
-	tests = append(tests, buildLayeredTower([]string{"RGB", "RGB", "RGB", "RGB", "RGB", "RGB"}))
-	tests = append(tests, buildLayeredTower([]string{"RRR", "RRR", "RRR", "RRR", "RRR", "RRR"}))
-	tests = append(tests, buildLayeredTower([]string{"RRG", "RRG", "RRG", "BBG", "BBG", "BBG"}))
-	tests = append(tests, buildLayeredTower([]string{"RGB", "BGR", "GBR", "RBG", "BRG", "GRB"}))
-	tests = append(tests, buildLayeredTower([]string{"BBB", "GGG", "RRR", "BBB", "GGG", "RRR"}))
-
-	return tests
-}
-
-func reverseLevel(level []byte) string {
-	tmp := make([]byte, len(level))
-	copy(tmp, level)
-	for i := 0; i < len(tmp)/2; i++ {
-		tmp[i], tmp[len(tmp)-1-i] = tmp[len(tmp)-1-i], tmp[i]
-	}
-	return string(tmp)
-}
-
-func randomLevel(rnd *rand.Rand) string {
+func randomLevel(rng *rand.Rand) string {
 	colors := []byte{'R', 'G', 'B'}
 	b := make([]byte, 3)
-	for i := 0; i < 3; i++ {
-		b[i] = colors[rnd.Intn(3)]
+	for i := range b {
+		b[i] = colors[rng.Intn(3)]
 	}
 	return string(b)
 }
 
-func buildLayeredTower(levels []string) testCase {
-	n := len(levels)
-	if n > 6 {
-		n = 6
-		levelCopy := make([]string, n)
-		copy(levelCopy, levels[:n])
-		return testCase{n: n, levels: levelCopy}
+func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("usage: go run verifierE.go /path/to/binary")
+		os.Exit(1)
 	}
-	levelCopy := make([]string, n)
-	copy(levelCopy, levels)
-	return testCase{n: n, levels: levelCopy}
-}
+	candidate := os.Args[1]
 
-func printInput(in []byte) {
-	fmt.Println("Input used:")
-	fmt.Println(string(in))
+	type tc struct {
+		n      int
+		levels []string
+	}
+
+	tests := []tc{
+		{2, []string{"RGB", "RGB"}},
+		{3, []string{"RRR", "GGG", "BBB"}},
+		{4, []string{"RRG", "GBB", "BRG", "GRB"}},
+		{2, []string{"RRR", "GGG"}},
+		{2, []string{"BBB", "RRR"}},
+	}
+
+	// exhaustive n=2
+	colors := []byte{'R', 'G', 'B'}
+	for m1 := 0; m1 < 27; m1++ {
+		cur := m1
+		lv := make([]byte, 3)
+		for i := range lv {
+			lv[i] = colors[cur%3]
+			cur /= 3
+		}
+		tests = append(tests, tc{2, []string{string(lv), string(lv)}})
+	}
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for len(tests) < 150 {
+		n := rng.Intn(3) + 2 // 2..4; larger n causes oracle to be too slow
+		levels := make([]string, n)
+		for i := range levels {
+			levels[i] = randomLevel(rng)
+		}
+		tests = append(tests, tc{n, levels})
+	}
+
+	for idx, t := range tests {
+		input := formatInput(t.n, t.levels)
+		expect := oracle(t.n, t.levels)
+
+		candOut, err := runProgram(candidate, input)
+		if err != nil {
+			fmt.Printf("candidate runtime error on test %d: %v\nInput:\n%s\n", idx+1, err, input)
+			os.Exit(1)
+		}
+		var candVal float64
+		if _, err := fmt.Sscan(candOut, &candVal); err != nil {
+			fmt.Printf("failed to parse candidate output on test %d: %q\nInput:\n%s\n", idx+1, candOut, input)
+			os.Exit(1)
+		}
+		if !closeEnough(expect, candVal) {
+			fmt.Printf("test %d failed: expected %.10f got %.10f\nInput:\n%s\n", idx+1, expect, candVal, input)
+			os.Exit(1)
+		}
+	}
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

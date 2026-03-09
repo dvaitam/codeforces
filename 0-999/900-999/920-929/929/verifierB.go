@@ -111,10 +111,37 @@ func solveB(n, k int, rows []string) (int, []string) {
 	return ans, out
 }
 
-func generateCase(rng *rand.Rand) (string, string) {
+// countNeighbors computes the total number of neighbors of 'S' passengers.
+// Two seats are neighbors if they are adjacent in the same row with no '-' between them.
+func countNeighbors(grid [][]byte) int {
+	ans := 0
+	for _, row := range grid {
+		for j, ch := range row {
+			if ch != 'S' {
+				continue
+			}
+			if j > 0 && row[j-1] != '-' && row[j-1] != '.' {
+				ans++
+			}
+			if j < len(row)-1 && row[j+1] != '-' && row[j+1] != '.' {
+				ans++
+			}
+		}
+	}
+	return ans
+}
+
+type caseInfo struct {
+	input      string
+	n, k       int
+	rows       []string
+	optimalAns int
+}
+
+func generateCase(rng *rand.Rand) caseInfo {
 	n := rng.Intn(20) + 1
-	k := rng.Intn(10*n + 1)
 	rows := make([]string, n)
+	freeSeats := 0
 	for i := 0; i < n; i++ {
 		b := make([]byte, 12)
 		for j := 0; j < 12; j++ {
@@ -125,40 +152,87 @@ func generateCase(rng *rand.Rand) (string, string) {
 					b[j] = 'S'
 				} else {
 					b[j] = '.'
+					freeSeats++
 				}
 			}
 		}
 		rows[i] = string(b)
 	}
+	// k must not exceed the number of free seats (problem guarantee).
+	maxK := freeSeats
+	if maxK == 0 {
+		maxK = 1
+	}
+	k := rng.Intn(maxK + 1)
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d %d\n", n, k))
 	for i := 0; i < n; i++ {
 		sb.WriteString(rows[i])
 		sb.WriteByte('\n')
 	}
-	ans, outRows := solveB(n, k, rows)
-	var expect strings.Builder
-	expect.WriteString(strconv.Itoa(ans))
-	expect.WriteByte('\n')
-	for i := 0; i < n; i++ {
-		expect.WriteString(outRows[i])
-		expect.WriteByte('\n')
-	}
-	return sb.String(), expect.String()
+	optimalAns, _ := solveB(n, k, rows)
+	return caseInfo{input: sb.String(), n: n, k: k, rows: rows, optimalAns: optimalAns}
 }
 
-func runCase(exe, input, expected string) error {
+func runCase(exe string, ci caseInfo) error {
 	cmd := exec.Command(exe)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stdin = strings.NewReader(ci.input)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return fmt.Errorf("runtime error: %v\nstderr:\n%s", err, stderr.String())
 	}
-	if strings.TrimSpace(out.String()) != strings.TrimSpace(expected) {
-		return fmt.Errorf("expected:\n%s\ngot:\n%s", expected, out.String())
+	return checkOutput(ci, strings.TrimSpace(stdout.String()))
+}
+
+func checkOutput(ci caseInfo, output string) error {
+	lines := strings.Split(output, "\n")
+	if len(lines) < 1+ci.n {
+		return fmt.Errorf("expected %d output lines, got %d", 1+ci.n, len(lines))
 	}
+
+	statedCount, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+	if err != nil {
+		return fmt.Errorf("first line is not an integer: %q", lines[0])
+	}
+
+	gotGrid := make([][]byte, ci.n)
+	for i := 0; i < ci.n; i++ {
+		gotGrid[i] = []byte(strings.TrimSpace(lines[1+i]))
+		if len(gotGrid[i]) != len(ci.rows[i]) {
+			return fmt.Errorf("row %d: expected length %d, got %d", i+1, len(ci.rows[i]), len(gotGrid[i]))
+		}
+	}
+
+	// Verify exactly k free seats were filled with 'x', nothing else changed.
+	filled := 0
+	for i := 0; i < ci.n; i++ {
+		orig := ci.rows[i]
+		got := gotGrid[i]
+		for j := range orig {
+			if orig[j] == '.' && got[j] == 'x' {
+				filled++
+			} else if orig[j] != got[j] {
+				return fmt.Errorf("row %d col %d: original %q illegally changed to %q", i+1, j+1, orig[j], got[j])
+			}
+		}
+	}
+	if filled != ci.k {
+		return fmt.Errorf("expected exactly %d seats filled, got %d", ci.k, filled)
+	}
+
+	// Verify stated count matches actual grid.
+	actualCount := countNeighbors(gotGrid)
+	if actualCount != statedCount {
+		return fmt.Errorf("stated neighbor count %d does not match computed %d", statedCount, actualCount)
+	}
+
+	// Verify optimality.
+	if actualCount != ci.optimalAns {
+		return fmt.Errorf("neighbor count %d is not optimal (expected %d)", actualCount, ci.optimalAns)
+	}
+
 	return nil
 }
 
@@ -170,9 +244,9 @@ func main() {
 	exe := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		in, exp := generateCase(rng)
-		if err := runCase(exe, in, exp); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
+		ci := generateCase(rng)
+		if err := runCase(exe, ci); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, ci.input)
 			os.Exit(1)
 		}
 	}

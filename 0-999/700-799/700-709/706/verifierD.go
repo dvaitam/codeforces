@@ -36,33 +36,66 @@ func (m multiset) maxXor(x int) int {
 
 func generateCase(rng *rand.Rand) (string, []int) {
 	q := rng.Intn(50) + 1
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "%d\n", q)
 	ms := make(multiset)
-	ms.add(0)
-	expected := []int{}
-	exists := []int{0}
+	ms.add(0) // 0 is always present; xi >= 1 per problem spec so it's never removed
+
+	type op struct {
+		kind byte
+		x    int
+	}
+	ops := make([]op, q)
+	added := []int{} // tracks user-added elements available for removal
+	hasQuery := false
+
 	for i := 0; i < q; i++ {
+		// Force a query on the last op if none generated yet
+		if !hasQuery && i == q-1 {
+			x := rng.Intn(1000) + 1
+			ops[i] = op{'?', x}
+			hasQuery = true
+			continue
+		}
 		opType := rng.Intn(3)
-		if len(exists) == 1 {
-			opType = rng.Intn(2) // avoid remove when only 0 present
+		if len(added) == 0 {
+			opType = rng.Intn(2) // only add or query; no elements to remove
+			if opType == 1 {
+				opType = 2
+			}
 		}
 		switch opType {
 		case 0: // add
-			x := rng.Intn(1000)
-			fmt.Fprintf(&sb, "+ %d\n", x)
+			x := rng.Intn(1000) + 1
+			ops[i] = op{'+', x}
 			ms.add(x)
-			exists = append(exists, x)
-		case 1: // remove
-			idx := rng.Intn(len(exists))
-			x := exists[idx]
-			fmt.Fprintf(&sb, "- %d\n", x)
+			added = append(added, x)
+		case 1: // remove a previously added element
+			idx := rng.Intn(len(added))
+			x := added[idx]
+			ops[i] = op{'-', x}
 			ms.remove(x)
-			exists = append(exists[:idx], exists[idx+1:]...)
+			added = append(added[:idx], added[idx+1:]...)
 		case 2: // query
-			x := rng.Intn(1000)
-			fmt.Fprintf(&sb, "? %d\n", x)
-			expected = append(expected, ms.maxXor(x))
+			x := rng.Intn(1000) + 1
+			ops[i] = op{'?', x}
+			hasQuery = true
+		}
+	}
+
+	// Build input string and expected answers by replaying ops
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d\n", q)
+	ms2 := make(multiset)
+	ms2.add(0)
+	expected := []int{}
+	for _, o := range ops {
+		fmt.Fprintf(&sb, "%c %d\n", o.kind, o.x)
+		switch o.kind {
+		case '+':
+			ms2.add(o.x)
+		case '-':
+			ms2.remove(o.x)
+		case '?':
+			expected = append(expected, ms2.maxXor(o.x))
 		}
 	}
 	return sb.String(), expected
