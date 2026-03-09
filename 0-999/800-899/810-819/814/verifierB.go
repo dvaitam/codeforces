@@ -1,12 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func validate(n int, a, b []int, output string) error {
@@ -54,70 +55,107 @@ func validate(n int, a, b []int, output string) error {
 	return nil
 }
 
+// genCase generates a valid (a, b) pair derived from a random permutation p,
+// by replacing exactly one position in each to a different value.
+func genCase(rng *rand.Rand, n int) (a, b []int) {
+	p := rng.Perm(n)
+	for i := range p {
+		p[i]++
+	}
+	a = make([]int, n)
+	b = make([]int, n)
+	copy(a, p)
+	copy(b, p)
+
+	// corrupt a at position i with a value != p[i]
+	i := rng.Intn(n)
+	ai := rng.Intn(n-1) + 1
+	if ai >= p[i] {
+		ai++
+	}
+	a[i] = ai
+
+	// corrupt b at position j with a value != p[j]
+	j := rng.Intn(n)
+	bj := rng.Intn(n-1) + 1
+	if bj >= p[j] {
+		bj++
+	}
+	b[j] = bj
+
+	// If a == b (only possible when i==j and ai==bj), move b's corruption
+	// to position k != j so that b still differs from p in exactly one place.
+	equal := true
+	for k := 0; k < n; k++ {
+		if a[k] != b[k] {
+			equal = false
+			break
+		}
+	}
+	if equal {
+		b[j] = p[j] // restore
+		k := (j + 1) % n
+		bk := rng.Intn(n-1) + 1
+		if bk >= p[k] {
+			bk++
+		}
+		b[k] = bk
+	}
+	return a, b
+}
+
+func buildInput(n int, a, b []int) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d\n", n))
+	for i, v := range a {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(v))
+	}
+	sb.WriteByte('\n')
+	for i, v := range b {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(v))
+	}
+	sb.WriteByte('\n')
+	return sb.String()
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("Usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	reader := bufio.NewReader(file)
-	idx := 0
-	for {
-		var n int
-		if _, err := fmt.Fscan(reader, &n); err != nil {
-			break
-		}
-		a := make([]int, n)
-		for i := range a {
-			fmt.Fscan(reader, &a[i])
-		}
-		b := make([]int, n)
-		for i := range b {
-			fmt.Fscan(reader, &b[i])
-		}
-		idx++
-
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d\n", n))
-		for i, v := range a {
-			if i > 0 {
-				sb.WriteByte(' ')
-			}
-			sb.WriteString(strconv.Itoa(v))
-		}
-		sb.WriteByte('\n')
-		for i, v := range b {
-			if i > 0 {
-				sb.WriteByte(' ')
-			}
-			sb.WriteString(strconv.Itoa(v))
-		}
-		sb.WriteByte('\n')
-		input := sb.String()
-
+	run := func(idx int, n int, a, b []int) {
+		input := buildInput(n, a, b)
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(input)
-		var outBuf strings.Builder
-		var errBuf strings.Builder
+		var outBuf, errBuf strings.Builder
 		cmd.Stdout = &outBuf
 		cmd.Stderr = &errBuf
 		if err := cmd.Run(); err != nil {
 			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\nstderr: %s\n", idx, err, errBuf.String())
 			os.Exit(1)
 		}
-
 		got := strings.TrimSpace(outBuf.String())
 		if err := validate(n, a, b, got); err != nil {
 			fmt.Fprintf(os.Stderr, "test %d failed\ninput:\n%sgot: %s\nreason: %v\n", idx, input, got, err)
 			os.Exit(1)
 		}
+	}
+
+	idx := 0
+	for idx < 200 {
+		idx++
+		n := rng.Intn(50) + 2
+		a, b := genCase(rng, n)
+		run(idx, n, a, b)
 	}
 	fmt.Printf("All %d tests passed\n", idx)
 }
