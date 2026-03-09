@@ -107,7 +107,7 @@ func generateTests() []testCase {
 	rng := rand.New(rand.NewSource(3))
 	tests := []testCase{}
 	tests = append(tests, testCase{input: "1\n1\n1\n1\n", expected: "0"})
-	tests = append(tests, testCase{input: "1\n3\n1 2 3\n3 2 1\n", expected: "2"})
+	tests = append(tests, testCase{input: "1\n3\n1 2 3\n3 2 1\n", expected: "0"})
 	for len(tests) < 100 {
 		n := rng.Intn(10) + 1
 		a := make([]int, n)

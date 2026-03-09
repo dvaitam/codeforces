@@ -14,9 +14,8 @@ import (
 )
 
 const refSource = "2111B.go"
-const inf = 1 << 30
 
-var fib = []int{0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89}
+var fib = []int{0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144}
 
 type testCase struct {
 	name string
@@ -129,12 +128,11 @@ func validateOutputs(tests []testCase, output string) error {
 		if len(res) != m {
 			return fmt.Errorf("case %d: expected string length %d, got %d", i+1, m, len(res))
 		}
-		fits := preprocess(tests[i].n)
 		for j, ch := range res {
 			if ch != '0' && ch != '1' {
 				return fmt.Errorf("case %d: invalid character %q", i+1, ch)
 			}
-			expect := canFit(fits, tests[i].box[j])
+			expect := canFit(tests[i].n, tests[i].box[j])
 			if expect && ch == '0' {
 				return fmt.Errorf("case %d: box %d marked 0 but cubes fit", i+1, j+1)
 			}
@@ -159,151 +157,22 @@ func splitNonEmptyLines(out string) []string {
 	return lines
 }
 
-// preprocess returns a 151x151 table where best[L][H] = minimal total bottom side sum
-// among valid stack partitions with maximum bottom side <= L and minimal required height <= H.
-func preprocess(n int) [][]int {
-	best := make([][]int, 151)
-	for i := range best {
-		best[i] = make([]int, 151)
-		for j := range best[i] {
-			best[i][j] = inf
-		}
+// canFit returns true if all n Fibonacci cubes fit in a box with the given dimensions.
+// The optimal arrangement tiles a 2D floor using the Fibonacci rectangle property:
+// cubes f_1..f_n tile a f_n × f_{n+1} rectangle as a single layer.
+// Necessary and sufficient condition (sorted a<=b<=c): a>=fib[n], b>=fib[n], c>=fib[n+1].
+func canFit(n int, dims [3]int) bool {
+	a, b, c := dims[0], dims[1], dims[2]
+	if a > b {
+		a, b = b, a
 	}
-
-	maxMask := 1 << n
-	for mask := 1; mask < maxMask; mask++ {
-		if mask&(1<<(n-1)) == 0 { // largest cube must be on bottom
-			continue
-		}
-		maxBottom := 0
-		sumBottom := 0
-		for i := 0; i < n; i++ {
-			if mask&(1<<i) != 0 {
-				size := fib[i+1]
-				sumBottom += size
-				if size > maxBottom {
-					maxBottom = size
-				}
-			}
-		}
-		if maxBottom > 150 || sumBottom > 150 {
-			continue
-		}
-		minH := minMaxHeight(n, mask)
-		if minH > 150 {
-			continue
-		}
-		if sumBottom < best[maxBottom][minH] {
-			best[maxBottom][minH] = sumBottom
-		}
+	if b > c {
+		b, c = c, b
 	}
-
-	for i := 1; i <= 150; i++ {
-		for h := 1; h <= 150; h++ {
-			v := best[i][h]
-			if i > 1 && best[i-1][h] < v {
-				v = best[i-1][h]
-			}
-			if h > 1 && best[i][h-1] < v {
-				v = best[i][h-1]
-			}
-			best[i][h] = v
-		}
+	if a > b {
+		a, b = b, a
 	}
-	return best
-}
-
-// minMaxHeight returns the minimal possible maximal stack height given chosen bottoms.
-func minMaxHeight(n int, bottomMask int) int {
-	bottoms := make([]int, 0)
-	others := make([]int, 0)
-	for i := 0; i < n; i++ {
-		if bottomMask&(1<<i) != 0 {
-			bottoms = append(bottoms, i)
-		} else {
-			others = append(others, i)
-		}
-	}
-	if bottomMask&(1<<(n-1)) == 0 {
-		return inf
-	}
-	heights := make([]int, len(bottoms))
-	for i, idx := range bottoms {
-		heights[i] = fib[idx+1]
-	}
-	// place larger cubes first for stronger pruning
-	sortBySizeDesc(others)
-	best := inf
-	var dfs func(pos int, curMax int)
-	dfs = func(pos int, curMax int) {
-		if pos == len(others) {
-			if curMax < best {
-				best = curMax
-			}
-			return
-		}
-		if curMax >= best {
-			return
-		}
-		sz := fib[others[pos]+1]
-		for i, bIdx := range bottoms {
-			if fib[bIdx+1] < sz {
-				continue
-			}
-			nextH := heights[i] + sz
-			prev := heights[i]
-			heights[i] = nextH
-			nMax := curMax
-			if nextH > nMax {
-				nMax = nextH
-			}
-			dfs(pos+1, nMax)
-			heights[i] = prev
-		}
-	}
-	startMax := 0
-	for _, v := range heights {
-		if v > startMax {
-			startMax = v
-		}
-	}
-	dfs(0, startMax)
-	return best
-}
-
-func sortBySizeDesc(idx []int) {
-	for i := 0; i < len(idx); i++ {
-		for j := i + 1; j < len(idx); j++ {
-			if fib[idx[j]+1] > fib[idx[i]+1] {
-				idx[i], idx[j] = idx[j], idx[i]
-			}
-		}
-	}
-}
-
-func canFit(best [][]int, dims [3]int) bool {
-	d := dims
-	for a := 0; a < 3; a++ {
-		for b := 0; b < 3; b++ {
-			if b == a {
-				continue
-			}
-			c := 3 - a - b
-			H := d[a]
-			W := d[b]
-			L := d[c]
-			if W < L {
-				W, L = L, W
-			}
-			if H > 150 || L > 150 {
-				continue
-			}
-			if best[L][H] <= W {
-				return true
-			}
-		}
-	}
-	return false
+	return a >= fib[n] && b >= fib[n] && c >= fib[n+1]
 }
 
 func buildTests() []testCase {

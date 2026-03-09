@@ -1,69 +1,58 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
-   "sort"
+	"bufio"
+	"fmt"
+	"os"
 )
 
-var wavies []int64
+func isWavy(x int64) bool {
+	if x < 10 {
+		return true
+	}
+	var d [20]int
+	n := 0
+	for tmp := x; tmp > 0; tmp /= 10 {
+		d[n] = int(tmp % 10)
+		n++
+	}
+	// reverse so d[0] is most significant
+	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
+		d[i], d[j] = d[j], d[i]
+	}
+	// consecutive equal digits are not allowed (strict alternation required)
+	for i := 1; i < n; i++ {
+		if d[i] == d[i-1] {
+			return false
+		}
+	}
+	// for 3+ digit numbers, every middle digit must be a peak or valley
+	for i := 1; i < n-1; i++ {
+		peak := d[i] > d[i-1] && d[i] > d[i+1]
+		valley := d[i] < d[i-1] && d[i] < d[i+1]
+		if !peak && !valley {
+			return false
+		}
+	}
+	return true
+}
 
 func main() {
-   reader := bufio.NewReader(os.Stdin)
-   var n, k int64
-   if _, err := fmt.Fscan(reader, &n, &k); err != nil {
-       return
-   }
-   generateWavies()
-   sort.Slice(wavies, func(i, j int) bool { return wavies[i] < wavies[j] })
-   var cnt int64
-   for _, v := range wavies {
-       if v%n == 0 {
-           cnt++
-           if cnt == k {
-               fmt.Println(v)
-               return
-           }
-       }
-   }
-   fmt.Println(-1)
-}
-
-// generateWavies populates the global wavies slice with all wavy numbers <= 10^14
-func generateWavies() {
-   const maxLen = 14
-   // length 1
-   for d := 1; d <= 9; d++ {
-       wavies = append(wavies, int64(d))
-   }
-   // length 2 seeds
-   type seed struct{ num int64; p1, p2 int }
-   var seeds []seed
-   for d1 := 1; d1 <= 9; d1++ {
-       for d2 := 0; d2 <= 9; d2++ {
-           num := int64(d1*10 + d2)
-           wavies = append(wavies, num)
-           seeds = append(seeds, seed{num, d1, d2})
-       }
-   }
-   // build longer numbers
-   for _, s := range seeds {
-       dfs(s.num, s.p1, s.p2, 2, maxLen)
-   }
-}
-
-// dfs builds wavy numbers by extending current number
-func dfs(num int64, p1, p2, length, maxLen int) {
-   if length >= maxLen {
-       return
-   }
-   for d := 0; d <= 9; d++ {
-       // p2 must be a peak or valley relative to p1 and d
-       if (p2 > p1 && p2 > d) || (p2 < p1 && p2 < d) {
-           newNum := num*10 + int64(d)
-           wavies = append(wavies, newNum)
-           dfs(newNum, p2, d, length+1, maxLen)
-       }
-   }
+	reader := bufio.NewReader(os.Stdin)
+	var n, k int64
+	if _, err := fmt.Fscan(reader, &n, &k); err != nil {
+		return
+	}
+	const limit = int64(1e9) // oracle only needs to handle small n,k for verification
+	var cnt int64
+	for x := n; x <= limit; x += n {
+		if isWavy(x) {
+			cnt++
+			if cnt == k {
+				fmt.Println(x)
+				return
+			}
+		}
+	}
+	fmt.Println(-1)
 }

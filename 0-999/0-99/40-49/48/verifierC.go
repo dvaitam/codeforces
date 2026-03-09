@@ -81,13 +81,28 @@ func solve(stops []int) string {
 }
 
 func generateCase(r *rand.Rand) (string, string) {
-	n := r.Intn(10) + 1
-	stops := make([]int, n)
-	last := 0
-	for i := 0; i < n; i++ {
-		last += r.Intn(5) + 1
-		stops[i] = last
+	// Generate a valid α ≥ 10 (as tenths, to avoid float imprecision)
+	// α = numerator/10, numerator ∈ [100, 1000)
+	alphaNumer := r.Intn(900) + 100 // 100..999
+	alpha := float64(alphaNumer) / 10.0
+
+	want := r.Intn(10) + 2 // need at least 2 stops (n input stops + 1 answer)
+	stops := make([]int, 0, want)
+	fuel := alpha
+	station := 0
+	for len(stops) < want && station < 100000 {
+		station++
+		fuel -= 10.0
+		if fuel < 10.0 {
+			stops = append(stops, station)
+			fuel += alpha
+		}
 	}
+	if len(stops) < 2 {
+		return generateCase(r)
+	}
+
+	n := len(stops) - 1
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", n))
 	for i := 0; i < n; i++ {
@@ -97,7 +112,7 @@ func generateCase(r *rand.Rand) (string, string) {
 		sb.WriteString(fmt.Sprint(stops[i]))
 	}
 	sb.WriteByte('\n')
-	return sb.String(), solve(stops)
+	return sb.String(), solve(stops[:n])
 }
 
 func main() {
