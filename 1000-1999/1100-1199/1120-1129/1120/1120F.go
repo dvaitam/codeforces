@@ -12,50 +12,40 @@ func main() {
 	defer out.Flush()
 
 	var n int
-	var c, d int64
-	fmt.Fscan(in, &n, &c, &d)
+	var A, B int64
+	fmt.Fscan(in, &n, &A, &B)
 
-	times := make([]int64, n)
-	person := make([]byte, n)
+	a := make([]int64, n+1)
+	b := make([]int64, n+1)
 	for i := 0; i < n; i++ {
-		var ti int64
 		var ch string
-		fmt.Fscan(in, &ti, &ch)
-		times[i] = ti
-		person[i] = ch[0]
+		fmt.Fscan(in, &a[i], &ch)
+		if ch == "W" {
+			b[i] = 1
+		} else {
+			b[i] = 0
+		}
 	}
-	var tFinal int64
-	fmt.Fscan(in, &tFinal)
+	fmt.Fscan(in, &a[n])
+	b[n] = 2 // sentinel: neither W nor P
 
-	nextW := make([]int64, n)
-	nextP := make([]int64, n)
-	nextWTime := tFinal
-	nextPTime := tFinal
-
+	s := int64(n) * B
+	var t, k int64
 	for i := n - 1; i >= 0; i-- {
-		nextW[i] = nextWTime
-		nextP[i] = nextPTime
-		if person[i] == 'W' {
-			nextWTime = times[i]
+		t += (a[i+1] - a[i]) * A
+		if b[i] == b[i+1] {
+			v := (k - a[i+1]) * A
+			if v > B {
+				v = B
+			}
+			t += v
 		} else {
-			nextPTime = times[i]
+			k = a[i+1]
+		}
+		v := t + int64(i)*B
+		if v < s {
+			s = v
 		}
 	}
-
-	var ans int64
-	for i := 0; i < n; i++ {
-		var release int64
-		if person[i] == 'W' {
-			release = nextP[i]
-		} else {
-			release = nextW[i]
-		}
-		storeCost := c * (release - times[i])
-		if storeCost < d {
-			ans += storeCost
-		} else {
-			ans += d
-		}
-	}
-	fmt.Fprintln(out, ans)
+	fmt.Fprintln(out, s)
 }
