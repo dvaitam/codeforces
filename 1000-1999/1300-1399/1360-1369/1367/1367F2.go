@@ -7,65 +7,22 @@ import (
 	"sort"
 )
 
-type BIT struct {
-	bit  []int
-	used []int
-}
-
-func (b *BIT) init(n int) {
-	if len(b.bit) < n+2 {
-		b.bit = make([]int, n+2)
-	} else {
-		for i := range b.bit {
-			b.bit[i] = 0
-		}
-		b.bit = b.bit[:n+2]
-	}
-	b.used = b.used[:0]
-}
-
-func (b *BIT) clear() {
-	for _, idx := range b.used {
-		b.bit[idx] = 0
-	}
-	b.used = b.used[:0]
-}
-
-func (b *BIT) update(idx, val int) {
-	for i := idx; i < len(b.bit); i += i & -i {
-		if b.bit[i] < val {
-			b.bit[i] = val
-		}
-		b.used = append(b.used, i)
-	}
-}
-
-func (b *BIT) query(idx int) int {
-	res := 0
-	for i := idx; i > 0; i -= i & -i {
-		if b.bit[i] > res {
-			res = b.bit[i]
-		}
-	}
-	return res
-}
-
 func solve(reader *bufio.Reader, writer *bufio.Writer) {
 	var n int
 	if _, err := fmt.Fscan(reader, &n); err != nil {
 		return
 	}
-	arr := make([]int, n)
-	for i := 0; i < n; i++ {
-		fmt.Fscan(reader, &arr[i])
+	a := make([]int, n)
+	for i := range a {
+		fmt.Fscan(reader, &a[i])
 	}
 
-	vals := make([]int, n)
-	copy(vals, arr)
-	sort.Ints(vals)
-	uniq := make([]int, 0, n)
-	for _, v := range vals {
-		if len(uniq) == 0 || uniq[len(uniq)-1] != v {
+	// Build unique values and per-value position lists
+	sorted := append([]int{}, a...)
+	sort.Ints(sorted)
+	uniq := []int{sorted[0]}
+	for _, v := range sorted[1:] {
+		if v != uniq[len(uniq)-1] {
 			uniq = append(uniq, v)
 		}
 	}
@@ -75,37 +32,85 @@ func solve(reader *bufio.Reader, writer *bufio.Writer) {
 		rank[v] = i
 	}
 	pos := make([][]int, m)
-	for i, v := range arr {
-		pos[rank[v]] = append(pos[rank[v]], i+1) // use 1-based index
+	for i, v := range a {
+		pos[rank[v]] = append(pos[rank[v]], i)
 	}
 
-	bitPrev := &BIT{}
-	bitCurr := &BIT{}
-	bitPrev.init(n)
-	bitCurr.init(n)
+	maxKept := 0
 
-	ans := 0
+	// Single-value windows
+	for v := 0; v < m; v++ {
+		if len(pos[v]) > maxKept {
+			maxKept = len(pos[v])
+		}
+	}
 
-	for r := 0; r < m; r++ {
-		bitCurr.clear()
-		for _, idx := range pos[r] {
-			best := 1
-			if val := bitCurr.query(idx - 1); val+1 > best {
-				best = val + 1
+	// Adjacent-pair windows: sweep to find optimal split
+	for v := 0; v < m-1; v++ {
+		pL, pR := pos[v], pos[v+1]
+		curL, curR := 0, len(pR)
+		if curL+curR > maxKept {
+			maxKept = curL + curR
+		}
+		i, j := 0, 0
+		for i < len(pL) || j < len(pR) {
+			if i < len(pL) && (j == len(pR) || pL[i] < pR[j]) {
+				curL++
+				i++
+			} else {
+				curR--
+				j++
 			}
-			if val := bitPrev.query(idx - 1); val+1 > best {
-				best = val + 1
-			}
-			bitCurr.update(idx, best)
-			if best > ans {
-				ans = best
+			if curL+curR > maxKept {
+				maxKept = curL + curR
 			}
 		}
-		bitPrev.clear()
-		bitPrev, bitCurr = bitCurr, bitPrev
 	}
 
-	fmt.Fprintln(writer, n-ans)
+	// Multi-value windows [li, ri] with ri >= li+2
+	// Mandatory elements: all elements with unique index in (li, ri)
+	// They must form a non-decreasing sequence when sorted by position.
+	// L-optional: pos[li] elements with position < minMandatoryPos
+	// R-optional: pos[ri] elements with position > maxMandatoryPos
+	type posVal struct{ p, v int }
+	for li := 0; li < m; li++ {
+		// Build mandatory incrementally as ri increases
+		mandatory := []posVal{}
+		for ri := li + 2; ri < m; ri++ {
+			// Add elements of value uniq[ri-1] to mandatory
+			for _, p := range pos[ri-1] {
+				mandatory = append(mandatory, posVal{p, uniq[ri-1]})
+			}
+			// Re-sort by position (new elements from pos[ri-1] are already sorted,
+			// but we need to merge with existing)
+			sort.Slice(mandatory, func(a, b int) bool { return mandatory[a].p < mandatory[b].p })
+
+			// Check mandatory is non-decreasing in value
+			valid := true
+			for k := 1; k < len(mandatory); k++ {
+				if mandatory[k].v < mandatory[k-1].v {
+					valid = false
+					break
+				}
+			}
+			if !valid {
+				break // adding more values won't help
+			}
+
+			minP := mandatory[0].p
+			maxP := mandatory[len(mandatory)-1].p
+
+			lOpt := sort.Search(len(pos[li]), func(k int) bool { return pos[li][k] >= minP })
+			rOpt := len(pos[ri]) - sort.Search(len(pos[ri]), func(k int) bool { return pos[ri][k] > maxP })
+
+			total := lOpt + len(mandatory) + rOpt
+			if total > maxKept {
+				maxKept = total
+			}
+		}
+	}
+
+	fmt.Fprintln(writer, n-maxKept)
 }
 
 func main() {

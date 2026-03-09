@@ -56,6 +56,11 @@ type Problem struct {
 
 var requestTimeout time.Duration
 
+// excludedContests is the set of contest IDs to skip when selecting problems.
+var excludedContests = map[int]bool{
+	1002: true,
+}
+
 func main() {
 	model := flag.String("model", "", "The AI model to use (e.g., anthropic/claude-3.5-sonnet)")
 	provider := flag.String("provider", "openrouter", "Model provider: Gemini, Vertex, OpenAI, xai, Claude, Deepseek, openrouter")
@@ -491,6 +496,9 @@ func hasValidProblem(db *sql.DB, rating int) bool {
 		if err != nil {
 			panic(err)
 		}
+		if excludedContests[contestID] {
+			continue
+		}
 		dir := getContestDir(contestID)
 		solFile := filepath.Join(dir, fmt.Sprintf("%d%s.go", contestID, indexName))
 		verFile := filepath.Join(dir, fmt.Sprintf("verifier%s.go", indexName))
@@ -558,6 +566,9 @@ func getRandomProblem(db *sql.DB, rating int) (Problem, string) {
 	var valid []Problem
 	var validVerifiers []string
 	for _, p := range candidates {
+		if excludedContests[p.ContestID] {
+			continue
+		}
 		dir := getContestDir(p.ContestID)
 		solFile := filepath.Join(dir, fmt.Sprintf("%d%s.go", p.ContestID, p.IndexName))
 		verFile := filepath.Join(dir, fmt.Sprintf("verifier%s.go", p.IndexName))

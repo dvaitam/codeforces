@@ -6,14 +6,12 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	refSource   = "./2124C.go"
 	targetTests = 120
 	maxTotalN   = 200000
 	maxValue    = 1_000_000_000
@@ -30,33 +28,8 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
 	tests := generateTests()
 	input := buildInput(tests)
-
-	refOut, err := runProgram(refBin, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference runtime error: %v\noutput:\n%s\n", err, refOut)
-		os.Exit(1)
-	}
-	refAns, err := parseAnswers(refOut, len(tests))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to parse reference output: %v\noutput:\n%s\n", err, refOut)
-		os.Exit(1)
-	}
-	// Sanity check reference answers.
-	for i, x := range refAns {
-		if !validX(tests[i].b, x) {
-			fmt.Fprintf(os.Stderr, "reference produced invalid x on test %d\n", i+1)
-			os.Exit(1)
-		}
-	}
 
 	candOut, err := runCandidate(candidate, input)
 	if err != nil {
@@ -69,10 +42,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if len(refAns) != len(candAns) {
-		fmt.Fprintf(os.Stderr, "answer count mismatch: expected %d, got %d\n", len(refAns), len(candAns))
-		os.Exit(1)
-	}
 	for i, x := range candAns {
 		if !validX(tests[i].b, x) {
 			fmt.Fprintf(os.Stderr, "test %d invalid x %d\n", i+1, x)
@@ -83,31 +52,8 @@ func main() {
 	fmt.Printf("Accepted (%d tests).\n", len(tests))
 }
 
-func buildReference() (string, error) {
-	tmp, err := os.CreateTemp("", "2124C-ref-*")
-	if err != nil {
-		return "", err
-	}
-	tmp.Close()
-
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, out.String())
-	}
-	return tmp.Name(), nil
-}
-
 func runCandidate(path, input string) (string, error) {
 	cmd := commandFor(path)
-	return runWithInput(cmd, input)
-}
-
-func runProgram(path, input string) (string, error) {
-	cmd := exec.Command(path)
 	return runWithInput(cmd, input)
 }
 
