@@ -9,32 +9,85 @@ import (
 	"strings"
 )
 
-var memo map[[2]int64]bool
+// memoWin[a][starterTurn]: can starter force a WIN from state a?
+// memoLose[a][starterTurn]: can starter force a LOSE from state a?
+var memoWin, memoLose map[[2]int64]int8 // 0=unknown,1=true,2=false
+var curE int64
 
-func win(s, e int64) bool {
-	if s > e {
-		return false
+func evalMove(m int64, starterTurn bool, forLose bool) bool {
+	if m > curE {
+		// current player wrote > e, current player loses
+		if starterTurn {
+			return forLose // starter loses: good for ForceLose (true), bad for ForceWin (false)
+		}
+		return !forLose // non-starter loses (starter wins): good for ForceWin (!false=true), bad for ForceLose (!true=false)
 	}
-	key := [2]int64{s, e}
-	if v, ok := memo[key]; ok {
-		return v
+	if forLose {
+		return canForceLose(m, !starterTurn)
 	}
+	return canForceWin(m, !starterTurn)
+}
+
+func canForceWin(a int64, starterTurn bool) bool {
+	key := [2]int64{a, 0}
+	if !starterTurn {
+		key[1] = 1
+	}
+	if v := memoWin[key]; v != 0 {
+		return v == 1
+	}
+	r1 := evalMove(2*a, starterTurn, false)
+	r2 := evalMove(a+1, starterTurn, false)
 	var res bool
-	if 2*s > e {
-		res = (e-s)%2 == 1
+	if starterTurn {
+		res = r1 || r2
 	} else {
-		res = !(win(s+1, e) && win(2*s, e))
+		res = r1 && r2
 	}
-	memo[key] = res
+	if res {
+		memoWin[key] = 1
+	} else {
+		memoWin[key] = 2
+	}
+	return res
+}
+
+func canForceLose(a int64, starterTurn bool) bool {
+	key := [2]int64{a, 0}
+	if !starterTurn {
+		key[1] = 1
+	}
+	if v := memoLose[key]; v != 0 {
+		return v == 1
+	}
+	r1 := evalMove(2*a, starterTurn, true)
+	r2 := evalMove(a+1, starterTurn, true)
+	var res bool
+	if starterTurn {
+		res = r1 || r2
+	} else {
+		res = r1 && r2
+	}
+	if res {
+		memoLose[key] = 1
+	} else {
+		memoLose[key] = 2
+	}
 	return res
 }
 
 func solveF(s, e int64) string {
-	memo = make(map[[2]int64]bool)
-	if win(s, e) {
-		return "1 0"
+	curE = e
+	memoWin = make(map[[2]int64]int8)
+	memoLose = make(map[[2]int64]int8)
+	w, l := 0, 0
+	if canForceWin(s, true) {
+		w = 1
 	}
-	return "0 1"
+	if canForceLose(s, true) {
+		l = 1
+	}
+	return fmt.Sprintf("%d %d", w, l)
 }
 
 func runBinary(binPath string, input string) (string, error) {
