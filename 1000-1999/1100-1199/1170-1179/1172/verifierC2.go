@@ -12,8 +12,12 @@ import (
 )
 
 func buildOracle() (string, error) {
-	exe := "oracleC2"
-	cmd := exec.Command("go", "build", "-o", exe, "1172C2.go")
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	exe := filepath.Join(os.TempDir(), "oracleC2")
+	cmd := exec.Command("go", "build", "-o", exe, src)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}
@@ -42,7 +46,20 @@ func generateCase(rng *rand.Rand) string {
 	a := make([]int, n)
 	for i := range a {
 		a[i] = rng.Intn(2)
-		sb.WriteString(fmt.Sprintf("%d", a[i]))
+	}
+	// Ensure at least one liked picture
+	hasLiked := false
+	for _, v := range a {
+		if v == 1 {
+			hasLiked = true
+			break
+		}
+	}
+	if !hasLiked {
+		a[rng.Intn(n)] = 1
+	}
+	for i, v := range a {
+		sb.WriteString(fmt.Sprintf("%d", v))
 		if i+1 < n {
 			sb.WriteByte(' ')
 		}
@@ -74,7 +91,7 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input := generateCase(rng)
-		expect, err := runProg(filepath.Join("./", oracle), input)
+		expect, err := runProg(oracle, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle runtime error: %v\n", err)
 			os.Exit(1)

@@ -1,107 +1,41 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"math"
 	"math/rand"
 	"os"
 	"os/exec"
-	"sort"
-	"strconv"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
-type event struct {
-	angle float64
-	delta int
+func buildOracle() (string, error) {
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	bin := filepath.Join(os.TempDir(), "oracle419E.bin")
+	cmd := exec.Command("go", "build", "-o", bin, src)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	}
+	return bin, nil
 }
 
-func runBinary(path, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	} else {
-		cmd = exec.Command(path)
-	}
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	var errBuf bytes.Buffer
+	var stderr bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
 	}
 	return strings.TrimSpace(out.String()), nil
-}
-
-func solveE(n int, d float64, circles [][3]float64) string {
-	events := make([]event, 0, n*8)
-	twoPi := 2 * math.Pi
-	for i := 0; i < n; i++ {
-		xi, yi, ri := circles[i][0], circles[i][1], circles[i][2]
-		Di := math.Hypot(xi, yi)
-		phi := math.Atan2(yi, xi)
-		kmin := int(math.Ceil((Di - ri) / d))
-		if kmin < 1 {
-			kmin = 1
-		}
-		kmax := int(math.Floor((Di + ri) / d))
-		for k := kmin; k <= kmax; k++ {
-			kd := float64(k) * d
-			A := (kd - ri) / Di
-			B := (kd + ri) / Di
-			if A > 1 || B < -1 {
-				continue
-			}
-			if A < -1 {
-				A = -1
-			}
-			if B > 1 {
-				B = 1
-			}
-			al := math.Acos(A)
-			au := math.Acos(B)
-			intervals := [][2]float64{{phi + au, phi + al}, {phi + twoPi - al, phi + twoPi - au}}
-			for _, iv := range intervals {
-				s, e := iv[0], iv[1]
-				if s < 0 {
-					s += twoPi * (math.Floor(-s/twoPi) + 1)
-				}
-				if e < 0 {
-					e += twoPi * (math.Floor(-e/twoPi) + 1)
-				}
-				s = math.Mod(s, twoPi)
-				e = math.Mod(e, twoPi)
-				if e < s {
-					events = append(events, event{s, 1})
-					events = append(events, event{twoPi, -1})
-					events = append(events, event{0, 1})
-					events = append(events, event{e, -1})
-				} else {
-					events = append(events, event{s, 1})
-					events = append(events, event{e, -1})
-				}
-			}
-		}
-	}
-	sort.Slice(events, func(i, j int) bool {
-		if events[i].angle == events[j].angle {
-			return events[i].delta > events[j].delta
-		}
-		return events[i].angle < events[j].angle
-	})
-	maxCnt := 0
-	cur := 0
-	for _, ev := range events {
-		cur += ev.delta
-		if cur > maxCnt {
-			maxCnt = cur
-		}
-	}
-	return fmt.Sprintf("%d", maxCnt)
 }
 
 func generateCaseE(rng *rand.Rand) string {
@@ -127,35 +61,28 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierE.go /path/to/binary")
 		os.Exit(1)
 	}
-	bin := os.Args[1]
+	userBin := os.Args[1]
+	oracle, err := buildOracle()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer os.Remove(oracle)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		tc := generateCaseE(rng)
-		scanner := bufio.NewScanner(strings.NewReader(tc))
-		scanner.Split(bufio.ScanWords)
-		var fields []string
-		for scanner.Scan() {
-			fields = append(fields, scanner.Text())
-		}
-		n, _ := strconv.Atoi(fields[0])
-		dVal, _ := strconv.ParseFloat(fields[1], 64)
-		circles := make([][3]float64, n)
-		idx := 2
-		for j := 0; j < n; j++ {
-			x, _ := strconv.ParseFloat(fields[idx], 64)
-			y, _ := strconv.ParseFloat(fields[idx+1], 64)
-			r, _ := strconv.ParseFloat(fields[idx+2], 64)
-			circles[j] = [3]float64{x, y, r}
-			idx += 3
-		}
-		expect := solveE(n, dVal, circles)
-		got, err := runBinary(bin, tc)
+		input := generateCaseE(rng)
+		want, err := run(oracle, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, tc)
+			fmt.Fprintf(os.Stderr, "oracle failed on test %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, expect, got, tc)
+		got, err := run(userBin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test %d: %v\ninput:\n%s", i+1, err, input)
+			os.Exit(1)
+		}
+		if strings.TrimSpace(want) != strings.TrimSpace(got) {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, want, got, input)
 			os.Exit(1)
 		}
 	}

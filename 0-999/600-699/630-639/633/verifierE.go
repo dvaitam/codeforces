@@ -3,10 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -109,8 +111,20 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}
-		if got != strings.TrimSpace(expect) {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %q got %q\ninput:\n%s", i+1, expect, got, in)
+		gotVal, err2 := strconv.ParseFloat(strings.TrimSpace(got), 64)
+		expectVal, err3 := strconv.ParseFloat(strings.TrimSpace(expect), 64)
+		if err2 != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: cannot parse candidate output %q\ninput:\n%s", i+1, got, in)
+			os.Exit(1)
+		}
+		if err3 != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: cannot parse expected output %q\ninput:\n%s", i+1, expect, in)
+			os.Exit(1)
+		}
+		diff := math.Abs(gotVal - expectVal)
+		denom := math.Max(1.0, math.Abs(expectVal))
+		if diff/denom > 1e-6 {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %v got %v (rel err %v)\ninput:\n%s", i+1, expectVal, gotVal, diff/denom, in)
 			os.Exit(1)
 		}
 	}

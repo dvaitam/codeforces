@@ -13,9 +13,9 @@ func modPow(a, e int) int {
    base := a % MOD
    for e > 0 {
        if e&1 == 1 {
-           res = int((int64(res) * base) % MOD)
+           res = int((int64(res) * int64(base)) % int64(MOD))
        }
-       base = int((int64(base) * base) % MOD)
+       base = int((int64(base) * int64(base)) % int64(MOD))
        e >>= 1
    }
    return res
@@ -84,14 +84,14 @@ func main() {
            idx := S_total - sMin
            invTot := inv[idx]
            // liked transition
-           pPlus := int((int64(S_plus+l) * invTot) % MOD)
+           pPlus := int((int64(S_plus+l) * int64(invTot)) % int64(MOD))
            // add to l+1
-           ndp[l+1] = (ndp[l+1] + int((int64(v) * pPlus) % MOD)) % MOD
+           ndp[l+1] = (ndp[l+1] + int((int64(v) * int64(pPlus)) % int64(MOD))) % MOD
            // disliked sum
            rem := S_minus - (k - l)
            if rem > 0 {
-               pMinus := int((int64(rem) * invTot) % MOD)
-               ndp[l] = (ndp[l] + int((int64(v) * pMinus) % MOD)) % MOD
+               pMinus := int((int64(rem) * int64(invTot)) % int64(MOD))
+               ndp[l] = (ndp[l] + int((int64(v) * int64(pMinus)) % int64(MOD))) % MOD
            }
        }
        // swap dp and ndp
@@ -100,11 +100,11 @@ func main() {
    // compute E[X]
    EX := 0
    for l := 0; l <= m; l++ {
-       EX = (EX + int((int64(dp[l]) * l) % MOD)) % MOD
+       EX = (EX + int((int64(dp[l]) * int64(l)) % int64(MOD))) % MOD
    }
    // compute multipliers
    invSp := modInv(S_plus)
-   tPlus := int((int64(S_plus+EX) * invSp) % MOD)
+   tPlus := int((int64(S_plus+EX) * int64(invSp)) % int64(MOD))
    // compute m-EX
    mMinusEX := (m - EX) % MOD
    if mMinusEX < 0 {
@@ -116,15 +116,15 @@ func main() {
    }
    tMinus := 0
    if S_minus > 0 {
-       tMinus = int((int64((S_minus%MOD - mMinusEX + MOD) % MOD) * invSm) % MOD)
+       tMinus = int((int64((S_minus%MOD-mMinusEX+MOD)%MOD) * int64(invSm)) % int64(MOD))
    }
    // output results
    for i := 0; i < n; i++ {
        var res int
        if a[i] == 1 {
-           res = int((int64(w[i]) * tPlus) % MOD)
+           res = int((int64(w[i]) * int64(tPlus)) % int64(MOD))
        } else {
-           res = int((int64(w[i]) * tMinus) % MOD)
+           res = int((int64(w[i]) * int64(tMinus)) % int64(MOD))
        }
        if i > 0 {
            out.WriteByte(' ')

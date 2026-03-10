@@ -491,6 +491,80 @@ func parseTests(raw string) ([]testCase, error) {
 	return cases, nil
 }
 
+// countSpecial counts how many columns are special given a binary row-flip string.
+// The flip string has length n: '0' means don't flip, '1' means flip.
+func countSpecial(tc testCase, col string) int {
+	n, m := tc.n, tc.m
+	count := 0
+	for j := 0; j < m; j++ {
+		ones := 0
+		for i := 0; i < n; i++ {
+			bit := tc.grid[i][j]
+			if col[i] == '1' {
+				bit ^= 1 // flip: '0'^1='1', '1'^1='0'
+			}
+			if bit == '1' {
+				ones++
+			}
+		}
+		if ones == 1 {
+			count++
+		}
+	}
+	return count
+}
+
+// bestSpecialCount returns the maximum number of special columns achievable.
+func bestSpecialCount(tc testCase) int {
+	n, m := tc.n, tc.m
+	// Use the same hashing approach to find the best count
+	s := make([][]byte, n)
+	for i := 0; i < n; i++ {
+		s[i] = []byte(tc.grid[i])
+	}
+	const (
+		PP = int64(13331)
+		MM1 = int64(1000000007)
+		MM2 = int64(998244353)
+	)
+	p1 := make([]int64, n)
+	p2 := make([]int64, n)
+	p1[0], p2[0] = 1, 1
+	for i := 1; i < n; i++ {
+		p1[i] = p1[i-1] * PP % MM1
+		p2[i] = p2[i-1] * PP % MM2
+	}
+	mp := make(map[uint64]int)
+	for j := 0; j < m; j++ {
+		var h1, h2 int64
+		for i := 0; i < n; i++ {
+			h1 = (h1*PP + int64(s[i][j])) % MM1
+			h2 = (h2*PP + int64(s[i][j])) % MM2
+		}
+		for i := 0; i < n; i++ {
+			delta1 := int64(int(s[i][j]^1) - int(s[i][j]) + int(MM1))
+			t1 := (h1 + delta1*p1[n-1-i]) % MM1
+			if t1 < 0 {
+				t1 += MM1
+			}
+			delta2 := int64(int(s[i][j]^1) - int(s[i][j]) + int(MM2))
+			t2 := (h2 + delta2*p2[n-1-i]) % MM2
+			if t2 < 0 {
+				t2 += MM2
+			}
+			key := uint64(t1)<<32 | uint64(t2)
+			mp[key]++
+		}
+	}
+	best := 0
+	for _, cnt := range mp {
+		if cnt > best {
+			best = cnt
+		}
+	}
+	return best
+}
+
 // solve returns the column string produced by 1977D.go for a single test case.
 func solve(tc testCase) string {
 	n, m := tc.n, tc.m
@@ -616,14 +690,39 @@ func main() {
 		os.Exit(1)
 	}
 	outputs := strings.Fields(got)
-	if len(outputs) != len(tests) {
-		fmt.Fprintf(os.Stderr, "expected %d outputs got %d\n", len(tests), len(outputs))
+	if len(outputs) != 2*len(tests) {
+		fmt.Fprintf(os.Stderr, "expected %d outputs (2 per test case) got %d\n", 2*len(tests), len(outputs))
 		os.Exit(1)
 	}
 	for i, tc := range tests {
-		want := solve(tc)
-		if outputs[i] != want {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", i+1, want, outputs[i])
+		countStr := outputs[2*i]
+		colStr := outputs[2*i+1]
+		if len(colStr) != tc.n {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected column of length %d, got %q\n", i+1, tc.n, colStr)
+			os.Exit(1)
+		}
+		// Validate that the output is a valid binary string
+		for _, ch := range colStr {
+			if ch != '0' && ch != '1' {
+				fmt.Fprintf(os.Stderr, "case %d failed: invalid character in output %q\n", i+1, colStr)
+				os.Exit(1)
+			}
+		}
+		// Check that the candidate's answer achieves the optimal number of special columns
+		candidateCount := countSpecial(tc, colStr)
+		bestCount := bestSpecialCount(tc)
+		if candidateCount != bestCount {
+			fmt.Fprintf(os.Stderr, "case %d failed: candidate achieves %d special columns, optimal is %d\n", i+1, candidateCount, bestCount)
+			os.Exit(1)
+		}
+		// Also verify the count line matches the actual special column count
+		reportedCount, err := strconv.Atoi(countStr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: invalid count %q\n", i+1, countStr)
+			os.Exit(1)
+		}
+		if reportedCount != candidateCount {
+			fmt.Fprintf(os.Stderr, "case %d failed: reported count %d but achieves %d special columns\n", i+1, reportedCount, candidateCount)
 			os.Exit(1)
 		}
 	}

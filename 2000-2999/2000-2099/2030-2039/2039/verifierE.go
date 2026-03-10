@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"log"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
-const refSource = "2039E.go"
+var refSource = os.Getenv("REFERENCE_SOURCE_PATH")
 
 func main() {
 	if len(os.Args) != 2 {
@@ -46,13 +46,16 @@ func main() {
 }
 
 func buildReference() (string, error) {
+	if refSource == "" {
+		log.Fatal("REFERENCE_SOURCE_PATH environment variable is not set")
+	}
 	tmp, err := os.CreateTemp("", "2039E-ref-*")
 	if err != nil {
 		return "", err
 	}
 	tmp.Close()
 
-	source := filepath.Join(".", refSource)
+	source := refSource
 	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	var buf bytes.Buffer
 	cmd.Stdout = &buf

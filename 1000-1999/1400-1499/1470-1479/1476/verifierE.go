@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -14,6 +15,10 @@ import (
 type testCase struct {
 	input  string
 	output string
+	N, M, K int
+	A       []string
+	B       []string
+	P       []int
 }
 
 type IntHeap []int
@@ -143,7 +148,7 @@ func buildCase(N, M, K int, A []string, B []string, P []int) testCase {
 		b.WriteByte('\n')
 		out = b.String()
 	}
-	return testCase{input: sb.String(), output: out}
+	return testCase{input: sb.String(), output: out, N: N, M: M, K: K, A: A, B: B, P: P}
 }
 
 func randPattern(rng *rand.Rand, K int, allowUnderscore bool) string {
@@ -180,21 +185,111 @@ func randomCase(rng *rand.Rand) testCase {
 	return buildCase(N, M, K, A, B, P)
 }
 
-func runCase(bin string, tc testCase) error {
+// validateOrder checks if the given order is a valid answer for the problem.
+// N, M, K, A (patterns), B (strings), P (target pattern indices) define the problem.
+// order is the candidate's proposed ordering (1-indexed pattern indices).
+func validateOrder(N, M, K int, A []string, B []string, P []int, order []int) bool {
+	if len(order) != N {
+		return false
+	}
+	// Check it's a permutation of 1..N
+	seen := make(map[int]bool)
+	for _, v := range order {
+		if v < 1 || v > N || seen[v] {
+			return false
+		}
+		seen[v] = true
+	}
+	// Build position map: pos[i] = position of pattern i in the ordering
+	pos := make([]int, N+1)
+	for i, v := range order {
+		pos[v] = i
+	}
+	// For each string B[j] with target P[j], check:
+	// 1. B[j] matches A[P[j]-1]
+	// 2. For any other pattern A[i] that B[j] also matches, pos[P[j]] < pos[i+1]
+	for j := 0; j < M; j++ {
+		target := P[j]
+		if !matchPattern(B[j], A[target-1]) {
+			return false
+		}
+		for i := 0; i < N; i++ {
+			if matchPattern(B[j], A[i]) && (i+1) != target {
+				if pos[i+1] < pos[target] {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+func runCase(bin string, tc testCase, N, M, K int, A []string, B []string, P []int) error {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(tc.input)
 	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
 	got := strings.TrimSpace(out.String())
 	exp := strings.TrimSpace(tc.output)
-	if got != exp {
-		return fmt.Errorf("expected %q got %q", exp, got)
+	if got == exp {
+		return nil
 	}
-	return nil
+	// Check if both say NO (also accept empty output for NO, since some solutions
+	// may use os.Exit which doesn't flush buffered writers)
+	gotUpper := strings.ToUpper(got)
+	if (gotUpper == "NO" || got == "") && strings.ToUpper(exp) == "NO" {
+		return nil
+	}
+	// If expected is NO but candidate says YES, or vice versa
+	if strings.ToUpper(exp) == "NO" {
+		if strings.HasPrefix(strings.ToUpper(got), "YES") {
+			// Candidate claims YES when oracle says NO - validate
+			lines := strings.Split(got, "\n")
+			if len(lines) < 2 {
+				return fmt.Errorf("expected NO, got incomplete YES")
+			}
+			fields := strings.Fields(lines[1])
+			order := make([]int, len(fields))
+			for i, f := range fields {
+				v, err := strconv.Atoi(f)
+				if err != nil {
+					return fmt.Errorf("expected NO, got invalid YES output")
+				}
+				order[i] = v
+			}
+			if validateOrder(N, M, K, A, B, P, order) {
+				return nil // candidate found a valid solution oracle missed
+			}
+			return fmt.Errorf("expected NO, got invalid YES")
+		}
+		return fmt.Errorf("expected NO got %q", got)
+	}
+	if gotUpper == "NO" || gotUpper == "" {
+		return fmt.Errorf("expected YES got NO/empty")
+	}
+	// Both say YES but different orderings - validate candidate's ordering
+	lines := strings.Split(got, "\n")
+	if len(lines) < 2 {
+		return fmt.Errorf("incomplete YES output")
+	}
+	fields := strings.Fields(lines[1])
+	order := make([]int, len(fields))
+	for i, f := range fields {
+		v, err := strconv.Atoi(f)
+		if err != nil {
+			return fmt.Errorf("invalid order value: %s", f)
+		}
+		order[i] = v
+	}
+	if validateOrder(N, M, K, A, B, P, order) {
+		return nil
+	}
+	return fmt.Errorf("invalid ordering: %v", order)
 }
 
 func main() {
@@ -210,7 +305,7 @@ func main() {
 		cases = append(cases, randomCase(rng))
 	}
 	for i, tc := range cases {
-		if err := runCase(bin, tc); err != nil {
+		if err := runCase(bin, tc, tc.N, tc.M, tc.K, tc.A, tc.B, tc.P); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, tc.input)
 			os.Exit(1)
 		}

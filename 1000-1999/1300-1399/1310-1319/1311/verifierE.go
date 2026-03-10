@@ -232,7 +232,8 @@ func main() {
 	}
 
 	for i, tc := range testcases {
-		exp := expected(tc.n, tc.d)
+		// Compute whether a solution exists using the reference
+		_, refOk := constructTree(tc.n, tc.d)
 
 		var input strings.Builder
 		input.WriteString("1\n")
@@ -250,8 +251,74 @@ func main() {
 			os.Exit(1)
 		}
 		got := strings.TrimSpace(out.String())
-		if got != exp {
-			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", i+1, exp, got)
+
+		lines := strings.Split(got, "\n")
+		for j := range lines {
+			lines[j] = strings.TrimSpace(lines[j])
+		}
+
+		if !refOk {
+			// Should output NO
+			if strings.ToUpper(lines[0]) != "NO" {
+				fmt.Printf("test %d failed: expected NO, got: %s\n", i+1, got)
+				os.Exit(1)
+			}
+			continue
+		}
+
+		// Should output YES + valid tree
+		if strings.ToUpper(lines[0]) != "YES" {
+			fmt.Printf("test %d failed: expected YES, got: %s\n", i+1, got)
+			os.Exit(1)
+		}
+		if len(lines) < 2 {
+			fmt.Printf("test %d failed: missing parent list\n", i+1)
+			os.Exit(1)
+		}
+
+		// Parse parent list
+		fields := strings.Fields(lines[1])
+		if len(fields) != tc.n-1 {
+			fmt.Printf("test %d failed: expected %d parents, got %d\n", i+1, tc.n-1, len(fields))
+			os.Exit(1)
+		}
+
+		parent := make([]int, tc.n+1)
+		childCount := make([]int, tc.n+1)
+		for j := 0; j < tc.n-1; j++ {
+			p, err := strconv.Atoi(fields[j])
+			if err != nil {
+				fmt.Printf("test %d failed: invalid parent value %q\n", i+1, fields[j])
+				os.Exit(1)
+			}
+			node := j + 2
+			if p < 1 || p >= node {
+				fmt.Printf("test %d failed: parent %d of node %d out of valid range\n", i+1, p, node)
+				os.Exit(1)
+			}
+			parent[node] = p
+			childCount[p]++
+		}
+
+		// Check binary tree constraint: no node has more than 2 children
+		for v := 1; v <= tc.n; v++ {
+			if childCount[v] > 2 {
+				fmt.Printf("test %d failed: node %d has %d children (max 2 for binary tree)\n", i+1, v, childCount[v])
+				os.Exit(1)
+			}
+		}
+
+		// Compute depths and check sum
+		depth := make([]int, tc.n+1)
+		depth[1] = 0
+		depthSum := 0
+		for v := 2; v <= tc.n; v++ {
+			depth[v] = depth[parent[v]] + 1
+			depthSum += depth[v]
+		}
+
+		if depthSum != tc.d {
+			fmt.Printf("test %d failed: depth sum %d != expected %d\n", i+1, depthSum, tc.d)
 			os.Exit(1)
 		}
 	}

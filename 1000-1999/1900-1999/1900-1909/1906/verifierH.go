@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"log"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const refSource = "1906H.go"
+var refSource = os.Getenv("REFERENCE_SOURCE_PATH")
 const mod = 998244353
 
 type testCase struct {
@@ -74,7 +74,10 @@ func buildReference() (string, error) {
 		return "", err
 	}
 	tmp.Close()
-	source := filepath.Join(".", refSource)
+	if refSource == "" {
+		log.Fatal("REFERENCE_SOURCE_PATH environment variable is not set")
+	}
+	source := refSource
 	cmd := exec.Command("go", "build", "-o", tmp.Name(), source)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		os.Remove(tmp.Name())
@@ -127,15 +130,15 @@ func parseInt(out string) (int64, error) {
 func generateTests() []testCase {
 	tests := []testCase{
 		buildCase("equal", "2 2\nAB\nBA\n"),
-		buildCase("large", "5 3\nAAAAA\nBBBBB\n"),
+		buildCase("large", "3 5\nAAA\nBBBBB\n"),
 	}
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 40; i++ {
 		N := rng.Intn(10) + 1
-		M := rng.Intn(10) + 1
+		M := N + rng.Intn(10)
 		A := randomString(rng, N)
-		B := randomString(rng, N)
+		B := randomString(rng, M)
 		tests = append(tests, buildCase(fmt.Sprintf("random-%d", i+1), fmt.Sprintf("%d %d\n%s\n%s\n", N, M, A, B)))
 	}
 	return tests

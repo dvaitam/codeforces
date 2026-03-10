@@ -281,18 +281,46 @@ func main() {
 			fmt.Fprintf(os.Stderr, "missing output for test %d\n", i+1)
 			os.Exit(1)
 		}
+		// Compute expected number of distinct elements from reference solution
 		expected := solveCase(tc.n)
+		expDistinct := make(map[int]bool)
+		for _, v := range expected {
+			expDistinct[v] = true
+		}
+
+		vals := make([]int, tc.n)
+		gotDistinct := make(map[int]bool)
 		for j := 0; j < tc.n; j++ {
 			got, err := strconv.Atoi(outFields[idx+j])
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "bad output for test %d\n", i+1)
 				os.Exit(1)
 			}
-			if got != expected[j] {
-				fmt.Fprintf(os.Stderr, "case %d failed at position %d\nexpected: %v\ngot: %v\n", i+1, j+1, expected, outFields[idx:idx+tc.n])
+			if got < 1 || got > 300000 {
+				fmt.Fprintf(os.Stderr, "case %d: value %d out of range [1, 300000]\n", i+1, got)
 				os.Exit(1)
 			}
+			vals[j] = got
+			gotDistinct[got] = true
 		}
+
+		// Check all consecutive products are distinct
+		products := make(map[int64]bool)
+		for j := 0; j+1 < tc.n; j++ {
+			prod := int64(vals[j]) * int64(vals[j+1])
+			if products[prod] {
+				fmt.Fprintf(os.Stderr, "case %d: duplicate product %d at positions %d and earlier\n", i+1, prod, j+1)
+				os.Exit(1)
+			}
+			products[prod] = true
+		}
+
+		// Check number of distinct elements is optimal
+		if len(gotDistinct) > len(expDistinct) {
+			fmt.Fprintf(os.Stderr, "case %d: got %d distinct elements, expected at most %d\n", i+1, len(gotDistinct), len(expDistinct))
+			os.Exit(1)
+		}
+
 		idx += tc.n
 	}
 	if idx != len(outFields) {

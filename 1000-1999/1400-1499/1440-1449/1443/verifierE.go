@@ -5,15 +5,21 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"log"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
 func buildRef() (string, error) {
-	ref := "./refE.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1443E.go")
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		log.Fatal("REFERENCE_SOURCE_PATH environment variable is not set")
+	}
+	ref := filepath.Join(os.TempDir(), "refE_"+fmt.Sprint(time.Now().UnixNano()))
+	cmd := exec.Command("go", "build", "-o", ref, src)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("failed to build reference: %v\n%s", err, string(out))
 	}
@@ -44,20 +50,39 @@ type Test struct {
 	answers int
 }
 
+func factorial(n int) int64 {
+	r := int64(1)
+	for i := 2; i <= n; i++ {
+		r *= int64(i)
+		if r > 1e15 {
+			return r
+		}
+	}
+	return r
+}
+
 func genTest(rng *rand.Rand) Test {
 	n := rng.Intn(4) + 2 // 2..5
 	q := rng.Intn(8) + 1 // 1..8
+	maxPerms := factorial(n) - 1 // max total x before we run out of permutations
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d %d\n", n, q))
 	answers := 0
+	totalX := int64(0)
 	for i := 0; i < q; i++ {
-		if rng.Intn(2) == 0 {
+		remaining := maxPerms - totalX
+		if remaining <= 0 || rng.Intn(2) == 0 {
 			l := rng.Intn(n) + 1
 			r := rng.Intn(n-l+1) + l
 			sb.WriteString(fmt.Sprintf("1 %d %d\n", l, r))
 			answers++
 		} else {
-			x := rng.Intn(5) + 1
+			maxX := remaining
+			if maxX > 5 {
+				maxX = 5
+			}
+			x := int64(rng.Intn(int(maxX))) + 1
+			totalX += x
 			sb.WriteString(fmt.Sprintf("2 %d\n", x))
 		}
 	}

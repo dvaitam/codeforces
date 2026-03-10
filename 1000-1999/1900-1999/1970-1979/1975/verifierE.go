@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type expectedAnswer struct {
@@ -46,29 +47,72 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	inputData, err := io.ReadAll(os.Stdin)
+	binPath, cleanup, err := buildCandidate(candidate)
 	if err != nil {
-		fail("failed to read stdin: %v", err)
+		fail("failed to prepare candidate: %v", err)
 	}
-	if len(inputData) == 0 {
-		fail("empty input")
+	defer cleanup()
+
+	tests := generateTests()
+	for idx, inputData := range tests {
+		expected, err := computeAnswers(inputData)
+		if err != nil {
+			fail("test %d: failed to compute expected answers: %v", idx+1, err)
+		}
+
+		output, err := runCandidate(binPath, inputData)
+		if err != nil {
+			fail("test %d: candidate execution failed: %v", idx+1, err)
+		}
+
+		if err := compareOutput(output, expected); err != nil {
+			fail("test %d: %v", idx+1, err)
+		}
 	}
 
-	expected, err := computeAnswers(inputData)
-	if err != nil {
-		fail("failed to compute expected answers: %v", err)
+	fmt.Printf("All %d tests passed.\n", len(tests))
+}
+
+func generateTests() [][]byte {
+	tests := [][]byte{
+		// Sample-like tests
+		[]byte("1\n5 4\n0 0 0 0 0\n1 2\n1 3\n3 4\n3 5\n4\n3\n2\n5\n"),
+		[]byte("1\n1 3\n0\n1\n1\n1\n"),
+		[]byte("1\n2 2\n1 1\n1 2\n1\n2\n"),
+		[]byte("2\n3 3\n1 0 1\n1 2\n2 3\n2\n1\n3\n4 4\n0 0 0 0\n1 2\n2 3\n3 4\n1\n2\n3\n4\n"),
 	}
 
-	output, err := runCandidate(candidate, inputData)
-	if err != nil {
-		fail("candidate execution failed: %v", err)
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < 50; i++ {
+		tests = append(tests, genRandomTest(rng))
 	}
+	return tests
+}
 
-	if err := compareOutput(output, expected); err != nil {
-		fail("%v", err)
+func genRandomTest(rng *rand.Rand) []byte {
+	var sb strings.Builder
+	t := rng.Intn(3) + 1
+	sb.WriteString(fmt.Sprintf("%d\n", t))
+	for tc := 0; tc < t; tc++ {
+		n := rng.Intn(50) + 1
+		q := rng.Intn(50) + 1
+		sb.WriteString(fmt.Sprintf("%d %d\n", n, q))
+		for i := 0; i < n; i++ {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
+			sb.WriteString(fmt.Sprintf("%d", rng.Intn(2)))
+		}
+		sb.WriteString("\n")
+		for i := 2; i <= n; i++ {
+			p := rng.Intn(i-1) + 1
+			sb.WriteString(fmt.Sprintf("%d %d\n", p, i))
+		}
+		for i := 0; i < q; i++ {
+			sb.WriteString(fmt.Sprintf("%d\n", rng.Intn(n)+1))
+		}
 	}
-
-	fmt.Println("OK")
+	return []byte(sb.String())
 }
 
 func computeAnswers(data []byte) ([]expectedAnswer, error) {
@@ -134,13 +178,27 @@ func computeAnswers(data []byte) ([]expectedAnswer, error) {
 	return results, nil
 }
 
-func runCandidate(path string, input []byte) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	} else {
-		cmd = exec.Command(path)
+func buildCandidate(path string) (binPath string, cleanup func(), err error) {
+	if !strings.HasSuffix(path, ".go") {
+		return path, func() {}, nil
 	}
+	tmp, err := os.CreateTemp("", "candidate-*")
+	if err != nil {
+		return "", nil, fmt.Errorf("create temp file: %v", err)
+	}
+	tmp.Close()
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), path)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		os.Remove(tmp.Name())
+		return "", nil, fmt.Errorf("build failed: %v\n%s", err, stderr.String())
+	}
+	return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
+}
+
+func runCandidate(path string, input []byte) (string, error) {
+	cmd := exec.Command(path)
 	cmd.Stdin = bytes.NewReader(input)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

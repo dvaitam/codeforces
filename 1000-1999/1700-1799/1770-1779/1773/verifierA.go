@@ -6,11 +6,8 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
-
-const refSource1773A = "./1773A.go"
 
 type testCase struct {
 	n int
@@ -35,26 +32,8 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, err := buildReference(refSource1773A)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
 	tests := generateTests()
 	for idx, test := range tests {
-		refOut, err := runProgram(refBin, test.input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\ninput:\n%s", idx+1, err, test.input)
-			os.Exit(1)
-		}
-		refCases, err := parseOutputs(refOut, test.cases)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference output invalid on test %d: %v\n", idx+1, err)
-			os.Exit(1)
-		}
-
 		userOut, err := runProgram(candidate, test.input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "candidate failed on test %d: %v\ninput:\n%s", idx+1, err, test.input)
@@ -67,10 +46,16 @@ func main() {
 		}
 
 		for caseIdx, tc := range test.cases {
-			refCase := refCases[caseIdx]
 			userCase := userCases[caseIdx]
-			if !refCase.possible && userCase.possible {
-				fmt.Fprintf(os.Stderr, "test %d case %d: candidate claims Possible but reference Impossible\n", idx+1, caseIdx+1)
+			shouldBeImpossible := isCaseImpossible(tc)
+
+			if shouldBeImpossible && userCase.possible {
+				fmt.Fprintf(os.Stderr, "test %d case %d: candidate claims Possible but should be Impossible\n", idx+1, caseIdx+1)
+				fmt.Fprintf(os.Stderr, "input case:\n%s", formatCase(tc))
+				os.Exit(1)
+			}
+			if !shouldBeImpossible && !userCase.possible {
+				fmt.Fprintf(os.Stderr, "test %d case %d: candidate claims Impossible but solution exists\n", idx+1, caseIdx+1)
 				fmt.Fprintf(os.Stderr, "input case:\n%s", formatCase(tc))
 				os.Exit(1)
 			}
@@ -87,22 +72,20 @@ func main() {
 	fmt.Printf("All %d tests passed\n", len(tests))
 }
 
-func buildReference(source string) (string, error) {
-	tmp, err := os.CreateTemp("", "1773A-ref-*")
-	if err != nil {
-		return "", err
+// isCaseImpossible determines if there is no valid pair of derangements p, q
+// such that a[p[q[i]]] = i for all i.
+// For n >= 3, any permutation can be decomposed into two derangements.
+// For n = 1, impossible (no derangement exists).
+// For n = 2, possible only if a = [1, 2] (identity).
+func isCaseImpossible(tc testCase) bool {
+	n := tc.n
+	if n == 1 {
+		return true
 	}
-	tmp.Close()
-
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(source))
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, out.String())
+	if n == 2 {
+		return !(tc.a[0] == 1 && tc.a[1] == 2)
 	}
-	return tmp.Name(), nil
+	return false
 }
 
 func runProgram(path, input string) (string, error) {

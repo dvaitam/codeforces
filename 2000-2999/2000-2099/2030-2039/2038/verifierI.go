@@ -12,7 +12,6 @@ import (
 )
 
 const (
-	refSource       = "./2038I.go"
 	perTestBitLimit = 2_000_000
 	totalBitLimit   = 1_800_000
 )
@@ -38,34 +37,48 @@ func main() {
 	defer os.Remove(refBin)
 
 	tests := generateTests()
-	input := buildInput(tests)
 
-	refOut, err := runProgram(refBin, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference runtime error: %v\noutput:\n%s\n", err, refOut)
-		os.Exit(1)
-	}
-	expected := tokenize(refOut)
+	for i, tc := range tests {
+		input := buildSingleInput(tc)
 
-	candOut, err := runCandidate(candidate, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "candidate runtime error: %v\noutput:\n%s\n", err, candOut)
-		os.Exit(1)
-	}
-	got := tokenize(candOut)
-
-	if len(expected) != len(got) {
-		fmt.Fprintf(os.Stderr, "wrong number of tokens: expected %d got %d\n", len(expected), len(got))
-		os.Exit(1)
-	}
-	for i := range expected {
-		if expected[i] != got[i] {
-			fmt.Fprintf(os.Stderr, "mismatch at token %d: expected %q got %q\n", i+1, expected[i], got[i])
+		refOut, err := runProgram(refBin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "reference runtime error on test %d: %v\noutput:\n%s\n", i+1, err, refOut)
 			os.Exit(1)
+		}
+		expected := tokenize(refOut)
+
+		candOut, err := runCandidate(candidate, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "candidate runtime error on test %d: %v\noutput:\n%s\n", i+1, err, candOut)
+			os.Exit(1)
+		}
+		got := tokenize(candOut)
+
+		if len(expected) != len(got) {
+			fmt.Fprintf(os.Stderr, "test %d: wrong number of tokens: expected %d got %d\nexpected: %s\ngot: %s\ninput:\n%s",
+				i+1, len(expected), len(got), strings.Join(expected, " "), strings.Join(got, " "), input)
+			os.Exit(1)
+		}
+		for j := range expected {
+			if expected[j] != got[j] {
+				fmt.Fprintf(os.Stderr, "test %d: mismatch at token %d: expected %q got %q\ninput:\n%s",
+					i+1, j+1, expected[j], got[j], input)
+				os.Exit(1)
+			}
 		}
 	}
 
 	fmt.Printf("Accepted (%d tests).\n", len(tests))
+}
+
+func buildSingleInput(tc testCase) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%d %d\n", tc.n, tc.m)
+	for _, row := range tc.rows {
+		fmt.Fprintln(&b, row)
+	}
+	return b.String()
 }
 
 func buildReference() (string, error) {
@@ -75,6 +88,11 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
+	refSource := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSource == "" {
+		os.Remove(tmp.Name())
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
 	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -212,15 +230,15 @@ func uniqueBinaryStrings(n, m int, rng *rand.Rand) []string {
 	res := make([]string, 0, n)
 	seen := make(map[string]struct{}, n*2)
 	for len(res) < n {
-		bytes := make([]byte, m)
-		for i := range bytes {
+		b := make([]byte, m)
+		for i := range b {
 			if rng.Intn(2) == 1 {
-				bytes[i] = '1'
+				b[i] = '1'
 			} else {
-				bytes[i] = '0'
+				b[i] = '0'
 			}
 		}
-		s := string(bytes)
+		s := string(b)
 		if _, ok := seen[s]; ok {
 			continue
 		}
@@ -241,16 +259,4 @@ func enumeratedStrings(n, m int) []string {
 		res = append(res, fmt.Sprintf(format, i))
 	}
 	return res
-}
-
-func buildInput(tests []testCase) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "%d\n", len(tests))
-	for _, tc := range tests {
-		fmt.Fprintf(&b, "%d %d\n", tc.n, tc.m)
-		for _, row := range tc.rows {
-			fmt.Fprintln(&b, row)
-		}
-	}
-	return b.String()
 }

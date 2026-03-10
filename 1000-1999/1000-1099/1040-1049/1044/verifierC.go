@@ -6,17 +6,18 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"log"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 )
 
 func buildOracle() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	src := filepath.Join(dir, "1044C.go")
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		log.Fatal("REFERENCE_SOURCE_PATH environment variable is not set")
+	}
 	bin := filepath.Join(os.TempDir(), "oracle1044C.bin")
 	cmd := exec.Command("go", "build", "-o", bin, src)
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -38,19 +39,50 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func cross(o, a, b [2]int) int {
+	return (a[0]-o[0])*(b[1]-o[1]) - (a[1]-o[1])*(b[0]-o[0])
+}
+
 func genConvexPoints(r *rand.Rand, n int) [][2]int {
-	angles := make([]float64, n)
-	for i := range angles {
-		angles[i] = r.Float64() * 2 * math.Pi
+	for {
+		angles := make([]float64, n)
+		for i := range angles {
+			angles[i] = r.Float64() * 2 * math.Pi
+		}
+		sort.Float64s(angles)
+		pts := make([][2]int, n)
+		radius := 10000.0
+		for i, a := range angles {
+			x := int(radius * math.Cos(a))
+			y := int(radius * math.Sin(a))
+			pts[i] = [2]int{x, y}
+		}
+		// Check all points are distinct
+		valid := true
+		for i := 0; i < n && valid; i++ {
+			for j := i + 1; j < n && valid; j++ {
+				if pts[i] == pts[j] {
+					valid = false
+				}
+			}
+		}
+		if !valid {
+			continue
+		}
+		// Check no three points are collinear
+		for i := 0; i < n && valid; i++ {
+			for j := i + 1; j < n && valid; j++ {
+				for k := j + 1; k < n && valid; k++ {
+					if cross(pts[i], pts[j], pts[k]) == 0 {
+						valid = false
+					}
+				}
+			}
+		}
+		if valid {
+			return pts
+		}
 	}
-	sort.Float64s(angles)
-	pts := make([][2]int, n)
-	for i, a := range angles {
-		x := int(100 * math.Cos(a))
-		y := int(100 * math.Sin(a))
-		pts[i] = [2]int{x, y}
-	}
-	return pts
 }
 
 func genCase(r *rand.Rand) string {
@@ -89,7 +121,20 @@ func main() {
 			fmt.Fprintf(os.Stderr, "test %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if want != got {
+		wantFields := strings.Fields(want)
+		gotFields := strings.Fields(got)
+		if len(wantFields) != len(gotFields) {
+			fmt.Printf("test %d failed: expected %d values, got %d\ninput:\n%sexpected: %s\ngot: %s\n", i+1, len(wantFields), len(gotFields), input, want, got)
+			os.Exit(1)
+		}
+		mismatch := false
+		for j := range wantFields {
+			if wantFields[j] != gotFields[j] {
+				mismatch = true
+				break
+			}
+		}
+		if mismatch {
 			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input, want, got)
 			os.Exit(1)
 		}

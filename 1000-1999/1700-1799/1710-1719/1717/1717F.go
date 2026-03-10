@@ -172,7 +172,7 @@ func main() {
    for i := 0; i < m; i++ {
        e := edges[i]
        // If edge to u was used (cap==0), orient v->u, else u->v
-       if gr.g[e.u][e.idxU].cap == 0 {
+       if gr.g[i][e.idxU].cap == 0 {
            fmt.Fprintln(writer, e.v+1, e.u+1)
        } else {
            fmt.Fprintln(writer, e.u+1, e.v+1)
