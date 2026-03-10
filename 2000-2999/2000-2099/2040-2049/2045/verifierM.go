@@ -7,22 +7,16 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-const refSource = "./2045M.go"
+
 
 type testCase struct {
 	name string
 	R, C int
 	grid []string
-}
-
-type sideEntry struct {
-	dir   int
-	index int
 }
 
 func main() {
@@ -32,32 +26,10 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, cleanup, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
 	tests := buildTests()
 	for idx, tc := range tests {
 		input := buildInput(tc)
-
-		refOut, err := runProgram(refBin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference runtime error on test %d (%s): %v\ninput:\n%soutput:\n%s", idx+1, tc.name, err, input, refOut)
-			os.Exit(1)
-		}
-		refK, refList, err := parseOutput(refOut)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference produced invalid output on test %d (%s): %v\ninput:\n%soutput:\n%s", idx+1, tc.name, err, input, refOut)
-			os.Exit(1)
-		}
 		expected := evaluate(tc)
-		if err := compareAnswers(tc, refK, refList, expected); err != nil {
-			fmt.Fprintf(os.Stderr, "reference answer mismatch on test %d (%s): %v\ninput:\n%soutput:\n%s", idx+1, tc.name, err, input, refOut)
-			os.Exit(1)
-		}
 
 		candOut, err := runProgram(candidate, input)
 		if err != nil {
@@ -76,23 +48,6 @@ func main() {
 	}
 
 	fmt.Printf("All %d tests passed\n", len(tests))
-}
-
-func buildReference() (string, func(), error) {
-	dir, err := os.MkdirTemp("", "cf-2045M-ref-")
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to create temp dir: %v", err)
-	}
-	binPath := filepath.Join(dir, "ref2045M.bin")
-	cmd := exec.Command("go", "build", "-o", binPath, refSource)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		os.RemoveAll(dir)
-		return "", nil, fmt.Errorf("failed to build reference: %v\n%s", err, stderr.String())
-	}
-	cleanup := func() { _ = os.RemoveAll(dir) }
-	return binPath, cleanup, nil
 }
 
 func runProgram(bin, input string) (string, error) {
@@ -211,26 +166,28 @@ var dc = []int{0, 1, 0, -1}
 func reflect(dir int, ch byte) int {
 	switch ch {
 	case '/':
+		// north↔east, south↔west
 		switch dir {
 		case 0:
-			return 3
-		case 1:
-			return 2
-		case 2:
 			return 1
-		case 3:
+		case 1:
 			return 0
+		case 2:
+			return 3
+		case 3:
+			return 2
 		}
 	case '\\':
+		// north↔west, south↔east
 		switch dir {
 		case 0:
-			return 1
-		case 1:
-			return 0
-		case 2:
 			return 3
-		case 3:
+		case 1:
 			return 2
+		case 2:
+			return 1
+		case 3:
+			return 0
 		}
 	}
 	return dir
@@ -272,7 +229,7 @@ func buildTests() []testCase {
 		{
 			name: "sample1",
 			R:    4, C: 4,
-			grid: []string{".//.", ".\\.", ".\\/.", "...."},
+			grid: []string{".//.", ".\\\\.",".\\/.", "...."},
 		},
 		{
 			name: "sample2",

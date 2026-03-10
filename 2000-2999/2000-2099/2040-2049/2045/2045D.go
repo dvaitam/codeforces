@@ -4,61 +4,46 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 )
 
-type segTree struct {
-	n   int
-	val []int64
+const (
+	llinf = int64(1) << 40
+	segM  = 1 << 20
+)
+
+var seg [segM*2 + 10][2]int64
+
+func mer(a, b [2]int64) [2]int64 {
+	y := a[1]
+	if a[0]+b[1] < y {
+		y = a[0] + b[1]
+	}
+	return [2]int64{a[0] + b[0], y}
 }
 
-func newSegTree(a []int64) *segTree {
-	n := len(a)
-	size := 1
-	for size < n {
-		size <<= 1
+func ge(l, r, lo, hi, i int) [2]int64 {
+	if lo >= l && hi <= r {
+		return seg[i]
 	}
-	val := make([]int64, 2*size)
-	const inf int64 = 1 << 60
-	for i := range val {
-		val[i] = inf
+	if lo >= r || hi <= l {
+		return [2]int64{0, llinf * 1000010}
 	}
-	for i := 0; i < n; i++ {
-		val[size+i] = a[i]
-	}
-	for i := size - 1; i > 0; i-- {
-		if val[i<<1] < val[i<<1|1] {
-			val[i] = val[i<<1]
-		} else {
-			val[i] = val[i<<1|1]
-		}
-	}
-	return &segTree{n: n, val: val}
+	mid := (lo + hi) / 2
+	return mer(ge(l, r, lo, mid, i*2), ge(l, r, mid, hi, i*2+1))
 }
 
-func (st *segTree) rangeMin(l, r int) int64 {
-	if l > r {
-		return 1 << 60
+func upd(i int, x int64) {
+	i += segM
+	seg[i][0] += x
+	seg[i][1] += x
+	for i /= 2; i > 0; i /= 2 {
+		seg[i] = mer(seg[i*2], seg[i*2+1])
 	}
-	l += len(st.val) / 2
-	r += len(st.val) / 2
-	res := int64(1 << 60)
-	for l <= r {
-		if l&1 == 1 {
-			if st.val[l] < res {
-				res = st.val[l]
-			}
-			l++
-		}
-		if r&1 == 0 {
-			if st.val[r] < res {
-				res = st.val[r]
-			}
-			r--
-		}
-		l >>= 1
-		r >>= 1
-	}
-	return res
+}
+
+func getInd(vas []int64, x int64) int {
+	return sort.Search(len(vas), func(i int) bool { return vas[i] >= x })
 }
 
 func main() {
@@ -66,151 +51,80 @@ func main() {
 	out := bufio.NewWriter(os.Stdout)
 	defer out.Flush()
 
-	var N int
-	var D, Ts, Tf, Tw int64
-	if _, err := fmt.Fscan(in, &N, &D, &Ts, &Tf, &Tw); err != nil {
+	var n int
+	var d, sw, fl, wa int64
+	fmt.Fscan(in, &n, &d, &sw, &fl, &wa)
+
+	if fl < sw {
+		fmt.Fprintln(out, int64(n-1)*fl)
 		return
 	}
 
-	P := make([]int64, N)
-	for i := 0; i < N; i++ {
-		fmt.Fscan(in, &P[i])
+	pr := make([]int64, n+1)
+	for i := 0; i < n; i++ {
+		var x int64
+		fmt.Fscan(in, &x)
+		pr[i+1] = pr[i] + x - d
 	}
 
-	// Helper prefix sums of P for quick range queries.
-	prefP := make([]int64, N+1)
-	for i := 0; i < N; i++ {
-		prefP[i+1] = prefP[i] + P[i]
+	var vas []int64
+	for i := 0; i <= n; i++ {
+		vas = append(vas, pr[i], pr[i]+d, pr[i]+2*d)
 	}
-
-	// If flying is faster, we fly whenever possible after crossing the initial visited prefix.
-	if Ts > Tf {
-		best := int64(1 << 62)
-		c := 2*Tw + Ts - Tf
-		// feasibility check per k.
-		maxK := 0
-		if c < 0 {
-			// pick the furthest feasible k.
-			for k := 0; k < N; k++ {
-				need := int64(k) * D
-				sum := prefP[k+1]
-				ok := false
-				if k == N-1 {
-					ok = sum >= need
-				} else {
-					ok = sum > need
-				}
-				if ok {
-					maxK = k
-				}
-			}
+	vas = append(vas, -llinf)
+	sort.Slice(vas, func(i, j int) bool { return vas[i] < vas[j] })
+	j := 1
+	for k := 1; k < len(vas); k++ {
+		if vas[k] != vas[k-1] {
+			vas[j] = vas[k]
+			j++
 		}
-		candidates := []int{0}
-		if c < 0 {
-			candidates = append(candidates, maxK)
-		}
-		for _, k := range candidates {
-			need := int64(k) * D
-			sum := prefP[k+1]
-			if k == N-1 {
-				if sum < need {
-					continue
-				}
-			} else {
-				if sum <= need {
-					continue
-				}
-			}
-			time := int64(2*k)*Tw + int64(k)*Ts + int64(N-1-k)*Tf
-			if time < best {
-				best = time
-			}
-		}
-		fmt.Fprintln(out, best)
-		return
 	}
+	vas = vas[:j]
 
-	// Build prefix of (P[i+1] - D) to help find when stamina drops below D.
-	// prefix[i] corresponds to island i (0-based).
-	prefix := make([]int64, N)
-	for i := 0; i < N-1; i++ {
-		prefix[i+1] = prefix[i] + (P[i+1] - D)
-	}
+	upd(0, llinf)
+	idx0 := getInd(vas, 0)
+	upd(idx0, -llinf)
+	upd(idx0+1, llinf)
 
-	// Segment tree over prefix[0..N-2] (positions where a move starts).
-	segArr := prefix[:N-1]
-	st := newSegTree(segArr)
+	dp := make([]int64, n+1)
 
-	// Finds the smallest x >= pos and x <= N-2 such that prefix[x] < threshold.
-	// Returns -1 if stamina never drops below D starting from pos.
-	firstFail := func(pos int, stamina int64) int {
-		if pos >= N-1 {
-			return -1
+	for i := 1; i < n; i++ {
+		dp[i] = ge(0, getInd(vas, pr[i]+d), 0, segM, 1)[1] + int64(i-1)*sw + fl
+		swimtohere := ge(0, getInd(vas, pr[i]+d)+1, 0, segM, 1)[1] + int64(i-1)*sw
+		flytohere := ge(0, getInd(vas, pr[i]+2*d), 0, segM, 1)[1] + int64(i-2)*sw + fl
+
+		p2 := getInd(vas, pr[i]+d)
+		va2 := min64(swimtohere, flytohere) - int64(i-1)*sw
+		cu2 := ge(0, p2+1, 0, segM, 1)[0]
+		if va2 < cu2 {
+			upd(p2, va2-cu2)
+			upd(p2+1, cu2-va2)
 		}
-		threshold := prefix[pos] + D - stamina
-		if st.rangeMin(pos, N-2) >= threshold {
-			return -1
-		}
-		l, r := pos, N-2
-		for l < r {
-			m := (l + r) >> 1
-			if st.rangeMin(pos, m) < threshold {
-				r = m
-			} else {
-				l = m + 1
-			}
-		}
-		return l
-	}
 
-	// dp[i] = minimal time to reach island N starting from island i with stamina P[i].
-	dp := make([]int64, N)
-	dp[N-1] = 0
-	for i := N - 2; i >= 0; i-- {
-		fail := firstFail(i, P[i])
-		if fail == -1 {
-			dp[i] = int64(N-1-i) * Ts
-		} else {
-			swimLen := int64(fail - i)
-			dp[i] = swimLen*Ts + Tf + dp[fail+1]
+		pl := getInd(vas, pr[i])
+		upd(pl+1, 2*wa)
+		va := dp[i] - int64(i)*sw
+		cu := ge(0, pl+1, 0, segM, 1)[0]
+		if va < cu {
+			upd(pl, va-cu)
+			upd(pl+1, cu-va)
 		}
 	}
 
-	best := int64(1 << 62)
+	swimtoend := ge(0, getInd(vas, pr[n]+d)+1, 0, segM, 1)[1] + int64(n-1)*sw
+	flytoend := ge(0, getInd(vas, pr[n]+2*d), 0, segM, 1)[1] + int64(n-2)*sw + fl
 
-	for k := 0; k < N; k++ {
-		// k is number of edges in visited prefix (walked to island k and back), position after swims is island k.
-		sum := prefP[k+1]
-		need := int64(k) * D
-		if k == N-1 {
-			if sum < need {
-				continue
-			}
-		} else {
-			if sum <= need {
-				continue
-			}
-		}
-		stamina := sum - need
-		timePrefix := int64(2*k)*Tw + int64(k)*Ts
-		if k == N-1 {
-			if timePrefix < best {
-				best = timePrefix
-			}
-			continue
-		}
-		fail := firstFail(k, stamina)
-		var rem int64
-		if fail == -1 {
-			rem = int64(N-1-k) * Ts
-		} else {
-			rem = int64(fail-k)*Ts + Tf + dp[fail+1]
-		}
-		total := timePrefix + rem
-		if total < best {
-			best = total
-		}
+	ans := swimtoend
+	if flytoend < ans {
+		ans = flytoend
 	}
+	fmt.Fprintln(out, ans)
+}
 
-	fmt.Fprintln(out, best)
+func min64(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -113,24 +112,68 @@ const testcasesRaw = `2 5 2
 
 type pair struct{ u, v int }
 
-func solve(tc []int) []pair {
-	n := len(tc)
-	var ops []pair
+func validate(arr []int, output string) error {
+	n := len(arr)
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) == 0 {
+		return fmt.Errorf("empty output")
+	}
+	m, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+	if err != nil {
+		return fmt.Errorf("invalid m: %v", err)
+	}
+	if m != len(lines)-1 {
+		return fmt.Errorf("declared m=%d but got %d pairs", m, len(lines)-1)
+	}
+
+	// Count original inversions.
+	origInv := 0
 	for i := 0; i < n; i++ {
 		for j := i + 1; j < n; j++ {
-			if tc[i] > tc[j] {
-				ops = append(ops, pair{i, j})
+			if arr[i] > arr[j] {
+				origInv++
 			}
 		}
 	}
-	sort.Slice(ops, func(i, j int) bool {
-		ai, aj := tc[ops[i].u], tc[ops[j].u]
-		if ai != aj {
-			return ai < aj
+	if m != origInv {
+		return fmt.Errorf("expected %d inversions, got %d", origInv, m)
+	}
+
+	pairs := make([]pair, m)
+	pairSet := make(map[[2]int]bool)
+	for i := 0; i < m; i++ {
+		parts := strings.Fields(lines[i+1])
+		if len(parts) != 2 {
+			return fmt.Errorf("pair %d: expected 2 numbers", i+1)
 		}
-		return ops[i].v > ops[j].v
-	})
-	return ops
+		u, e1 := strconv.Atoi(parts[0])
+		v, e2 := strconv.Atoi(parts[1])
+		if e1 != nil || e2 != nil || u < 1 || v > n || u >= v {
+			return fmt.Errorf("pair %d: invalid indices %d %d", i+1, u, v)
+		}
+		if arr[u-1] <= arr[v-1] {
+			return fmt.Errorf("pair %d: (%d,%d) is not an inversion in original array", i+1, u, v)
+		}
+		key := [2]int{u, v}
+		if pairSet[key] {
+			return fmt.Errorf("pair %d: duplicate inversion (%d,%d)", i+1, u, v)
+		}
+		pairSet[key] = true
+		pairs[i] = pair{u - 1, v - 1}
+	}
+
+	// Simulate swaps and verify the array is sorted.
+	sim := make([]int, n)
+	copy(sim, arr)
+	for _, p := range pairs {
+		sim[p.u], sim[p.v] = sim[p.v], sim[p.u]
+	}
+	for i := 1; i < n; i++ {
+		if sim[i] < sim[i-1] {
+			return fmt.Errorf("array not sorted after swaps")
+		}
+	}
+	return nil
 }
 
 func parseTestcases(raw string) ([][]int, error) {
@@ -204,46 +247,14 @@ func main() {
 		}
 		input.WriteByte('\n')
 
-		expected := solve(arr)
 		got, err := run(bin, input.String())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if len(expected) == 0 {
-			if strings.TrimSpace(got) != "0" {
-				fmt.Fprintf(os.Stderr, "case %d mismatch: expected only 0 got %q\n", idx+1, got)
-				os.Exit(1)
-			}
-			continue
-		}
-		lines := strings.Split(strings.TrimSpace(got), "\n")
-		m, err := strconv.Atoi(strings.TrimSpace(lines[0]))
-		if err != nil || m != len(lines)-1 {
-			fmt.Fprintf(os.Stderr, "case %d: invalid count line\n", idx+1)
+		if err := validate(arr, got); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput: %s\n", idx+1, err, input.String())
 			os.Exit(1)
-		}
-		if m != len(expected) {
-			fmt.Fprintf(os.Stderr, "case %d: expected %d operations got %d\n", idx+1, len(expected), m)
-			os.Exit(1)
-		}
-		for i := 0; i < m; i++ {
-			parts := strings.Fields(lines[i+1])
-			if len(parts) != 2 {
-				fmt.Fprintf(os.Stderr, "case %d line %d: expected 2 numbers\n", idx+1, i+1)
-				os.Exit(1)
-			}
-			u, err1 := strconv.Atoi(parts[0])
-			v, err2 := strconv.Atoi(parts[1])
-			if err1 != nil || err2 != nil {
-				fmt.Fprintf(os.Stderr, "case %d line %d: invalid numbers\n", idx+1, i+1)
-				os.Exit(1)
-			}
-			exp := expected[i]
-			if u != exp.u+1 || v != exp.v+1 {
-				fmt.Fprintf(os.Stderr, "case %d mismatch at op %d: expected %d %d got %d %d\n", idx+1, i+1, exp.u+1, exp.v+1, u, v)
-				os.Exit(1)
-			}
 		}
 	}
 	fmt.Printf("All %d tests passed\n", len(tests))

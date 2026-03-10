@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const solutionE = "0-999/900-999/900-909/908/908E.go"
+const solutionE = "908E.go"
 
 func runCmd(cmd []string, input string) (string, error) {
 	c := exec.Command(cmd[0], cmd[1:]...)

@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"sort"
 	"strings"
 )
 
@@ -63,40 +62,50 @@ func generateTests() []testCaseE {
 func computeDiff(k int, a []int, b []int) int64 {
 	n := len(a)
 	m := len(b)
-	type Player struct {
-		p    int
-		team int
+	total := n + m
+	type Player struct{ p, team int }
+	players := make([]Player, total)
+	for i, v := range a {
+		players[i] = Player{v, 1}
 	}
-	players := make([]Player, 0, n+m)
-	for _, v := range a {
-		players = append(players, Player{p: v, team: 1})
+	for i, v := range b {
+		players[n+i] = Player{v, -1}
 	}
-	for _, v := range b {
-		players = append(players, Player{p: v, team: -1})
-	}
-	sort.Slice(players, func(i, j int) bool {
-		if players[i].p == players[j].p {
-			return players[i].team > players[j].team
+
+	best := int64(-1 << 62)
+	var dfs func(idx, prevP, device int, diff int64)
+	dfs = func(idx, prevP, device int, diff int64) {
+		if idx == total {
+			if diff > best {
+				best = diff
+			}
+			return
 		}
-		return players[i].p > players[j].p
-	})
-	if len(players) == 0 {
-		return 0
-	}
-	device := k
-	prev := players[0].p
-	var diff int64
-	diff += int64(players[0].team) * int64(device)
-	for i := 1; i < len(players); i++ {
-		d := players[i].p - prev
-		device += d
-		if device < 0 {
-			device = 0
+		seen := make(map[[2]int]bool)
+		for i := idx; i < total; i++ {
+			pl := players[i]
+			key := [2]int{pl.p, pl.team}
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			var nd int
+			if idx == 0 {
+				nd = k
+			} else {
+				nd = device + pl.p - prevP
+				if nd < 0 {
+					nd = 0
+				}
+			}
+			players[idx], players[i] = players[i], players[idx]
+			dfs(idx+1, pl.p, nd, diff+int64(pl.team)*int64(nd))
+			players[idx], players[i] = players[i], players[idx]
 		}
-		prev = players[i].p
-		diff += int64(players[i].team) * int64(device)
 	}
-	return diff
+
+	dfs(0, 0, k, 0)
+	return best
 }
 
 func solveE(t testCaseE) []int64 {

@@ -12,29 +12,28 @@ import (
 )
 
 // solver replicates the reference logic to compute the minimum number of operations.
+// cnt = number of descents; st = left index of first descent; ed = right index of last descent.
+// answer = cnt/2 + (cnt%2 != 0 || ed-st > a[ed]-a[st])
 func solver(a []int) int {
 	n := len(a)
-	if n == 0 {
-		return 0
-	}
-	ans := 0
-	i := 0
-	for i < n-1 {
-		ans++
-		j := i
-		if a[j+1] > a[j] {
-			for j+1 < n && a[j+1] > a[j] {
-				j++
-			}
-		} else {
-			for j+1 < n && a[j+1] < a[j] {
-				j++
+	cnt, st, ed := 0, 0, 0
+	for i := 0; i < n-1; i++ {
+		if a[i] > a[i+1] {
+			cnt++
+			ed = i + 1
+			if cnt == 1 {
+				st = i
 			}
 		}
-		i = j
 	}
-	ans++
-	return ans
+	if cnt == 0 {
+		return 0
+	}
+	extra := 0
+	if cnt%2 != 0 || ed-st > a[ed]-a[st] {
+		extra = 1
+	}
+	return cnt/2 + extra
 }
 
 type testCase struct {

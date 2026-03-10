@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -64,8 +65,9 @@ func compute(input string) string {
 }
 
 func genRandomCase() string {
-	n := rand.Intn(5) + 1
-	m := rand.Intn(5) + n
+	n := rand.Intn(3) + 1
+	nSq := n * n
+	m := nSq + rand.Intn(5)
 	k := rand.Intn(m + 1)
 	return fmt.Sprintf("%d %d %d\n", n, m, k)
 }
@@ -87,6 +89,26 @@ func generateCases() []testCase {
 	return cases
 }
 
+func floatClose(a, b string) bool {
+	if a == b {
+		return true
+	}
+	// both "1e99" mean capped
+	aInf := strings.EqualFold(a, "1e99")
+	bInf := strings.EqualFold(b, "1e99")
+	if aInf || bInf {
+		return aInf && bInf
+	}
+	av, err1 := strconv.ParseFloat(a, 64)
+	bv, err2 := strconv.ParseFloat(b, 64)
+	if err1 != nil || err2 != nil {
+		return false
+	}
+	diff := math.Abs(av - bv)
+	tol := math.Max(1e-9, 1e-9*math.Abs(av))
+	return diff <= tol
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintln(os.Stderr, "usage: verifierD.go <binary>")
@@ -100,7 +122,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d: runtime error: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != tc.expected {
+		got := strings.TrimSpace(out)
+		exp := strings.TrimSpace(tc.expected)
+		if !floatClose(exp, got) {
 			fmt.Fprintf(os.Stderr, "case %d failed:\ninput:%sexpected:%s\nactual:%s\n", i+1, tc.input, tc.expected, out)
 			os.Exit(1)
 		}

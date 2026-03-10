@@ -80,7 +80,7 @@ func genTest(rng *rand.Rand) (string, string) {
 		segs[i] = Segment{l, r, t}
 	}
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("1\n%d\n", n))
+	sb.WriteString(fmt.Sprintf("%d\n", n))
 	for i := 0; i < n; i++ {
 		sb.WriteString(fmt.Sprintf("%d %d %d\n", segs[i].l, segs[i].r, segs[i].t))
 	}
