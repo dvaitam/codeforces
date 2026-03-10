@@ -36,7 +36,7 @@ func genCase(rng *rand.Rand) string {
 		if i > 0 {
 			b.WriteByte(' ')
 		}
-		fmt.Fprint(&b, rng.Intn(4)+1)
+		fmt.Fprint(&b, rng.Intn(k)+1)
 	}
 	b.WriteByte('\n')
 	return b.String()

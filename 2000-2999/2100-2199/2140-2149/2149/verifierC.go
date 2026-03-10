@@ -1,171 +1,176 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
-	"io"
+	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
-const refSource = "2149C.go"
+const refSource = "./2149C.go"
 
 type testCase struct {
-	n    int
-	perm []int
+	n   int
+	k   int
+	arr []int
 }
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierC.go /path/to/binary")
+	args := os.Args[1:]
+	if len(args) == 2 && args[0] == "--" {
+		args = args[1:]
+	}
+	if len(args) != 1 {
+		fmt.Println("usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
-	candidate := os.Args[1]
+	candidate := args[0]
 
-	inputBytes, err := io.ReadAll(os.Stdin)
+	refBin, err := buildReference()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to read input:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	defer os.Remove(refBin)
 
-	tests, err := parseInput(inputBytes)
+	tests := buildTests()
+	input := buildInput(tests)
+
+	refOut, err := runProgram(refBin, input)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "invalid input:", err)
+		fmt.Fprintf(os.Stderr, "reference failed: %v\n", err)
+		os.Exit(1)
+	}
+	refAnswers, err := parseOutput(refOut, len(tests))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to parse reference output: %v\noutput:\n%s", err, refOut)
 		os.Exit(1)
 	}
 
-	out, err := runProgram(candidate, inputBytes)
+	candOut, err := runProgram(candidate, input)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "candidate runtime error: %v\n", err)
 		os.Exit(1)
 	}
-	if err := verifyOutput(out, tests); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+	candAnswers, err := parseOutput(candOut, len(tests))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to parse candidate output: %v\noutput:\n%s", err, candOut)
 		os.Exit(1)
 	}
 
-	fmt.Println("Accepted")
+	for i, tc := range tests {
+		if candAnswers[i] != refAnswers[i] {
+			fmt.Fprintf(os.Stderr, "test %d mismatch: expected %d, got %d\nn=%d k=%d arr=%v\n",
+				i+1, refAnswers[i], candAnswers[i], tc.n, tc.k, tc.arr)
+			os.Exit(1)
+		}
+	}
+	fmt.Println("All tests passed")
 }
 
-func parseInput(data []byte) ([]testCase, error) {
-	reader := bufio.NewReader(bytes.NewReader(data))
-	var t int
-	if _, err := fmt.Fscan(reader, &t); err != nil {
-		return nil, fmt.Errorf("failed to read t: %v", err)
+func buildReference() (string, error) {
+	outPath := "./ref_2149C.bin"
+	cmd := exec.Command("go", "build", "-o", outPath, refSource)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("failed to build reference: %v\n%s", err, string(out))
 	}
-	tests := make([]testCase, t)
-	for i := 0; i < t; i++ {
-		var n int
-		if _, err := fmt.Fscan(reader, &n); err != nil {
-			return nil, fmt.Errorf("failed to read n: %v", err)
-		}
-		m := n*n + 1
-		perm := make([]int, m)
-		for j := 0; j < m; j++ {
-			if _, err := fmt.Fscan(reader, &perm[j]); err != nil {
-				return nil, fmt.Errorf("failed to read permutation value: %v", err)
-			}
-		}
-		tests[i] = testCase{n: n, perm: perm}
-	}
-	return tests, nil
+	return outPath, nil
 }
 
-func verifyOutput(output string, tests []testCase) error {
-	lines := readNonEmptyLines(output)
-	if len(lines) != len(tests) {
-		return fmt.Errorf("expected %d non-empty output lines, got %d", len(tests), len(lines))
+func runProgram(target, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(target, ".go") {
+		cmd = exec.Command("go", "run", target)
+	} else {
+		cmd = exec.Command(target)
 	}
-	for idx, line := range lines {
-		tc := tests[idx]
-		tokens := strings.Fields(line)
-		if len(tokens) != tc.n+1 {
-			return fmt.Errorf("test %d: expected %d indices, got %d", idx+1, tc.n+1, len(tokens))
-		}
-		indices := make([]int, tc.n+1)
-		for i, tok := range tokens {
-			v, err := strconv.Atoi(tok)
-			if err != nil {
-				return fmt.Errorf("test %d: invalid integer %q", idx+1, tok)
-			}
-			if v < 1 || v > len(tc.perm) {
-				return fmt.Errorf("test %d: index %d out of range", idx+1, v)
-			}
-			if i > 0 && v <= indices[i-1] {
-				return fmt.Errorf("test %d: indices must be strictly increasing", idx+1)
-			}
-			indices[i] = v
-		}
-		values := make([]int, tc.n+1)
-		for i, pos := range indices {
-			values[i] = tc.perm[pos-1]
-		}
-		if !isMonotone(values) {
-			return fmt.Errorf("test %d: sequence is not monotone", idx+1)
-		}
-	}
-	return nil
-}
-
-func readNonEmptyLines(out string) []string {
-	scanner := bufio.NewScanner(strings.NewReader(out))
-	lines := make([]string, 0)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line != "" {
-			lines = append(lines, line)
-		}
-	}
-	return lines
-}
-
-func isMonotone(vals []int) bool {
-	inc := true
-	for i := 1; i < len(vals); i++ {
-		if vals[i] <= vals[i-1] {
-			inc = false
-			break
-		}
-	}
-	if inc {
-		return true
-	}
-	dec := true
-	for i := 1; i < len(vals); i++ {
-		if vals[i] >= vals[i-1] {
-			dec = false
-			break
-		}
-	}
-	return dec
-}
-
-func runProgram(bin string, input []byte) (string, error) {
-	cmd := exec.Command(bin)
-	cmd.Stdin = bytes.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return out.String(), err
-}
-
-func buildReference() (string, func(), error) {
-	dir, err := os.MkdirTemp("", "ref2149C-")
-	if err != nil {
-		return "", nil, err
-	}
-	bin := filepath.Join(dir, "ref2149C.bin")
-	cmd := exec.Command("go", "build", "-o", bin, refSource)
-	var stderr bytes.Buffer
+	cmd.Stdin = strings.NewReader(input)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		os.RemoveAll(dir)
-		return "", nil, fmt.Errorf("go build failed: %v\n%s", err, stderr.String())
+		return "", fmt.Errorf("runtime error: %v\nstdout:\n%s\nstderr:\n%s", err, stdout.String(), stderr.String())
 	}
-	return bin, func() { os.RemoveAll(dir) }, nil
+	return strings.TrimSpace(stdout.String()), nil
+}
+
+func buildTests() []testCase {
+	var tests []testCase
+
+	// Manual edge cases
+	add := func(n, k int, arr []int) {
+		tests = append(tests, testCase{n: n, k: k, arr: append([]int(nil), arr...)})
+	}
+
+	add(1, 0, []int{0})
+	add(1, 1, []int{0})
+	add(1, 1, []int{1})
+	add(3, 1, []int{0, 2, 3})
+	add(5, 5, []int{0, 1, 2, 3, 4})
+	add(6, 2, []int{0, 3, 4, 2, 6, 2})
+	add(7, 4, []int{0, 1, 5, 4, 4, 7, 3})
+
+	// Exhaustive small cases
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for n := 1; n <= 6; n++ {
+		for k := 0; k <= n; k++ {
+			// Try many random arrays of length n with values in [0, n]
+			for trial := 0; trial < 20; trial++ {
+				arr := make([]int, n)
+				for i := range arr {
+					arr[i] = rng.Intn(n + 1)
+				}
+				add(n, k, arr)
+			}
+		}
+	}
+
+	// Larger random cases
+	for trial := 0; trial < 100; trial++ {
+		n := rng.Intn(15) + 1
+		k := rng.Intn(n + 1)
+		arr := make([]int, n)
+		for i := range arr {
+			arr[i] = rng.Intn(n + 1)
+		}
+		add(n, k, arr)
+	}
+
+	return tests
+}
+
+func buildInput(tests []testCase) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d\n", len(tests)))
+	for _, tc := range tests {
+		sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.k))
+		for i, v := range tc.arr {
+			if i > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.Itoa(v))
+		}
+		sb.WriteByte('\n')
+	}
+	return sb.String()
+}
+
+func parseOutput(out string, expected int) ([]int, error) {
+	lines := strings.Fields(out)
+	if len(lines) != expected {
+		return nil, fmt.Errorf("expected %d outputs, got %d", expected, len(lines))
+	}
+	ans := make([]int, expected)
+	for i, s := range lines {
+		val, err := strconv.Atoi(s)
+		if err != nil {
+			return nil, fmt.Errorf("invalid integer %q", s)
+		}
+		ans[i] = val
+	}
+	return ans, nil
 }
