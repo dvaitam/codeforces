@@ -6,12 +6,17 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
 func buildRef() (string, error) {
-	ref := "refE.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1252E.go")
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	ref := filepath.Join(os.TempDir(), "ref1252E.bin")
+	cmd := exec.Command("go", "build", "-o", ref, refSrc)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build reference failed: %v\n%s", err, out)
 	}
@@ -21,11 +26,15 @@ func buildRef() (string, error) {
 func runExe(path, input string) (string, error) {
 	cmd := exec.Command(path)
 	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	err := cmd.Run()
-	return out.String(), err
+	if err != nil {
+		return "", fmt.Errorf("%v\n%s", err, stderr.String())
+	}
+	return stdout.String(), nil
 }
 
 type TestCase string
@@ -35,7 +44,7 @@ func genTests() []TestCase {
 	tests := make([]TestCase, 0, 100)
 	for i := 0; i < 100; i++ {
 		n := rng.Intn(5) + 1
-		L := rng.Intn(10)
+		L := rng.Intn(10) + 1 // L >= 1 per constraints
 		R := L + rng.Intn(10)
 		K := rng.Intn(5) + 1
 		var sb strings.Builder
@@ -44,7 +53,7 @@ func genTests() []TestCase {
 			if j > 0 {
 				sb.WriteByte(' ')
 			}
-			fmt.Fprintf(&sb, "%d", rng.Intn(10))
+			fmt.Fprintf(&sb, "%d", rng.Intn(10)+1) // A_i >= 1 per constraints
 		}
 		sb.WriteByte('\n')
 		tests = append(tests, TestCase(sb.String()))

@@ -6,16 +6,24 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
 func buildRef() (string, error) {
-	ref := "./refF.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "616F.go")
+	srcPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if srcPath == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH environment variable not set")
+	}
+	dir := filepath.Dir(srcPath)
+	base := filepath.Base(srcPath)
+	bin := filepath.Join(os.TempDir(), "616F_ref.bin")
+	cmd := exec.Command("go", "build", "-o", bin, base)
+	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
 	}
-	return ref, nil
+	return bin, nil
 }
 
 func runBinary(bin, input string) (string, error) {
@@ -45,15 +53,13 @@ func genCases() []Case {
 		n := rng.Intn(4) + 1
 		var sb strings.Builder
 		fmt.Fprintf(&sb, "%d\n", n)
-		strs := make([]string, n)
 		for j := 0; j < n; j++ {
 			l := rng.Intn(6) + 1
 			var s strings.Builder
 			for k := 0; k < l; k++ {
 				s.WriteByte(byte('a' + rng.Intn(3)))
 			}
-			strs[j] = s.String()
-			fmt.Fprintln(&sb, strs[j])
+			fmt.Fprintln(&sb, s.String())
 		}
 		for j := 0; j < n; j++ {
 			if j > 0 {
@@ -76,7 +82,7 @@ func runCase(bin, ref string, c Case) error {
 	if err != nil {
 		return err
 	}
-	if expected != strings.TrimSpace(got) {
+	if strings.TrimSpace(expected) != strings.TrimSpace(got) {
 		return fmt.Errorf("expected %s got %s", expected, got)
 	}
 	return nil

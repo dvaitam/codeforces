@@ -6,8 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -26,27 +24,9 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	ref, err := buildReferenceBinary()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
 	tests := generateTests()
 
 	for idx, tc := range tests {
-		refOut, err := runProgram(ref, tc.input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\ninput:\n%s\n", idx+1, err, tc.input)
-			os.Exit(1)
-		}
-		refSeq, err := parseSequence(refOut)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to parse reference output on test %d: %v\noutput:\n%s\n", idx+1, err, refOut)
-			os.Exit(1)
-		}
-
 		gotOut, err := runProgram(bin, tc.input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "runtime error on test %d: %v\ninput:\n%s\nstdout/stderr:\n%s\n", idx+1, err, tc.input, gotOut)
@@ -58,51 +38,14 @@ func main() {
 			os.Exit(1)
 		}
 
-		if len(gotSeq) < len(refSeq) {
-			fmt.Fprintf(os.Stderr, "test %d invalid: participant sequence shorter than reference (expected %d got %d)\ninput:\n%s\n",
-				idx+1, len(refSeq), len(gotSeq), tc.input)
-			os.Exit(1)
-		}
 		if err := simulateSequence(tc.d, tc.masks, gotSeq); err != nil {
-			fmt.Fprintf(os.Stderr, "test %d failed: %v\ninput:\n%sreference output:\n%s\nparticipant output:\n%s\n",
-				idx+1, err, tc.input, refOut, gotOut)
+			fmt.Fprintf(os.Stderr, "test %d failed: %v\ninput:\n%sparticipant output:\n%s\n",
+				idx+1, err, tc.input, gotOut)
 			os.Exit(1)
 		}
 	}
 
 	fmt.Printf("All %d tests passed\n", len(tests))
-}
-
-func buildReferenceBinary() (string, error) {
-	dir, err := verifierDir()
-	if err != nil {
-		return "", err
-	}
-	tmp, err := os.CreateTemp("", "1510B_ref_*.bin")
-	if err != nil {
-		return "", err
-	}
-	path := tmp.Name()
-	tmp.Close()
-
-	cmd := exec.Command("go", "build", "-o", path, "1510B.go")
-	cmd.Dir = dir
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.Remove(path)
-		return "", fmt.Errorf("%v\n%s", err, out.String())
-	}
-	return path, nil
-}
-
-func verifierDir() (string, error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("unable to determine verifier directory")
-	}
-	return filepath.Dir(file), nil
 }
 
 func runProgram(path, input string) (string, error) {

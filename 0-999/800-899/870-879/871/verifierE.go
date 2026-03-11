@@ -14,8 +14,6 @@ import (
 )
 
 const (
-	refSourceE = "871E.go"
-	refBinaryE = "ref871E.bin"
 	totalTests = 80
 )
 
@@ -96,11 +94,16 @@ func main() {
 }
 
 func buildReference() (string, error) {
-	cmd := exec.Command("go", "build", "-o", refBinaryE, refSourceE)
+	refSource := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSource == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	refBinary := filepath.Join(os.TempDir(), "ref871E.bin")
+	cmd := exec.Command("go", "build", "-o", refBinary, refSource)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("%v\n%s", err, string(out))
 	}
-	return filepath.Join(".", refBinaryE), nil
+	return refBinary, nil
 }
 
 func runProgram(path string, input string) (string, error) {

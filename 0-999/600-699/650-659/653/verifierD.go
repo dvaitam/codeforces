@@ -3,9 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -13,8 +16,12 @@ import (
 type Case struct{ input string }
 
 func buildRef() (string, error) {
-	ref := "./refD.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "653D.go")
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	ref := filepath.Join(os.TempDir(), "ref653D.bin")
+	cmd := exec.Command("go", "build", "-o", ref, refSrc)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
 	}
@@ -29,67 +36,61 @@ func runBinary(bin, input string) (string, error) {
 		cmd = exec.Command(bin)
 	}
 	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
 	}
-	return strings.TrimSpace(out.String()), nil
+	return strings.TrimSpace(stdout.String()), nil
 }
 
 func genCases() []Case {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	cases := []Case{{"2 1 1\n1 2 1\n"}}
+	cases := []Case{{"4 4 3\n1 2 2\n2 4 1\n1 3 1\n3 4 2\n"}}
 	for len(cases) < 102 {
 		n := rng.Intn(7) + 2
-		m := rng.Intn(10) + n - 1
 		x := rng.Intn(20) + 1
-		edges := make(map[[2]int]struct{})
-		var extra []struct{ u, v, c int }
-		// ensure path
+		// Generate a connected directed graph with no self-loops and no duplicate edges
+		edges := make(map[[2]int]bool)
+		var edgeList []struct{ u, v, c int }
+
+		// Ensure connectivity: create a path 1->2->...->n
 		for i := 1; i < n; i++ {
-			c := rng.Intn(1000) + 1
-			edges[[2]int{i, i + 1}] = struct{}{}
-			extra = append(extra, struct{ u, v, c int }{i, i + 1, c})
+			key := [2]int{i, i + 1}
+			if !edges[key] {
+				edges[key] = true
+				c := rng.Intn(1000) + 1
+				edgeList = append(edgeList, struct{ u, v, c int }{i, i + 1, c})
+			}
 		}
-		for len(edges) < m {
+		// Add some random edges (no self-loops, no duplicates)
+		extraCount := rng.Intn(n*2) + 1
+		for attempt := 0; attempt < extraCount*3; attempt++ {
 			u := rng.Intn(n) + 1
 			v := rng.Intn(n) + 1
 			if u == v {
 				continue
 			}
 			key := [2]int{u, v}
-			if _, ok := edges[key]; ok {
+			if edges[key] {
 				continue
 			}
-			edges[key] = struct{}{}
+			edges[key] = true
 			c := rng.Intn(1000) + 1
-			extra = append(extra, struct{ u, v, c int }{u, v, c})
+			edgeList = append(edgeList, struct{ u, v, c int }{u, v, c})
 		}
+
+		m := len(edgeList)
 		var sb strings.Builder
 		fmt.Fprintf(&sb, "%d %d %d\n", n, m, x)
-		for _, e := range extra {
+		for _, e := range edgeList {
 			fmt.Fprintf(&sb, "%d %d %d\n", e.u, e.v, e.c)
 		}
 		cases = append(cases, Case{sb.String()})
 	}
 	return cases
-}
-
-func runCase(bin, ref string, c Case) error {
-	expected, err := runBinary(ref, c.input)
-	if err != nil {
-		return fmt.Errorf("reference failed: %v", err)
-	}
-	got, err := runBinary(bin, c.input)
-	if err != nil {
-		return err
-	}
-	if expected != strings.TrimSpace(got) {
-		return fmt.Errorf("expected %s got %s", expected, got)
-	}
-	return nil
 }
 
 func main() {
@@ -107,8 +108,32 @@ func main() {
 
 	cases := genCases()
 	for i, c := range cases {
-		if err := runCase(bin, ref, c); err != nil {
+		expected, err := runBinary(ref, c.input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		got, err := runBinary(bin, c.input)
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, c.input)
+			os.Exit(1)
+		}
+
+		// Parse as floats and compare with tolerance (relative or absolute error <= 1e-6)
+		expVal, err1 := strconv.ParseFloat(strings.TrimSpace(expected), 64)
+		gotVal, err2 := strconv.ParseFloat(strings.TrimSpace(got), 64)
+		if err1 != nil {
+			fmt.Fprintf(os.Stderr, "case %d: cannot parse reference output as float: %v\n", i+1, err1)
+			os.Exit(1)
+		}
+		if err2 != nil {
+			fmt.Fprintf(os.Stderr, "case %d: cannot parse candidate output as float: %v\n", i+1, err2)
+			os.Exit(1)
+		}
+		diff := math.Abs(expVal - gotVal)
+		denom := math.Max(1.0, math.Abs(expVal))
+		if diff/denom > 1e-6 {
+			fmt.Fprintf(os.Stderr, "case %d: expected %.10f got %.10f (rel error %.2e)\ninput:\n%s", i+1, expVal, gotVal, diff/denom, c.input)
 			os.Exit(1)
 		}
 	}

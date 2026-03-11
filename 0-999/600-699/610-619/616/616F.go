@@ -3,108 +3,112 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"math"
 	"os"
 )
 
+// Generalized suffix automaton approach for 616F
+// For each string s, f(s) = |s| * sum(c_i * p_{s,i})
+// where p_{s,i} = number of occurrences of s in t_i.
+// We want max f(s) over all strings s.
+
 const ALPH = 26
 
-type node struct {
-	next   [ALPH]int
-	link   int
-	length int
-	val    int64
+type saNode struct {
+	ch   [ALPH]int32
+	link int32
+	len  int32
+	cnt  int64 // will hold sum of c_i * (number of endpos in string i)
 }
 
-var sam []node
-var last, sz int
+var (
+	sa   []saNode
+	sz   int32
+	last int32
+)
 
-func samInit(maxLen int) {
-	sam = make([]node, 2*maxLen+5)
-	for i := range sam {
-		for j := 0; j < ALPH; j++ {
-			sam[i].next[j] = -1
-		}
+func saInit(cap int) {
+	sa = make([]saNode, 0, 2*cap+10)
+	sa = append(sa, saNode{})
+	for i := 0; i < ALPH; i++ {
+		sa[0].ch[i] = -1
 	}
-	last = 0
+	sa[0].link = -1
 	sz = 1
-	sam[0].link = -1
-	sam[0].length = 0
+	last = 0
 }
 
-func samExtend(ch int, addVal int64) {
+func saExtend(c int, val int64) {
+	// Check if transition from last already exists (generalized SAM)
+	if sa[last].ch[c] != -1 {
+		q := sa[last].ch[c]
+		if sa[last].len+1 == sa[q].len {
+			sa[q].cnt += val
+			last = q
+			return
+		}
+		// Clone q
+		clone := sz
+		sz++
+		sa = append(sa, sa[q])
+		sa[clone].len = sa[last].len + 1
+		sa[clone].cnt = val
+		// Redirect
+		p := last
+		for p != -1 && sa[p].ch[c] == q {
+			sa[p].ch[c] = clone
+			p = sa[p].link
+		}
+		sa[q].link = clone
+		last = clone
+		return
+	}
+
 	cur := sz
 	sz++
-	sam[cur].length = sam[last].length + 1
-	for j := 0; j < ALPH; j++ {
-		sam[cur].next[j] = -1
+	nd := saNode{}
+	for i := 0; i < ALPH; i++ {
+		nd.ch[i] = -1
 	}
-	sam[cur].val = addVal
+	nd.len = sa[last].len + 1
+	nd.cnt = val
+	sa = append(sa, nd)
+
 	p := last
-	for p != -1 && sam[p].next[ch] == -1 {
-		sam[p].next[ch] = cur
-		p = sam[p].link
+	for p != -1 && sa[p].ch[c] == -1 {
+		sa[p].ch[c] = cur
+		p = sa[p].link
 	}
 	if p == -1 {
-		sam[cur].link = 0
+		sa[cur].link = 0
 	} else {
-		q := sam[p].next[ch]
-		if sam[p].length+1 == sam[q].length {
-			sam[cur].link = q
+		q := sa[p].ch[c]
+		if sa[p].len+1 == sa[q].len {
+			sa[cur].link = q
 		} else {
 			clone := sz
 			sz++
-			sam[clone] = sam[q]
-			sam[clone].length = sam[p].length + 1
-			sam[clone].val = 0
-			for p != -1 && sam[p].next[ch] == q {
-				sam[p].next[ch] = clone
-				p = sam[p].link
+			cnd := sa[q]
+			cnd.len = sa[p].len + 1
+			cnd.cnt = 0
+			sa = append(sa, cnd)
+			for p != -1 && sa[p].ch[c] == q {
+				sa[p].ch[c] = clone
+				p = sa[p].link
 			}
-			sam[q].link = clone
-			sam[cur].link = clone
+			sa[q].link = clone
+			sa[cur].link = clone
 		}
 	}
 	last = cur
-}
-
-func propagate() {
-	maxL := 0
-	for i := 0; i < sz; i++ {
-		if sam[i].length > maxL {
-			maxL = sam[i].length
-		}
-	}
-	cnt := make([]int, maxL+1)
-	for i := 0; i < sz; i++ {
-		cnt[sam[i].length]++
-	}
-	for i := 1; i <= maxL; i++ {
-		cnt[i] += cnt[i-1]
-	}
-	order := make([]int, sz)
-	for i := sz - 1; i >= 0; i-- {
-		l := sam[i].length
-		cnt[l]--
-		order[cnt[l]] = i
-	}
-	for i := sz - 1; i > 0; i-- {
-		v := order[i]
-		p := sam[v].link
-		if p >= 0 {
-			sam[p].val += sam[v].val
-		}
-	}
 }
 
 func main() {
 	in := bufio.NewReader(os.Stdin)
 	out := bufio.NewWriter(os.Stdout)
 	defer out.Flush()
+
 	var n int
-	if _, err := fmt.Fscan(in, &n); err != nil {
-		return
-	}
+	fmt.Fscan(in, &n)
 	strs := make([]string, n)
 	total := 0
 	for i := 0; i < n; i++ {
@@ -115,17 +119,46 @@ func main() {
 	for i := 0; i < n; i++ {
 		fmt.Fscan(in, &costs[i])
 	}
-	samInit(total)
+
+	saInit(total)
 	for i := 0; i < n; i++ {
 		last = 0
 		for j := 0; j < len(strs[i]); j++ {
-			samExtend(int(strs[i][j]-'a'), costs[i])
+			saExtend(int(strs[i][j]-'a'), costs[i])
 		}
 	}
-	propagate()
-	ans := int64(math.MinInt64)
-	for i := 1; i < sz; i++ {
-		v := sam[i].val * int64(sam[i].length)
+
+	// Topological sort by length, then propagate cnt to parent via link
+	maxLen := int32(0)
+	for i := int32(0); i < sz; i++ {
+		if sa[i].len > maxLen {
+			maxLen = sa[i].len
+		}
+	}
+	bucket := make([]int32, maxLen+1)
+	for i := int32(0); i < sz; i++ {
+		bucket[sa[i].len]++
+	}
+	for i := int32(1); i <= maxLen; i++ {
+		bucket[i] += bucket[i-1]
+	}
+	order := make([]int32, sz)
+	for i := sz - 1; i >= 0; i-- {
+		l := sa[i].len
+		bucket[l]--
+		order[bucket[l]] = i
+	}
+	for i := sz - 1; i > 0; i-- {
+		v := order[i]
+		p := sa[v].link
+		if p >= 0 {
+			sa[p].cnt += sa[v].cnt
+		}
+	}
+
+	ans := int64(0)
+	for i := int32(1); i < sz; i++ {
+		v := sa[i].cnt * int64(sa[i].len)
 		if v > ans {
 			ans = v
 		}

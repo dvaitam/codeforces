@@ -1,122 +1,102 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"sort"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
-func expected(names []string, sep string) []string {
-	groups := make(map[int][]string)
-	lengths := []int{}
-	for _, s := range names {
-		l := len(s)
-		if _, ok := groups[l]; !ok {
-			lengths = append(lengths, l)
-		}
-		groups[l] = append(groups[l], s)
+func buildOracle() (string, error) {
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
 	}
-	sort.Ints(lengths)
-	minL := lengths[0]
-	maxL := lengths[len(lengths)-1]
-	K := minL + maxL
-	for _, l := range lengths {
-		sort.Strings(groups[l])
+	oracle := filepath.Join(os.TempDir(), fmt.Sprintf("oracle58D_%d", time.Now().UnixNano()))
+	cmd := exec.Command("go", "build", "-o", oracle, refSrc)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}
-	res := []string{}
-	i, j := 0, len(lengths)-1
-	for i <= j {
-		li := lengths[i]
-		lj := lengths[j]
-		sum := li + lj
-		if sum < K {
-			i++
-		} else if sum > K {
-			j--
-		} else {
-			if i < j {
-				A := groups[li]
-				B := groups[lj]
-				for idx := 0; idx < len(A) && idx < len(B); idx++ {
-					a := A[idx]
-					b := B[idx]
-					s1 := a + sep + b
-					s2 := b + sep + a
-					if s1 < s2 {
-						res = append(res, s1)
-					} else {
-						res = append(res, s2)
-					}
-				}
-			} else {
-				A := groups[li]
-				for idx := 0; idx+1 < len(A); idx += 2 {
-					a := A[idx]
-					b := A[idx+1]
-					s1 := a + sep + b
-					s2 := b + sep + a
-					if s1 < s2 {
-						res = append(res, s1)
-					} else {
-						res = append(res, s2)
-					}
-				}
-			}
-			i++
-			j--
-		}
-	}
-	sort.Strings(res)
-	return res
+	return oracle, nil
 }
 
-func runCase(bin string, names []string, sep string) error {
+func run(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func genCase(rng *rand.Rand) string {
+	// n must be even, 2 <= n <= 10 for small tests
+	n := (rng.Intn(4) + 1) * 2 // 2, 4, 6, or 8
+
+	// We need names such that a valid calendar exists.
+	// All lines must have the same length = len(name1) + 1 + len(name2).
+	// So the sum of lengths of each pair must be constant.
+	// Simplest: generate names all of the same length, or two groups with complementary lengths.
+	// Use two lengths that sum to a constant.
+	minLen := rng.Intn(3) + 1
+	maxLen := rng.Intn(3) + minLen + 1
+
+	// Generate n/2 names of minLen and n/2 names of maxLen
+	nameSet := make(map[string]bool)
+	names := make([]string, 0, n)
+	for len(names) < n/2 {
+		s := randName(rng, minLen)
+		if !nameSet[s] {
+			nameSet[s] = true
+			names = append(names, s)
+		}
+	}
+	for len(names) < n {
+		s := randName(rng, maxLen)
+		if !nameSet[s] {
+			nameSet[s] = true
+			names = append(names, s)
+		}
+	}
+
+	// Shuffle names
+	rng.Shuffle(len(names), func(i, j int) { names[i], names[j] = names[j], names[i] })
+
+	// Pick separator: ASCII 33-126, excluding lowercase letters
+	var sep byte
+	for {
+		sep = byte(33 + rng.Intn(94))
+		if sep < 'a' || sep > 'z' {
+			break
+		}
+	}
+
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d\n", len(names)))
-	for _, n := range names {
-		sb.WriteString(n)
+	sb.WriteString(fmt.Sprintf("%d\n", n))
+	for _, name := range names {
+		sb.WriteString(name)
 		sb.WriteByte('\n')
 	}
-	sb.WriteString(sep)
+	sb.WriteByte(sep)
 	sb.WriteByte('\n')
-
-	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(sb.String())
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
-	}
-	gotLines := []string{}
-	sc := bufio.NewScanner(bytes.NewReader(out.Bytes()))
-	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if line != "" {
-			gotLines = append(gotLines, line)
-		}
-	}
-	exp := expected(names, sep)
-	if len(gotLines) != len(exp) {
-		return fmt.Errorf("expected %d lines got %d", len(exp), len(gotLines))
-	}
-	for i := range exp {
-		if gotLines[i] != exp[i] {
-			return fmt.Errorf("line %d expected %s got %s", i+1, exp[i], gotLines[i])
-		}
-	}
-	return nil
+	return sb.String()
 }
 
-func randName(rng *rand.Rand) string {
-	l := rng.Intn(5) + 1
-	b := make([]byte, l)
+func randName(rng *rand.Rand, length int) string {
+	b := make([]byte, length)
 	for i := range b {
 		b[i] = byte('a' + rng.Intn(26))
 	}
@@ -129,16 +109,29 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+
+	oracle, err := buildOracle()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer os.Remove(oracle)
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		n := rng.Intn(6) + 2
-		names := make([]string, n)
-		for j := range names {
-			names[j] = randName(rng)
+		input := genCase(rng)
+		expected, err := run(oracle, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\ninput:\n%s", i+1, err, input)
+			os.Exit(1)
 		}
-		sep := string('a' + rng.Intn(26))
-		if err := runCase(bin, names, sep); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput: %v sep:%s\n", i+1, err, names, sep)
+		got, err := run(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
+			os.Exit(1)
+		}
+		if got != expected {
+			fmt.Fprintf(os.Stderr, "case %d failed:\nexpected:\n%s\ngot:\n%s\ninput:\n%s", i+1, expected, got, input)
 			os.Exit(1)
 		}
 	}

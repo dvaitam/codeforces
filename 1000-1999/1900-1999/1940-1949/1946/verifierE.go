@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -181,29 +182,45 @@ func solve(input string) string {
 func generateTests() []test {
 	rng := rand.New(rand.NewSource(50))
 	var tests []test
-	fixed := []string{
-		"1\n1 0 0\n\n\n",
-	}
-	for _, f := range fixed {
-		tests = append(tests, test{f, solve(f)})
-	}
+
+	// Generate valid test cases that respect problem constraints:
+	// P must be strictly increasing with P[0]=1, all values in [1,n]
+	// S must be strictly increasing with S[last]=n, all values in [1,n]
+	// m1 >= 1, m2 >= 1
 	for len(tests) < 100 {
-		n := rng.Intn(5) + 1
-		m1 := rng.Intn(n + 1)
-		m2 := rng.Intn(n + 1)
-		var P []int
-		for i := 0; i < m1; i++ {
+		n := rng.Intn(8) + 1
+
+		// Generate sorted distinct prefix max indices with P[0]=1
+		pSet := map[int]bool{1: true}
+		m1 := rng.Intn(n) + 1
+		for len(pSet) < m1 {
 			v := rng.Intn(n) + 1
-			P = append(P, v)
+			pSet[v] = true
 		}
-		var S []int
-		for i := 0; i < m2; i++ {
+		P := make([]int, 0, len(pSet))
+		for v := 1; v <= n; v++ {
+			if pSet[v] {
+				P = append(P, v)
+			}
+		}
+
+		// Generate sorted distinct suffix max indices with S[last]=n
+		sSet := map[int]bool{n: true}
+		m2 := rng.Intn(n) + 1
+		for len(sSet) < m2 {
 			v := rng.Intn(n) + 1
-			S = append(S, v)
+			sSet[v] = true
 		}
+		S := make([]int, 0, len(sSet))
+		for v := 1; v <= n; v++ {
+			if sSet[v] {
+				S = append(S, v)
+			}
+		}
+
 		var sb strings.Builder
 		sb.WriteString("1\n")
-		sb.WriteString(fmt.Sprintf("%d %d %d\n", n, m1, m2))
+		sb.WriteString(fmt.Sprintf("%d %d %d\n", n, len(P), len(S)))
 		for i, v := range P {
 			if i > 0 {
 				sb.WriteByte(' ')
@@ -232,11 +249,15 @@ func runBinary(bin, input string) (string, error) {
 		cmd = exec.Command(bin)
 	}
 	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+	if err != nil {
+		return "", fmt.Errorf("%v\n%s", err, stderr.String())
+	}
+	return strings.TrimSpace(stdout.String()), nil
 }
 
 func main() {
@@ -245,6 +266,20 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+
+	// Also build and test against the reference solution
+	refPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	var refBin string
+	if refPath != "" {
+		refBin = filepath.Join(os.TempDir(), "ref1946E.bin")
+		cmd := exec.Command("go", "build", "-o", refBin, refPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to build reference: %v\n%s\n", err, out)
+			os.Exit(1)
+		}
+		defer os.Remove(refBin)
+	}
+
 	initComb()
 	tests := generateTests()
 	for i, t := range tests {

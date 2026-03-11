@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
-// Embedded copy of testcasesB.txt.
+// Embedded test cases: pairs of (n, r).
 const testcasesBData = `
 3 19
 2 9
@@ -141,28 +142,50 @@ func parseTestcases() ([]testCase, error) {
 	return cases, nil
 }
 
-func toggle(b byte) byte {
-	if b == 'T' {
-		return 'B'
+// simulate runs the sequence of operations and returns the final result.
+// Initial state: top=0, bottom=1. 'T' adds bottom to top, 'B' adds top to bottom.
+// The result is the last written number.
+func simulate(seq string) int {
+	top := 0
+	bottom := 1
+	last := bottom
+	for _, ch := range seq {
+		if ch == 'T' {
+			top += bottom
+			last = top
+		} else {
+			bottom += top
+			last = bottom
+		}
 	}
-	return 'T'
+	return last
 }
 
-// solve mirrors the logic from 217B.go, returning (errCount, sequence).
-func solve(n, r int) (int, string) {
+// countMistakes counts the number of neighboring equal operations in the sequence.
+func countMistakes(seq string) int {
+	mistakes := 0
+	for i := 1; i < len(seq); i++ {
+		if seq[i] == seq[i-1] {
+			mistakes++
+		}
+	}
+	return mistakes
+}
+
+// computeMinMistakes computes the minimum possible mistakes for (n, r), or -1 if impossible.
+func computeMinMistakes(n, r int) int {
 	if n == 1 {
 		if r == 1 {
-			return 0, "T"
+			return 0
 		}
-		return -1, ""
+		return -1
 	}
 	if n == 2 {
 		if r == 2 {
-			return 0, "TB"
+			return 0
 		}
-		return -1, ""
+		return -1
 	}
-	bi := -1
 	const INF = 1 << 60
 	bval := INF
 	for i := 1; i+i <= r; i++ {
@@ -184,43 +207,13 @@ func solve(n, r int) (int, string) {
 		if x == 1 && ans+1 == n {
 			if errc < bval {
 				bval = errc
-				bi = i
 			}
 		}
 	}
-	if bi == -1 {
-		return -1, ""
+	if bval == INF {
+		return -1
 	}
-	u := bi
-	d := r - bi
-	moves := make([]byte, 0, n+2)
-	for u > 1 || d > 1 {
-		if u > d {
-			moves = append(moves, 'T')
-			u -= d
-		} else {
-			moves = append(moves, 'B')
-			d -= u
-		}
-	}
-	for i, j := 0, len(moves)-1; i < j; i, j = i+1, j-1 {
-		moves[i], moves[j] = moves[j], moves[i]
-	}
-	if len(moves) == 0 {
-		return -1, ""
-	}
-	first := toggle(moves[0])
-	last := toggle(moves[len(moves)-1])
-	seq := make([]byte, 0, len(moves)+2)
-	seq = append(seq, first)
-	seq = append(seq, moves...)
-	seq = append(seq, last)
-	if seq[0] == 'B' {
-		for i := range seq {
-			seq[i] = toggle(seq[i])
-		}
-	}
-	return bval, string(seq)
+	return bval
 }
 
 func main() {
@@ -235,7 +228,7 @@ func main() {
 		os.Exit(1)
 	}
 	for idx, tc := range tests {
-		expVal, expSeq := solve(tc.n, tc.r)
+		expMinMistakes := computeMinMistakes(tc.n, tc.r)
 		var input strings.Builder
 		fmt.Fprintf(&input, "%d %d\n", tc.n, tc.r)
 
@@ -249,20 +242,68 @@ func main() {
 			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr.String())
 			os.Exit(1)
 		}
-		parts := strings.Fields(strings.TrimSpace(out.String()))
-		if expVal == -1 {
-			if len(parts) != 1 || parts[0] != "IMPOSSIBLE" {
-				fmt.Printf("test %d failed: expected IMPOSSIBLE got %s\n", idx+1, strings.Join(parts, " "))
+		outStr := strings.TrimSpace(out.String())
+
+		if expMinMistakes == -1 {
+			// Expect "IMPOSSIBLE"
+			if outStr != "IMPOSSIBLE" {
+				fmt.Printf("test %d failed: expected IMPOSSIBLE got %s\n", idx+1, outStr)
 				os.Exit(1)
 			}
 			continue
 		}
-		if len(parts) != 2 {
-			fmt.Printf("test %d: expected 2 outputs got %d\n", idx+1, len(parts))
+
+		lines := strings.Split(outStr, "\n")
+		if len(lines) != 2 {
+			fmt.Printf("test %d: expected 2 lines of output, got %d\n", idx+1, len(lines))
 			os.Exit(1)
 		}
-		if parts[0] != fmt.Sprint(expVal) || parts[1] != expSeq {
-			fmt.Printf("test %d failed\nexpected: %d %s\n     got: %s %s\n", idx+1, expVal, expSeq, parts[0], parts[1])
+		mistakesStr := strings.TrimSpace(lines[0])
+		seq := strings.TrimSpace(lines[1])
+
+		gotMistakes, err := strconv.Atoi(mistakesStr)
+		if err != nil {
+			fmt.Printf("test %d: cannot parse mistake count: %v\n", idx+1, err)
+			os.Exit(1)
+		}
+
+		// Validate mistake count is optimal
+		if gotMistakes != expMinMistakes {
+			fmt.Printf("test %d failed: expected %d mistakes, got %d\n", idx+1, expMinMistakes, gotMistakes)
+			os.Exit(1)
+		}
+
+		// Validate sequence length
+		if len(seq) != tc.n {
+			fmt.Printf("test %d failed: expected sequence length %d, got %d\n", idx+1, tc.n, len(seq))
+			os.Exit(1)
+		}
+
+		// Validate sequence starts with T
+		if seq[0] != 'T' {
+			fmt.Printf("test %d failed: sequence must start with T\n", idx+1)
+			os.Exit(1)
+		}
+
+		// Validate only T and B characters
+		for _, ch := range seq {
+			if ch != 'T' && ch != 'B' {
+				fmt.Printf("test %d failed: invalid character in sequence\n", idx+1)
+				os.Exit(1)
+			}
+		}
+
+		// Validate that the sequence produces the correct result
+		result := simulate(seq)
+		if result != tc.r {
+			fmt.Printf("test %d failed: sequence produces %d, expected %d\n", idx+1, result, tc.r)
+			os.Exit(1)
+		}
+
+		// Validate mistake count matches the actual sequence
+		actualMistakes := countMistakes(seq)
+		if actualMistakes != gotMistakes {
+			fmt.Printf("test %d failed: reported %d mistakes but sequence has %d\n", idx+1, gotMistakes, actualMistakes)
 			os.Exit(1)
 		}
 	}
