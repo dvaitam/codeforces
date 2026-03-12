@@ -14,20 +14,23 @@ func expectedE(s, t string) string {
 	if len(t) == 0 {
 		return "YES"
 	}
-	for i := 1; i < len(t); i++ {
-		if t[i] < t[i-1] {
+	var queues [26][]int
+	for i := 0; i < len(s); i++ {
+		c := int(s[i] - 'a')
+		queues[c] = append(queues[c], i)
+	}
+	var front [26]int
+	for i := 0; i < len(t); i++ {
+		c := int(t[i] - 'a')
+		if front[c] >= len(queues[c]) {
 			return "NO"
 		}
-	}
-	cntS := make([]int, 26)
-	for i := 0; i < len(s); i++ {
-		cntS[s[i]-'a']++
-	}
-	for i := 0; i < len(t); i++ {
-		idx := t[i] - 'a'
-		cntS[idx]--
-		if cntS[idx] < 0 {
-			return "NO"
+		pos := queues[c][front[c]]
+		front[c]++
+		for d := 0; d < c; d++ {
+			for front[d] < len(queues[d]) && queues[d][front[d]] <= pos {
+				front[d]++
+			}
 		}
 	}
 	return "YES"
@@ -66,7 +69,7 @@ func runCase(bin, input, exp string) error {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
 	got := strings.TrimSpace(out.String())
-	if got != exp {
+	if !strings.EqualFold(got, exp) {
 		return fmt.Errorf("expected %s got %s", exp, got)
 	}
 	return nil

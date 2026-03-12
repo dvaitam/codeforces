@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 )
 
@@ -49,12 +50,17 @@ func expected(a []int) int {
 }
 
 func genTest(rng *rand.Rand) []int {
-	n := rng.Intn(6) + 1
-	a := make([]int, n)
-	for i := 0; i < n; i++ {
-		a[i] = rng.Intn(50)
+	for {
+		n := rng.Intn(6) + 1
+		a := make([]int, n)
+		for i := 0; i < n; i++ {
+			a[i] = rng.Intn(2000000) + 1
+		}
+		sort.Ints(a)
+		if expected(a) >= 0 {
+			return a
+		}
 	}
-	return a
 }
 
 func runCandidate(bin, input string) (string, error) {

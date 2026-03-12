@@ -23,18 +23,13 @@ func solveRef(input string) ([]int, error) {
 	if _, err := fmt.Fscan(reader, &n, &m, &k); err != nil {
 		return nil, err
 	}
+	reader.ReadString('\n') // consume trailing newline after Fscan
 	grid := make([][]bool, n)
 	for i := 0; i < n; i++ {
-		line := ""
-		for len(line) < m {
-			part, err := reader.ReadString('\n')
-			if err != nil && len(part) == 0 {
-				break
-			}
-			line += part
-		}
+		line, _ := reader.ReadString('\n')
+		line = strings.TrimRight(line, "\r\n")
 		row := make([]bool, m)
-		for j := 0; j < m; j++ {
+		for j := 0; j < m && j < len(line); j++ {
 			if line[j] == '.' {
 				row[j] = true
 			}
@@ -184,7 +179,22 @@ func randomTests() []testCase {
 			for r := 0; r < n; r++ {
 				grid[r] = []byte(randomGrid(rng, 1, m)[0])
 			}
+			avail := 0
+			for r := 0; r < n; r++ {
+				for c := 0; c < m; c++ {
+					if grid[r][c] == '.' {
+						avail++
+					}
+				}
+			}
 			k := rng.Intn(maxK) + 1
+			if k > avail {
+				k = avail
+			}
+			if k == 0 {
+				i--
+				continue
+			}
 			ops, finalGrid := randomOps(rng, grid, k)
 			tests = append(tests, makeCase(fmt.Sprintf("%s_%d", prefix, i+1), n, m, finalGrid, ops))
 		}

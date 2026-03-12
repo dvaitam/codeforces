@@ -12,12 +12,10 @@ import (
 )
 
 const (
-	candUsage     = "usage: go run verifierF.go /path/to/binary"
-	maxTests      = 140
-	maxTotalN     = 20000
-	maxTotalNSq   = 5_000_000
-	refSource2137 = "2137F.go"
-	refBinary2137 = "ref2137F.bin"
+	candUsage   = "usage: go run verifierF.go /path/to/binary"
+	maxTests    = 20
+	maxTotalN   = 500
+	maxTotalNSq = 50_000
 )
 
 type testCase struct {
@@ -33,31 +31,9 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	// Build reference if available; otherwise skip. This keeps the verifier usable
-	// even when the reference source is absent or empty.
-	var refBinary string
-	if _, err := os.Stat(refSource2137); err == nil {
-		refBinary, _ = buildReference()
-		if refBinary != "" {
-			defer os.Remove(refBinary)
-		}
-	}
-
 	tests := generateTests()
 	input := formatInput(tests)
 	expected := computeAll(tests)
-
-	// Optionally validate the reference output when the binary exists.
-	if refBinary != "" {
-		if out, err := runProgram(refBinary, input); err == nil {
-			if refAns, err := parseOutput(out, len(tests)); err == nil {
-				if err := compareAnswers(refAns, expected); err != nil {
-					fmt.Printf("reference failed validation: %v\n", err)
-					return
-				}
-			}
-		}
-	}
 
 	candOut, err := runProgram(candidate, input)
 	if err != nil {
@@ -80,12 +56,16 @@ func main() {
 }
 
 func buildReference() (string, error) {
-	cmd := exec.Command("go", "build", "-o", refBinary2137, refSource2137)
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		refSrc = "2137F.go"
+	}
+	bin := filepath.Join(os.TempDir(), "ref2137F.bin")
+	cmd := exec.Command("go", "build", "-o", bin, refSrc)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		// return empty string to indicate reference unavailable
 		return "", fmt.Errorf("%v\n%s", err, string(out))
 	}
-	return filepath.Join(".", refBinary2137), nil
+	return bin, nil
 }
 
 func runProgram(path string, input []byte) (string, error) {

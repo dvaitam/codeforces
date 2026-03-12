@@ -55,19 +55,15 @@ func newSegTree(arr []matrix) *segTree {
 		n <<= 1
 	}
 	st := &segTree{n, make([]matrix, 2*n)}
-	for i := 0; i < len(arr); i++ {
-		st.tree[n+i] = arr[i]
+	for i := 0; i < n; i++ {
+		if i < len(arr) {
+			st.tree[n+i] = arr[i]
+		} else {
+			st.tree[n+i] = identityMatrix()
+		}
 	}
 	for i := n - 1; i > 0; i-- {
-		left := st.tree[i<<1]
-		right := st.tree[i<<1|1]
-		if left.a[0][0] == 0 && left.a[0][1] == 0 && left.a[1][0] == 0 && left.a[1][1] == 0 {
-			st.tree[i] = right
-		} else if right.a[0][0] == 0 && right.a[0][1] == 0 && right.a[1][0] == 0 && right.a[1][1] == 0 {
-			st.tree[i] = left
-		} else {
-			st.tree[i] = mul(left, right)
-		}
+		st.tree[i] = mul(st.tree[i<<1], st.tree[i<<1|1])
 	}
 	return st
 }
@@ -76,15 +72,7 @@ func (st *segTree) update(pos int, val matrix) {
 	idx := st.n + pos
 	st.tree[idx] = val
 	for idx >>= 1; idx > 0; idx >>= 1 {
-		left := st.tree[idx<<1]
-		right := st.tree[idx<<1|1]
-		if left.a[0][0] == 0 && left.a[0][1] == 0 && left.a[1][0] == 0 && left.a[1][1] == 0 {
-			st.tree[idx] = right
-		} else if right.a[0][0] == 0 && right.a[0][1] == 0 && right.a[1][0] == 0 && right.a[1][1] == 0 {
-			st.tree[idx] = left
-		} else {
-			st.tree[idx] = mul(left, right)
-		}
+		st.tree[idx] = mul(st.tree[idx<<1], st.tree[idx<<1|1])
 	}
 }
 

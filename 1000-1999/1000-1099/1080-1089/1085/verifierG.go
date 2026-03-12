@@ -6,17 +6,16 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
 
 func buildRef() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	src := filepath.Join(dir, "1085G.go")
-	bin := filepath.Join(os.TempDir(), "ref1085G.bin")
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	bin := fmt.Sprintf("%s/ref1085G.bin", os.TempDir())
 	cmd := exec.Command("go", "build", "-o", bin, src)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
@@ -47,18 +46,40 @@ type Case struct {
 	grid [][]int
 }
 
+// genDerangementRow generates a random permutation of 1..n that differs from prev at every position.
+func genDerangementRow(r *rand.Rand, n int, prev []int) []int {
+	for {
+		perm := r.Perm(n)
+		row := make([]int, n)
+		ok := true
+		for j := 0; j < n; j++ {
+			row[j] = perm[j] + 1
+			if row[j] == prev[j] {
+				ok = false
+				break
+			}
+		}
+		if ok {
+			return row
+		}
+	}
+}
+
 func genCases() []Case {
 	r := rand.New(rand.NewSource(1085))
 	cases := make([]Case, 100)
 	for i := range cases {
-		n := r.Intn(4) + 2
+		n := r.Intn(4) + 2 // 2..5
 		grid := make([][]int, n)
+		// First row: random permutation of 1..n
+		perm := r.Perm(n)
+		grid[0] = make([]int, n)
 		for j := 0; j < n; j++ {
-			row := make([]int, n)
-			for k := 0; k < n; k++ {
-				row[k] = r.Intn(5)
-			}
-			grid[j] = row
+			grid[0][j] = perm[j] + 1
+		}
+		// Subsequent rows: permutations that differ from previous row at every position
+		for row := 1; row < n; row++ {
+			grid[row] = genDerangementRow(r, n, grid[row-1])
 		}
 		cases[i] = Case{n, grid}
 	}

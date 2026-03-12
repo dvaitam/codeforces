@@ -6,12 +6,14 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
 func genTest() string {
-	n := rand.Intn(8) + 1
-	m := rand.Intn(8) + 1
+	nm := rand.Intn(8) + 1
+	n := nm
+	m := nm
 	q := rand.Intn(5) + 1
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d %d %d\n", n, m, q)
@@ -60,6 +62,19 @@ func main() {
 		fmt.Println("usage: go run verifierF.go /path/to/binary")
 		return
 	}
+
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		refSrc = "1928F.go"
+	}
+	refBin := filepath.Join(os.TempDir(), "ref1928F")
+	buildCmd := exec.Command("go", "build", "-o", refBin, refSrc)
+	if out, err := buildCmd.CombinedOutput(); err != nil {
+		fmt.Fprintf(os.Stderr, "build reference failed: %v: %s\n", err, string(out))
+		os.Exit(1)
+	}
+	defer os.Remove(refBin)
+
 	rand.Seed(47)
 	for i := 0; i < 100; i++ {
 		input := []byte(genTest())
@@ -69,7 +84,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "candidate error: %v\n", err)
 			os.Exit(1)
 		}
-		refCmd := exec.Command("go", "run", "1928F.go")
+		refCmd := exec.Command(refBin)
 		refOut, err := runCmd(refCmd, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "reference error: %v\n", err)

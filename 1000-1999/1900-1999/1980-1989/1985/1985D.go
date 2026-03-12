@@ -18,10 +18,10 @@ func main() {
 		fmt.Fscan(in, &n, &m)
 		var sumX, sumY, cnt int
 		for i := 0; i < n; i++ {
+			var row string
+			fmt.Fscan(in, &row)
 			for j := 0; j < m; j++ {
-				var ch byte
-				fmt.Fscan(in, &ch)
-				if ch == '#' {
+				if row[j] == '#' {
 					sumX += i + 1
 					sumY += j + 1
 					cnt++

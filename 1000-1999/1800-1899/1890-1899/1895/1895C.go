@@ -38,13 +38,15 @@ func main() {
 			d := int(s[j] - '0')
 			sum += d
 			prefix[j+1] = sum
-			if j+1 < l {
-				pref[l][j+1][prefix[j+1]][sum]++
-			}
 		}
 		sums[i] = sum
 		prefixes[i] = prefix
 		freq[l][sum]++
+		for j := 0; j+1 < l; j++ {
+			if prefix[j+1] < 46 && sum < 46 {
+				pref[l][j+1][prefix[j+1]][sum]++
+			}
+		}
 	}
 
 	ans := 0

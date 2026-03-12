@@ -67,6 +67,11 @@ func main() {
 }
 
 func locateReference() (string, error) {
+	if p := os.Getenv("REFERENCE_SOURCE_PATH"); p != "" {
+		if _, err := os.Stat(p); err == nil {
+			return p, nil
+		}
+	}
 	candidates := []string{
 		"1592E.go",
 		filepath.Join("1000-1999", "1500-1599", "1590-1599", "1592", "1592E.go"),
@@ -150,7 +155,7 @@ func buildTest(arr []int) testCase {
 func randomTest(rng *rand.Rand, n int) testCase {
 	arr := make([]int, n)
 	for i := 0; i < n; i++ {
-		arr[i] = rng.Intn(1_000_000_000) // large random values
+		arr[i] = rng.Intn(1_000_000) + 1 // 1 <= a_i <= 10^6 per problem constraints
 	}
 	return buildTest(arr)
 }

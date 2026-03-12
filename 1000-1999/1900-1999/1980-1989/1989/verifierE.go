@@ -2,113 +2,12 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 )
-
-const testcasesE = `2 9 3
-6 12 15 4 2 2 0
-4 17 9 1 7
-5 17 11 8 5 3
-3 6 0 20
-3 8 6 5
-3 9 20 11
-1 19
-3 12 16 7
-2 7 15
-3 2 17 9
-1 9
-5 9 16 6 13 13
-5 9 13 14 5 7
-3 8 1 2
-1 14
-6 8 16 17 20 15 10
-2 6 2
-4 6 20 20 14
-3 5 11 13
-6 18 10 20 17 6 10
-1 1
-6 7 8 18 19 7 3
-3 5 9 14
-1 1
-3 2 9 10
-1 10
-3 10 4 20
-4 19 2 9 19
-2 14 9
-2 8 12
-5 5 10 18 0 11
-1 14
-2 11 11
-3 18 3 14
-2 13 6
-1 1
-1 1
-6 5 19 4 19 1 17
-4 18 7 10 1
-1 16
-3 13 20 6
-4 6 7 14 13
-4 1 7 13 14
-2 20 13
-2 15 6
-1 1
-3 8 7 16
-2 7 13
-3 4 10 1
-3 18 3 18
-4 20 20 1 15
-4 2 13 6 18
-2 10 9
-6 15 20 10 13 16 6
-6 8 10 12 15 2 8
-6 6 1 12 19 4 8
-6 1 5 20 14 18 15
-6 12 12 6 0 6 5
-1 19
-3 3 12 12
-2 17 1
-2 5 19
-3 17 15 16
-4 0 2 1 19
-1 15
-5 8 19 4 1 11
-1 16
-1 9
-3 2 2 17
-4 12 6 9 12
-2 15 12
-1 2
-1 19
-3 16 13 13
-6 14 2 20 6 20 9
-4 13 3 17 5
-3 5 5 4
-3 15 10 8
-5 0 5 0 20 9
-1 17
-1 15
-6 19 15 16 2 16 7
-4 9 11 7 5
-6 0 1 19 10 17 14
-5 9 16 14 19 19
-4 12 4 8 19
-3 10 4 13
-1 19
-2 19 5
-3 11 6 18
-3 19 2 2
-4 20 5 10 20
-3 10 5 9
-1 19
-1 16
-1 11
-1 5
-2 18 15
-6 18 2 3 5 20 15
-`
 
 const mod int64 = 998244353
 
@@ -149,32 +48,12 @@ func solveCase(n int64, k int) int64 {
 }
 
 type testCase struct {
-	line string
-	k    int
+	n int64
+	k int
 }
 
-func parseTests() ([]testCase, error) {
-	lines := strings.Split(strings.TrimSpace(testcasesE), "\n")
-	tests := make([]testCase, len(lines))
-	for i, line := range lines {
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
-			return nil, fmt.Errorf("bad test line %d", i+1)
-		}
-		k, err := strconv.Atoi(fields[0])
-		if err != nil {
-			return nil, err
-		}
-		tests[i] = testCase{line: line, k: k}
-	}
-	return tests, nil
-}
-
-func buildInput(line string) string {
-	if strings.HasSuffix(line, "\n") {
-		return "1\n" + line
-	}
-	return "1\n" + line + "\n"
+func buildInput(tc testCase) string {
+	return fmt.Sprintf("%d %d\n", tc.n, tc.k)
 }
 
 func runCandidate(bin, input string) (string, error) {
@@ -189,22 +68,55 @@ func main() {
 		fmt.Println("usage: verifierE /path/to/binary")
 		os.Exit(1)
 	}
-	tests, err := parseTests()
-	if err != nil {
-		fmt.Println("parse error:", err)
-		os.Exit(1)
+
+	rnd := rand.New(rand.NewSource(1989))
+
+	var tests []testCase
+
+	// Small deterministic cases
+	for n := int64(2); n <= 10; n++ {
+		maxK := n
+		if maxK > 10 {
+			maxK = 10
+		}
+		for k := 2; int64(k) <= maxK; k++ {
+			tests = append(tests, testCase{n: n, k: k})
+		}
 	}
+
+	// Random medium cases
+	for i := 0; i < 40; i++ {
+		n := int64(rnd.Intn(198)) + 3 // 3..200
+		maxK := n
+		if maxK > 10 {
+			maxK = 10
+		}
+		k := rnd.Intn(int(maxK)-1) + 2 // 2..min(n,10)
+		tests = append(tests, testCase{n: n, k: k})
+	}
+
+	// A few larger cases
+	for i := 0; i < 10; i++ {
+		n := int64(rnd.Intn(1000)) + 100
+		maxK := n
+		if maxK > 10 {
+			maxK = 10
+		}
+		k := rnd.Intn(int(maxK)-1) + 2
+		tests = append(tests, testCase{n: n, k: k})
+	}
+
 	for i, tc := range tests {
-		input := buildInput(tc.line)
-		want := strconv.FormatInt(solveCase(1, tc.k), 10)
+		input := buildInput(tc)
+		want := strconv.FormatInt(solveCase(tc.n, tc.k), 10)
 		got, err := runCandidate(os.Args[1], input)
 		if err != nil {
-			fmt.Printf("case %d runtime error: %v\n", i+1, err)
+			fmt.Printf("case %d (n=%d k=%d) runtime error: %v\n", i+1, tc.n, tc.k, err)
 			os.Exit(1)
 		}
 		got = strings.TrimSpace(got)
 		if got != want {
-			fmt.Printf("case %d failed\nexpected: %s\ngot: %s\n", i+1, want, got)
+			fmt.Printf("case %d (n=%d k=%d) failed\nexpected: %s\ngot: %s\n", i+1, tc.n, tc.k, want, got)
 			os.Exit(1)
 		}
 	}

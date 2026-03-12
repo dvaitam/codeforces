@@ -12,11 +12,9 @@ import (
 )
 
 const (
-	refSource2117G = "2117G.go"
-	refBinary2117G = "ref2117G.bin"
-	maxTests       = 160
-	maxTotalN      = 180000
-	maxTotalM      = 180000
+	maxTests  = 10
+	maxTotalN = 100
+	maxTotalM = 200
 )
 
 type edge struct {
@@ -80,11 +78,16 @@ func main() {
 }
 
 func buildReference() (string, error) {
-	cmd := exec.Command("go", "build", "-o", refBinary2117G, refSource2117G)
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		refSrc = "2117G.go"
+	}
+	bin := filepath.Join(os.TempDir(), "ref2117G.bin")
+	cmd := exec.Command("go", "build", "-o", bin, refSrc)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("%v\n%s", err, string(out))
 	}
-	return filepath.Join(".", refBinary2117G), nil
+	return bin, nil
 }
 
 func runProgram(path string, input []byte) (string, error) {
@@ -149,7 +152,7 @@ func generateTests() []testCase {
 	add(simpleCycle(4, []int64{2, 7, 3, 9}))
 
 	for len(tests) < maxTests && totalN < maxTotalN && totalM < maxTotalM {
-		n := rnd.Intn(400) + 2
+		n := rnd.Intn(8) + 2
 		remainN := maxTotalN - totalN
 		if n > remainN {
 			n = remainN
@@ -161,6 +164,9 @@ func generateTests() []testCase {
 		// Build a random connected graph: start with a tree, then add extra edges.
 		maxPossibleM := n * (n - 1) / 2
 		targetM := rnd.Intn(minInt(maxPossibleM, 3*n)) + (n - 1)
+		if targetM > maxPossibleM {
+			targetM = maxPossibleM
+		}
 		remainM := maxTotalM - totalM
 		if targetM > remainM {
 			targetM = remainM

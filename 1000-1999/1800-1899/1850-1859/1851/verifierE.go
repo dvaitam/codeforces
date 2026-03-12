@@ -11,8 +11,12 @@ import (
 )
 
 func buildOracle() (string, error) {
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		src = "1851E.go"
+	}
 	oracle := filepath.Join(os.TempDir(), "oracleE1851.bin")
-	cmd := exec.Command("go", "build", "-o", oracle, "1851E.go")
+	cmd := exec.Command("go", "build", "-o", oracle, src)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("oracle build failed: %v\n%s", err, out)
 	}
@@ -43,7 +47,7 @@ func generate() string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d\n", T)
 	for i := 0; i < T; i++ {
-		n := rng.Intn(5) + 1
+		n := rng.Intn(5) + 2 // n >= 2 since k < n and k >= 1
 		k := rng.Intn(n-1) + 1
 		fmt.Fprintf(&sb, "%d %d\n", n, k)
 		for j := 0; j < n; j++ {
@@ -61,11 +65,27 @@ func generate() string {
 			fmt.Fprintf(&sb, "%d", perm[j]+1)
 		}
 		sb.WriteByte('\n')
+		// Generate a DAG: potion j can only use potions 0..j-1 as ingredients
+		// This guarantees no cycles and e_j != i
 		for j := 0; j < n; j++ {
-			m := rng.Intn(n)
+			if j == 0 {
+				// No ingredients possible for first potion
+				fmt.Fprintf(&sb, "0\n")
+				continue
+			}
+			maxM := j // can use potions 0..j-1
+			if maxM > n-1 {
+				maxM = n - 1
+			}
+			m := rng.Intn(maxM + 1) // 0 to maxM ingredients
+			if m > j {
+				m = j
+			}
+			// Pick m distinct ingredients from 0..j-1
+			ingPerm := rng.Perm(j)
 			fmt.Fprintf(&sb, "%d", m)
 			for x := 0; x < m; x++ {
-				fmt.Fprintf(&sb, " %d", rng.Intn(n)+1)
+				fmt.Fprintf(&sb, " %d", ingPerm[x]+1)
 			}
 			sb.WriteByte('\n')
 		}

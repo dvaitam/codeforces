@@ -6,16 +6,15 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 )
 
 func buildOracle() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	src := filepath.Join(dir, "1055F.go")
-	bin := filepath.Join(os.TempDir(), "oracle1055F.bin")
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		src = "1055F.go"
+	}
+	bin := fmt.Sprintf("%s/oracle1055F.bin", os.TempDir())
 	cmd := exec.Command("go", "build", "-o", bin, src)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
@@ -43,7 +42,8 @@ func run(bin, input string) (string, error) {
 
 func genCase(r *rand.Rand) string {
 	n := r.Intn(5) + 2 // 2..6
-	k := r.Int63n(10)
+	maxK := int64(n) * int64(n)
+	k := r.Int63n(maxK) + 1
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d %d\n", n, k)
 	for i := 1; i < n; i++ {

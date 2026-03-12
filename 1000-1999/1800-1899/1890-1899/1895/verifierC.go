@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 )
 
 func run(bin, input string) (string, error) {
@@ -45,13 +44,15 @@ func solveC(strs []string) string {
 			d := int(s[j] - '0')
 			sum += d
 			prefix[j+1] = sum
-			if j+1 < l {
-				pref[l][j+1][prefix[j+1]][sum]++
-			}
 		}
 		sums[i] = sum
 		prefixes[i] = prefix
 		freq[l][sum]++
+		for j := 0; j+1 < l; j++ {
+			if prefix[j+1] < 46 && sum < 46 {
+				pref[l][j+1][prefix[j+1]][sum]++
+			}
+		}
 	}
 	ans := 0
 	for idx := 0; idx < n; idx++ {
@@ -98,7 +99,7 @@ func genCase(rng *rand.Rand) []string {
 		l := rng.Intn(5) + 1
 		b := make([]byte, l)
 		for j := 0; j < l; j++ {
-			b[j] = byte('0' + rng.Intn(10))
+			b[j] = byte('1' + rng.Intn(9))
 		}
 		strs[i] = string(b)
 	}
@@ -111,7 +112,7 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	rng := rand.New(rand.NewSource(42))
 	for i := 0; i < 100; i++ {
 		strs := genCase(rng)
 		var sb strings.Builder

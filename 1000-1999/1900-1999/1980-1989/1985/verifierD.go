@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -25,8 +26,12 @@ func runExe(path string, input []byte) (string, error) {
 }
 
 func buildRef() (string, error) {
-	ref := "./refD.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1985D.go")
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		refSrc = "1985D.go"
+	}
+	ref := filepath.Join(os.TempDir(), "refD.bin")
+	cmd := exec.Command("go", "build", "-o", ref, refSrc)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build reference failed: %v: %s", err, string(out))
 	}
@@ -46,33 +51,51 @@ func buildCase(grid []string) []byte {
 	return []byte(sb.String())
 }
 
-func genRandomCase(rng *rand.Rand) []byte {
-	n := rng.Intn(4) + 1
-	m := rng.Intn(4) + 1
+func genManhattanCircle(rng *rand.Rand) []byte {
+	// Generate a valid Manhattan circle on a grid
+	// Choose center (h,k) and radius r, then build the grid
+	r := rng.Intn(4) + 1
+	// Grid must be large enough to contain the circle
+	// The circle spans from h-r+1 to h+r-1 in rows and k-r+1 to k+r-1 in cols
+	// Add some padding
+	minN := 2*r - 1
+	minM := 2*r - 1
+	n := minN + rng.Intn(3)
+	m := minM + rng.Intn(3)
+	// Choose center so the circle fits
+	h := rng.Intn(n-minN+1) + (r - 1) // 0-indexed row
+	k := rng.Intn(m-minM+1) + (r - 1) // 0-indexed col
+
 	grid := make([]string, n)
 	for i := 0; i < n; i++ {
-		b := make([]byte, m)
+		row := make([]byte, m)
 		for j := 0; j < m; j++ {
-			if rng.Intn(2) == 0 {
-				b[j] = '.'
+			dist := abs(i-h) + abs(j-k)
+			if dist < r {
+				row[j] = '#'
 			} else {
-				b[j] = '#'
+				row[j] = '.'
 			}
 		}
-		grid[i] = string(b)
+		grid[i] = string(row)
 	}
 	return buildCase(grid)
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 func genTests() [][]byte {
 	rng := rand.New(rand.NewSource(4))
 	tests := [][]byte{
 		buildCase([]string{"#"}),
-		buildCase([]string{".", "#"}),
-		buildCase([]string{"..", "##"}),
 	}
 	for len(tests) < 100 {
-		tests = append(tests, genRandomCase(rng))
+		tests = append(tests, genManhattanCircle(rng))
 	}
 	return tests
 }

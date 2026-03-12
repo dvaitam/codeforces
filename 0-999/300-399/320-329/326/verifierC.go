@@ -150,10 +150,10 @@ func runCase(bin string, r int, cells [][2]int) error {
 
 func generateCase(rng *rand.Rand) (int, [][2]int) {
 	r := rng.Intn(6) + 1
-	n := rng.Intn(r + 1)
 	board := make([][3]bool, r+2)
-	cells := make([][2]int, 0, n)
-	for len(cells) < n {
+	cells := make([][2]int, 0)
+	// Collect all valid positions first, then randomly select up to n
+	for tries := 0; tries < r*4; tries++ {
 		row := rng.Intn(r) + 1
 		col := rng.Intn(2) + 1
 		if board[row][col] {

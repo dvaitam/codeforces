@@ -27,60 +27,36 @@ func runCandidate(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func maxInt16(a, b int16) int16 {
-	if a > b {
-		return a
+func countOcc(s, p string) int {
+	count := 0
+	i := 0
+	for i+len(p) <= len(s) {
+		if s[i:i+len(p)] == p {
+			count++
+			i += len(p)
+		} else {
+			i++
+		}
 	}
-	return b
+	return count
 }
 
 func solveExpected(s, p string) []int {
 	n := len(s)
-	m := len(p)
-	match := make([]bool, n)
-	for i := 0; i+m <= n; i++ {
-		ok := true
-		for j := 0; j < m; j++ {
-			if s[i+j] != p[j] {
-				ok = false
-				break
-			}
-		}
-		match[i] = ok
-	}
-	const negInf int16 = -10000
-	dp := make([][]int16, n+1)
-	for i := range dp {
-		dp[i] = make([]int16, n+1)
-		for j := range dp[i] {
-			dp[i][j] = negInf
-		}
-	}
-	dp[0][0] = 0
-	for i := 0; i <= n; i++ {
-		for j := 0; j <= n; j++ {
-			cur := dp[i][j]
-			if cur < 0 {
-				continue
-			}
-			if i < n {
-				if j+1 <= n {
-					dp[i+1][j+1] = maxInt16(dp[i+1][j+1], cur)
-				}
-				dp[i+1][j] = maxInt16(dp[i+1][j], cur)
-			}
-			if i+m <= n && match[i] {
-				dp[i+m][j] = maxInt16(dp[i+m][j], cur+1)
-			}
-		}
-	}
 	ans := make([]int, n+1)
-	best := int16(0)
-	for x := 0; x <= n; x++ {
-		if dp[n][x] > best {
-			best = dp[n][x]
+	for mask := 0; mask < (1 << n); mask++ {
+		var sb strings.Builder
+		for i := 0; i < n; i++ {
+			if mask&(1<<i) != 0 {
+				sb.WriteByte(s[i])
+			}
 		}
-		ans[x] = int(best)
+		kept := sb.Len()
+		removed := n - kept
+		occ := countOcc(sb.String(), p)
+		if occ > ans[removed] {
+			ans[removed] = occ
+		}
 	}
 	return ans
 }
@@ -98,19 +74,19 @@ func randStr(rng *rand.Rand, n int) string {
 	return string(b)
 }
 
-func generateRandomCase(rng *rand.Rand) testCase {
-	n := rng.Intn(8) + 1
-	m := rng.Intn(min(n, 5)) + 1
-	s := randStr(rng, n)
-	p := randStr(rng, m)
-	return testCase{s, p}
-}
-
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}
 	return b
+}
+
+func generateRandomCase(rng *rand.Rand) testCase {
+	n := rng.Intn(8) + 1
+	m := rng.Intn(minInt(n, 5)) + 1
+	s := randStr(rng, n)
+	p := randStr(rng, m)
+	return testCase{s, p}
 }
 
 func runCase(bin string, tc testCase) error {
