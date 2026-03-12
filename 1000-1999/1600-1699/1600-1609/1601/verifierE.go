@@ -2,150 +2,78 @@ package main
 
 import (
 	"bytes"
-	"compress/gzip"
-	"encoding/base64"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
-	"strconv"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
-// Embedded gzipped+base64 testcases from testcasesE.txt.
-const encodedTestcases = `
-H4sIAHUDK2kC/21UWa7EIAz75xQ9Alm4/9UGEseEp6eq6gzZbRP/5NN41373M5wnvs/kk2G0z/3LhsT/GbbjadvzxErEnn+2rfN8hyJbZI9IQaSxRuRgJmEmDfv57nPknvvVyFKdzsgYdVBtohtFjjuXhfeKDtNb0F/2k3ZpVk8fWNe2R7+DcazjgYIwruNj0bUiiwWa11qIOGqvsBozFzMG9Czto7DRyHHQLqY8T8lHnhUKAlzPiSMmsxjYNUwmH5/nd9pX4CGNZWt9Oti6iGQHSn0JFZPW8EAdY02FZ0fcMYMCSWeNznX2IA8PqRODTlZO/ehSgMdlXcqTirHGlwcOwT+wsz/cKisKuZOrtkdpCos2zLXNvCK/txtkYNiawqFx9tszz0fP0CZiFcotLaW3M1obL9K6SJaMd7yjLlFFqP7i5KpzgX9rO0HYValTyMDdN0ZE9eHLc7J/uVy5Q6DDUkShO2Pi96bk7XFWW20HvOx43XRYrWmq36nit6Zx4tN3ztthcbm4ZYyb7t7H3Gw/Ro2LC9YFAAA=
-`
-
-type testCase struct {
-	n int
-	q int
-	k int
-	a []int64
-	qs [][2]int
+func locateReference() (string, error) {
+	if p := os.Getenv("REFERENCE_SOURCE_PATH"); p != "" {
+		if _, err := os.Stat(p); err == nil {
+			return p, nil
+		}
+	}
+	candidates := []string{
+		"1601E.go",
+		filepath.Join("1000-1999", "1600-1699", "1600-1609", "1601", "1601E.go"),
+	}
+	for _, path := range candidates {
+		if _, err := os.Stat(path); err == nil {
+			return path, nil
+		}
+	}
+	return "", fmt.Errorf("could not find 1601E.go")
 }
 
-// solve mirrors 1601E.go.
-func solve(tc testCase) string {
-	const maxInt64 = int64(^uint64(0) >> 1)
-
-	windowMin := make([]int64, tc.n+1)
-	deque := make([]int, 0)
-	for i := 1; i <= tc.n; i++ {
-		if len(deque) > 0 && deque[0] <= i-tc.k {
-			deque = deque[1:]
-		}
-		for len(deque) > 0 && tc.a[deque[len(deque)-1]] >= tc.a[i] {
-			deque = deque[:len(deque)-1]
-		}
-		deque = append(deque, i)
-		windowMin[i] = tc.a[deque[0]]
+func buildReference(src string) (string, error) {
+	outPath := filepath.Join(os.TempDir(), fmt.Sprintf("ref1601E_%d.bin", time.Now().UnixNano()))
+	cmd := exec.Command("go", "build", "-o", outPath, src)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("failed to build reference: %v\n%s", err, string(out))
 	}
-
-	var out strings.Builder
-	for _, q := range tc.qs {
-		l, r := q[0], q[1]
-		if l > r {
-			l, r = r, l
-		}
-		curMin := tc.a[l]
-		ans := curMin
-		for s := l + tc.k; s <= r; s += tc.k {
-			segMin := windowMin[s]
-			if segMin < curMin {
-				curMin = segMin
-			}
-			ans += curMin
-		}
-		fmt.Fprintln(&out, ans)
-	}
-	return strings.TrimSpace(out.String())
+	return outPath, nil
 }
 
-func decodeTestcases() ([]string, error) {
-	data, err := base64.StdEncoding.DecodeString(encodedTestcases)
-	if err != nil {
-		return nil, err
-	}
-	r, err := gzip.NewReader(bytes.NewReader(data))
-	if err != nil {
-		return nil, err
-	}
-	defer r.Close()
-	var out bytes.Buffer
-	if _, err := out.ReadFrom(r); err != nil {
-		return nil, err
-	}
-	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
-	var cases []string
-	for _, l := range lines {
-		l = strings.TrimSpace(l)
-		if l != "" {
-			cases = append(cases, l)
-		}
-	}
-	return cases, nil
-}
-
-func parseCase(line string) (testCase, error) {
-	fields := strings.Fields(line)
-	if len(fields) < 3 {
-		return testCase{}, fmt.Errorf("invalid case")
-	}
-	nextInt := func(idx int) (int, error) {
-		v, err := strconv.Atoi(fields[idx])
-		return v, err
-	}
-	n, err := nextInt(0)
-	if err != nil {
-		return testCase{}, err
-	}
-	q, err := nextInt(1)
-	if err != nil {
-		return testCase{}, err
-	}
-	k, err := nextInt(2)
-	if err != nil {
-		return testCase{}, err
-	}
-	pos := 3
-	if len(fields) < pos+n+2*q {
-		return testCase{}, fmt.Errorf("truncated data")
-	}
-	a := make([]int64, n+1)
-	for i := 1; i <= n; i++ {
-		val, err := strconv.ParseInt(fields[pos+i-1], 10, 64)
-		if err != nil {
-			return testCase{}, err
-		}
-		a[i] = val
-	}
-	pos += n
-	qs := make([][2]int, q)
-	for i := 0; i < q; i++ {
-		l, err := strconv.Atoi(fields[pos+2*i])
-		if err != nil {
-			return testCase{}, err
-		}
-		r, err := strconv.Atoi(fields[pos+2*i+1])
-		if err != nil {
-			return testCase{}, err
-		}
-		qs[i] = [2]int{l, r}
-	}
-	return testCase{n: n, q: q, k: k, a: a, qs: qs}, nil
-}
-
-func runCandidate(bin, input string) (string, error) {
+func run(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	var errBuf bytes.Buffer
+	var stderr bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
 	}
 	return strings.TrimSpace(out.String()), nil
+}
+
+func generateTest(rng *rand.Rand) string {
+	n := rng.Intn(5) + 1
+	q := rng.Intn(3) + 1
+	k := rng.Intn(n) + 1
+
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d %d %d\n", n, q, k)
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		fmt.Fprintf(&sb, "%d", rng.Intn(10))
+	}
+	sb.WriteByte('\n')
+	for i := 0; i < q; i++ {
+		l := rng.Intn(n) + 1
+		r := rng.Intn(n) + 1
+		if l > r {
+			l, r = r, l
+		}
+		fmt.Fprintf(&sb, "%d %d\n", l, r)
+	}
+	return sb.String()
 }
 
 func main() {
@@ -155,28 +83,36 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	lines, err := decodeTestcases()
+	refSrc, err := locateReference()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	refBin, err := buildReference(refSrc)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer os.Remove(refBin)
 
-	for idx, line := range lines {
-		tc, err := parseCase(line)
+	rng := rand.New(rand.NewSource(42))
+	numTests := 200
+	for i := 0; i < numTests; i++ {
+		input := generateTest(rng)
+		expected, err := run(refBin, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d parse error: %v\n", idx+1, err)
+			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		expect := solve(tc)
-		got, err := runCandidate(bin, line+"\n")
+		got, err := run(bin, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
+			fmt.Fprintf(os.Stderr, "candidate failed on case %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, expect, got)
+		if got != expected {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, expected, got, input)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(lines))
+	fmt.Printf("All %d tests passed\n", numTests)
 }

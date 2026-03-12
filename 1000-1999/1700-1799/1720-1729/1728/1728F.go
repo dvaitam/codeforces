@@ -3,8 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"os"
-	"sort"
 )
 
 func main() {
@@ -21,51 +21,53 @@ func main() {
 		fmt.Fscan(in, &arr[i])
 	}
 
-	ones := []int{}
-	others := []int{}
-	for _, v := range arr {
-		if v == 1 {
-			ones = append(ones, v)
-		} else {
-			others = append(others, v)
+	// Bitmask DP: dp[mask] = min (totalSum) over all orderings using the fish in mask
+	// We need to track lastB for each state to compute transitions.
+	// dp[mask] = list of (lastB, totalSum) pairs; keep only Pareto-optimal ones.
+	// For n <= ~20, use dp[mask] = map[lastB]minSum
+
+	full := 1 << uint(n)
+	// dp[mask] -> map of lastB -> minSum
+	type state = map[int]int
+	dp := make([]state, full)
+	dp[0] = state{0: 0}
+
+	for mask := 0; mask < full; mask++ {
+		if dp[mask] == nil {
+			continue
+		}
+		for lastB, curSum := range dp[mask] {
+			for i := 0; i < n; i++ {
+				if mask&(1<<uint(i)) != 0 {
+					continue
+				}
+				v := arr[i]
+				var nextB int
+				if lastB == 0 {
+					nextB = v
+				} else {
+					nextB = lastB + v - (lastB % v)
+					if nextB <= lastB {
+						nextB += v
+					}
+				}
+				newMask := mask | (1 << uint(i))
+				newSum := curSum + nextB
+				if dp[newMask] == nil {
+					dp[newMask] = state{}
+				}
+				if existing, ok := dp[newMask][nextB]; !ok || newSum < existing {
+					dp[newMask][nextB] = newSum
+				}
+			}
 		}
 	}
-	sort.Ints(others)
 
-	// count occurrences of other values
-	cnt := make(map[int]int)
-	for _, v := range others {
-		cnt[v]++
-	}
-	uniq := []int{}
-	for v := range cnt {
-		uniq = append(uniq, v)
-	}
-	sort.Ints(uniq)
-
-	sequence := make([]int, 0, n)
-	sequence = append(sequence, ones...)
-	for _, v := range uniq {
-		sequence = append(sequence, v)
-	}
-	extras := []int{}
-	for _, v := range uniq {
-		for i := 1; i < cnt[v]; i++ {
-			extras = append(extras, v)
+	ans := math.MaxInt64
+	for _, sum := range dp[full-1] {
+		if sum < ans {
+			ans = sum
 		}
 	}
-	sort.Ints(extras)
-	sequence = append(sequence, extras...)
-
-	prev := 0
-	total := 0
-	for _, v := range sequence {
-		next := prev + v - (prev % v)
-		if next <= prev {
-			next += v
-		}
-		total += next
-		prev = next
-	}
-	fmt.Fprintln(out, total)
+	fmt.Fprintln(out, ans)
 }

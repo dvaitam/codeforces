@@ -7,7 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -49,33 +49,6 @@ func generateTestInput(rng *rand.Rand) (string, int) {
 	return sb.String(), q
 }
 
-func locateReference() (string, error) {
-	if p := os.Getenv("REFERENCE_SOURCE_PATH"); p != "" {
-		if _, err := os.Stat(p); err == nil {
-			return p, nil
-		}
-	}
-	candidates := []string{
-		"927A.go",
-		filepath.Join("0-999", "900-999", "920-929", "927", "927A.go"),
-	}
-	for _, path := range candidates {
-		if _, err := os.Stat(path); err == nil {
-			return path, nil
-		}
-	}
-	return "", fmt.Errorf("could not find 927A.go")
-}
-
-func buildReference(src string) (string, error) {
-	outPath := filepath.Join(os.TempDir(), fmt.Sprintf("ref927A_%d.bin", time.Now().UnixNano()))
-	cmd := exec.Command("go", "build", "-o", outPath, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, string(out))
-	}
-	return outPath, nil
-}
-
 func runProgram(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
@@ -103,46 +76,38 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	refSrc, err := locateReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	refBin, err := buildReference(refSrc)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	numTests := 20
 	for i := 0; i < numTests; i++ {
-		input, _ := generateTestInput(rng)
-		refOut, err := runProgram(refBin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\ninput:\n%s\n", i+1, err, input)
-			os.Exit(1)
-		}
+		input, q := generateTestInput(rng)
 		candOut, err := runProgram(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "candidate failed on test %d: %v\ninput:\n%s\n", i+1, err, input)
 			os.Exit(1)
 		}
-		// Both outputs should have the same number of lines (q+2 lines of "0")
-		refLines := strings.Split(refOut, "\n")
+		// This is an optimization/interactive problem.
+		// The candidate output should have exactly q+2 response lines.
+		// Each response line should start with a non-negative integer f (number of cars to instruct).
 		candLines := strings.Split(candOut, "\n")
-		if len(refLines) != len(candLines) {
-			fmt.Fprintf(os.Stderr, "test %d: expected %d output lines, got %d\ninput:\n%s\nref output:\n%s\ncand output:\n%s\n",
-				i+1, len(refLines), len(candLines), input, refOut, candOut)
+		expectedLines := q + 2
+		if len(candLines) != expectedLines {
+			fmt.Fprintf(os.Stderr, "test %d: expected %d output lines, got %d\ninput:\n%s\ncand output:\n%s\n",
+				i+1, expectedLines, len(candLines), input, candOut)
 			os.Exit(1)
 		}
-		for j := range refLines {
-			if strings.TrimSpace(refLines[j]) != strings.TrimSpace(candLines[j]) {
-				fmt.Fprintf(os.Stderr, "test %d line %d: expected %q, got %q\ninput:\n%s\n",
-					i+1, j+1, refLines[j], candLines[j], input)
+		for j, line := range candLines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				fmt.Fprintf(os.Stderr, "test %d line %d: empty line\ninput:\n%s\n", i+1, j+1, input)
 				os.Exit(1)
 			}
+			fields := strings.Fields(line)
+			f, err := strconv.Atoi(fields[0])
+			if err != nil || f < 0 {
+				fmt.Fprintf(os.Stderr, "test %d line %d: invalid car count %q\ninput:\n%s\n", i+1, j+1, fields[0], input)
+				os.Exit(1)
+			}
+			_ = f
 		}
 	}
 	fmt.Printf("All %d tests passed\n", numTests)

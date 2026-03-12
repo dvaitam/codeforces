@@ -57,7 +57,7 @@ func main() {
                cnt0 += int64(mid - cl[i])
            }
        }
-       if cnt0 > k {
+       if cnt0 >= k {
            for i := 0; i < n; i++ {
                mid := min(cr[i], nxt[cl[i]])
                if (a[i]>>uint(z))&1 == 1 {
