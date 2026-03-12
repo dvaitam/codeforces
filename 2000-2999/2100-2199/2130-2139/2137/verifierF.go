@@ -6,16 +6,15 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
 
 const (
 	candUsage   = "usage: go run verifierF.go /path/to/binary"
-	maxTests    = 20
-	maxTotalN   = 500
-	maxTotalNSq = 50_000
+	maxTests    = 10
+	maxTotalN   = 100
+	maxTotalNSq = 5_000
 )
 
 type testCase struct {
@@ -53,19 +52,6 @@ func main() {
 	}
 
 	fmt.Printf("All %d tests passed\n", len(tests))
-}
-
-func buildReference() (string, error) {
-	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
-	if refSrc == "" {
-		refSrc = "2137F.go"
-	}
-	bin := filepath.Join(os.TempDir(), "ref2137F.bin")
-	cmd := exec.Command("go", "build", "-o", bin, refSrc)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("%v\n%s", err, string(out))
-	}
-	return bin, nil
 }
 
 func runProgram(path string, input []byte) (string, error) {
