@@ -114,22 +114,32 @@ func parseOutput(out string) (int64, error) {
 
 func generateTests() []testCase {
 	var tests []testCase
+	// Fixed small test cases respecting constraints: n >= 3, c_i > n/3 for all i
 	tests = append(tests,
-		buildTest(2, make([]int, 26)),
-		buildTest(3, []int{1, 2, 3, 4}),
-		buildTest(5, []int{0, 0, 0, 0, 0, 0, 1}),
+		buildTest(3, validCounts(3, 2)),  // c_i > 1 for all, so c_i >= 2
+		buildTest(3, validCounts(3, 3)),  // c_i = 3 for all
+		buildTest(6, validCounts(6, 3)),  // c_i > 2, so c_i >= 3
 	)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for len(tests) < 50 {
-		n := rng.Intn(50) + 2
+		n := rng.Intn(48) + 3 // n in [3, 50]
+		minC := n/3 + 1       // c_i > n/3, so c_i >= n/3 + 1
 		c := make([]int, 26)
 		for i := 0; i < 26; i++ {
-			c[i] = rng.Intn(n + 1)
+			c[i] = minC + rng.Intn(n-minC+1) // c_i in [minC, n]
 		}
 		tests = append(tests, buildTest(n, c))
 	}
-	tests = append(tests, buildTest(200, randomCounts(200)))
+	tests = append(tests, buildTest(200, randomValidCounts(200)))
 	return tests
+}
+
+func validCounts(n, val int) []int {
+	c := make([]int, 26)
+	for i := range c {
+		c[i] = val
+	}
+	return c
 }
 
 func buildTest(n int, counts []int) testCase {
@@ -149,11 +159,12 @@ func buildTest(n int, counts []int) testCase {
 	return testCase{input: b.String()}
 }
 
-func randomCounts(limit int) []int {
+func randomValidCounts(n int) []int {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	minC := n/3 + 1
 	c := make([]int, 26)
 	for i := range c {
-		c[i] = rng.Intn(limit + 1)
+		c[i] = minC + rng.Intn(n-minC+1)
 	}
 	return c
 }

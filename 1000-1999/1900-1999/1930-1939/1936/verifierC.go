@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -28,7 +29,7 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func genCaseC(rng *rand.Rand) string {
+func genCaseC(rng *rand.Rand) (string, int) {
 	t := 1
 	n := rng.Intn(3) + 1
 	m := rng.Intn(3) + 1
@@ -51,7 +52,113 @@ func genCaseC(rng *rand.Rand) string {
 		}
 		sb.WriteByte('\n')
 	}
-	return sb.String()
+	return sb.String(), t
+}
+
+// solveC computes the correct answer for Codeforces 1936C (Pokémon Arena).
+// Build a complete graph on n pokemon. Edge from u to v costs:
+//   c[v] + max over j in [0,m) of max(0, a[u][j] - a[v][j])
+// Answer is shortest path from 0 to n-1.
+// But actually, looking at accepted solutions, the edge weight is:
+//   For each attribute j, build edges between all pairs of pokemons.
+//   Edge from u to v through attribute j costs: c[v] + max(0, a[u][j] - a[v][j]).
+//   The overall edge from u to v is the minimum over all j of this cost.
+// We use Dijkstra.
+func solveC(input string) ([]string, error) {
+	tokens := strings.Fields(input)
+	idx := 0
+	next := func() int {
+		v, _ := strconv.Atoi(tokens[idx])
+		idx++
+		return v
+	}
+
+	T := next()
+	results := make([]string, 0, T)
+
+	for ; T > 0; T-- {
+		n := next()
+		m := next()
+		c := make([]int64, n)
+		for i := 0; i < n; i++ {
+			c[i] = int64(next())
+		}
+		a := make([][]int64, n)
+		for i := 0; i < n; i++ {
+			a[i] = make([]int64, m)
+			for j := 0; j < m; j++ {
+				a[i][j] = int64(next())
+			}
+		}
+
+		if n == 1 {
+			results = append(results, "0")
+			continue
+		}
+
+		// Build graph: for each attribute j, for each pair (u,v),
+		// edge cost = c[v] + max(0, a[u][j] - a[v][j]).
+		// We want minimum edge cost over all attributes j.
+		// Then Dijkstra from 0 to n-1.
+		const INF = int64(1<<62 - 1)
+
+		// For small n (<=4), just try all edges
+		type edge struct {
+			to   int
+			cost int64
+		}
+		adj := make([][]edge, n)
+		// For each pair (u,v), find minimum cost edge over all attributes
+		for u := 0; u < n; u++ {
+			for v := 0; v < n; v++ {
+				if u == v {
+					continue
+				}
+				best := INF
+				for j := 0; j < m; j++ {
+					d := a[u][j] - a[v][j]
+					if d < 0 {
+						d = 0
+					}
+					w := c[v] + d
+					if w < best {
+						best = w
+					}
+				}
+				adj[u] = append(adj[u], edge{v, best})
+			}
+		}
+
+		// Dijkstra
+		dist := make([]int64, n)
+		for i := range dist {
+			dist[i] = INF
+		}
+		dist[0] = 0
+		visited := make([]bool, n)
+		for {
+			u := -1
+			for i := 0; i < n; i++ {
+				if !visited[i] && (u == -1 || dist[i] < dist[u]) {
+					u = i
+				}
+			}
+			if u == -1 || dist[u] == INF {
+				break
+			}
+			if u == n-1 {
+				break
+			}
+			visited[u] = true
+			for _, e := range adj[u] {
+				if dist[u]+e.cost < dist[e.to] {
+					dist[e.to] = dist[u] + e.cost
+				}
+			}
+		}
+		results = append(results, fmt.Sprint(dist[n-1]))
+	}
+	return results, nil
 }
 
 func main() {
@@ -61,25 +168,12 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refPath := os.Getenv("REFERENCE_SOURCE_PATH")
-	if refPath == "" {
-		fmt.Fprintln(os.Stderr, "REFERENCE_SOURCE_PATH not set")
-		os.Exit(1)
-	}
-
-	refBin, err := buildBinary(refPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		input := genCaseC(rng)
-		refOut, err := run(refBin, input)
+		input, t := genCaseC(rng)
+		refResults, err := solveC(input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\ninput:\n%s", i+1, err, input)
+			fmt.Fprintf(os.Stderr, "reference solver failed on case %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
 		candOut, err := run(candidate, input)
@@ -87,27 +181,17 @@ func main() {
 			fmt.Fprintf(os.Stderr, "candidate failed on case %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(candOut) != strings.TrimSpace(refOut) {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %q got %q\ninput:\n%s", i+1, refOut, candOut, input)
+		candTokens := strings.Fields(candOut)
+		if len(candTokens) != t {
+			fmt.Fprintf(os.Stderr, "case %d: expected %d answers, got %d\ninput:\n%s\noutput:\n%s", i+1, t, len(candTokens), input, candOut)
 			os.Exit(1)
+		}
+		for j := 0; j < t; j++ {
+			if candTokens[j] != refResults[j] {
+				fmt.Fprintf(os.Stderr, "case %d subcase %d failed: expected %q got %q\ninput:\n%s", i+1, j+1, refResults[j], candTokens[j], input)
+				os.Exit(1)
+			}
 		}
 	}
 	fmt.Println("All tests passed")
-}
-
-func buildBinary(src string) (string, error) {
-	tmp, err := os.CreateTemp("", "1936C-ref-*")
-	if err != nil {
-		return "", err
-	}
-	tmp.Close()
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), src)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, out.String())
-	}
-	return tmp.Name(), nil
 }

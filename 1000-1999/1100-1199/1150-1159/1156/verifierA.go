@@ -9,17 +9,33 @@ import (
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	src := os.Getenv("REFERENCE_SOURCE_PATH")
-	if src == "" {
-		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+// computeAnswer computes the correct answer for CF 1156A.
+// Shapes: 1=circle, 2=triangle, 3=square, inscribed one inside another.
+// Adjacent triangle-square or square-triangle = infinite intersection points.
+// Adjacent circle-triangle or triangle-circle = 3 intersection points.
+// Adjacent circle-square or square-circle = 4 intersection points.
+func computeAnswer(a []int) (bool, int) {
+	ans := 0
+	for i := 1; i < len(a); i++ {
+		x, y := a[i-1], a[i]
+		if (x == 2 && y == 3) || (x == 3 && y == 2) {
+			return true, 0 // infinite
+		}
+		if (x == 1 && y == 2) || (x == 2 && y == 1) {
+			ans += 3
+		}
+		if (x == 1 && y == 3) || (x == 3 && y == 1) {
+			ans += 4
+		}
 	}
-	bin := "oracle1156A.bin"
-	cmd := exec.Command("go", "build", "-o", bin, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	// Deduplication: when a circle (1) is between a triangle (2) and square (3),
+	// one intersection point is shared between the two adjacent pairs.
+	for i := 0; i+2 < len(a); i++ {
+		if a[i] == 3 && a[i+1] == 1 && a[i+2] == 2 {
+			ans--
+		}
 	}
-	return "./" + bin, nil
+	return false, ans
 }
 
 func run(bin, input string) (string, error) {
@@ -35,7 +51,7 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func genCase(r *rand.Rand) string {
+func genCase(r *rand.Rand) (string, []int) {
 	n := r.Intn(99-2+1) + 2 // 2..99
 	arr := make([]int, n)
 	arr[0] = r.Intn(3) + 1
@@ -57,7 +73,7 @@ func genCase(r *rand.Rand) string {
 		fmt.Fprintf(&sb, "%d", v)
 	}
 	sb.WriteByte('\n')
-	return sb.String()
+	return sb.String(), arr
 }
 
 func main() {
@@ -66,27 +82,30 @@ func main() {
 		os.Exit(1)
 	}
 	userBin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 	r := rand.New(rand.NewSource(1))
 	for i := 0; i < 100; i++ {
-		input := genCase(r)
-		want, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle failed on test %d: %v\ninput:\n%s", i+1, err, input)
-			os.Exit(1)
+		input, arr := genCase(r)
+		infinite, count := computeAnswer(arr)
+
+		var want string
+		if infinite {
+			want = "Infinite"
+		} else {
+			want = fmt.Sprintf("Finite\n%d", count)
 		}
+
 		got, err := run(userBin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "test %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if want != got {
-			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input, want, got)
+
+		// Normalize: case-insensitive first word, flexible whitespace
+		wantNorm := strings.TrimSpace(want)
+		gotNorm := strings.TrimSpace(got)
+
+		if !strings.EqualFold(wantNorm, gotNorm) {
+			fmt.Fprintf(os.Stderr, "test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input, wantNorm, gotNorm)
 			os.Exit(1)
 		}
 	}

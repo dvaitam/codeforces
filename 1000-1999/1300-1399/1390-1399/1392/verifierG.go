@@ -30,11 +30,10 @@ func matches(a, b []byte) int {
 	return cnt
 }
 
-func solveCase(n, m, k int, s0, s1 string, aList, bList []int) (int, int, int) {
+func solveCase(n, m, k int, s0, s1 string, aList, bList []int) int {
 	cur := []byte(s0)
 	target := []byte(s1)
 	best := -1
-	bestL, bestR := 1, m
 	for l := 0; l < n; l++ {
 		tray := make([]byte, k)
 		copy(tray, cur)
@@ -44,16 +43,14 @@ func solveCase(n, m, k int, s0, s1 string, aList, bList []int) (int, int, int) {
 				val := matches(tray, target)
 				if val > best {
 					best = val
-					bestL = l + 1
-					bestR = r + 1
 				}
 			}
 		}
 	}
-	return best, bestL, bestR
+	return best
 }
 
-func generateTest() (string, string) {
+func generateTest() (string, int, int, int, string, string, []int, []int) {
 	n := rand.Intn(5) + 1
 	m := rand.Intn(n) + 1
 	k := rand.Intn(4) + 2
@@ -85,21 +82,7 @@ func generateTest() (string, string) {
 	for i := 0; i < n; i++ {
 		fmt.Fprintf(&sb, "%d %d\n", aList[i]+1, bList[i]+1)
 	}
-
-	best, l, r := solveCase(n, m, k, string(s0), string(s1), aList, bList)
-	exp := fmt.Sprintf("%d\n%d %d\n", best, l, r)
-	return sb.String(), exp
-}
-
-func referenceIO(t int) (string, string) {
-	var in strings.Builder
-	var out strings.Builder
-	for i := 0; i < t; i++ {
-		ti, to := generateTest()
-		in.WriteString(ti)
-		out.WriteString(to)
-	}
-	return in.String(), out.String()
+	return sb.String(), n, m, k, string(s0), string(s1), aList, bList
 }
 
 func runBinary(path, input string) (string, error) {
@@ -118,17 +101,47 @@ func main() {
 		return
 	}
 	rand.Seed(7)
-	in, exp := referenceIO(100)
-	out, err := runBinary(os.Args[1], in)
-	if err != nil {
-		fmt.Println("Runtime error:", err)
-		os.Exit(1)
-	}
-	if strings.TrimSpace(out) != strings.TrimSpace(exp) {
-		fmt.Println("Wrong Answer")
-		fmt.Println("Expected:\n" + exp)
-		fmt.Println("Got:\n" + out)
-		os.Exit(1)
+	for i := 0; i < 100; i++ {
+		input, n, m, k, s0, s1, aList, bList := generateTest()
+		bestScore := solveCase(n, m, k, s0, s1, aList, bList)
+
+		out, err := runBinary(os.Args[1], input)
+		if err != nil {
+			fmt.Printf("test %d: runtime error: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		out = strings.TrimSpace(out)
+		lines := strings.Split(out, "\n")
+		if len(lines) < 2 {
+			fmt.Printf("test %d: expected 2 lines of output, got %d\n", i+1, len(lines))
+			os.Exit(1)
+		}
+		var gotScore, gotL, gotR int
+		if _, err := fmt.Sscan(lines[0], &gotScore); err != nil {
+			fmt.Printf("test %d: cannot parse score: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		if _, err := fmt.Sscan(lines[1], &gotL, &gotR); err != nil {
+			fmt.Printf("test %d: cannot parse l r: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		if gotScore != bestScore {
+			fmt.Printf("test %d: expected score %d, got %d\n", i+1, bestScore, gotScore)
+			os.Exit(1)
+		}
+		// Validate l, r
+		if gotL < 1 || gotR > n || gotL > gotR || gotR-gotL+1 < m {
+			fmt.Printf("test %d: invalid l=%d r=%d (n=%d m=%d)\n", i+1, gotL, gotR, n, m)
+			os.Exit(1)
+		}
+		// Verify the score by applying segment [gotL-1, gotR-1]
+		cur := []byte(s0)
+		result := applySegment(k, cur, gotL-1, gotR-1, aList, bList)
+		actualScore := matches(result, []byte(s1))
+		if actualScore != gotScore {
+			fmt.Printf("test %d: claimed score %d but actual score is %d for l=%d r=%d\n", i+1, gotScore, actualScore, gotL, gotR)
+			os.Exit(1)
+		}
 	}
 	fmt.Println("All tests passed")
 }

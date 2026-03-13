@@ -2,9 +2,28 @@ package main
 
 import (
 	"bufio"
+	"container/heap"
 	"fmt"
 	"os"
 )
+
+type item struct {
+	node int
+	cost int64
+}
+type pq []item
+
+func (h pq) Len() int            { return len(h) }
+func (h pq) Less(i, j int) bool  { return h[i].cost < h[j].cost }
+func (h pq) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *pq) Push(x interface{}) { *h = append(*h, x.(item)) }
+func (h *pq) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[:n-1]
+	return x
+}
 
 func main() {
 	in := bufio.NewReader(os.Stdin)
@@ -29,18 +48,51 @@ func main() {
 				fmt.Fscan(in, &a[i][j])
 			}
 		}
-		// naive approach: directly hire pokemon n to beat current champion
-		diff := int64(1<<62 - 1)
-		for j := 0; j < m; j++ {
-			d := a[0][j] - a[n-1][j]
-			if d < 0 {
-				d = 0
+
+		if n == 1 {
+			fmt.Fprintln(out, 0)
+			continue
+		}
+
+		const INF = int64(1<<62 - 1)
+		dist := make([]int64, n)
+		for i := range dist {
+			dist[i] = INF
+		}
+		dist[0] = 0
+
+		h := &pq{{0, 0}}
+		for h.Len() > 0 {
+			cur := heap.Pop(h).(item)
+			u := cur.node
+			if cur.cost > dist[u] {
+				continue
 			}
-			if d < diff {
-				diff = d
+			if u == n-1 {
+				break
+			}
+			for v := 0; v < n; v++ {
+				if v == u {
+					continue
+				}
+				// cost to hire pokemon v to beat pokemon u: c[v] + min_j max(0, a[u][j] - a[v][j])
+				best := INF
+				for j := 0; j < m; j++ {
+					d := a[u][j] - a[v][j]
+					if d < 0 {
+						d = 0
+					}
+					if d < best {
+						best = d
+					}
+				}
+				w := c[v] + best
+				if dist[u]+w < dist[v] {
+					dist[v] = dist[u] + w
+					heap.Push(h, item{v, dist[v]})
+				}
 			}
 		}
-		ans := diff + c[n-1]
-		fmt.Fprintln(out, ans)
+		fmt.Fprintln(out, dist[n-1])
 	}
 }

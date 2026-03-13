@@ -10,48 +10,48 @@ import (
 	"strings"
 )
 
-func solve(a []int) (bool, [][3]int) {
-	pos := make([]int, 0, len(a))
+// canSolve uses BFS on bitmask state to determine if the array can be zeroed
+// using triple-flip operations. Only feasible for small n (n <= 22).
+func canSolve(a []int) bool {
+	n := len(a)
+	var start uint32
 	for i, v := range a {
 		if v == 1 {
-			pos = append(pos, i)
+			start |= 1 << uint(i)
 		}
 	}
-	m := len(pos)
-	if m%2 != 0 {
-		return false, nil
+	if start == 0 {
+		return true
 	}
-	ops := make([][3]int, 0, m)
-	for i := 0; i < m/2; i++ {
-		l := pos[i]
-		r := pos[m-1-i]
-		d := r - l
-		if d < 2 {
-			return false, nil
-		}
-		if d%2 == 0 {
-			mid := (l + r) / 2
-			ops = append(ops, [3]int{l + 1, mid + 1, r + 1})
-		} else {
-			mid1 := (l + r - 1) / 2
-			mid2 := mid1 + 1
-			if mid2 > r || mid1 <= l {
-				return false, nil
+	visited := make(map[uint32]bool)
+	visited[start] = true
+	queue := []uint32{start}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		for d := 1; d < n; d++ {
+			for i := 0; i+2*d < n; i++ {
+				next := cur ^ (1 << uint(i)) ^ (1 << uint(i+d)) ^ (1 << uint(i+2*d))
+				if next == 0 {
+					return true
+				}
+				if !visited[next] {
+					visited[next] = true
+					queue = append(queue, next)
+				}
 			}
-			ops = append(ops, [3]int{l + 1, mid1 + 1, mid2 + 1})
-			ops = append(ops, [3]int{mid1 + 1, mid2 + 1, r + 1})
 		}
 	}
-	return true, ops
+	return false
 }
 
-func generateCase(rng *rand.Rand) (string, bool, [][3]int) {
-	n := rng.Intn(20) + 3
+func generateCase(rng *rand.Rand) (string, bool) {
+	n := rng.Intn(15) + 3 // keep small for BFS
 	a := make([]int, n)
 	for i := 0; i < n; i++ {
 		a[i] = rng.Intn(2)
 	}
-	ok, ops := solve(a)
+	ok := canSolve(a)
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", n))
 	for i := 0; i < n; i++ {
@@ -61,7 +61,7 @@ func generateCase(rng *rand.Rand) (string, bool, [][3]int) {
 		sb.WriteString(strconv.Itoa(a[i]))
 	}
 	sb.WriteByte('\n')
-	return sb.String(), ok, ops
+	return sb.String(), ok
 }
 
 func parseOutput(out string) (bool, [][3]int, error) {
@@ -141,13 +141,24 @@ func runCase(bin, input string, expectOk bool) error {
 	if err != nil {
 		return err
 	}
-	// If we expect NO and candidate says YES, validate the ops (candidate might be right)
-	// If we expect YES and candidate says NO, that's wrong
 	if !ok && expectOk {
 		return fmt.Errorf("expected YES but got NO")
 	}
+	if ok && !expectOk {
+		// Candidate says YES but BFS says NO – validate ops anyway
+		// (should fail validation if truly impossible)
+		parts := strings.Fields(strings.TrimSpace(input))
+		n, _ := strconv.Atoi(parts[0])
+		a := make([]int, n)
+		for i := 0; i < n; i++ {
+			a[i], _ = strconv.Atoi(parts[i+1])
+		}
+		if err := validateOps(a, ops, n); err != nil {
+			return fmt.Errorf("candidate says YES but operations invalid: %v", err)
+		}
+		// Operations are valid, so candidate found a solution BFS missed (shouldn't happen)
+	}
 	if ok {
-		// Parse n and array from input
 		parts := strings.Fields(strings.TrimSpace(input))
 		n, _ := strconv.Atoi(parts[0])
 		a := make([]int, n)
@@ -169,7 +180,7 @@ func main() {
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(42))
 	for i := 0; i < 100; i++ {
-		in, ok, _ := generateCase(rng)
+		in, ok := generateCase(rng)
 		if err := runCase(bin, in, ok); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)

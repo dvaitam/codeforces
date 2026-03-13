@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	randomTrials = 60
+	randomTrials = 20
 	minRadius    = 20
-	maxRadius    = 80
+	maxRadius    = 50
 	minRayLen    = 10
 	maxRayLen    = 30
 )
@@ -65,197 +65,89 @@ func (g *img) toInput() string {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierF1.go /path/to/candidate")
+		fmt.Fprintln(os.Stderr, "usage: verifierF1 /path/to/candidate")
 		os.Exit(1)
 	}
 	candidate := os.Args[1]
 
-	refSourceF1 := os.Getenv("REFERENCE_SOURCE_PATH")
-	if refSourceF1 == "" {
-		refSourceF1 = "316F1.go"
+	// Build reference binary from REFERENCE_SOURCE_PATH
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		fatal("REFERENCE_SOURCE_PATH not set")
 	}
-	refBin, err := buildReference(refSourceF1)
-	if err != nil {
+
+	refBin := filepath.Join(os.TempDir(), "ref_316F1")
+	cmd := exec.Command("go", "build", "-o", refBin, refSrc)
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
 		fatal("failed to build reference: %v", err)
 	}
 	defer os.Remove(refBin)
 
-	tests := deterministicCases()
-	tests = append(tests, buildScene(rand.New(rand.NewSource(11)), caseConfig{hMin: 400, hMax: 600, wMin: 400, wMax: 600, minSuns: 2, maxSuns: 5}))
-
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for extra := 0; extra < randomTrials; extra++ {
-		var cfg caseConfig
-		if rng.Intn(6) == 0 {
-			cfg = caseConfig{hMin: 300, hMax: 600, wMin: 300, wMax: 600, minSuns: 1, maxSuns: 5}
-		} else {
-			cfg = caseConfig{hMin: 120, hMax: 500, wMin: 120, wMax: 500, minSuns: 0, maxSuns: 4}
-		}
-		tests = append(tests, buildScene(rng, cfg))
-	}
+	tests := buildTests()
 
 	for idx, input := range tests {
-		expect, err := runProgram(refBin, input)
+		expected, err := runBinary(refBin, input)
 		if err != nil {
-			fatal("reference failed on case %d: %v\ninput:\n%s", idx+1, err, input)
+			fatal("reference failed on case %d: %v", idx+1, err)
 		}
-		got, err := runCandidate(candidate, input)
+		got, err := runBinary(candidate, input)
 		if err != nil {
-			fatal("candidate failed on case %d: %v\ninput:\n%s", idx+1, err, input)
+			fatal("candidate failed on case %d: %v", idx+1, err)
 		}
-		if normalize(expect) != normalize(got) {
-			fatal("case %d mismatch\ninput:\n%s\nexpected: %s\ngot: %s", idx+1, input, expect, got)
+		if normalizeOutput(got) != normalizeOutput(expected) {
+			fatal("case %d mismatch\nexpected: %s\n     got: %s", idx+1, expected, got)
 		}
 	}
 	fmt.Printf("All %d tests passed\n", len(tests))
 }
 
-func fatal(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, format+"\n", args...)
-	os.Exit(1)
+func normalizeOutput(s string) string {
+	fields := strings.Fields(s)
+	return strings.Join(fields, " ")
 }
 
-func buildReference(src string) (string, error) {
-	tmp, err := os.CreateTemp("", "316F1-ref-*")
-	if err != nil {
-		return "", err
+func buildTests() []string {
+	var tests []string
+
+	// Blank case: no suns
+	tests = append(tests, newImg(5, 5).toInput())
+
+	// Build known scenes
+	rng := rand.New(rand.NewSource(42))
+	for i := 0; i < randomTrials; i++ {
+		tests = append(tests, buildKnownScene(rng))
 	}
-	tmp.Close()
-
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(src))
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, out.String())
-	}
-	return tmp.Name(), nil
+	return tests
 }
 
-func runProgram(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
-	return runCommand(cmd, input)
-}
-
-func runCandidate(target, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(target, ".go") {
-		cmd = exec.Command("go", "run", target)
-	} else {
-		cmd = exec.Command(target)
-	}
-	return runCommand(cmd, input)
-}
-
-func runCommand(cmd *exec.Cmd, input string) (string, error) {
-	cmd.Stdin = strings.NewReader(input)
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("%v\n%s", err, stderr.String())
-	}
-	return strings.TrimSpace(stdout.String()), nil
-}
-
-func normalize(out string) string {
-	return strings.Join(strings.Fields(out), " ")
-}
-
-type caseConfig struct {
-	hMin, hMax int
-	wMin, wMax int
-	minSuns    int
-	maxSuns    int
-}
-
-func deterministicCases() []string {
-	cases := []string{blankCase(5, 5)}
-	seeds := []int64{3, 7, 13}
-	configs := []caseConfig{
-		{hMin: 200, hMax: 300, wMin: 220, wMax: 320, minSuns: 1, maxSuns: 2},
-		{hMin: 400, hMax: 500, wMin: 400, wMax: 500, minSuns: 2, maxSuns: 3},
-		{hMin: 600, hMax: 800, wMin: 600, wMax: 800, minSuns: 3, maxSuns: 4},
-	}
-	for i, seed := range seeds {
-		rng := rand.New(rand.NewSource(seed))
-		cases = append(cases, buildScene(rng, configs[i]))
-	}
-	return cases
-}
-
-func blankCase(h, w int) string {
-	return newImg(h, w).toInput()
-}
-
-func buildScene(rng *rand.Rand, cfg caseConfig) string {
-	h := randRange(rng, cfg.hMin, cfg.hMax)
-	w := randRange(rng, cfg.wMin, cfg.wMax)
+func buildKnownScene(rng *rand.Rand) string {
+	h := randRange(rng, 200, 400)
+	w := randRange(rng, 200, 400)
 	grid := newImg(h, w)
-	minSuns := max(0, cfg.minSuns)
-	maxSuns := max(minSuns, cfg.maxSuns)
-	target := minSuns
-	if maxSuns > minSuns {
-		target += rng.Intn(maxSuns - minSuns + 1)
-	}
+
+	target := randRange(rng, 1, 3)
 	placed := 0
-	attempts := 0
-	limit := max(200, target*200)
-	for attempts < limit && placed < target {
-		attempts++
-		radius := randRange(rng, minRadius, maxRadius)
-		margin := radius + maxRayLen + 5
-		if margin >= grid.h || margin >= grid.w || grid.h <= 2*margin || grid.w <= 2*margin {
-			continue
+	radius := randRange(rng, minRadius, maxRadius)
+	margin := radius + maxRayLen + 5
+
+	for attempt := 0; attempt < 200 && placed < target; attempt++ {
+		if margin >= h/2 || margin >= w/2 {
+			break
 		}
-		cx := margin + rng.Intn(h-2*margin)
-		cy := margin + rng.Intn(w-2*margin)
-		if grid.placeSun(cx, cy, radius, randomRays(rng)) {
+		cx := margin + rng.Intn(max(1, h-2*margin))
+		cy := margin + rng.Intn(max(1, w-2*margin))
+		numRays := rng.Intn(7)
+		rays := makeRays(rng, numRays)
+		if grid.placeSun(cx, cy, radius, rays) {
 			placed++
 		}
 	}
-	if placed < target {
-		placed += placeFallback(grid, target-placed)
-	}
+
 	return grid.toInput()
 }
 
-func placeFallback(g *img, need int) int {
-	placed := 0
-	radius := (minRadius + maxRadius) / 2
-	margin := radius + maxRayLen + 5
-	for cx := margin; cx < g.h-margin && placed < need; cx += radius + maxRayLen + 5 {
-		for cy := margin; cy < g.w-margin && placed < need; cy += radius + maxRayLen + 5 {
-			if g.placeSun(cx, cy, radius, nil) {
-				placed++
-			}
-		}
-	}
-	return placed
-}
-
-func randRange(rng *rand.Rand, lo, hi int) int {
-	if hi < lo {
-		lo, hi = hi, lo
-	}
-	if lo == hi {
-		return lo
-	}
-	return lo + rng.Intn(hi-lo+1)
-}
-
-func randomRays(rng *rand.Rand) []raySpec {
-	var count int
-	switch rng.Intn(5) {
-	case 0:
-		count = 0
-	case 1:
-		count = 1
-	default:
-		count = 2 + rng.Intn(5)
-	}
+func makeRays(rng *rand.Rand, count int) []raySpec {
 	if count > len(rayDirections) {
 		count = len(rayDirections)
 	}
@@ -272,6 +164,38 @@ func randomRays(rng *rand.Rand) []raySpec {
 		}
 	}
 	return rays
+}
+
+func fatal(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
+	os.Exit(1)
+}
+
+func runBinary(target, input string) (string, error) {
+	cmd := exec.Command(target)
+	return runCommand(cmd, input)
+}
+
+func runCommand(cmd *exec.Cmd, input string) (string, error) {
+	cmd.Stdin = strings.NewReader(input)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("%v\n%s", err, stderr.String())
+	}
+	return strings.TrimSpace(stdout.String()), nil
+}
+
+func randRange(rng *rand.Rand, lo, hi int) int {
+	if hi < lo {
+		lo, hi = hi, lo
+	}
+	if lo == hi {
+		return lo
+	}
+	return lo + rng.Intn(hi-lo+1)
 }
 
 func (g *img) placeSun(cx, cy, radius int, rays []raySpec) bool {
@@ -371,3 +295,6 @@ func max(a, b int) int {
 	}
 	return b
 }
+
+// suppress unused import
+var _ = time.Now

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -12,149 +11,66 @@ import (
 	"time"
 )
 
-func min(a, b int) int {
-	if a < b {
-		return a
+func isGray(s []byte) bool {
+	n := len(s)
+	if n%2 == 0 {
+		return false
 	}
-	return b
+	if n == 1 {
+		return true
+	}
+	mid := n / 2
+	c := s[mid]
+	for i, ch := range s {
+		if i != mid && ch == c {
+			return false
+		}
+	}
+	left := s[:mid]
+	right := s[mid+1:]
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+	return isGray(left)
 }
 
-func manacher(s []byte) []int {
+func beauty(s []byte) int64 {
 	n := len(s)
-	d := make([]int, n)
-	l, r := 0, -1
+	var sum int64
 	for i := 0; i < n; i++ {
-		var k int
-		if i > r {
-			k = 1
-		} else {
-			k = min(d[l+r-i], r-i) + 1
-		}
-		for i-k >= 0 && i+k < n && s[i-k] == s[i+k] {
-			k++
-		}
-		d[i] = k - 1
-		if i+k-1 > r {
-			l = i - k + 1
-			r = i + k - 1
+		for j := i; j < n; j++ {
+			sub := s[i : j+1]
+			if isGray(sub) {
+				l := int64(j - i + 1)
+				sum += l * l
+			}
 		}
 	}
-	return d
+	return sum
 }
 
 func solveE(in string) string {
-	reader := bufio.NewReader(strings.NewReader(in))
-	var t string
-	fmt.Fscan(reader, &t)
+	t := strings.TrimSpace(in)
 	s := []byte(t)
 	n := len(s)
-	pal := manacher(s)
-	const K = 26
-	prev := make([]int, n)
-	last := make([]int, K)
-	for i := range last {
-		last[i] = -1
-	}
+	best := beauty(s)
 	for i := 0; i < n; i++ {
-		c := int(s[i] - 'a')
-		prev[i] = last[c]
-		last[c] = i
-	}
-	next := make([]int, n)
-	for i := range last {
-		last[i] = n
-	}
-	for i := n - 1; i >= 0; i-- {
-		c := int(s[i] - 'a')
-		next[i] = last[c]
-		last[c] = i
-	}
-	uniq := make([]int, n)
-	for i := 0; i < n; i++ {
-		ldist := n
-		if prev[i] >= 0 {
-			ldist = i - prev[i]
-		}
-		rdist := n
-		if next[i] < n {
-			rdist = next[i] - i
-		}
-		tmp := min(ldist, rdist) - 1
-		if tmp < 0 {
-			tmp = 0
-		}
-		uniq[i] = tmp
-	}
-	maxH := 0
-	for h := 1; ; h++ {
-		if (1<<h)-1 > n {
-			break
-		}
-		maxH = h
-	}
-	d := make([]int, maxH+1)
-	off := make([]int, maxH+1)
-	for h := 1; h <= maxH; h++ {
-		if h == 1 {
-			d[h] = 0
-			off[h] = 0
-		} else {
-			d[h] = (1 << (h - 1)) - 1
-			off[h] = 1 << (h - 2)
-		}
-	}
-	good := make([][]bool, n)
-	dp := make([][]bool, n)
-	for i := 0; i < n; i++ {
-		good[i] = make([]bool, maxH+1)
-		dp[i] = make([]bool, maxH+1)
-		good[i][1] = true
-		dp[i][1] = true
-	}
-	for h := 2; h <= maxH; h++ {
-		dh := d[h]
-		oh := off[h]
-		for k := 0; k < n; k++ {
-			if k-oh >= 0 && k+oh < n && pal[k] >= dh && good[k][h-1] && good[k-oh][h-1] {
-				good[k][h] = true
-				if uniq[k] >= dh {
-					dp[k][h] = true
-				}
+		orig := s[i]
+		for c := byte('a'); c <= byte('z'); c++ {
+			if c == orig {
+				continue
 			}
+			s[i] = c
+			v := beauty(s)
+			if v > best {
+				best = v
+			}
+			s[i] = orig
 		}
 	}
-	lenh := make([]int64, maxH+1)
-	sqh := make([]int64, maxH+1)
-	for h := 1; h <= maxH; h++ {
-		l := int64((1 << h) - 1)
-		lenh[h] = l
-		sqh[h] = l * l
-	}
-	var origSum int64
-	bestDelta := int64(0)
-	for k := 0; k < n; k++ {
-		Hk := 0
-		Gk := 0
-		for h := 1; h <= maxH; h++ {
-			if dp[k][h] {
-				origSum += sqh[h]
-				Hk = h
-			}
-			if good[k][h] {
-				Gk = h
-			}
-		}
-		if Gk > Hk {
-			var delta int64
-			for h := Hk + 1; h <= Gk; h++ {
-				delta += sqh[h]
-			}
-			if delta > bestDelta {
-				bestDelta = delta
-			}
-		}
-	}
-	return fmt.Sprintln(origSum + bestDelta)
+	return fmt.Sprint(best)
 }
 
 func genTest(r *rand.Rand) string {
@@ -190,7 +106,7 @@ func main() {
 	const tests = 100
 	for i := 0; i < tests; i++ {
 		in := genTest(r)
-		expect := strings.TrimSpace(solveE(in))
+		expect := solveE(in)
 		got, err := runBinary(bin, in)
 		if err != nil {
 			fmt.Printf("test %d: runtime error: %v\n", i+1, err)

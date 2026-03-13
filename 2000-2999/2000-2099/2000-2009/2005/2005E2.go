@@ -6,11 +6,6 @@ import (
 	"os"
 )
 
-type pair struct {
-	r int
-	c int
-}
-
 func main() {
 	in := bufio.NewReader(os.Stdin)
 	out := bufio.NewWriter(os.Stdout)
@@ -27,82 +22,67 @@ func main() {
 			fmt.Fscan(in, &a[i])
 		}
 
-		pos := make(map[int][]pair)
-		for i := 1; i <= n; i++ {
-			for j := 1; j <= m; j++ {
-				var val int
-				fmt.Fscan(in, &val)
-				pos[val] = append(pos[val], pair{r: i, c: j})
+		b := make([][]int, n)
+		for i := 0; i < n; i++ {
+			b[i] = make([]int, m)
+			for j := 0; j < m; j++ {
+				fmt.Fscan(in, &b[i][j])
 			}
 		}
 
-		const inf = int(1e9)
-		curRowMin := make([]int, n+2)
-		for i := range curRowMin {
-			curRowMin[i] = inf
+		if l == 0 {
+			fmt.Fprintln(out, "N")
+			continue
 		}
 
-		length := 0
-
-		for idx := 0; idx < l; idx++ {
-			points := pos[a[idx]]
-			if len(points) == 0 {
-				break
-			}
-
-			if length == 0 {
-				for _, p := range points {
-					if p.c < curRowMin[p.r] {
-						curRowMin[p.r] = p.c
-					}
-				}
-				possible := false
-				for r := 1; r <= n; r++ {
-					if curRowMin[r] != inf {
-						possible = true
-						break
-					}
-				}
-				if !possible {
-					break
-				}
-				length = 1
-				continue
-			}
-
-			pref := make([]int, n+2)
-			pref[0] = inf
-			for r := 1; r <= n; r++ {
-				pref[r] = pref[r-1]
-				if curRowMin[r] < pref[r] {
-					pref[r] = curRowMin[r]
-				}
-			}
-
-			newRowMin := make([]int, n+2)
-			for r := range newRowMin {
-				newRowMin[r] = inf
-			}
-			any := false
-
-			for _, p := range points {
-				if pref[p.r-1] < p.c {
-					if p.c < newRowMin[p.r] {
-						newRowMin[p.r] = p.c
-					}
-					any = true
-				}
-			}
-
-			if !any {
-				break
-			}
-
-			curRowMin = newRowMin
-			length++
+		// hasWin[r][c] = true if in submatrix [r..n-1][c..m-1] there exists a WINNING cell
+		// for the NEXT index (idx+1). Size (n+1) x (m+1) to handle out-of-bounds.
+		// Initialize for after idx=l-1 (no next index exists).
+		hasWin := make([][]bool, n+1)
+		for i := range hasWin {
+			hasWin[i] = make([]bool, m+1)
 		}
 
-		if length%2 == 1 {
+		for idx := l - 1; idx >= 0; idx-- {
+			// For each cell matching a[idx], compute win(idx, r, c):
+			//   win = true if idx==l-1, OR submatrix(r+1,c+1) has no winning cell for idx+1
+			//   win = (idx == l-1) || (r+1>=n || c+1>=m || !hasWin[r+1][c+1])
+			// Then build new hasWin = suffix-OR of winning cells for idx.
+
+			// First pass: mark winning cells
+			winCell := make([][]bool, n)
+			for r := 0; r < n; r++ {
+				winCell[r] = make([]bool, m)
+				for c := 0; c < m; c++ {
+					if b[r][c] == a[idx] {
+						if idx == l-1 {
+							winCell[r][c] = true
+						} else if r+1 >= n || c+1 >= m {
+							winCell[r][c] = true
+						} else {
+							winCell[r][c] = !hasWin[r+1][c+1]
+						}
+					}
+				}
+			}
+
+			// Build suffix-OR: hasWin[r][c] = OR of winCell[r'][c'] for r'>=r, c'>=c
+			newHW := make([][]bool, n+1)
+			for i := range newHW {
+				newHW[i] = make([]bool, m+1)
+			}
+			for r := n - 1; r >= 0; r-- {
+				for c := m - 1; c >= 0; c-- {
+					newHW[r][c] = winCell[r][c] || newHW[r+1][c] || newHW[r][c+1]
+					// newHW[r+1][c+1] is already covered by both newHW[r+1][c] and newHW[r][c+1]
+					// but OR is idempotent so no issue
+				}
+			}
+
+			hasWin = newHW
+		}
+
+		if hasWin[0][0] {
 			fmt.Fprintln(out, "T")
 		} else {
 			fmt.Fprintln(out, "N")
