@@ -61,7 +61,7 @@ func main() {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%d\n", t)
 	for i := 0; i < t; i++ {
-		n := rand.Intn(5) + 1
+		n := rand.Intn(5) + 2
 		arr := make([]int64, n)
 		for j := 0; j < n; j++ {
 			arr[j] = rand.Int63n(20)

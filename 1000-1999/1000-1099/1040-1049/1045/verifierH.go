@@ -64,8 +64,12 @@ func main() {
 }
 
 func buildReference() (string, error) {
+	srcPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if srcPath == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH environment variable not set")
+	}
 	path := "./ref1045H.bin"
-	cmd := exec.Command("go", "build", "-o", path, "1045H.go")
+	cmd := exec.Command("go", "build", "-o", path, srcPath)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
@@ -208,14 +212,23 @@ func randomBinaryString(rng *rand.Rand, minLen, maxLen int) string {
 }
 
 func intervalAroundString(rng *rand.Rand, s string) (string, string) {
+	n := len(s)
 	val := mustParseBinary(s)
+	// Compute the valid range for n-digit binary numbers: [1<<(n-1), (1<<n)-1]
+	lo := new(big.Int).Lsh(big.NewInt(1), uint(n-1))
+	hi := new(big.Int).Lsh(big.NewInt(1), uint(n))
+	hi.Sub(hi, big.NewInt(1))
+
 	left := rng.Intn(6)
 	right := rng.Intn(6)
 	aVal := new(big.Int).Sub(val, big.NewInt(int64(left)))
-	if aVal.Sign() <= 0 {
-		aVal.SetInt64(1)
+	if aVal.Cmp(lo) < 0 {
+		aVal.Set(lo)
 	}
 	bVal := new(big.Int).Add(val, big.NewInt(int64(right)))
+	if bVal.Cmp(hi) > 0 {
+		bVal.Set(hi)
+	}
 	if bVal.Cmp(aVal) < 0 {
 		bVal.Set(aVal)
 	}

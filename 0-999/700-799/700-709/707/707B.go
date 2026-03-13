@@ -7,7 +7,7 @@ import (
    "os"
 )
 
-const INF = 1e18
+const INF int64 = 1e18
 
 type Edge struct {
    to   int

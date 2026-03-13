@@ -40,6 +40,53 @@ func query(l, r, x int) int {
    return v
 }
 
+// validCompletionLeqBoundary checks if the unique valid completion
+// (the only string with the remaining counts) is <= the boundary suffix.
+// remainingSegs are the boundary segments from position idx onward (0-based).
+// isOdd is true if the current segment (idx) is a 1-block.
+// c00, c11 are the remaining zeros and ones.
+// For c01==1 at odd step: valid completion is 1^c11 0^c00 (2 segments)
+// For c10==1 at even step: valid completion is 0^c00 1^c11 (2 segments)
+func validCompletionLeqBoundary(remainingSegs []int, isOdd bool, c00, c11 int) bool {
+   // Build the valid completion as segments
+   var validSegs []int
+   if isOdd {
+       // At an odd (1-block) step with c01==1: completion is [c11 ones][c00 zeros]
+       validSegs = []int{c11, c00}
+       if c00 == 0 {
+           validSegs = []int{c11}
+       }
+   } else {
+       // At an even (0-block) step with c10==1: completion is [c00 zeros][c11 ones]
+       validSegs = []int{c00, c11}
+       if c11 == 0 {
+           validSegs = []int{c00}
+       }
+   }
+   // Compare valid segments with boundary segments lexicographically in terms of string value.
+   // Both represent the same starting digit type (1 for odd, 0 for even).
+   // At each segment position, if we're in a 1-block, a LARGER block means LARGER value
+   // (more 1s before the transition). If in a 0-block, a LARGER block means SMALLER value
+   // (more 0s). But we need to compare the actual strings.
+   //
+   // Actually, let's just expand both to strings and compare.
+   expand := func(segs []int, startWithOne bool) string {
+       var s []byte
+       one := startWithOne
+       for _, sz := range segs {
+           for j := 0; j < sz; j++ {
+               if one { s = append(s, '1') } else { s = append(s, '0') }
+           }
+           one = !one
+       }
+       return string(s)
+   }
+   startOne := isOdd
+   vs := expand(validSegs, startOne)
+   bs := expand(remainingSegs, startOne)
+   return vs <= bs
+}
+
 func calc(a []int, aN, c00, c01, c10, c11 int) int {
    an := len(a)
    if aN == 0 {
@@ -68,7 +115,12 @@ func calc(a []int, aN, c00, c01, c10, c11 int) int {
                if c11 > ai {
                    return ans
                }
-               return add(ans, 1)
+               // There's exactly one valid completion: 1^c11 0^c00
+               // Check if it's <= boundary suffix from segment i onward
+               if validCompletionLeqBoundary(a[i-1:], true, c00, c11) {
+                   return add(ans, 1)
+               }
+               return ans
            }
            t := int(int64(query(c11-ai, c11-2, c01-2)) * int64(C(c00-1, c10-1)) % mod)
            ans = add(ans, t)
@@ -82,7 +134,12 @@ func calc(a []int, aN, c00, c01, c10, c11 int) int {
                if c00 < ai {
                    return ans
                }
-               return add(ans, 1)
+               // There's exactly one valid completion: 0^c00 1^c11
+               // Check if it's <= boundary suffix from segment i onward
+               if validCompletionLeqBoundary(a[i-1:], false, c00, c11) {
+                   return add(ans, 1)
+               }
+               return ans
            }
            t := int(int64(query(0, c00-ai-2, c10-2)) * int64(C(c11-1, c01-1)) % mod)
            ans = add(ans, t)
@@ -93,7 +150,8 @@ func calc(a []int, aN, c00, c01, c10, c11 int) int {
            }
        }
    }
-   return ans
+   // All segments processed, boundary exactly matches -> count it
+   return add(ans, 1)
 }
 
 func modPow(a, b int) int {

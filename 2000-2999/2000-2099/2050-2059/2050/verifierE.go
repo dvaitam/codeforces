@@ -3,29 +3,26 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
-const refSource = "2000-2999/2000-2099/2050-2059/2050/2050E.go"
+const (
+	randomCases = 80
+	maxALen     = 1000
+	maxBLen     = 1000
+)
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierE.go /path/to/candidate")
+		fmt.Fprintln(os.Stderr, "usage: verifierE /path/to/candidate")
 		os.Exit(1)
 	}
 	candidate := os.Args[1]
-
-	input, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		fail("failed to read input: %v", err)
-	}
-	if len(input) == 0 {
-		fail("empty input")
-	}
 
 	refBin, err := buildReference()
 	if err != nil {
@@ -33,44 +30,56 @@ func main() {
 	}
 	defer os.Remove(refBin)
 
+	tests := generateTests()
+	input := buildInput(tests)
+
 	refOut, err := runProgram(refBin, input)
 	if err != nil {
 		fail("reference execution failed: %v", err)
 	}
-	refAnswers, err := parseAnswers(refOut)
-	if err != nil {
-		fail("failed to parse reference output: %v", err)
-	}
+	refAnswers := strings.Fields(refOut)
 
-	candOut, err := runProgram(candidate, input)
+	candOut, err := runCandidate(candidate, input)
 	if err != nil {
 		fail("candidate execution failed: %v", err)
 	}
-	candAnswers, err := parseAnswers(candOut)
-	if err != nil {
-		fail("failed to parse candidate output: %v", err)
+	candAnswers := strings.Fields(candOut)
+
+	numTests := len(tests)
+	if len(refAnswers) != numTests {
+		fail("reference produced %d answers, expected %d", len(refAnswers), numTests)
+	}
+	if len(candAnswers) != numTests {
+		fail("candidate produced %d answers, expected %d", len(candAnswers), numTests)
 	}
 
-	if len(refAnswers) != len(candAnswers) {
-		fail("expected %d answers, got %d", len(refAnswers), len(candAnswers))
-	}
-	for i := range refAnswers {
+	for i := 0; i < numTests; i++ {
 		if refAnswers[i] != candAnswers[i] {
-			fail("test %d: expected %d got %d", i+1, refAnswers[i], candAnswers[i])
+			fail("test %d: expected %s got %s\n  a=%s\n  b=%s\n  c=%s",
+				i+1, refAnswers[i], candAnswers[i],
+				tests[i][0], tests[i][1], tests[i][2])
 		}
 	}
 
-	fmt.Println("OK")
+	fmt.Printf("All %d tests passed.\n", numTests)
 }
 
+// Each test is [3]string{a, b, c}.
+type testCase [3]string
+
 func buildReference() (string, error) {
+	refSource := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSource == "" {
+		fail("REFERENCE_SOURCE_PATH environment variable not set")
+	}
+
 	tmp, err := os.CreateTemp("", "2050E-ref-*")
 	if err != nil {
 		return "", err
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), refSource)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -81,39 +90,162 @@ func buildReference() (string, error) {
 	return tmp.Name(), nil
 }
 
-func runProgram(path string, input []byte) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	} else {
-		cmd = exec.Command(path)
+func randString(rng *rand.Rand, length int) string {
+	var sb strings.Builder
+	sb.Grow(length)
+	for i := 0; i < length; i++ {
+		sb.WriteByte(byte('a' + rng.Intn(26)))
 	}
-	cmd.Stdin = bytes.NewReader(input)
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("%v\n%s", err, stderr.String())
-	}
-	return stdout.String(), nil
+	return sb.String()
 }
 
-func parseAnswers(out string) ([]int64, error) {
-	reader := strings.NewReader(out)
-	var res []int64
-	for {
-		var val int64
-		_, err := fmt.Fscan(reader, &val)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, fmt.Errorf("failed to parse integer: %v", err)
+// Generate c by interleaving a and b, then optionally changing some characters.
+func interleave(rng *rand.Rand, a, b string, changes int) string {
+	c := make([]byte, len(a)+len(b))
+	ia, ib := 0, 0
+	for i := 0; i < len(c); i++ {
+		if ia >= len(a) {
+			c[i] = b[ib]
+			ib++
+		} else if ib >= len(b) {
+			c[i] = a[ia]
+			ia++
+		} else if rng.Intn(2) == 0 {
+			c[i] = a[ia]
+			ia++
+		} else {
+			c[i] = b[ib]
+			ib++
 		}
-		res = append(res, val)
 	}
-	return res, nil
+	// Apply random changes.
+	for ch := 0; ch < changes; ch++ {
+		pos := rng.Intn(len(c))
+		newChar := byte('a' + rng.Intn(26))
+		c[pos] = newChar
+	}
+	return string(c)
+}
+
+func generateTests() []testCase {
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	var tests []testCase
+
+	// Sample tests from the problem statement.
+	samples := []testCase{
+		{"abc", "ba", "abcba"},
+		{"a", "b", "ab"},
+		{"baa", "aab", "baaaab"},
+		{"xxx", "yyy", "xyxyxy"},
+	}
+	tests = append(tests, samples...)
+
+	// Edge cases.
+	// Single character strings.
+	tests = append(tests, testCase{"a", "a", "aa"})
+	tests = append(tests, testCase{"a", "b", "ba"})
+	tests = append(tests, testCase{"a", "a", "bb"})
+
+	// Same characters.
+	tests = append(tests, testCase{"aaa", "aaa", "aaaaaa"})
+
+	// Completely different.
+	tests = append(tests, testCase{"aaa", "bbb", "ababab"})
+
+	// Max changes needed.
+	tests = append(tests, testCase{"abc", "def", "zzzzzz"})
+
+	// Keep total |a| and |b| sums within 2000 each for the batch.
+	totalA, totalB := 0, 0
+	for _, t := range tests {
+		totalA += len(t[0])
+		totalB += len(t[1])
+	}
+
+	for i := 0; i < randomCases; i++ {
+		remainA := maxALen*2 - totalA
+		remainB := maxBLen*2 - totalB
+		if remainA < 2 || remainB < 2 {
+			break
+		}
+
+		lenA := rng.Intn(min(remainA, 50)) + 1
+		lenB := rng.Intn(min(remainB, 50)) + 1
+
+		a := randString(rng, lenA)
+		b := randString(rng, lenB)
+
+		// Vary number of changes: sometimes 0, sometimes a few.
+		changes := rng.Intn(lenA + lenB + 1)
+		if rng.Intn(3) == 0 {
+			changes = 0 // perfect interleaving, no changes
+		}
+		c := interleave(rng, a, b, changes)
+
+		tests = append(tests, testCase{a, b, c})
+		totalA += lenA
+		totalB += lenB
+	}
+
+	return tests
+}
+
+func buildInput(tests []testCase) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d\n", len(tests)))
+	for _, t := range tests {
+		sb.WriteString(t[0])
+		sb.WriteByte('\n')
+		sb.WriteString(t[1])
+		sb.WriteByte('\n')
+		sb.WriteString(t[2])
+		sb.WriteByte('\n')
+	}
+	return sb.String()
+}
+
+func runProgram(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("%v\nstderr: %s", err, errBuf.String())
+	}
+	return out.String(), nil
+}
+
+func runCandidate(path, input string) (string, error) {
+	cmd := commandFor(path)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("%v\nstderr: %s", err, errBuf.String())
+	}
+	return out.String(), nil
+}
+
+func commandFor(path string) *exec.Cmd {
+	switch filepath.Ext(path) {
+	case ".go":
+		return exec.Command("go", "run", path)
+	case ".py":
+		return exec.Command("python3", path)
+	default:
+		return exec.Command(path)
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func fail(format string, args ...interface{}) {

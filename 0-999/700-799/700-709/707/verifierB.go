@@ -11,8 +11,13 @@ import (
 )
 
 func compileRef() (string, error) {
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
 	ref := "refB"
-	cmd := exec.Command("go", "build", "-o", ref, "707B.go")
+	cmd := exec.Command("go", "build", "-o", ref, src)
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return "", err
 	}
@@ -31,8 +36,9 @@ func run(bin string, input string) (string, error) {
 
 func generateTest() string {
 	n := rand.Intn(10) + 2
-	m := rand.Intn(n*(n-1)/2) + 1
-	k := rand.Intn(n + 1) // can be 0
+	maxEdges := n * (n - 1) / 2
+	m := rand.Intn(maxEdges) + 1
+	k := rand.Intn(n + 1) // can be 0 up to n
 	edges := make(map[[2]int]bool)
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d %d %d\n", n, m, k))
@@ -50,24 +56,17 @@ func generateTest() string {
 			continue
 		}
 		edges[key] = true
-		l := rand.Intn(100) + 1
+		l := rand.Intn(1000000000) + 1
 		sb.WriteString(fmt.Sprintf("%d %d %d\n", u, v, l))
 	}
 	if k > 0 {
-		used := make(map[int]bool)
+		// Pick k distinct vertices as storages
+		perm := rand.Perm(n)
 		for i := 0; i < k; i++ {
-			var v int
-			for {
-				v = rand.Intn(n) + 1
-				if !used[v] {
-					break
-				}
-			}
-			used[v] = true
 			if i > 0 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(fmt.Sprintf("%d", v))
+			sb.WriteString(fmt.Sprintf("%d", perm[i]+1))
 		}
 		sb.WriteByte('\n')
 	}
@@ -76,7 +75,7 @@ func generateTest() string {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierB.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: verifierB /path/to/binary")
 		os.Exit(1)
 	}
 	rand.Seed(time.Now().UnixNano())
@@ -90,7 +89,7 @@ func main() {
 	bin := os.Args[1]
 	for t := 0; t < 100; t++ {
 		input := generateTest()
-		want, err := run(ref, input)
+		want, err := run("./"+ref, input)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "reference failed:", err)
 			os.Exit(1)

@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	refSource  = "./1266E.go"
 	refBinary  = "ref1266E.bin"
 	totalTests = 80
 )
@@ -86,6 +85,10 @@ func main() {
 }
 
 func buildReference() (string, func(), error) {
+	refSource := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSource == "" {
+		return "", nil, fmt.Errorf("REFERENCE_SOURCE_PATH environment variable not set")
+	}
 	dir, err := os.MkdirTemp("", "ref-1266E-")
 	if err != nil {
 		return "", nil, err
@@ -179,7 +182,7 @@ func randomTest(rng *rand.Rand) testCase {
 	n := rng.Intn(8) + 1
 	goals := make([]int64, n)
 	for i := range goals {
-		goals[i] = int64(rng.Intn(20) + 1)
+		goals[i] = int64(rng.Intn(20) + 2) // minimum 2 so t can be at least 1
 	}
 	q := rng.Intn(10) + 1
 	updates := make([]milestoneUpdate, q)
@@ -200,7 +203,7 @@ func randomTest(rng *rand.Rand) testCase {
 func heavyTest(n, q int, rng *rand.Rand) testCase {
 	goals := make([]int64, n)
 	for i := range goals {
-		goals[i] = int64(rng.Intn(1_000_000_000) + 1)
+		goals[i] = int64(rng.Intn(1_000_000_000) + 2) // minimum 2 so t can be at least 1
 	}
 	updates := make([]milestoneUpdate, q)
 	for i := 0; i < q; i++ {
