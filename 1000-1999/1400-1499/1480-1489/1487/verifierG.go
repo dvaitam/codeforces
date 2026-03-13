@@ -67,16 +67,11 @@ func main() {
 }
 
 func locateReference() (string, error) {
-	candidates := []string{
-		"1487G.go",
-		filepath.Join("1000-1999", "1400-1499", "1480-1489", "1487", "1487G.go"),
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
 	}
-	for _, path := range candidates {
-		if _, err := os.Stat(path); err == nil {
-			return path, nil
-		}
-	}
-	return "", fmt.Errorf("could not find 1487G.go reference")
+	return src, nil
 }
 
 func buildReference(src string) (string, error) {

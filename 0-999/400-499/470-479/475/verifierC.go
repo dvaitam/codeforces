@@ -13,14 +13,23 @@ import (
 )
 
 func buildOracle() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	exe := filepath.Join(dir, "oracleC")
-	cmd := exec.Command("go", "build", "-o", exe, filepath.Join(dir, "475C.go"))
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		_, file, _, _ := runtime.Caller(0)
+		dir := filepath.Dir(file)
+		src = filepath.Join(dir, "475C.go")
+	}
+	tmp, err := os.CreateTemp("", "oracleC-*")
+	if err != nil {
+		return "", err
+	}
+	tmp.Close()
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), src)
 	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(tmp.Name())
 		return "", fmt.Errorf("build oracle: %v\n%s", err, out)
 	}
-	return exe, nil
+	return tmp.Name(), nil
 }
 
 func generateCase(rng *rand.Rand) string {

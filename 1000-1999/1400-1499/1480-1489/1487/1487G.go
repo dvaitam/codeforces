@@ -153,14 +153,19 @@ func solve(n int, c []int) int64 {
 	}
 	total := int64(26*26%MOD) * powmod(25, int64(n-2)) % MOD
 	for _, x := range c {
-		total = (total - singleSuf[x+1]) % MOD
+		if x+1 <= n+1 {
+			total = (total - singleSuf[x+1]) % MOD
+		}
 	}
 	if total < 0 {
 		total += MOD
 	}
 	for i := 0; i < 26; i++ {
 		for j := i + 1; j < 26; j++ {
-			total = (total + pairSuf[c[i]+1][c[j]+1]) % MOD
+			ci, cj := c[i]+1, c[j]+1
+			if ci <= n+1 && cj <= n+1 {
+				total = (total + pairSuf[ci][cj]) % MOD
+			}
 		}
 	}
 	if total < 0 {

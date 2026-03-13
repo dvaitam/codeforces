@@ -19,8 +19,12 @@ func (t Test) Input() string {
 }
 
 func buildRef() (string, error) {
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
 	ref := "./refD.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1698D.go")
+	cmd := exec.Command("go", "build", "-o", ref, src)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build ref failed: %v: %s", err, out)
 	}

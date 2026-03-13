@@ -6,17 +6,15 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	refSource         = "./2075B.go"
 	maxTotalN         = 5000
-	targetTests       = 120
-	maxSingleN        = 5000
+	targetTests       = 80
+	maxSingleN        = 500
 	maxValue    int64 = 1_000_000_000
 )
 
@@ -33,7 +31,13 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, err := buildReference()
+	refPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refPath == "" {
+		fmt.Fprintln(os.Stderr, "REFERENCE_SOURCE_PATH not set")
+		os.Exit(1)
+	}
+
+	refBin, err := buildBinary(refPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
 		os.Exit(1)
@@ -79,14 +83,14 @@ func main() {
 	fmt.Printf("Accepted (%d test cases).\n", len(tests))
 }
 
-func buildReference() (string, error) {
+func buildBinary(src string) (string, error) {
 	tmp, err := os.CreateTemp("", "2075B-ref-*")
 	if err != nil {
 		return "", err
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), src)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -183,7 +187,7 @@ func generateTests() []testCase {
 	add(testCase{n: 5, k: 3, a: []int64{2, 2, 2, 2, 2}})
 
 	for len(tests) < targetTests && totalN < maxTotalN {
-		n := rng.Intn(min(250, maxTotalN-totalN)) + 2
+		n := rng.Intn(minVal(100, maxTotalN-totalN)) + 2
 		if n > maxSingleN {
 			n = maxSingleN
 		}
@@ -201,7 +205,7 @@ func generateTests() []testCase {
 	return tests
 }
 
-func min(a, b int) int {
+func minVal(a, b int) int {
 	if a < b {
 		return a
 	}

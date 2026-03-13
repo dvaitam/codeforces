@@ -11,12 +11,21 @@ import (
 )
 
 func buildRef() (string, error) {
-	ref := "./refD.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "825D.go")
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		src = "825D.go"
+	}
+	tmp, err := os.CreateTemp("", "refD-*")
+	if err != nil {
+		return "", err
+	}
+	tmp.Close()
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), src)
 	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(tmp.Name())
 		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
 	}
-	return ref, nil
+	return tmp.Name(), nil
 }
 
 func randStringLetters(rng *rand.Rand, n int, allowQ bool) string {

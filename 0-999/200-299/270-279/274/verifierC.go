@@ -147,8 +147,20 @@ func runCase(exe string, input, expected string) error {
 	}
 	got := strings.TrimSpace(out.String())
 	exp := strings.TrimSpace(expected)
-	if got != exp {
+	// Use tolerance-based comparison for floating point values
+	if got == exp {
+		return nil
+	}
+	gotF, errG := strconv.ParseFloat(got, 64)
+	expF, errE := strconv.ParseFloat(exp, 64)
+	if errG != nil || errE != nil {
+		// If not both parseable as float, fall back to exact match
 		return fmt.Errorf("expected %q got %q", exp, got)
+	}
+	diff := math.Abs(gotF - expF)
+	rel := diff / math.Max(1.0, math.Abs(expF))
+	if diff > 1e-6 && rel > 1e-6 {
+		return fmt.Errorf("expected %q got %q (diff=%e)", exp, got, diff)
 	}
 	return nil
 }

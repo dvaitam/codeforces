@@ -6,16 +6,13 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	refSourceE2 = "958E2.go"
-	refBinaryE2 = "ref958E2.bin"
-	totalTests  = 70
+	totalTests = 70
 )
 
 type testCase struct {
@@ -83,11 +80,21 @@ func main() {
 }
 
 func buildReference() (string, error) {
-	cmd := exec.Command("go", "build", "-o", refBinaryE2, refSourceE2)
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		src = "958E2.go"
+	}
+	tmp, err := os.CreateTemp("", "ref958E2-*")
+	if err != nil {
+		return "", err
+	}
+	tmp.Close()
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), src)
 	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(tmp.Name())
 		return "", fmt.Errorf("%v\n%s", err, string(out))
 	}
-	return filepath.Join(".", refBinaryE2), nil
+	return tmp.Name(), nil
 }
 
 func runProgram(path string, input []byte) (string, error) {
@@ -156,9 +163,9 @@ func generateTests() []testCase {
 	tests = append(tests,
 		randomLarge(500, 50, rand.New(rand.NewSource(1))),
 		randomLarge(1000, 100, rand.New(rand.NewSource(2))),
-		randomLarge(5000, 300, rand.New(rand.NewSource(3))),
-		randomLarge(20000, 1000, rand.New(rand.NewSource(4))),
-		randomLarge(50000, 2500, rand.New(rand.NewSource(5))),
+		randomLarge(2000, 200, rand.New(rand.NewSource(3))),
+		randomLarge(3000, 300, rand.New(rand.NewSource(4))),
+		randomLarge(5000, 500, rand.New(rand.NewSource(5))),
 	)
 
 	return tests

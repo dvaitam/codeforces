@@ -3,24 +3,35 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
 
 func buildRef() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	ref := filepath.Join(dir, "refD.bin")
-	cmd := exec.Command("go", "build", "-o", ref, filepath.Join(dir, "623D.go"))
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		_, file, _, _ := runtime.Caller(0)
+		dir := filepath.Dir(file)
+		src = filepath.Join(dir, "623D.go")
+	}
+	tmp, err := os.CreateTemp("", "refD-*")
+	if err != nil {
+		return "", err
+	}
+	tmp.Close()
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), src)
 	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(tmp.Name())
 		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
 	}
-	return ref, nil
+	return tmp.Name(), nil
 }
 
 func randProbs(rng *rand.Rand, n int) []int {
@@ -71,8 +82,19 @@ func runCase(bin, ref, input string) error {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
 	got := strings.TrimSpace(out.String())
-	if got != expected {
+	if got == expected {
+		return nil
+	}
+	// Tolerance-based float comparison
+	gotF, errG := strconv.ParseFloat(got, 64)
+	expF, errE := strconv.ParseFloat(expected, 64)
+	if errG != nil || errE != nil {
 		return fmt.Errorf("expected %q got %q", expected, got)
+	}
+	diff := math.Abs(gotF - expF)
+	rel := diff / math.Max(1.0, math.Abs(expF))
+	if diff > 1e-6 && rel > 1e-6 {
+		return fmt.Errorf("expected %q got %q (diff=%e)", expected, got, diff)
 	}
 	return nil
 }

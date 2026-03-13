@@ -6,21 +6,20 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 )
 
 func buildOracle() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	src := filepath.Join(dir, "1156A.go")
-	bin := filepath.Join(os.TempDir(), "oracle1156A.bin")
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	bin := "oracle1156A.bin"
 	cmd := exec.Command("go", "build", "-o", bin, src)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}
-	return bin, nil
+	return "./" + bin, nil
 }
 
 func run(bin, input string) (string, error) {

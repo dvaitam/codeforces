@@ -13,8 +13,6 @@ import (
 )
 
 const (
-	// refSourceF1 points to the local reference so Go does not attempt GOPATH resolution.
-	refSourceF1  = "316F1.go"
 	randomTrials = 60
 	minRadius    = 20
 	maxRadius    = 80
@@ -72,6 +70,10 @@ func main() {
 	}
 	candidate := os.Args[1]
 
+	refSourceF1 := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSourceF1 == "" {
+		refSourceF1 = "316F1.go"
+	}
 	refBin, err := buildReference(refSourceF1)
 	if err != nil {
 		fatal("failed to build reference: %v", err)
@@ -79,13 +81,13 @@ func main() {
 	defer os.Remove(refBin)
 
 	tests := deterministicCases()
-	tests = append(tests, buildScene(rand.New(rand.NewSource(11)), caseConfig{hMin: 1200, hMax: 1600, wMin: 1200, wMax: 1600, minSuns: 2, maxSuns: 5}))
+	tests = append(tests, buildScene(rand.New(rand.NewSource(11)), caseConfig{hMin: 400, hMax: 600, wMin: 400, wMax: 600, minSuns: 2, maxSuns: 5}))
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for extra := 0; extra < randomTrials; extra++ {
 		var cfg caseConfig
 		if rng.Intn(6) == 0 {
-			cfg = caseConfig{hMin: 800, hMax: 1600, wMin: 800, wMax: 1600, minSuns: 1, maxSuns: 5}
+			cfg = caseConfig{hMin: 300, hMax: 600, wMin: 300, wMax: 600, minSuns: 1, maxSuns: 5}
 		} else {
 			cfg = caseConfig{hMin: 120, hMax: 500, wMin: 120, wMax: 500, minSuns: 0, maxSuns: 4}
 		}

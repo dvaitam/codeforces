@@ -100,7 +100,34 @@ func parseOutput(out string) (bool, [][3]int, error) {
 	return true, ops, nil
 }
 
-func runCase(bin, input string, expectOk bool, expectOps [][3]int) error {
+func validateOps(a []int, ops [][3]int, n int) error {
+	arr := make([]int, len(a))
+	copy(arr, a)
+	maxOps := n/3 + 12
+	if len(ops) > maxOps {
+		return fmt.Errorf("too many operations: %d > %d", len(ops), maxOps)
+	}
+	for i, op := range ops {
+		x, y, z := op[0]-1, op[1]-1, op[2]-1
+		if x < 0 || z >= n || x >= y || y >= z {
+			return fmt.Errorf("op %d: invalid indices", i+1)
+		}
+		if y-x != z-y {
+			return fmt.Errorf("op %d: not arithmetic progression", i+1)
+		}
+		arr[x] ^= 1
+		arr[y] ^= 1
+		arr[z] ^= 1
+	}
+	for i, v := range arr {
+		if v != 0 {
+			return fmt.Errorf("position %d is not zero after operations", i+1)
+		}
+	}
+	return nil
+}
+
+func runCase(bin, input string, expectOk bool) error {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
@@ -114,18 +141,21 @@ func runCase(bin, input string, expectOk bool, expectOps [][3]int) error {
 	if err != nil {
 		return err
 	}
-	if ok != expectOk {
-		return fmt.Errorf("expected %v but got %v", expectOk, ok)
+	// If we expect NO and candidate says YES, validate the ops (candidate might be right)
+	// If we expect YES and candidate says NO, that's wrong
+	if !ok && expectOk {
+		return fmt.Errorf("expected YES but got NO")
 	}
-	if !ok {
-		return nil
-	}
-	if len(ops) != len(expectOps) {
-		return fmt.Errorf("expected %d ops got %d", len(expectOps), len(ops))
-	}
-	for i := range ops {
-		if ops[i] != expectOps[i] {
-			return fmt.Errorf("op %d mismatch", i+1)
+	if ok {
+		// Parse n and array from input
+		parts := strings.Fields(strings.TrimSpace(input))
+		n, _ := strconv.Atoi(parts[0])
+		a := make([]int, n)
+		for i := 0; i < n; i++ {
+			a[i], _ = strconv.Atoi(parts[i+1])
+		}
+		if err := validateOps(a, ops, n); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -139,8 +169,8 @@ func main() {
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(42))
 	for i := 0; i < 100; i++ {
-		in, ok, ops := generateCase(rng)
-		if err := runCase(bin, in, ok, ops); err != nil {
+		in, ok, _ := generateCase(rng)
+		if err := runCase(bin, in, ok); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}

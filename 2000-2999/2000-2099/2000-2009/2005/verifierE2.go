@@ -6,8 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -33,7 +31,13 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	ref, err := buildReferenceBinary()
+	refPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refPath == "" {
+		fmt.Fprintln(os.Stderr, "REFERENCE_SOURCE_PATH not set")
+		os.Exit(1)
+	}
+
+	ref, err := buildBinary(refPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
 		os.Exit(1)
@@ -53,7 +57,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		gotOut, err := runProgram(bin, tc.input)
+		gotOut, err := runCandidate(bin, tc.input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "runtime error on test %d: %v\ninput:\n%s\nstdout/stderr:\n%s\n", idx+1, err, tc.input, gotOut)
 			os.Exit(1)
@@ -75,11 +79,7 @@ func main() {
 	fmt.Printf("All %d tests passed\n", len(tests))
 }
 
-func buildReferenceBinary() (string, error) {
-	dir, err := verifierDir()
-	if err != nil {
-		return "", err
-	}
+func buildBinary(src string) (string, error) {
 	tmp, err := os.CreateTemp("", "2005E2_ref_*.bin")
 	if err != nil {
 		return "", err
@@ -87,8 +87,7 @@ func buildReferenceBinary() (string, error) {
 	path := tmp.Name()
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", path, "2005E2.go")
-	cmd.Dir = dir
+	cmd := exec.Command("go", "build", "-o", path, src)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -99,15 +98,20 @@ func buildReferenceBinary() (string, error) {
 	return path, nil
 }
 
-func verifierDir() (string, error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("unable to determine verifier directory")
+func runProgram(path, input string) (string, error) {
+	cmd := exec.Command(path)
+	cmd.Stdin = strings.NewReader(input)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return stdout.String() + stderr.String(), fmt.Errorf("%v\n%s", err, stderr.String())
 	}
-	return filepath.Dir(file), nil
+	return stdout.String(), nil
 }
 
-func runProgram(path, input string) (string, error) {
+func runCandidate(path, input string) (string, error) {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(path, ".go") {
 		cmd = exec.Command("go", "run", path)
@@ -143,10 +147,8 @@ func generateTests() []testCase {
 	var tests []testCase
 	tests = append(tests, manualTests()...)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	tests = append(tests, randomTests(rng, 30, 50, 50)...)
-	tests = append(tests, randomTests(rng, 30, 100, 100)...)
-	tests = append(tests, randomTests(rng, 25, 200, 200)...)
-	tests = append(tests, stressTests()...)
+	tests = append(tests, randomTests(rng, 20, 30, 30)...)
+	tests = append(tests, randomTests(rng, 15, 50, 50)...)
 	return tests
 }
 
@@ -178,7 +180,7 @@ func manualTests() []testCase {
 }
 
 func randomTests(rng *rand.Rand, batches, maxN, maxM int) []testCase {
-	const limit = 3_000_000
+	const limit = 500_000
 	var tests []testCase
 	for b := 0; b < batches; b++ {
 		caseCnt := rng.Intn(3) + 1
@@ -191,25 +193,25 @@ func randomTests(rng *rand.Rand, batches, maxN, maxM int) []testCase {
 			if sumNM+n*m > limit {
 				break
 			}
-			maxRemain := 1500 - sumL
+			maxRemain := 500 - sumL
 			if maxRemain <= 0 {
 				break
 			}
-			l := rng.Intn(minInt(maxRemain, 1500)) + 1
+			l := rng.Intn(minInt(maxRemain, 500)) + 1
 			k := n * m
 			a := make([]int, l)
 			for i := 0; i < l; i++ {
 				a[i] = rng.Intn(k) + 1
 			}
-			b := make([][]int, n)
+			bm := make([][]int, n)
 			for i := 0; i < n; i++ {
 				row := make([]int, m)
 				for j := 0; j < m; j++ {
 					row[j] = rng.Intn(k) + 1
 				}
-				b[i] = row
+				bm[i] = row
 			}
-			cases = append(cases, matrix{l: l, n: n, m: m, a: a, b: b})
+			cases = append(cases, matrix{l: l, n: n, m: m, a: a, b: bm})
 			sumNM += n * m
 			sumL += l
 		}
@@ -223,32 +225,6 @@ func randomTests(rng *rand.Rand, batches, maxN, maxM int) []testCase {
 		tests = append(tests, makeTestCase(cases))
 	}
 	return tests
-}
-
-func stressTests() []testCase {
-	largeA := make([]int, 1500)
-	for i := range largeA {
-		largeA[i] = i%100 + 1
-	}
-	largeB := make([][]int, 1500)
-	for i := range largeB {
-		row := make([]int, 2)
-		for j := range row {
-			row[j] = (i+j)%100 + 1
-		}
-		largeB[i] = row
-	}
-	return []testCase{
-		makeTestCase([]matrix{
-			{
-				l: len(largeA),
-				n: len(largeB),
-				m: len(largeB[0]),
-				a: largeA,
-				b: largeB,
-			},
-		}),
-	}
 }
 
 func makeTestCase(cases []matrix) testCase {

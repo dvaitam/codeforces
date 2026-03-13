@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -28,60 +29,51 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func countOnes(n, bit int) int {
-	cycle := 1 << (bit + 1)
-	full := n / cycle
-	cnt := full * (1 << bit)
-	rem := n % cycle
-	if rem > (1 << bit) {
-		cnt += rem - (1 << bit)
-	}
-	return cnt
-}
-
-func solveD(n int, arr []int) string {
-	pref := make([]int, n)
-	cur := 0
-	for i := 1; i < n; i++ {
-		cur ^= arr[i-1]
-		pref[i] = cur
-	}
-	bits := 20
-	cntPref := make([]int, bits)
-	for _, v := range pref {
-		for j := 0; j < bits; j++ {
-			if (v>>j)&1 == 1 {
-				cntPref[j]++
-			}
-		}
-	}
-	cntRange := make([]int, bits)
-	for j := 0; j < bits; j++ {
-		cntRange[j] = countOnes(n, j)
-	}
-	key := 0
-	for j := 0; j < bits; j++ {
-		if cntPref[j] != cntRange[j] {
-			key |= 1 << j
-		}
-	}
-	var sb strings.Builder
-	for i, v := range pref {
-		if i > 0 {
-			sb.WriteByte(' ')
-		}
-		sb.WriteString(fmt.Sprint(v ^ key))
-	}
-	return sb.String()
-}
-
+// Generate a valid test case by constructing a permutation first, then deriving a[].
 func genCase(rng *rand.Rand) (int, []int) {
 	n := rng.Intn(10) + 2
+	// Build a random permutation of 0..n-1
+	perm := rng.Perm(n)
+	// Derive a[] from the permutation: a[i] = perm[i] XOR perm[i+1]
 	arr := make([]int, n-1)
-	for i := range arr {
-		arr[i] = rng.Intn(512)
+	for i := 0; i < n-1; i++ {
+		arr[i] = perm[i] ^ perm[i+1]
 	}
 	return n, arr
+}
+
+// Validate that the output is a valid permutation of 0..n-1 with b[i]^b[i+1]=a[i].
+func validate(n int, arr []int, output string) error {
+	fields := strings.Fields(output)
+	if len(fields) != n {
+		return fmt.Errorf("expected %d values, got %d", n, len(fields))
+	}
+	b := make([]int, n)
+	for i, f := range fields {
+		val, err := strconv.Atoi(f)
+		if err != nil {
+			return fmt.Errorf("invalid integer %q at position %d", f, i)
+		}
+		b[i] = val
+	}
+	// Check permutation of 0..n-1
+	seen := make([]bool, n)
+	for i, v := range b {
+		if v < 0 || v >= n {
+			return fmt.Errorf("value %d at position %d out of range [0, %d)", v, i, n)
+		}
+		if seen[v] {
+			return fmt.Errorf("duplicate value %d", v)
+		}
+		seen[v] = true
+	}
+	// Check XOR property
+	for i := 0; i < n-1; i++ {
+		if b[i]^b[i+1] != arr[i] {
+			return fmt.Errorf("b[%d]^b[%d] = %d, expected a[%d] = %d", i, i+1, b[i]^b[i+1], i, arr[i])
+		}
+	}
+	return nil
 }
 
 func main() {
@@ -102,14 +94,13 @@ func main() {
 			sb.WriteString(fmt.Sprint(v))
 		}
 		sb.WriteByte('\n')
-		expect := solveD(n, arr)
 		got, err := run(bin, sb.String())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed\ninput:\n%sexpected %s got %s\n", i+1, sb.String(), expect, got)
+		if err := validate(n, arr, got); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%soutput: %s\n", i+1, err, sb.String(), got)
 			os.Exit(1)
 		}
 	}

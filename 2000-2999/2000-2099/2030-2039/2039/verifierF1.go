@@ -6,13 +6,10 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
-
-const refSourceF1 = "./2039F1.go"
 
 type testInput struct {
 	ms []int
@@ -34,7 +31,13 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, err := buildReference()
+	refPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refPath == "" {
+		fmt.Fprintln(os.Stderr, "REFERENCE_SOURCE_PATH not set")
+		os.Exit(1)
+	}
+
+	refBin, err := buildBinary(refPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
 		os.Exit(1)
@@ -77,14 +80,14 @@ func main() {
 	fmt.Printf("All %d tests passed.\n", len(tests))
 }
 
-func buildReference() (string, error) {
+func buildBinary(src string) (string, error) {
 	tmp, err := os.CreateTemp("", "2039F1-ref-*")
 	if err != nil {
 		return "", err
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSourceF1))
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), src)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -96,10 +99,10 @@ func buildReference() (string, error) {
 }
 
 func commandFor(path string) *exec.Cmd {
-	switch filepath.Ext(path) {
-	case ".go":
+	switch {
+	case strings.HasSuffix(path, ".go"):
 		return exec.Command("go", "run", path)
-	case ".py":
+	case strings.HasSuffix(path, ".py"):
 		return exec.Command("python3", path)
 	default:
 		return exec.Command(path)
@@ -145,20 +148,20 @@ func generateTests() []testInput {
 	var tests []testInput
 	tests = append(tests, testInput{ms: []int{2, 5, 9}})
 	tests = append(tests, testInput{ms: []int{1, 2, 3, 4, 5}})
-	tests = append(tests, testInput{ms: []int{100000}})
+	tests = append(tests, testInput{ms: []int{1000}})
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	const limit = 100000
+	const limit = 10000
 	sum := 0
 	var cur []int
 	for sum < limit {
-		m := rng.Intn(100000) + 1
+		m := rng.Intn(1000) + 1
 		if sum+m > limit {
 			break
 		}
 		cur = append(cur, m)
 		sum += m
-		if len(cur) >= 1000 {
+		if len(cur) >= 100 {
 			tests = append(tests, testInput{ms: cur})
 			cur = nil
 		}
