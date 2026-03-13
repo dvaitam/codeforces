@@ -7,9 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
-	"time"
 )
 
 const (
@@ -70,23 +70,20 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	// Build reference binary from REFERENCE_SOURCE_PATH
 	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
 	if refSrc == "" {
 		fatal("REFERENCE_SOURCE_PATH not set")
 	}
-
 	refBin := filepath.Join(os.TempDir(), "ref_316F1")
-	cmd := exec.Command("go", "build", "-o", refBin, refSrc)
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		fatal("failed to build reference: %v", err)
+	build := exec.Command("go", "build", "-o", refBin, refSrc)
+	if out, err := build.CombinedOutput(); err != nil {
+		fatal("build reference: %v\n%s", err, string(out))
 	}
 	defer os.Remove(refBin)
 
-	tests := buildTests()
+	inputs := buildInputs()
 
-	for idx, input := range tests {
+	for idx, input := range inputs {
 		expected, err := runBinary(refBin, input)
 		if err != nil {
 			fatal("reference failed on case %d: %v", idx+1, err)
@@ -95,33 +92,71 @@ func main() {
 		if err != nil {
 			fatal("candidate failed on case %d: %v", idx+1, err)
 		}
-		if normalizeOutput(got) != normalizeOutput(expected) {
-			fatal("case %d mismatch\nexpected: %s\n     got: %s", idx+1, expected, got)
+		if !compareOutputs(expected, got) {
+			fatal("case %d: output mismatch\nexpected: %s\n     got: %s", idx+1, expected, got)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(tests))
+	fmt.Printf("All %d tests passed\n", len(inputs))
 }
 
-func normalizeOutput(s string) string {
-	fields := strings.Fields(s)
-	return strings.Join(fields, " ")
+func parseOutput(output string) (int, []int) {
+	fields := strings.Fields(output)
+	if len(fields) == 0 {
+		return -1, nil
+	}
+	k, err := strconv.Atoi(fields[0])
+	if err != nil || k < 0 {
+		return -1, nil
+	}
+	if k == 0 {
+		return 0, nil
+	}
+	if len(fields) < 1+k {
+		return -1, nil
+	}
+	rays := make([]int, k)
+	for i := 0; i < k; i++ {
+		rays[i], err = strconv.Atoi(fields[1+i])
+		if err != nil {
+			return -1, nil
+		}
+	}
+	sort.Ints(rays)
+	return k, rays
 }
 
-func buildTests() []string {
-	var tests []string
+func compareOutputs(expected, got string) bool {
+	ek, erays := parseOutput(expected)
+	gk, grays := parseOutput(got)
+	if ek < 0 || gk < 0 {
+		return false
+	}
+	if ek != gk {
+		return false
+	}
+	for i := 0; i < ek; i++ {
+		if erays[i] != grays[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func buildInputs() []string {
+	var inputs []string
 
 	// Blank case: no suns
-	tests = append(tests, newImg(5, 5).toInput())
+	inputs = append(inputs, newImg(5, 5).toInput())
 
 	// Build known scenes
 	rng := rand.New(rand.NewSource(42))
 	for i := 0; i < randomTrials; i++ {
-		tests = append(tests, buildKnownScene(rng))
+		inputs = append(inputs, buildScene(rng))
 	}
-	return tests
+	return inputs
 }
 
-func buildKnownScene(rng *rand.Rand) string {
+func buildScene(rng *rand.Rand) string {
 	h := randRange(rng, 200, 400)
 	w := randRange(rng, 200, 400)
 	grid := newImg(h, w)
@@ -295,6 +330,3 @@ func max(a, b int) int {
 	}
 	return b
 }
-
-// suppress unused import
-var _ = time.Now
