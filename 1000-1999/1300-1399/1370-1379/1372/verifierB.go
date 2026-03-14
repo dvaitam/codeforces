@@ -153,6 +153,17 @@ func referenceSolve(n int64) (int64, int64) {
 	return a, b
 }
 
+func gcd(a, b int64) int64 {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return a
+}
+
+func lcm(a, b int64) int64 {
+	return a / gcd(a, b) * b
+}
+
 func parseTestcases() ([]testCase, error) {
 	scan := bufio.NewScanner(strings.NewReader(testcasesB))
 	scan.Split(bufio.ScanWords)
@@ -235,8 +246,18 @@ func main() {
 			fmt.Printf("case %d failed: bad second number %q\n", idx+1, parts[1])
 			os.Exit(1)
 		}
-		if a != wantA || b != wantB {
-			fmt.Printf("case %d failed\ninput:\n%s\nexpected:\n%d %d\ngot:\n%d %d\n", idx+1, input, wantA, wantB, a, b)
+		if a <= 0 || b <= 0 {
+			fmt.Printf("case %d failed: a and b must be positive, got %d %d\n", idx+1, a, b)
+			os.Exit(1)
+		}
+		if a+b != tc.n {
+			fmt.Printf("case %d failed: a+b must equal %d, got %d+%d=%d\n", idx+1, tc.n, a, b, a+b)
+			os.Exit(1)
+		}
+		wantLCM := lcm(wantA, wantB)
+		gotLCM := lcm(a, b)
+		if gotLCM != wantLCM {
+			fmt.Printf("case %d failed\ninput:\n%s\nexpected LCM: %d (e.g. %d %d)\ngot LCM: %d (%d %d)\n", idx+1, input, wantLCM, wantA, wantB, gotLCM, a, b)
 			os.Exit(1)
 		}
 	}
