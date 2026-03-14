@@ -1,114 +1,171 @@
 package main
 
 import (
-	"bufio"
-	"container/heap"
-	"fmt"
+	"io"
 	"os"
+	"strconv"
 )
 
-// Item is used in max-heap for generating top k sums.
+type FastScanner struct {
+	data []byte
+	idx  int
+}
+
+func (fs *FastScanner) NextInt() int {
+	n := len(fs.data)
+	for fs.idx < n && fs.data[fs.idx] <= ' ' {
+		fs.idx++
+	}
+	sign := 1
+	if fs.data[fs.idx] == '-' {
+		sign = -1
+		fs.idx++
+	}
+	val := 0
+	for fs.idx < n {
+		c := fs.data[fs.idx]
+		if c < '0' || c > '9' {
+			break
+		}
+		val = val*10 + int(c-'0')
+		fs.idx++
+	}
+	return sign * val
+}
+
 type Item struct {
-	val int64
-	j   int
-	idx int
+	val  int64
+	list int
+	idx  int
 }
 
-type MaxHeap []Item
-
-func (h MaxHeap) Len() int            { return len(h) }
-func (h MaxHeap) Less(i, j int) bool  { return h[i].val > h[j].val }
-func (h MaxHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
-func (h *MaxHeap) Push(x interface{}) { *h = append(*h, x.(Item)) }
-func (h *MaxHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	item := old[n-1]
-	*h = old[:n-1]
-	return item
+type MaxHeap struct {
+	a []Item
 }
 
-func mergeTopK(a, b []int64, k int) []int64 {
-	res := make([]int64, 0, k)
-	i, j := 0, 0
-	for len(res) < k && (i < len(a) || j < len(b)) {
-		if j >= len(b) || (i < len(a) && a[i] >= b[j]) {
-			res = append(res, a[i])
-			i++
-		} else {
-			res = append(res, b[j])
-			j++
-		}
-	}
-	return res
+func (h *MaxHeap) Len() int {
+	return len(h.a)
 }
 
-func topKUnion(dps [][]int64, weights []int64, k int) []int64 {
-	h := &MaxHeap{}
-	heap.Init(h)
-	for idx := range weights {
-		arr := dps[idx]
-		if len(arr) > 0 {
-			heap.Push(h, Item{val: arr[0] + weights[idx], j: idx, idx: 0})
+func (h *MaxHeap) Push(x Item) {
+	h.a = append(h.a, x)
+	i := len(h.a) - 1
+	for i > 0 {
+		p := (i - 1) >> 1
+		if h.a[p].val >= h.a[i].val {
+			break
+		}
+		h.a[p], h.a[i] = h.a[i], h.a[p]
+		i = p
+	}
+}
+
+func (h *MaxHeap) Pop() Item {
+	root := h.a[0]
+	last := h.a[len(h.a)-1]
+	h.a = h.a[:len(h.a)-1]
+	if len(h.a) > 0 {
+		h.a[0] = last
+		i := 0
+		for {
+			l := i*2 + 1
+			if l >= len(h.a) {
+				break
+			}
+			r := l + 1
+			j := l
+			if r < len(h.a) && h.a[r].val > h.a[l].val {
+				j = r
+			}
+			if h.a[i].val >= h.a[j].val {
+				break
+			}
+			h.a[i], h.a[j] = h.a[j], h.a[i]
+			i = j
 		}
 	}
-	res := make([]int64, 0, k)
-	for len(res) < k && h.Len() > 0 {
-		cur := heap.Pop(h).(Item)
-		res = append(res, cur.val)
-		arr := dps[cur.j]
-		if cur.idx+1 < len(arr) {
-			heap.Push(h, Item{val: arr[cur.idx+1] + weights[cur.j], j: cur.j, idx: cur.idx + 1})
-		}
-	}
-	return res
+	return root
 }
 
 func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
-	defer out.Flush()
+	data, _ := io.ReadAll(os.Stdin)
+	fs := FastScanner{data: data}
+	t := fs.NextInt()
+	out := make([]byte, 0, 1<<20)
 
-	var T int
-	if _, err := fmt.Fscan(in, &T); err != nil {
-		return
-	}
-	for ; T > 0; T-- {
-		var n, k int
-		fmt.Fscan(in, &n, &k)
-		a := make([][]int64, n+1)
+	for ; t > 0; t-- {
+		n := fs.NextInt()
+		k := fs.NextInt()
+
+		a := make([][]int64, n+2)
+		for i := 0; i <= n+1; i++ {
+			a[i] = make([]int64, n+2)
+		}
 		for i := 1; i <= n; i++ {
-			a[i] = make([]int64, n+1)
 			for j := i; j <= n; j++ {
-				fmt.Fscan(in, &a[i][j])
+				a[i][j] = int64(fs.NextInt())
 			}
 		}
 
 		dp := make([][]int64, n+1)
 		dp[0] = []int64{0}
+
 		for i := 1; i <= n; i++ {
-			// collect weights for segments ending at i
-			weights := make([]int64, i)
-			for j := 1; j <= i; j++ {
-				weights[j-1] = a[j][i]
+			m := i + 1
+			listSource := make([]int, m)
+			listAdd := make([]int64, m)
+
+			listSource[0] = i - 1
+			listAdd[0] = 0
+
+			listSource[1] = -1
+			listAdd[1] = a[1][i]
+
+			p := 2
+			for l := 2; l <= i; l++ {
+				listSource[p] = l - 2
+				listAdd[p] = a[l][i]
+				p++
 			}
-			segs := topKUnion(dp[:i], weights, k)
-			dp[i] = mergeTopK(dp[i-1], segs, k)
+
+			h := MaxHeap{a: make([]Item, 0, m)}
+			for id := 0; id < m; id++ {
+				src := listSource[id]
+				if src == -1 {
+					h.Push(Item{val: listAdd[id], list: id, idx: 0})
+				} else if len(dp[src]) > 0 {
+					h.Push(Item{val: dp[src][0] + listAdd[id], list: id, idx: 0})
+				}
+			}
+
+			res := make([]int64, 0, k)
+			for h.Len() > 0 && len(res) < k {
+				it := h.Pop()
+				res = append(res, it.val)
+				src := listSource[it.list]
+				if src != -1 {
+					ni := it.idx + 1
+					if ni < len(dp[src]) {
+						h.Push(Item{val: dp[src][ni] + listAdd[it.list], list: it.list, idx: ni})
+					}
+				}
+			}
+			dp[i] = res
 		}
 
 		ans := dp[n]
-		if len(ans) < k {
-			// pad with zeros if needed (should not happen per constraints)
-			for len(ans) < k {
-				ans = append(ans, 0)
-			}
+		cnt := k
+		if cnt > len(ans) {
+			cnt = len(ans)
 		}
-		for i := 0; i < k; i++ {
+		for i := 0; i < cnt; i++ {
 			if i > 0 {
-				out.WriteByte(' ')
+				out = append(out, ' ')
 			}
-			fmt.Fprint(out, ans[i])
+			out = strconv.AppendInt(out, ans[i], 10)
 		}
-		out.WriteByte('\n')
+		out = append(out, '\n')
 	}
+
+	os.Stdout.Write(out)
 }

@@ -12,8 +12,12 @@ import (
 )
 
 func compileRef() (string, error) {
+    src := os.Getenv("REFERENCE_SOURCE_PATH")
+    if src == "" {
+        return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+    }
     bin := filepath.Join(os.TempDir(), "1367F1_ref")
-    cmd := exec.Command("go", "build", "-o", bin, "1367F1.go")
+    cmd := exec.Command("go", "build", "-o", bin, src)
     out, err := cmd.CombinedOutput()
     if err != nil {
         return "", fmt.Errorf("compile reference: %v\n%s", err, out)
@@ -40,12 +44,13 @@ func run(bin, input string) (string, error) {
 
 func genCase(rng *rand.Rand) string {
     n := rng.Intn(50) + 1
+    // Generate n distinct values by sampling a permutation
+    vals := rng.Perm(200)[:n]
     var sb strings.Builder
     sb.WriteString("1\n")
     sb.WriteString(fmt.Sprintf("%d\n", n))
     for i := 0; i < n; i++ {
-        val := rng.Intn(100)
-        sb.WriteString(fmt.Sprintf("%d", val))
+        sb.WriteString(fmt.Sprintf("%d", vals[i]))
         if i+1 < n {
             sb.WriteByte(' ')
         }

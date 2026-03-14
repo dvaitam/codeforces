@@ -40,16 +40,25 @@ func expected(arr []int) string {
 	for i, v := range arr {
 		vals[i] = (v + 1) / 2
 	}
-	min1, min2 := 1<<60, 1<<60
-	for _, v := range vals {
-		if v < min1 {
-			min2 = min1
-			min1 = v
-		} else if v < min2 {
-			min2 = v
+	ans := 1 << 60
+	// Two independent sections (distance >= 3): use prefix min of vals
+	if n > 0 {
+		prefMin := make([]int, n)
+		prefMin[0] = vals[0]
+		for i := 1; i < n; i++ {
+			prefMin[i] = prefMin[i-1]
+			if vals[i] < prefMin[i] {
+				prefMin[i] = vals[i]
+			}
+		}
+		for j := 3; j < n; j++ {
+			cand := prefMin[j-3] + vals[j]
+			if cand < ans {
+				ans = cand
+			}
 		}
 	}
-	ans := min1 + min2
+	// Adjacent pair (distance 1): shoot between them
 	for i := 0; i+1 < n; i++ {
 		x, y := arr[i], arr[i+1]
 		cand := max((x+y+2)/3, max((x+1)/2, (y+1)/2))
@@ -57,9 +66,10 @@ func expected(arr []int) string {
 			ans = cand
 		}
 	}
+	// Distance-2 pair: shoot at the middle
 	for i := 0; i+2 < n; i++ {
 		x, z := arr[i], arr[i+2]
-		cand := max((x+z+1)/2, max((x+1)/2, (z+1)/2))
+		cand := (x + z + 1) / 2
 		if cand < ans {
 			ans = cand
 		}
@@ -78,7 +88,6 @@ func main() {
 		n := rng.Intn(8) + 2
 		arr := make([]int, n)
 		var sb strings.Builder
-		sb.WriteString("1\n")
 		sb.WriteString(fmt.Sprintf("%d\n", n))
 		for i := 0; i < n; i++ {
 			arr[i] = rng.Intn(30) + 1

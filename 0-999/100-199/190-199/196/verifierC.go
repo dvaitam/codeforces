@@ -926,6 +926,22 @@ func runCandidate(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func cross2(o, a, b point) int64 {
+	return int64(a.x-o.x)*int64(b.y-o.y) - int64(a.y-o.y)*int64(b.x-o.x)
+}
+
+func segmentsIntersect(a, b, c, d point) bool {
+	d1 := cross2(c, d, a)
+	d2 := cross2(c, d, b)
+	d3 := cross2(a, b, c)
+	d4 := cross2(a, b, d)
+	if ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+		((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)) {
+		return true
+	}
+	return false
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
@@ -941,7 +957,6 @@ func main() {
 
 	for idx, tc := range cases {
 		input := buildInput(tc)
-		expectedArr := solveCase(tc)
 		gotStr, err := runCandidate(bin, input)
 		if err != nil {
 			fmt.Printf("test %d failed: %v\n", idx+1, err)
@@ -952,15 +967,58 @@ func main() {
 			fmt.Printf("test %d failed: expected %d numbers got %d\ninput:\n%s", idx+1, tc.n, len(gotFields), input)
 			os.Exit(1)
 		}
+		// Parse candidate output: ans[i] = vertex assigned to point i (0-indexed)
+		ans := make([]int, tc.n)
+		used := make([]bool, tc.n+1)
 		for i, gf := range gotFields {
 			val, err := strconv.Atoi(gf)
-			if err != nil {
-				fmt.Printf("test %d failed: bad int output\n", idx+1)
+			if err != nil || val < 1 || val > tc.n {
+				fmt.Printf("test %d failed: bad int output %q\n", idx+1, gf)
 				os.Exit(1)
 			}
-			if val != expectedArr[i] {
-				fmt.Printf("test %d failed: expected %d got %d\ninput:\n%s", idx+1, expectedArr[i], val, input)
+			if used[val] {
+				fmt.Printf("test %d failed: duplicate vertex %d\n", idx+1, val)
 				os.Exit(1)
+			}
+			used[val] = true
+			ans[i] = val
+		}
+		// Build inverse mapping: vertexPos[v] = point index (0-based)
+		vertexPos := make([]int, tc.n+1)
+		for i, v := range ans {
+			vertexPos[v] = i
+		}
+		// Collect edge segments as pairs of point indices
+		type seg struct{ p1, p2 int }
+		segs := make([]seg, len(tc.edges))
+		for i, e := range tc.edges {
+			segs[i] = seg{vertexPos[e[0]], vertexPos[e[1]]}
+		}
+		// Check no two non-adjacent edges cross
+		failed := false
+		for i := 0; i < len(segs) && !failed; i++ {
+			for j := i + 1; j < len(segs) && !failed; j++ {
+				// Check if edges i and j are adjacent (share a vertex)
+				ei := tc.edges[i]
+				ej := tc.edges[j]
+				if ei[0] == ej[0] || ei[0] == ej[1] || ei[1] == ej[0] || ei[1] == ej[1] {
+					// Adjacent edges share an endpoint; they meet at that point
+					// which is allowed. But they should not cross through each other.
+					// For adjacent edges that share vertex v, the other two endpoints
+					// must be on the same side or different sides, but adjacent edges
+					// by definition meet only at the shared vertex given no 3 collinear.
+					continue
+				}
+				// Non-adjacent: check if segments properly intersect
+				p1 := tc.pts[segs[i].p1]
+				p2 := tc.pts[segs[i].p2]
+				p3 := tc.pts[segs[j].p1]
+				p4 := tc.pts[segs[j].p2]
+				if segmentsIntersect(p1, p2, p3, p4) {
+					fmt.Printf("test %d failed: edges (%d-%d) and (%d-%d) intersect\ninput:\n%s",
+						idx+1, ei[0], ei[1], ej[0], ej[1], input)
+					os.Exit(1)
+				}
 			}
 		}
 	}

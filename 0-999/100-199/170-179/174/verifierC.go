@@ -175,6 +175,66 @@ func loadTestcases() ([]testCase, error) {
 	return cases, nil
 }
 
+// computeMinCalls returns the minimum number of rangeIncrement calls needed
+// to produce the array a. This equals sum of max(0, a[i]-a[i-1]) for i=0..n-1
+// where a[-1] is considered 0.
+func computeMinCalls(a []int) int {
+	count := 0
+	prev := 0
+	for _, v := range a {
+		if v > prev {
+			count += v - prev
+		}
+		prev = v
+	}
+	return count
+}
+
+// validateOutput checks that the candidate output is a valid answer for the given input.
+func validateOutput(a []int, output string) error {
+	n := len(a)
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) < 1 {
+		return fmt.Errorf("no output")
+	}
+	t, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+	if err != nil {
+		return fmt.Errorf("cannot parse t: %v", err)
+	}
+	expectedT := computeMinCalls(a)
+	if t != expectedT {
+		return fmt.Errorf("expected %d calls, got %d", expectedT, t)
+	}
+	if len(lines) != t+1 {
+		return fmt.Errorf("expected %d segment lines, got %d", t, len(lines)-1)
+	}
+	// Reconstruct the array from the segments
+	reconstructed := make([]int, n)
+	for i := 1; i <= t; i++ {
+		parts := strings.Fields(strings.TrimSpace(lines[i]))
+		if len(parts) != 2 {
+			return fmt.Errorf("line %d: expected 2 values, got %d", i, len(parts))
+		}
+		l, err1 := strconv.Atoi(parts[0])
+		r, err2 := strconv.Atoi(parts[1])
+		if err1 != nil || err2 != nil {
+			return fmt.Errorf("line %d: parse error", i)
+		}
+		if l < 1 || r > n || l > r {
+			return fmt.Errorf("line %d: invalid range [%d, %d] for n=%d", i, l, r, n)
+		}
+		for j := l - 1; j < r; j++ {
+			reconstructed[j]++
+		}
+	}
+	for i := 0; i < n; i++ {
+		if reconstructed[i] != a[i] {
+			return fmt.Errorf("mismatch at index %d: expected %d, got %d", i+1, a[i], reconstructed[i])
+		}
+	}
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: verifierC /path/to/binary")
@@ -200,9 +260,17 @@ func main() {
 			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr.String())
 			os.Exit(1)
 		}
-		got := strings.TrimSpace(out.String())
-		if got != tc.expected {
-			fmt.Printf("test %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx+1, tc.expected, got)
+
+		// Parse input to get the array
+		fields := strings.Fields(strings.TrimSpace(tc.input))
+		n, _ := strconv.Atoi(fields[0])
+		a := make([]int, n)
+		for i := 0; i < n; i++ {
+			a[i], _ = strconv.Atoi(fields[i+1])
+		}
+
+		if verr := validateOutput(a, out.String()); verr != nil {
+			fmt.Printf("test %d failed: %v\ngot:\n%s\n", idx+1, verr, strings.TrimSpace(out.String()))
 			os.Exit(1)
 		}
 	}

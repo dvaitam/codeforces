@@ -151,16 +151,22 @@ func runCase(bin string, board Board) error {
 					return fmt.Errorf("failed to read row: %v", err)
 				}
 				row = strings.TrimSpace(row)
+				final[i] = make([]int, n)
 				parts := strings.Fields(row)
-				if len(parts) != n {
+				if len(parts) == n {
+					for j, p := range parts {
+						var v int
+						fmt.Sscan(p, &v)
+						final[i][j] = v
+					}
+				} else if len(row) == n {
+					// Handle non-space-separated format like "10010"
+					for j := 0; j < n; j++ {
+						final[i][j] = int(row[j] - '0')
+					}
+				} else {
 					cmd.Process.Kill()
 					return fmt.Errorf("bad row output: %s", row)
-				}
-				final[i] = make([]int, n)
-				for j, p := range parts {
-					var v int
-					fmt.Sscan(p, &v)
-					final[i][j] = v
 				}
 			}
 			cmd.Wait()

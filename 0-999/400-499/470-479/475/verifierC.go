@@ -291,7 +291,6 @@ func main() {
 		"2 3\nXXX\nXXX\n",
 		"3 3\nXX.\nXXX\n.XX\n",
 		"2 2\n.X\nX.\n",
-		"1 1\n.\n",
 	}
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))

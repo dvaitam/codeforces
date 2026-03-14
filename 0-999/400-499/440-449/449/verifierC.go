@@ -6,20 +6,29 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
 type pair struct{ a, b int }
 
 type test struct {
-	input, expected string
+	input          string
+	expectedCount  int
 }
 
-func solve(input string) string {
+func gcd(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return a
+}
+
+func solve(input string) int {
 	var n int
 	fmt.Sscan(strings.TrimSpace(input), &n)
 	used := make([]bool, n+1)
-	grp := make([]pair, 0, n/2)
+	count := 0
 	var p int
 	for i := 3; i <= n/2; i += 2 {
 		if !used[i] {
@@ -27,7 +36,7 @@ func solve(input string) string {
 			for j := i * 3; j <= n; j += i {
 				if !used[j] {
 					if p != 0 {
-						grp = append(grp, pair{p, j})
+						count++
 						used[p], used[j] = true, true
 						p = 0
 					} else {
@@ -38,7 +47,7 @@ func solve(input string) string {
 			if p != 0 {
 				pairv := i * 2
 				if pairv <= n && !used[p] && !used[pairv] {
-					grp = append(grp, pair{p, pairv})
+					count++
 					used[p], used[pairv] = true, true
 				}
 			}
@@ -48,7 +57,7 @@ func solve(input string) string {
 	for i := 2; i <= n; i += 2 {
 		if !used[i] {
 			if p != 0 {
-				grp = append(grp, pair{p, i})
+				count++
 				used[p], used[i] = true, true
 				p = 0
 			} else {
@@ -56,12 +65,7 @@ func solve(input string) string {
 			}
 		}
 	}
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "%d\n", len(grp))
-	for _, pr := range grp {
-		fmt.Fprintf(&sb, "%d %d\n", pr.a, pr.b)
-	}
-	return strings.TrimSpace(sb.String())
+	return count
 }
 
 func generateTests() []test {
@@ -90,6 +94,53 @@ func runBinary(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), err
 }
 
+func validateOutput(output string, n int, expectedCount int) error {
+	lines := strings.Split(output, "\n")
+	if len(lines) == 0 {
+		return fmt.Errorf("empty output")
+	}
+	m, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+	if err != nil {
+		return fmt.Errorf("cannot parse number of pairs: %v", err)
+	}
+	if m != expectedCount {
+		return fmt.Errorf("expected %d pairs, got %d", expectedCount, m)
+	}
+	if len(lines) != m+1 {
+		return fmt.Errorf("expected %d pair lines, got %d", m, len(lines)-1)
+	}
+	used := make(map[int]bool)
+	for i := 1; i <= m; i++ {
+		parts := strings.Fields(strings.TrimSpace(lines[i]))
+		if len(parts) != 2 {
+			return fmt.Errorf("pair line %d: expected 2 numbers, got %d", i, len(parts))
+		}
+		a, err1 := strconv.Atoi(parts[0])
+		b, err2 := strconv.Atoi(parts[1])
+		if err1 != nil || err2 != nil {
+			return fmt.Errorf("pair line %d: cannot parse numbers", i)
+		}
+		if a < 1 || a > n || b < 1 || b > n {
+			return fmt.Errorf("pair line %d: values %d, %d out of range [1, %d]", i, a, b, n)
+		}
+		if a == b {
+			return fmt.Errorf("pair line %d: duplicate value %d", i, a)
+		}
+		if gcd(a, b) <= 1 {
+			return fmt.Errorf("pair line %d: gcd(%d, %d) = %d, must be > 1", i, a, b, gcd(a, b))
+		}
+		if used[a] {
+			return fmt.Errorf("pair line %d: value %d already used", i, a)
+		}
+		if used[b] {
+			return fmt.Errorf("pair line %d: value %d already used", i, b)
+		}
+		used[a] = true
+		used[b] = true
+	}
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierC.go /path/to/binary")
@@ -103,8 +154,10 @@ func main() {
 			fmt.Printf("Runtime error on test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != t.expected {
-			fmt.Printf("Wrong answer on test %d\nInput:%sExpected:%s\nGot:%s\n", i+1, t.input, t.expected, got)
+		var n int
+		fmt.Sscan(strings.TrimSpace(t.input), &n)
+		if verr := validateOutput(got, n, t.expectedCount); verr != nil {
+			fmt.Printf("Wrong answer on test %d\nInput: %sError: %v\nGot:\n%s\n", i+1, t.input, verr, got)
 			os.Exit(1)
 		}
 	}

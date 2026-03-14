@@ -40,15 +40,28 @@ func main() {
 		}
 		sb.WriteByte('\n')
 		input := sb.String()
-		expected := solveC2(a)
+		optimalLen := solveC2Len(a)
 		out, err := run(binPath, input)
 		if err != nil {
 			fmt.Printf("test %d: runtime error: %v\n", t, err)
 			os.Exit(1)
 		}
 		out = strings.TrimSpace(out)
-		if out != expected {
-			fmt.Printf("test %d failed\ninput:%sexpected:%s got:%s\n", t, input, expected, out)
+		candK, candMoves, err := parseOutput(out)
+		if err != nil {
+			fmt.Printf("test %d: parse error: %v\noutput: %s\n", t, err, out)
+			os.Exit(1)
+		}
+		if candK != len(candMoves) {
+			fmt.Printf("test %d: declared length %d but moves string has length %d\n", t, candK, len(candMoves))
+			os.Exit(1)
+		}
+		if err := validateMoves(a, candMoves); err != nil {
+			fmt.Printf("test %d: invalid moves: %v\ninput: %soutput: %s\n", t, err, input, out)
+			os.Exit(1)
+		}
+		if candK != optimalLen {
+			fmt.Printf("test %d: suboptimal length %d, expected %d\ninput: %s", t, candK, optimalLen, input)
 			os.Exit(1)
 		}
 	}
@@ -77,57 +90,84 @@ func run(bin, input string) (string, error) {
 	return buf.String(), err
 }
 
-func solveC2(a []int) string {
+func parseOutput(s string) (int, string, error) {
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	if len(lines) == 0 {
+		return 0, "", fmt.Errorf("empty output")
+	}
+	var k int
+	if _, err := fmt.Sscanf(lines[0], "%d", &k); err != nil {
+		return 0, "", fmt.Errorf("cannot parse k: %v", err)
+	}
+	moves := ""
+	if len(lines) > 1 {
+		moves = strings.TrimSpace(lines[1])
+	}
+	return k, moves, nil
+}
+
+func validateMoves(a []int, moves string) error {
 	n := len(a)
-	g := make([]int, n)
-	g[0] = 1
-	for i := 1; i < n; i++ {
-		if a[i-1] > a[i] {
-			g[i] = g[i-1] + 1
-		} else {
-			g[i] = 1
-		}
-	}
-	f := make([]int, n)
-	f[n-1] = 1
-	for i := n - 2; i >= 0; i-- {
-		if a[i+1] > a[i] {
-			f[i] = f[i+1] + 1
-		} else {
-			f[i] = 1
-		}
-	}
 	l, r := 0, n-1
-	now, ans := 0, 0
-	var sb strings.Builder
-	for l <= r && (a[l] > now || a[r] > now) {
-		j := -1
-		if a[l] > now && a[r] > now {
-			if a[l] == a[r] {
-				if f[l] > g[r] {
-					j = l
-				} else {
-					j = r
-				}
-			} else if a[l] < a[r] {
-				j = l
-			} else {
-				j = r
+	last := 0
+	for i, ch := range moves {
+		var val int
+		switch ch {
+		case 'L':
+			if l > r {
+				return fmt.Errorf("move %d: no elements left", i)
 			}
-		} else if a[l] > now {
-			j = l
-		} else {
-			j = r
-		}
-		now = a[j]
-		ans++
-		if j == l {
-			sb.WriteByte('L')
+			val = a[l]
 			l++
-		} else {
-			sb.WriteByte('R')
+		case 'R':
+			if l > r {
+				return fmt.Errorf("move %d: no elements left", i)
+			}
+			val = a[r]
 			r--
+		default:
+			return fmt.Errorf("move %d: invalid character '%c'", i, ch)
 		}
+		if val <= last {
+			return fmt.Errorf("move %d: value %d not strictly greater than previous %d", i, val, last)
+		}
+		last = val
 	}
-	return fmt.Sprintf("%d\n%s", ans, sb.String())
+	return nil
+}
+
+// solveC2Len returns the optimal (maximum) number of elements that can be taken.
+// Uses DP/greedy: at each step pick the smaller available end if both are valid,
+// trying both sides when equal and returning the better result.
+func solveC2Len(a []int) int {
+	n := len(a)
+	// Use a recursive approach with memoization for correctness.
+	type key struct{ l, r, last int }
+	memo := make(map[key]int)
+	var solve func(l, r, last int) int
+	solve = func(l, r, last int) int {
+		if l > r {
+			return 0
+		}
+		k := key{l, r, last}
+		if v, ok := memo[k]; ok {
+			return v
+		}
+		best := 0
+		if a[l] > last {
+			v := 1 + solve(l+1, r, a[l])
+			if v > best {
+				best = v
+			}
+		}
+		if a[r] > last {
+			v := 1 + solve(l, r-1, a[r])
+			if v > best {
+				best = v
+			}
+		}
+		memo[k] = best
+		return best
+	}
+	return solve(0, n-1, 0)
 }

@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -102,17 +103,17 @@ func solveE(k int, s string) int {
 
 func genRegular(rng *rand.Rand, n int) string {
 	open := n / 2
-	close := open
+	cls := open
 	bal := 0
 	var sb strings.Builder
-	for open+close > 0 {
-		if open > 0 && (bal == 0 || rng.Intn(open+close) < open) {
+	for open+cls > 0 {
+		if open > 0 && (bal == 0 || rng.Intn(open+cls) < open) {
 			sb.WriteByte('(')
 			open--
 			bal++
 		} else {
 			sb.WriteByte(')')
-			close--
+			cls--
 			bal--
 		}
 	}
@@ -120,49 +121,73 @@ func genRegular(rng *rand.Rand, n int) string {
 }
 
 func genCaseE(rng *rand.Rand) (int, string) {
-	n := rng.Intn(3)*2 + 2
+	n := rng.Intn(4)*2 + 2 // 2, 4, 6, or 8
 	s := genRegular(rng, n)
-	k := rng.Intn(3)
+	k := rng.Intn(4) // 0..3
 	return k, s
 }
 
-func runCandidate(bin, input string) (string, error) {
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: verifierE /path/to/candidate")
+		os.Exit(1)
+	}
+	bin := os.Args[1]
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	const numTests = 100
+	type testCase struct {
+		k int
+		s string
+	}
+	cases := make([]testCase, numTests)
+	expected := make([]int, numTests)
+
+	// Build all test cases and compute expected answers.
+	var inputBuf strings.Builder
+	fmt.Fprintln(&inputBuf, numTests)
+	for i := 0; i < numTests; i++ {
+		k, s := genCaseE(rng)
+		cases[i] = testCase{k, s}
+		expected[i] = solveE(k, s)
+		fmt.Fprintln(&inputBuf, k)
+		fmt.Fprintln(&inputBuf, s)
+	}
+
+	// Run candidate once with all test cases.
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
 		cmd = exec.Command("go", "run", bin)
 	} else {
 		cmd = exec.Command(bin)
 	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stdin = strings.NewReader(inputBuf.String())
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
-	}
-	return strings.TrimSpace(out.String()), nil
-}
-
-func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierE.go /path/to/binary")
+		fmt.Fprintf(os.Stderr, "candidate execution failed: %v\nstderr: %s\n", err, stderr.String())
 		os.Exit(1)
 	}
-	bin := os.Args[1]
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 100; i++ {
-		k, s := genCaseE(rng)
-		input := fmt.Sprintf("1\n%d\n%s\n", k, s)
-		expect := fmt.Sprintf("%d", solveE(k, s))
-		out, err := runCandidate(bin, input)
+
+	// Parse and compare outputs.
+	lines := strings.Fields(strings.TrimSpace(stdout.String()))
+	if len(lines) != numTests {
+		fmt.Fprintf(os.Stderr, "expected %d output values, got %d\n", numTests, len(lines))
+		os.Exit(1)
+	}
+	for i := 0; i < numTests; i++ {
+		got, err := strconv.Atoi(lines[i])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
+			fmt.Fprintf(os.Stderr, "case %d: invalid output %q: %v\n", i+1, lines[i], err)
 			os.Exit(1)
 		}
-		if out != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", i+1, expect, out)
+		if got != expected[i] {
+			fmt.Fprintf(os.Stderr, "case %d failed: k=%d s=%q expected %d got %d\n",
+				i+1, cases[i].k, cases[i].s, expected[i], got)
 			os.Exit(1)
 		}
 	}
+
 	fmt.Println("All tests passed")
 }

@@ -26,32 +26,32 @@ type opE struct {
 }
 
 func generateTests() []testCaseE {
-	rand.Seed(42)
+	rng := rand.New(rand.NewSource(42))
 	tests := make([]testCaseE, 100)
 	for i := range tests {
-		n := rand.Intn(5) + 1
-		m := rand.Intn(5) + 1
-		q := rand.Intn(5) + 1
+		n := rng.Intn(5) + 1
+		m := rng.Intn(5) + 1
+		q := rng.Intn(5) + 1
 		a := make([]int, n)
 		b := make([]int, m)
 		for j := 0; j < n; j++ {
-			a[j] = rand.Intn(5)
+			a[j] = rng.Intn(5)
 		}
 		for j := 0; j < m; j++ {
-			b[j] = rand.Intn(5)
+			b[j] = rng.Intn(5)
 		}
 		ops := make([]opE, q)
 		for j := 0; j < q; j++ {
-			tp := rand.Intn(3) + 1
+			tp := rng.Intn(3) + 1
 			pos := 0
 			if tp != 3 {
 				if tp == 1 {
-					pos = rand.Intn(n) + 1
+					pos = rng.Intn(n) + 1
 				} else {
-					pos = rand.Intn(m) + 1
+					pos = rng.Intn(m) + 1
 				}
 			}
-			x := rand.Intn(5)
+			x := rng.Intn(5)
 			ops[j] = opE{tp: tp, pos: pos, x: x}
 		}
 		tests[i] = testCaseE{n: n, m: m, q: q, a: a, b: b, ops: ops}

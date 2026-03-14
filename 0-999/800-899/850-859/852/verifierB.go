@@ -11,9 +11,19 @@ import (
 )
 
 func buildRef() (string, error) {
-	ref := "refB.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "852B.go")
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	tmp, err := os.CreateTemp("", "refB-*.bin")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %v", err)
+	}
+	tmp.Close()
+	ref := tmp.Name()
+	cmd := exec.Command("go", "build", "-o", ref, refSrc)
 	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(ref)
 		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
 	}
 	return ref, nil

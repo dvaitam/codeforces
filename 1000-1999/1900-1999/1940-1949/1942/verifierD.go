@@ -11,8 +11,12 @@ import (
 )
 
 func buildRef() (string, error) {
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
 	tmp := filepath.Join(os.TempDir(), "refD_1942")
-	cmd := exec.Command("go", "build", "-o", tmp, "1942D.go")
+	cmd := exec.Command("go", "build", "-o", tmp, refSrc)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -33,7 +37,8 @@ func runProg(path, input string) (string, error) {
 
 func genTest(rng *rand.Rand) string {
 	n := rng.Intn(4) + 1
-	k := rng.Intn(3) + 1
+	maxK := n * (n + 1) / 2
+	k := rng.Intn(maxK) + 1
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "1\n%d %d\n", n, k)
 	for i := 1; i <= n; i++ {
