@@ -2,24 +2,31 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Test struct {
 	input string
 }
 
+const timeout = 2 * time.Minute
+
 func runExe(path string, input string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	var cmd *exec.Cmd
 	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
+		cmd = exec.CommandContext(ctx, "go", "run", path)
 	} else {
-		cmd = exec.Command(path)
+		cmd = exec.CommandContext(ctx, path)
 	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
@@ -30,8 +37,26 @@ func runExe(path string, input string) (string, error) {
 }
 
 func buildRef() (string, error) {
-	ref := "./refB.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "850B.go")
+	srcPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if srcPath == "" {
+		srcPath = "850B.go"
+	}
+	ref, err := filepath.Abs("./refB.bin")
+	if err != nil {
+		return "", err
+	}
+	ext := filepath.Ext(srcPath)
+	var cmd *exec.Cmd
+	switch ext {
+	case ".go":
+		cmd = exec.Command("go", "build", "-o", ref, srcPath)
+	case ".cpp", ".cc", ".cxx":
+		cmd = exec.Command("g++", "-O2", "-o", ref, srcPath)
+	case ".c":
+		cmd = exec.Command("gcc", "-O2", "-o", ref, srcPath)
+	default:
+		return "", fmt.Errorf("unsupported reference source extension: %s", ext)
+	}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build reference failed: %v: %s", err, string(out))
 	}
@@ -63,7 +88,7 @@ func genTests() []Test {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierB.go /path/to/binary")
+		fmt.Println("usage: verifierB /path/to/candidate")
 		return
 	}
 	bin := os.Args[1]

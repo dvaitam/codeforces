@@ -45,7 +45,7 @@ func solveE(tc testCaseE) bool {
 	}
 	t := tc.t - vals[tc.n-1] + vals[tc.n-2]
 	sum := int64(0)
-	counts := make([]int64, 26)
+	counts := make([]int64, 27)
 	for i := 0; i < tc.n-2; i++ {
 		sum += vals[i]
 		counts[tc.s[i]-'a']++
@@ -55,7 +55,11 @@ func solveE(tc testCaseE) bool {
 		return false
 	}
 	target /= 2
-	for b := 25; b >= 0; b-- {
+	if target < 0 || target > sum {
+		return false
+	}
+	// Bottom-up: use items at each bit level, carry unused items upward
+	for b := 0; b < 26; b++ {
 		need := target >> uint(b) & 1
 		if need == 1 {
 			if counts[b] == 0 {
@@ -63,9 +67,8 @@ func solveE(tc testCaseE) bool {
 			}
 			counts[b]--
 		}
-		if b > 0 {
-			counts[b-1] += counts[b] * 2
-		}
+		// Two items of value 2^b can substitute for one item of value 2^(b+1)
+		counts[b+1] += counts[b] / 2
 	}
 	return true
 }

@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -530,7 +532,7 @@ func main() {
 	}
 
 	for idx, tc := range cases {
-		expected := fmt.Sprintf("%.12f", solveCase(tc.h, tc.r, tc.R))
+		expectedVal := solveCase(tc.h, tc.r, tc.R)
 
 		var sb strings.Builder
 		sb.WriteString(strconv.Itoa(tc.n))
@@ -539,17 +541,50 @@ func main() {
 			sb.WriteString(fmt.Sprintf("%.0f %.0f %.0f\n", tc.h[i], tc.r[i], tc.R[i]))
 		}
 
-		cmd := exec.Command(bin)
-		cmd.Stdin = strings.NewReader(sb.String())
-		out, err := cmd.CombinedOutput()
+		// Problem 36C uses file I/O: reads from input.txt, writes to output.txt.
+		tmpDir, err := os.MkdirTemp("", "verifierC-*")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n%s", idx+1, err, string(out))
+			fmt.Fprintf(os.Stderr, "test %d: failed to create temp dir: %v\n", idx+1, err)
 			os.Exit(1)
 		}
 
-		got := strings.TrimSpace(string(out))
-		if got != expected {
-			fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %s\n got: %s\n", idx+1, expected, got)
+		inputPath := filepath.Join(tmpDir, "input.txt")
+		outputPath := filepath.Join(tmpDir, "output.txt")
+
+		if err := os.WriteFile(inputPath, []byte(sb.String()), 0644); err != nil {
+			os.RemoveAll(tmpDir)
+			fmt.Fprintf(os.Stderr, "test %d: failed to write input.txt: %v\n", idx+1, err)
+			os.Exit(1)
+		}
+
+		cmd := exec.Command(bin)
+		cmd.Dir = tmpDir
+		cmd.Stdin = strings.NewReader(sb.String())
+		runOut, err := cmd.CombinedOutput()
+		if err != nil {
+			os.RemoveAll(tmpDir)
+			fmt.Fprintf(os.Stderr, "test %d: runtime error: %v\n%s", idx+1, err, string(runOut))
+			os.Exit(1)
+		}
+
+		// Read candidate output: prefer output.txt (file I/O), fall back to stdout.
+		var got string
+		if data, err := os.ReadFile(outputPath); err == nil {
+			got = strings.TrimSpace(string(data))
+		} else {
+			got = strings.TrimSpace(string(runOut))
+		}
+
+		os.RemoveAll(tmpDir)
+
+		gotVal, parseErr := strconv.ParseFloat(got, 64)
+		if parseErr != nil {
+			fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %.12f\n     got: %s (not a number)\n", idx+1, expectedVal, got)
+			os.Exit(1)
+		}
+
+		if math.Abs(gotVal-expectedVal) > 1e-6 {
+			fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %.12f\n     got: %.12f\n", idx+1, expectedVal, gotVal)
 			os.Exit(1)
 		}
 	}

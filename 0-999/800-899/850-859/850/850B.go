@@ -88,7 +88,7 @@ func main() {
 			if l > r {
 				continue
 			}
-			keepStart := r - t
+			keepStart := m - t
 			if keepStart < l {
 				keepStart = l
 			}

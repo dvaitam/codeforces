@@ -1,12 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 const mod int = 998244353
@@ -87,62 +87,176 @@ func solveCase(nv, kv int, edges [][2]int) string {
 	return fmt.Sprintf("%d", ans%mod)
 }
 
+type testCase struct {
+	nv    int
+	kv    int
+	edges [][2]int
+}
+
+// Embedded testcases from testcasesF.txt.
+// Format: first line is t (number of test cases).
+// Each test case: first line n k, then n-1 lines each with u v (1-indexed edge).
+const testcaseData = `
+12
+4 3
+1 2
+2 3
+3 4
+2 0
+1 2
+6 2
+1 2
+2 3
+2 4
+4 5
+2 6
+6 2
+1 3
+2 3
+3 4
+4 5
+5 6
+3 1
+1 2
+2 3
+5 2
+1 2
+2 3
+3 4
+4 5
+5 1
+1 2
+1 3
+1 4
+1 5
+5 4
+1 2
+1 3
+1 4
+1 5
+7 2
+1 2
+2 3
+3 4
+4 5
+5 6
+6 7
+2 1
+1 2
+3 2
+1 2
+2 3
+10 3
+1 2
+2 3
+3 4
+4 5
+5 6
+6 7
+7 8
+8 9
+9 10
+`
+
+func parseTestcases() ([]testCase, error) {
+	fields := strings.Fields(testcaseData)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("no test data")
+	}
+	pos := 0
+	t, err := strconv.Atoi(fields[pos])
+	if err != nil {
+		return nil, fmt.Errorf("bad t: %v", err)
+	}
+	pos++
+	res := make([]testCase, 0, t)
+	for i := 0; i < t; i++ {
+		if pos+1 >= len(fields) {
+			return nil, fmt.Errorf("case %d incomplete", i+1)
+		}
+		nv, err := strconv.Atoi(fields[pos])
+		if err != nil {
+			return nil, fmt.Errorf("case %d bad n: %v", i+1, err)
+		}
+		kv, err := strconv.Atoi(fields[pos+1])
+		if err != nil {
+			return nil, fmt.Errorf("case %d bad k: %v", i+1, err)
+		}
+		pos += 2
+		edges := make([][2]int, nv-1)
+		for j := 0; j < nv-1; j++ {
+			if pos+1 >= len(fields) {
+				return nil, fmt.Errorf("case %d edge %d incomplete", i+1, j+1)
+			}
+			u, err := strconv.Atoi(fields[pos])
+			if err != nil {
+				return nil, fmt.Errorf("case %d edge %d bad u: %v", i+1, j+1, err)
+			}
+			v, err := strconv.Atoi(fields[pos+1])
+			if err != nil {
+				return nil, fmt.Errorf("case %d edge %d bad v: %v", i+1, j+1, err)
+			}
+			edges[j] = [2]int{u, v}
+			pos += 2
+		}
+		res = append(res, testCase{nv: nv, kv: kv, edges: edges})
+	}
+	return res, nil
+}
+
+func runCandidate(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errb bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errb.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
 func main() {
-	if len(os.Args) < 2 {
+	args := os.Args[1:]
+	if len(args) == 2 && args[0] == "--" {
+		args = args[1:]
+	}
+	if len(args) != 1 {
 		fmt.Println("usage: go run verifierF.go /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesF.txt")
+	bin := args[0]
+
+	tests, err := parseTestcases()
 	if err != nil {
-		fmt.Println("could not read testcasesF.txt:", err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
-	scan.Split(bufio.ScanWords)
-	if !scan.Scan() {
-		fmt.Println("invalid test file")
-		os.Exit(1)
-	}
-	t, _ := strconv.Atoi(scan.Text())
-	expected := make([]string, t)
-	for i := 0; i < t; i++ {
-		scan.Scan()
-		nv, _ := strconv.Atoi(scan.Text())
-		scan.Scan()
-		kv, _ := strconv.Atoi(scan.Text())
-		edges := make([][2]int, nv-1)
-		for j := 0; j < nv-1; j++ {
-			scan.Scan()
-			u, _ := strconv.Atoi(scan.Text())
-			scan.Scan()
-			v, _ := strconv.Atoi(scan.Text())
-			edges[j] = [2]int{u, v}
+
+	for idx, tc := range tests {
+		// Build input for a single test case
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "%d %d\n", tc.nv, tc.kv)
+		for _, e := range tc.edges {
+			fmt.Fprintf(&sb, "%d %d\n", e[0], e[1])
 		}
-		expected[i] = solveCase(nv, kv, edges)
-	}
-	cmd := exec.Command(os.Args[1])
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.Output()
-	if err != nil {
-		fmt.Println("execution failed:", err)
-		os.Exit(1)
-	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
-	for i := 0; i < t; i++ {
-		if !outScan.Scan() {
-			fmt.Printf("missing output for test %d\n", i+1)
+		input := sb.String()
+		expected := solveCase(tc.nv, tc.kv, tc.edges)
+		got, err := runCandidate(bin, input)
+		if err != nil {
+			fmt.Printf("test %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got := outScan.Text()
-		if got != expected[i] {
-			fmt.Printf("test %d failed: expected %s got %s\n", i+1, expected[i], got)
+		if strings.TrimSpace(got) != expected {
+			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", idx+1, input, expected, got)
 			os.Exit(1)
 		}
 	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
-		os.Exit(1)
-	}
-	fmt.Println("All tests passed!")
+	fmt.Printf("All %d tests passed\n", len(tests))
 }

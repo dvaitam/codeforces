@@ -148,7 +148,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, tc.input)
 			os.Exit(1)
 		}
-		if got != exp {
+		if !strings.EqualFold(got, exp) {
 			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, exp, got, tc.input)
 			os.Exit(1)
 		}
