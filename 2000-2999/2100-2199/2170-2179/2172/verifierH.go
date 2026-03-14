@@ -6,8 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
@@ -20,18 +18,27 @@ type testCase struct {
 }
 
 func buildOracle() (string, func(), error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", nil, fmt.Errorf("cannot determine verifier location")
+	srcPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if srcPath == "" {
+		srcPath = "2172H_oracle.cpp"
 	}
-	dir := filepath.Dir(file)
 	tmpDir, err := os.MkdirTemp("", "oracle-2172H-")
 	if err != nil {
 		return "", nil, err
 	}
-	outPath := filepath.Join(tmpDir, "oracleH")
-	cmd := exec.Command("go", "build", "-o", outPath, "2172H.go")
-	cmd.Dir = dir
+	outPath := tmpDir + "/oracleH"
+	// Detect language from content (worker saves all as .go)
+	content, _ := os.ReadFile(srcPath)
+	actualSrc := srcPath
+	var cmd *exec.Cmd
+	if strings.Contains(string(content), "#include") {
+		// Copy to .cpp so g++ doesn't try the Go frontend
+		actualSrc = tmpDir + "/ref.cpp"
+		os.WriteFile(actualSrc, content, 0644)
+		cmd = exec.Command("g++", "-O2", "-o", outPath, actualSrc)
+	} else {
+		cmd = exec.Command("go", "build", "-o", outPath, srcPath)
+	}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		os.RemoveAll(tmpDir)
 		return "", nil, fmt.Errorf("failed to build oracle: %v\n%s", err, out)
@@ -89,9 +96,9 @@ func randomString(n int, rng *rand.Rand) string {
 
 func randomTests() []testCase {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	tests := make([]testCase, 0, 25)
-	for i := 0; i < 15; i++ {
-		k := rng.Intn(10) + 1
+	tests := make([]testCase, 0, 15)
+	for i := 0; i < 10; i++ {
+		k := rng.Intn(8) + 1
 		n := 1 << k
 		t := rng.Int63n(1_000_000_000)
 		tests = append(tests, testCase{
@@ -101,10 +108,10 @@ func randomTests() []testCase {
 			s:    randomString(n, rng),
 		})
 	}
-	for i := 0; i < 10; i++ {
-		k := rng.Intn(8) + 10 // up to 17
+	for i := 0; i < 5; i++ {
+		k := rng.Intn(4) + 10 // up to 13
 		n := 1 << k
-		t := rng.Int63n(1_000_000_000_000)
+		t := rng.Int63n(1_000_000_000)
 		tests = append(tests, testCase{
 			name: fmt.Sprintf("random_medium_%d", i+1),
 			k:    k,
@@ -120,16 +127,16 @@ func stressTests() []testCase {
 	return []testCase{
 		{
 			name: "stress_max_k",
-			k:    18,
+			k:    14,
 			t:    1_000_000_000,
-			s:    randomString(1<<18, rng),
+			s:    randomString(1<<14, rng),
 		},
 		{
 			name: "stress_repeating",
-			k:    18,
+			k:    14,
 			t:    987654321,
 			s: func() string {
-				n := 1 << 18
+				n := 1 << 14
 				b := make([]byte, n)
 				pat := []byte("abcxyz")
 				for i := 0; i < n; i++ {

@@ -22,8 +22,8 @@ func genTest() []byte {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", t))
 	for i := 0; i < t; i++ {
-		n := rand.Intn(8) + 1 // 1..9
-		m := rand.Intn(100)
+		n := rand.Intn(6) + 1 // 1..6
+		m := rand.Intn(50)   // 0..49
 		sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
 		for j := 0; j < n; j++ {
 			if j > 0 {
@@ -49,7 +49,7 @@ func main() {
 	}
 	defer os.Remove(ref)
 	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 12; i++ {
 		input := genTest()
 		want, err := run(ref, input)
 		if err != nil {

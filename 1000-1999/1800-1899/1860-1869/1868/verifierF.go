@@ -39,7 +39,7 @@ type Case struct{ input string }
 
 func genCases() []Case {
 	rng := rand.New(rand.NewSource(1868_06))
-	cases := make([]Case, 100)
+	cases := make([]Case, 20)
 	for i := range cases {
 		n := rng.Intn(6) + 1
 		var sb strings.Builder

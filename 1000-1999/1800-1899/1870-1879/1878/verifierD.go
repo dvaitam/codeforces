@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -11,27 +12,18 @@ import (
 	"time"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	exe := filepath.Join(dir, "oracleD")
-	cmd := exec.Command("go", "build", "-o", exe, "1878D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return exe, nil
-}
+const timeout = 2 * time.Minute
 
-func run(bin, input string) (string, error) {
+func runExe(path string, input string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else if strings.HasSuffix(bin, ".py") {
-		cmd = exec.Command("python3", bin)
+	if strings.HasSuffix(path, ".go") {
+		cmd = exec.CommandContext(ctx, "go", "run", path)
+	} else if strings.HasSuffix(path, ".py") {
+		cmd = exec.CommandContext(ctx, "python3", path)
 	} else {
-		cmd = exec.Command(bin)
+		cmd = exec.CommandContext(ctx, path)
 	}
 	cmd.Stdin = strings.NewReader(input)
 	var out, stderr bytes.Buffer
@@ -43,12 +35,55 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func randString(r *rand.Rand, n int) string {
-	bytes := make([]byte, n)
-	for i := 0; i < n; i++ {
-		bytes[i] = byte('a' + r.Intn(26))
+func buildRef() (string, error) {
+	srcPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if srcPath == "" {
+		srcPath = "1878D.cpp"
 	}
-	return string(bytes)
+	ref, err := filepath.Abs("./refD.bin")
+	if err != nil {
+		return "", err
+	}
+	// Detect language from content, not extension (worker saves all as .go)
+	content, _ := os.ReadFile(srcPath)
+	lang := detectLang(string(content))
+	actualSrc := srcPath
+	var cmd *exec.Cmd
+	switch lang {
+	case "cpp":
+		// Copy to .cpp so g++ doesn't try the Go frontend
+		actualSrc = filepath.Join(filepath.Dir(ref), "ref.cpp")
+		os.WriteFile(actualSrc, content, 0644)
+		cmd = exec.Command("g++", "-O2", "-o", ref, actualSrc)
+	case "c":
+		actualSrc = filepath.Join(filepath.Dir(ref), "ref.c")
+		os.WriteFile(actualSrc, content, 0644)
+		cmd = exec.Command("gcc", "-O2", "-o", ref, actualSrc)
+	default:
+		cmd = exec.Command("go", "build", "-o", ref, srcPath)
+	}
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("build reference failed: %v: %s", err, string(out))
+	}
+	return ref, nil
+}
+
+func detectLang(code string) string {
+	if strings.Contains(code, "#include") {
+		return "cpp"
+	}
+	if strings.Contains(code, "int main") && !strings.Contains(code, "package main") {
+		return "c"
+	}
+	return "go"
+}
+
+func randString(r *rand.Rand, n int) string {
+	b := make([]byte, n)
+	for i := 0; i < n; i++ {
+		b[i] = byte('a' + r.Intn(26))
+	}
+	return string(b)
 }
 
 func genCase(r *rand.Rand) string {
@@ -104,26 +139,26 @@ func genCase(r *rand.Rand) string {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierD.go /path/to/binary")
+		fmt.Println("usage: verifierD /path/to/candidate")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
+	ref, err := buildRef()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.Remove(oracle)
+	defer os.Remove(ref)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 1; i <= 100; i++ {
 		input := genCase(rng)
-		expect, err := run(oracle, input)
+		expect, err := runExe(ref, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", i, err)
+			fmt.Fprintf(os.Stderr, "reference error on case %d: %v\n", i, err)
 			os.Exit(1)
 		}
-		got, err := run(bin, input)
+		got, err := runExe(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i, err, input)
 			os.Exit(1)
