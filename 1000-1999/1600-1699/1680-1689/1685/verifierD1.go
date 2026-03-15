@@ -109,6 +109,33 @@ func validatePermutation(q []int, n int) error {
 	return nil
 }
 
+// bruteForceMinWeight enumerates all permutations of 1..n to find the minimum weight.
+func bruteForceMinWeight(p []int) int {
+	n := len(p)
+	perm := make([]int, n)
+	for i := range perm {
+		perm[i] = i + 1
+	}
+	best := math.MaxInt64
+	var enumerate func(int)
+	enumerate = func(pos int) {
+		if pos == n {
+			w := computeWeight(p, perm)
+			if w < best {
+				best = w
+			}
+			return
+		}
+		for i := pos; i < n; i++ {
+			perm[pos], perm[i] = perm[i], perm[pos]
+			enumerate(pos + 1)
+			perm[pos], perm[i] = perm[i], perm[pos]
+		}
+	}
+	enumerate(0)
+	return best
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: verifierD1 /path/to/binary")
@@ -116,29 +143,11 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
-	if refSrc == "" {
-		fmt.Fprintln(os.Stderr, "REFERENCE_SOURCE_PATH not set")
-		os.Exit(1)
-	}
-	ref := "refD1"
-	cmd := exec.Command("go", "build", "-o", ref, refSrc)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n%s", err, out)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
 	tests := generateTests()
 	for i, input := range tests {
 		candOut, cErr := runBinary(candidate, input)
-		refOut, rErr := runBinary("./"+ref, input)
 		if cErr != nil {
 			fmt.Fprintf(os.Stderr, "case %d: candidate error: %v\n", i+1, cErr)
-			os.Exit(1)
-		}
-		if rErr != nil {
-			fmt.Fprintf(os.Stderr, "case %d: reference error: %v\n", i+1, rErr)
 			os.Exit(1)
 		}
 
@@ -159,21 +168,16 @@ func main() {
 			os.Exit(1)
 		}
 
-		// Parse reference output
-		refQ, err := parsePermutation(refOut)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d: failed to parse reference output: %v\noutput: %s", i+1, err, refOut)
-			os.Exit(1)
-		}
-
 		candWeight := computeWeight(p, candQ)
-		refWeight := computeWeight(p, refQ)
+		optWeight := bruteForceMinWeight(p)
 
-		if candWeight != refWeight {
-			fmt.Fprintf(os.Stderr, "case %d: candidate weight %d != reference weight %d\ninput:\n%scandidate: %s\nreference: %s",
-				i+1, candWeight, refWeight, input, strings.TrimSpace(candOut), strings.TrimSpace(refOut))
+		if candWeight != optWeight {
+			fmt.Fprintf(os.Stderr, "case %d: candidate weight %d != optimal weight %d\ninput:\n%scandidate: %s\n",
+				i+1, candWeight, optWeight, input, strings.TrimSpace(candOut))
 			os.Exit(1)
 		}
+
+		_ = n
 	}
 	fmt.Printf("All %d tests passed\n", len(tests))
 }

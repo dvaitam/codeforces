@@ -96,7 +96,7 @@ func genCase(rng *rand.Rand) (string, string) {
 	n := rng.Intn(20) + 1
 	arr := make([]int64, n)
 	for i := 0; i < n; i++ {
-		arr[i] = rng.Int63n(100) - 50
+		arr[i] = rng.Int63n(100) + 1
 	}
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", n))

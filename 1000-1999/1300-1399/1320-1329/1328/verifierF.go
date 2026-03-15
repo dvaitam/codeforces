@@ -7,76 +7,12 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 )
 
-func solveF(a []int, k int) int64 {
-	n := len(a)
-	sort.Ints(a)
-	prefix := make([]int64, n+1)
-	for i, v := range a {
-		prefix[i+1] = prefix[i] + int64(v)
-	}
-	ans := int64(1 << 62)
-	i := 0
-	for i < n {
-		j := i
-		for j < n && a[j] == a[i] {
-			j++
-		}
-		x := a[i]
-		cnt := j - i
-		if cnt >= k {
-			return 0
-		}
-		need := k - cnt
-		left := i
-		right := n - j
-		if left >= need {
-			cost := int64(x)*int64(need) - (prefix[left] - prefix[left-need])
-			if cost < ans {
-				ans = cost
-			}
-		}
-		if right >= need {
-			cost := (prefix[j+need] - prefix[j]) - int64(x)*int64(need)
-			if cost < ans {
-				ans = cost
-			}
-		}
-		if left+right >= need {
-			if left < need {
-				leftCost := int64(x)*int64(left) - prefix[left]
-				rightTake := need - left
-				rightCost := (prefix[j+rightTake] - prefix[j]) - int64(x)*int64(rightTake)
-				if leftCost+rightCost < ans {
-					ans = leftCost + rightCost
-				}
-			}
-			if right < need {
-				rightCost := prefix[n] - prefix[j] - int64(x)*int64(right)
-				leftTake := need - right
-				leftCost := int64(x)*int64(leftTake) - (prefix[left] - prefix[left-leftTake])
-				if leftCost+rightCost < ans {
-					ans = leftCost + rightCost
-				}
-			}
-		}
-		i = j
-	}
-	if ans < 0 {
-		ans = 0
-	}
-	return ans
-}
-
 func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -87,12 +23,104 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+// solveF is the correct embedded solver for CF 1328/F.
+func solveF(input string) string {
+	fields := strings.Fields(input)
+	idx := 0
+	nextInt := func() int {
+		v, _ := strconv.Atoi(fields[idx])
+		idx++
+		return v
+	}
+
+	n := nextInt()
+	k := nextInt()
+
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		a[i] = nextInt()
+	}
+
+	sort.Ints(a)
+
+	vals := make([]int64, 0, n)
+	cnts := make([]int64, 0, n)
+	for _, v := range a {
+		x := int64(v)
+		if len(vals) == 0 || vals[len(vals)-1] != x {
+			vals = append(vals, x)
+			cnts = append(cnts, 1)
+		} else {
+			cnts[len(cnts)-1]++
+		}
+	}
+
+	m := len(vals)
+	prefCnt := make([]int64, m)
+	prefSum := make([]int64, m)
+	for i := 0; i < m; i++ {
+		prefCnt[i] = cnts[i]
+		prefSum[i] = cnts[i] * vals[i]
+		if i > 0 {
+			prefCnt[i] += prefCnt[i-1]
+			prefSum[i] += prefSum[i-1]
+		}
+	}
+
+	totalCnt := prefCnt[m-1]
+	totalSum := prefSum[m-1]
+	needAll := int64(k)
+	ans := int64(1 << 62)
+
+	for i := 0; i < m; i++ {
+		c := cnts[i]
+		if c >= needAll {
+			ans = 0
+			break
+		}
+
+		t := needAll - c
+		var lcnt, lsum int64
+		if i > 0 {
+			lcnt = prefCnt[i-1]
+			lsum = prefSum[i-1]
+		}
+		rcnt := totalCnt - prefCnt[i]
+		rsum := totalSum - prefSum[i]
+		x := vals[i]
+
+		bl := (x-1)*lcnt - lsum
+		br := rsum - (x+1)*rcnt
+
+		if lcnt >= t {
+			cur := bl + t
+			if cur < ans {
+				ans = cur
+			}
+		}
+		if rcnt >= t {
+			cur := br + t
+			if cur < ans {
+				ans = cur
+			}
+		}
+
+		cur := bl + br + t
+		if cur < ans {
+			ans = cur
+		}
+	}
+
+	return fmt.Sprintf("%d", ans)
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierF.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+
 	rand.Seed(6)
 	for t := 1; t <= 100; t++ {
 		n := rand.Intn(20) + 1
@@ -110,14 +138,15 @@ func main() {
 			sb.WriteString(fmt.Sprintf("%d", arr[i]))
 		}
 		sb.WriteByte('\n')
-		expect := fmt.Sprintf("%d", solveF(append([]int(nil), arr...), k))
-		out, err := run(bin, sb.String())
+		input := sb.String()
+		expect := solveF(input)
+		out, err := run(bin, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "test %d failed: %v\ninput:\n%s", t, err, sb.String())
+			fmt.Fprintf(os.Stderr, "test %d failed: %v\ninput:\n%s", t, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != expect {
-			fmt.Fprintf(os.Stderr, "test %d failed: expected %s got %s\ninput:\n%s", t, expect, out, sb.String())
+		if strings.TrimSpace(out) != strings.TrimSpace(expect) {
+			fmt.Fprintf(os.Stderr, "test %d failed: expected %s got %s\ninput:\n%s", t, expect, out, input)
 			os.Exit(1)
 		}
 	}

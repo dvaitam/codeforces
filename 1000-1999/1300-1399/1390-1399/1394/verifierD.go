@@ -54,8 +54,13 @@ func main() {
 		fmt.Println("Usage: go run verifierD.go /path/to/binary")
 		os.Exit(1)
 	}
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		fmt.Println("REFERENCE_SOURCE_PATH not set")
+		os.Exit(1)
+	}
 	solPath := "./solD.bin"
-	if err := exec.Command("go", "build", "-o", solPath, "1394D.go").Run(); err != nil {
+	if err := exec.Command("go", "build", "-o", solPath, refSrc).Run(); err != nil {
 		fmt.Println("failed to build reference solution:", err)
 		os.Exit(1)
 	}

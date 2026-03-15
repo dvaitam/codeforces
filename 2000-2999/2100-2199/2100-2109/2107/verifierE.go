@@ -11,7 +11,14 @@ import (
 	"strings"
 )
 
-const refSource = "./2107E.go"
+var refSource = getRefSource()
+
+func getRefSource() string {
+	if v := os.Getenv("REFERENCE_SOURCE_PATH"); v != "" {
+		return v
+	}
+	return "./2107E.go"
+}
 
 type testCase struct {
 	n int
@@ -64,7 +71,7 @@ func main() {
 	}
 
 	for i, tc := range tests {
-		if err := validateCase(tc, refAns[i].ok, candAns[i]); err != nil {
+		if err := validateCase(tc, refAns[i], candAns[i]); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d (n=%d k=%d): %v\n", i+1, tc.n, tc.k, err)
 			os.Exit(1)
 		}
@@ -194,21 +201,21 @@ func parseOutput(out string, tests []testCase) ([]caseAns, error) {
 	return res, nil
 }
 
-func validateCase(tc testCase, expectedPossible bool, ans caseAns) error {
-	if !expectedPossible {
-		if ans.ok {
-			return fmt.Errorf("expected No (reference unsatisfiable), but got a tree")
+func validateCase(tc testCase, refAns caseAns, ans caseAns) error {
+	if ans.ok {
+		// Candidate says Yes: validate the tree independently
+		if len(ans.edges) != tc.n-1 {
+			return fmt.Errorf("expected %d edges, got %d", tc.n-1, len(ans.edges))
+		}
+		if err := checkTree(tc.n, ans.edges, tc.k); err != nil {
+			return err
 		}
 		return nil
 	}
-	if !ans.ok {
-		return fmt.Errorf("expected Yes (solution exists), but got No")
-	}
-	if len(ans.edges) != tc.n-1 {
-		return fmt.Errorf("expected %d edges, got %d", tc.n-1, len(ans.edges))
-	}
-	if err := checkTree(tc.n, ans.edges, tc.k); err != nil {
-		return err
+	// Candidate says No: check if reference also says No
+	if refAns.ok {
+		// Reference found a solution but candidate said No
+		return fmt.Errorf("expected Yes (reference found solution), but got No")
 	}
 	return nil
 }

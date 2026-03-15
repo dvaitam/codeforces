@@ -12,12 +12,16 @@ import (
 )
 
 func buildOracle() (string, error) {
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
 	oracle := filepath.Join(dir, "oracleG")
-	cmd := exec.Command("go", "build", "-o", oracle, "903G.go")
+	cmd := exec.Command("go", "build", "-o", oracle, refSrc)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}
@@ -60,6 +64,11 @@ func generateCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
+// normalize replaces all whitespace sequences with a single space for comparison.
+func normalize(s string) string {
+	return strings.Join(strings.Fields(strings.TrimSpace(s)), " ")
+}
+
 func runCase(bin, oracle, input string) error {
 	exp, err := run(oracle, input)
 	if err != nil {
@@ -69,7 +78,7 @@ func runCase(bin, oracle, input string) error {
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(got) != strings.TrimSpace(exp) {
+	if normalize(got) != normalize(exp) {
 		return fmt.Errorf("expected %s got %s", exp, got)
 	}
 	return nil

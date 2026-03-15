@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -28,9 +27,11 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	refSrc := filepath.Join(dir, "796F.go")
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		fmt.Println("REFERENCE_SOURCE_PATH not set")
+		os.Exit(1)
+	}
 	refBin := filepath.Join(os.TempDir(), "796F_ref_bin")
 	cmd := exec.Command("go", "build", "-o", refBin, refSrc)
 	if out, err := cmd.CombinedOutput(); err != nil {

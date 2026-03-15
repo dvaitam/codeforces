@@ -811,12 +811,17 @@ func solveCase(n, m int, edges [][2]int, queries [][2]int) []int {
 		bAdj[v] = append(bAdj[v], u)
 	}
 	isCycleNode := make([]bool, tot)
+	cycleOf := make([]int, tot)
+	for i := range cycleOf {
+		cycleOf[i] = -1
+	}
 	for cid, cyc := range cycles {
 		bid := n + cid
 		isCycleNode[bid] = true
 		for _, u := range cyc {
 			bAdj[bid] = append(bAdj[bid], u)
 			bAdj[u] = append(bAdj[u], bid)
+			cycleOf[u] = bid
 		}
 	}
 
@@ -867,6 +872,12 @@ func solveCase(n, m int, edges [][2]int, queries [][2]int) []int {
 	res := make([]int, len(queries))
 	for i, q := range queries {
 		x, y := q[0], q[1]
+		if cycleOf[x] >= 0 {
+			x = cycleOf[x]
+		}
+		if cycleOf[y] >= 0 {
+			y = cycleOf[y]
+		}
 		l := lca(x, y, depthB, up, LOG)
 		cnt := distC[x] + distC[y] - 2*distC[l]
 		if isCycleNode[l] {

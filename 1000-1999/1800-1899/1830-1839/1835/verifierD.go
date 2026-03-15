@@ -79,7 +79,7 @@ func generateCase(rng *rand.Rand) (string, string) {
 	n := rng.Intn(4) + 2
 	maxEdges := n * (n - 1)
 	m := rng.Intn(maxEdges + 1)
-	k := rng.Intn(4) + 1
+	k := n*n*n + rng.Intn(100)
 	seen := make(map[[2]int]struct{})
 	var es []edge
 	for len(es) < m {

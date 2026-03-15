@@ -12,19 +12,24 @@ import (
 
 func solveCaseC(p []int) int {
 	n := len(p)
-	pre := 0
-	for pre < n && p[pre] == pre+1 {
-		pre++
+	// pos[v] = 1-indexed position of value v
+	pos := make([]int, n+1)
+	for j := 0; j < n; j++ {
+		pos[p[j]] = j + 1
 	}
-	suf := 0
-	for suf < n-pre && p[n-1-suf] == n-suf {
-		suf++
+
+	l := (n + 1) / 2
+	r := (n + 2) / 2
+
+	if pos[l] > pos[r] {
+		return n / 2
 	}
-	rem := n - pre - suf
-	if rem < 0 {
-		rem = 0
+
+	for l > 1 && pos[l-1] < pos[l] && pos[r] < pos[r+1] {
+		l--
+		r++
 	}
-	return (rem + 1) / 2
+	return l - 1
 }
 
 func main() {

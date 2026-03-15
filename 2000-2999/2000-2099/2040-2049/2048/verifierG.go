@@ -4,13 +4,65 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-const refSource = "2000-2999/2000-2099/2040-2049/2048/2048G.go"
+var refSource = getRefSource()
+
+func getRefSource() string {
+	if v := os.Getenv("REFERENCE_SOURCE_PATH"); v != "" {
+		return v
+	}
+	return "2000-2999/2000-2099/2040-2049/2048/2048G.go"
+}
+
+func generateInput() []byte {
+	rng := rand.New(rand.NewSource(2048))
+	type tc struct{ n, m, v int }
+	var cases []tc
+
+	// Fixed test cases from the problem
+	cases = append(cases, tc{2, 2, 2})
+	cases = append(cases, tc{2, 3, 4})
+	cases = append(cases, tc{11, 45, 14})
+
+	// Small exhaustive cases
+	for n := 1; n <= 5; n++ {
+		for v := 1; v <= 6; v++ {
+			if n*v > 1000000 {
+				continue
+			}
+			for _, m := range []int{1, 2, 3, 5, 10, 100, 1000000000} {
+				cases = append(cases, tc{n, m, v})
+			}
+		}
+	}
+
+	// Random cases
+	for i := 0; i < 50; i++ {
+		n := rng.Intn(10) + 1
+		v := rng.Intn(100) + 1
+		if n*v > 1000000 {
+			v = 1000000 / n
+			if v < 1 {
+				v = 1
+			}
+		}
+		m := rng.Intn(1000000000) + 1
+		cases = append(cases, tc{n, m, v})
+	}
+
+	var buf bytes.Buffer
+	fmt.Fprintln(&buf, len(cases))
+	for _, c := range cases {
+		fmt.Fprintf(&buf, "%d %d %d\n", c.n, c.m, c.v)
+	}
+	return buf.Bytes()
+}
 
 func main() {
 	if len(os.Args) != 2 {
@@ -19,13 +71,7 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	input, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		fail("failed to read input: %v", err)
-	}
-	if len(input) == 0 {
-		fail("empty input")
-	}
+	input := generateInput()
 
 	refBin, err := buildReference()
 	if err != nil {

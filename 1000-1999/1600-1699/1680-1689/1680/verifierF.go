@@ -12,12 +12,16 @@ import (
 )
 
 func buildOracle() (string, error) {
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
 	oracle := filepath.Join(dir, "oracleF")
-	cmd := exec.Command("go", "build", "-o", oracle, "1680F.go")
+	cmd := exec.Command("go", "build", "-o", oracle, refSrc)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}

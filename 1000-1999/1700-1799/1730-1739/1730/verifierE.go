@@ -276,35 +276,6 @@ func loadTestcases() ([]testCase, error) {
 	return tests, nil
 }
 
-func runCase(bin string, tc testCase, expected string) error {
-	var input strings.Builder
-	input.WriteString("1\n")
-	input.WriteString(strconv.Itoa(tc.n))
-	input.WriteByte('\n')
-	for i, v := range tc.arr {
-		if i > 0 {
-			input.WriteByte(' ')
-		}
-		input.WriteString(strconv.FormatInt(v, 10))
-	}
-	input.WriteByte('\n')
-
-	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(input.String())
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
-	}
-	got := strings.TrimSpace(out.String())
-	if got != strings.TrimSpace(expected) {
-		return fmt.Errorf("expected %s got %s", expected, got)
-	}
-	return nil
-}
-
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierE.go /path/to/binary")
@@ -322,9 +293,41 @@ func main() {
 		os.Exit(1)
 	}
 
-	for i, tc := range tests {
-		if err := runCase(bin, tc, expectedOutputs[i]); err != nil {
-			fmt.Printf("case %d failed: %v\n", i+1, err)
+	// Batch all test cases into a single invocation to avoid repeatedly
+	// paying the heavy init() cost of the candidate binary.
+	var input strings.Builder
+	input.WriteString(strconv.Itoa(len(tests)))
+	input.WriteByte('\n')
+	for _, tc := range tests {
+		input.WriteString(strconv.Itoa(tc.n))
+		input.WriteByte('\n')
+		for i, v := range tc.arr {
+			if i > 0 {
+				input.WriteByte(' ')
+			}
+			input.WriteString(strconv.FormatInt(v, 10))
+		}
+		input.WriteByte('\n')
+	}
+
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input.String())
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "runtime error: %v\n%s", err, errBuf.String())
+		os.Exit(1)
+	}
+	lines := strings.Fields(strings.TrimSpace(out.String()))
+	if len(lines) != len(tests) {
+		fmt.Fprintf(os.Stderr, "expected %d output values, got %d\n", len(tests), len(lines))
+		os.Exit(1)
+	}
+	for i, expected := range expectedOutputs {
+		if lines[i] != strings.TrimSpace(expected) {
+			fmt.Printf("case %d failed: expected %s got %s\n", i+1, expected, lines[i])
 			os.Exit(1)
 		}
 	}

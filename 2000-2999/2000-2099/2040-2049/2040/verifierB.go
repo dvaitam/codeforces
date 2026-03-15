@@ -6,13 +6,10 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
-
-const refSource2040B = "./2040B.go"
 
 type testCase struct {
 	name  string
@@ -26,27 +23,9 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, cleanup, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
 	tests := buildTests()
 	for idx, tc := range tests {
-		refOut, err := runProgram(refBin, tc.input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference runtime error on test %d (%s): %v\ninput:\n%soutput:\n%s",
-				idx+1, tc.name, err, tc.input, refOut)
-			os.Exit(1)
-		}
-		refVals, err := parseOutput(refOut, tc.input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference produced invalid output on test %d (%s): %v\ninput:\n%soutput:\n%s",
-				idx+1, tc.name, err, tc.input, refOut)
-			os.Exit(1)
-		}
+		refVals := solveAll(tc.input)
 
 		candOut, err := runProgram(candidate, tc.input)
 		if err != nil {
@@ -63,13 +42,13 @@ func main() {
 
 		if len(refVals) != len(candVals) {
 			fmt.Fprintf(os.Stderr, "test %d (%s) failed: expected %d answers got %d\ninput:\n%sreference output:\n%s\ncandidate output:\n%s",
-				idx+1, tc.name, len(refVals), len(candVals), tc.input, refOut, candOut)
+				idx+1, tc.name, len(refVals), len(candVals), tc.input, fmtVals(refVals), candOut)
 			os.Exit(1)
 		}
 		for i := range refVals {
 			if refVals[i] != candVals[i] {
 				fmt.Fprintf(os.Stderr, "test %d (%s) failed on case %d: expected %d got %d\ninput:\n%sreference output:\n%s\ncandidate output:\n%s",
-					idx+1, tc.name, i+1, refVals[i], candVals[i], tc.input, refOut, candOut)
+					idx+1, tc.name, i+1, refVals[i], candVals[i], tc.input, fmtVals(refVals), candOut)
 				os.Exit(1)
 			}
 		}
@@ -78,23 +57,41 @@ func main() {
 	fmt.Printf("All %d tests passed\n", len(tests))
 }
 
-func buildReference() (string, func(), error) {
-	dir, err := os.MkdirTemp("", "cf-2040B-ref-")
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to create temp dir: %v", err)
+// minOps computes the correct answer for CF 2040/B.
+// After the first type-1 op covers 1 cell, each subsequent op can extend
+// coverage from c to 2*c+2 (place a 1 at position c + (c+2) = 2c+2,
+// then the segment [1, 2c+2] has c+1 ones out of 2c+2 = ceil((2c+2)/2)).
+func minOps(n int64) int64 {
+	ops := int64(0)
+	covered := int64(0)
+	for covered < n {
+		if covered == 0 {
+			covered = 1
+		} else {
+			covered = covered*2 + 2
+		}
+		ops++
 	}
-	binPath := filepath.Join(dir, "ref2040B.bin")
-	cmd := exec.Command("go", "build", "-o", binPath, refSource2040B)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		_ = os.RemoveAll(dir)
-		return "", nil, fmt.Errorf("failed to build reference: %v\n%s", err, stderr.String())
+	return ops
+}
+
+func solveAll(input string) []int64 {
+	fields := strings.Fields(strings.TrimSpace(input))
+	t, _ := strconv.Atoi(fields[0])
+	res := make([]int64, t)
+	for i := 0; i < t; i++ {
+		n, _ := strconv.ParseInt(fields[i+1], 10, 64)
+		res[i] = minOps(n)
 	}
-	cleanup := func() {
-		_ = os.RemoveAll(dir)
+	return res
+}
+
+func fmtVals(vals []int64) string {
+	parts := make([]string, len(vals))
+	for i, v := range vals {
+		parts[i] = strconv.FormatInt(v, 10)
 	}
-	return binPath, cleanup, nil
+	return strings.Join(parts, " ")
 }
 
 func runProgram(bin string, input string) (string, error) {
@@ -139,6 +136,7 @@ func buildTests() []testCase {
 		makeManual("single", []int64{1}),
 		makeManual("small", []int64{1, 2, 3, 4}),
 		makeManual("powers", []int64{1, 2, 3, 7, 8, 9}),
+		makeManual("examples", []int64{1, 2, 4, 20}),
 	}
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
