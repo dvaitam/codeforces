@@ -6,12 +6,178 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
+
+// Embedded reference solver for 2053F.
+
+type refPair struct {
+	c   int
+	cnt int
+}
+
+type refItem struct {
+	val   int64
+	color int
+}
+
+func refHeapPush(h []refItem, x refItem) []refItem {
+	h = append(h, x)
+	i := len(h) - 1
+	for i > 0 {
+		p := (i - 1) >> 1
+		if h[p].val >= h[i].val {
+			break
+		}
+		h[p], h[i] = h[i], h[p]
+		i = p
+	}
+	return h
+}
+
+func refHeapPop(h []refItem) []refItem {
+	n := len(h) - 1
+	if n == 0 {
+		return h[:0]
+	}
+	h[0] = h[n]
+	h = h[:n]
+	i := 0
+	for {
+		l := i*2 + 1
+		if l >= n {
+			break
+		}
+		r := l + 1
+		j := l
+		if r < n && h[r].val > h[l].val {
+			j = r
+		}
+		if h[i].val >= h[j].val {
+			break
+		}
+		h[i], h[j] = h[j], h[i]
+		i = j
+	}
+	return h
+}
+
+func solveCase(n, m, k int, grid [][]int) int64 {
+	counts := make([][]refPair, n)
+	blanks := make([]int64, n)
+
+	for i := 0; i < n; i++ {
+		vals := make([]int, 0, m)
+		var b int64
+		for j := 0; j < m; j++ {
+			x := grid[i][j]
+			if x == -1 {
+				b++
+			} else {
+				vals = append(vals, x)
+			}
+		}
+		blanks[i] = b
+		if len(vals) == 0 {
+			continue
+		}
+		sort.Ints(vals)
+		pairs := make([]refPair, 0, len(vals))
+		cur := vals[0]
+		cnt := 1
+		for j := 1; j < len(vals); j++ {
+			if vals[j] == cur {
+				cnt++
+			} else {
+				pairs = append(pairs, refPair{c: cur, cnt: cnt})
+				cur = vals[j]
+				cnt = 1
+			}
+		}
+		pairs = append(pairs, refPair{c: cur, cnt: cnt})
+		counts[i] = pairs
+	}
+
+	var base int64
+	for i := 0; i+1 < n; i++ {
+		a := counts[i]
+		bv := counts[i+1]
+		p, q := 0, 0
+		for p < len(a) && q < len(bv) {
+			if a[p].c == bv[q].c {
+				base += int64(a[p].cnt) * int64(bv[q].cnt)
+				p++
+				q++
+			} else if a[p].c < bv[q].c {
+				p++
+			} else {
+				q++
+			}
+		}
+	}
+
+	raw := make([]int64, k+1)
+	h := make([]refItem, 0)
+	var lazy int64
+	var d int64
+
+	currentMax := func() int64 {
+		for len(h) > 0 {
+			top := h[0]
+			if raw[top.color] != top.val || top.val <= lazy {
+				h = refHeapPop(h)
+				continue
+			}
+			return top.val - lazy
+		}
+		return 0
+	}
+
+	addColor := func(c int, inc int64) {
+		cur := raw[c]
+		if cur < lazy {
+			cur = lazy
+		}
+		cur += inc
+		raw[c] = cur
+		h = refHeapPush(h, refItem{val: cur, color: c})
+	}
+
+	addUnary := func(i int) {
+		r := blanks[i]
+		if r == 0 {
+			return
+		}
+		if i > 0 {
+			for _, p := range counts[i-1] {
+				addColor(p.c, r*int64(p.cnt))
+			}
+		}
+		if i+1 < n {
+			for _, p := range counts[i+1] {
+				addColor(p.c, r*int64(p.cnt))
+			}
+		}
+	}
+
+	addUnary(0)
+	for i := 1; i < n; i++ {
+		mx := currentMax()
+		bv := blanks[i-1] * blanks[i]
+		if mx > bv {
+			d += mx
+			lazy += mx - bv
+		} else {
+			d += bv
+		}
+		addUnary(i)
+	}
+
+	return base + d + currentMax()
+}
 
 type matrixTest struct {
 	n, m, k int
@@ -19,8 +185,9 @@ type matrixTest struct {
 }
 
 type testCase struct {
-	input   string
-	caseCnt int
+	input    string
+	caseCnt  int
+	matrices []matrixTest
 }
 
 func main() {
@@ -30,24 +197,12 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	ref, err := buildReferenceBinary()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
 	tests := generateTests()
 	for idx, tc := range tests {
-		refOut, err := runProgram(ref, tc.input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\ninput:\n%s\n", idx+1, err, tc.input)
-			os.Exit(1)
-		}
-		refVals, err := parseOutputs(refOut, tc.caseCnt)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to parse reference output on test %d: %v\noutput:\n%s\n", idx+1, err, refOut)
-			os.Exit(1)
+		// Compute reference answers using embedded solver
+		refVals := make([]int64, tc.caseCnt)
+		for i, mt := range tc.matrices {
+			refVals[i] = solveCase(mt.n, mt.m, mt.k, mt.data)
 		}
 
 		gotOut, err := runProgram(bin, tc.input)
@@ -63,45 +218,13 @@ func main() {
 
 		for caseIdx := 0; caseIdx < tc.caseCnt; caseIdx++ {
 			if refVals[caseIdx] != gotVals[caseIdx] {
-				fmt.Fprintf(os.Stderr, "test %d case %d mismatch: expected %d got %d\ninput:\n%sreference output:\n%s\nparticipant output:\n%s\n",
-					idx+1, caseIdx+1, refVals[caseIdx], gotVals[caseIdx], tc.input, refOut, gotOut)
+				fmt.Fprintf(os.Stderr, "test %d case %d mismatch: expected %d got %d\ninput:\n%sparticipant output:\n%s\n",
+					idx+1, caseIdx+1, refVals[caseIdx], gotVals[caseIdx], tc.input, gotOut)
 				os.Exit(1)
 			}
 		}
 	}
 	fmt.Printf("All %d tests passed\n", len(tests))
-}
-
-func buildReferenceBinary() (string, error) {
-	dir, err := verifierDir()
-	if err != nil {
-		return "", err
-	}
-	tmp, err := os.CreateTemp("", "2053F_ref_*.bin")
-	if err != nil {
-		return "", err
-	}
-	path := tmp.Name()
-	tmp.Close()
-
-	cmd := exec.Command("go", "build", "-o", path, "2053F.go")
-	cmd.Dir = dir
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.Remove(path)
-		return "", fmt.Errorf("%v\n%s", err, out.String())
-	}
-	return path, nil
-}
-
-func verifierDir() (string, error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("unable to determine verifier directory")
-	}
-	return filepath.Dir(file), nil
 }
 
 func runProgram(path, input string) (string, error) {
@@ -272,5 +395,5 @@ func makeTestCase(cases []matrixTest) testCase {
 			sb.WriteByte('\n')
 		}
 	}
-	return testCase{input: sb.String(), caseCnt: len(cases)}
+	return testCase{input: sb.String(), caseCnt: len(cases), matrices: cases}
 }

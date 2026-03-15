@@ -6,171 +6,170 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
-type test struct {
-	input    string
-	expected string
-}
+const LOG = 17
+const hashB1 uint64 = 911382323
+const hashB2 uint64 = 972663749
 
-func solveCase(s string) string {
+func solveE(input string) string {
+	str := strings.TrimSpace(input)
+	s := []byte(str)
 	n := len(s)
-	nextDiff := make([]int, n)
+	if n == 0 {
+		return ""
+	}
+
+	chArr := make([]byte, n+1)
+	nxtArr := make([]int32, n+1)
+	lnsArr := make([]int32, n+1)
+	ansArr := make([]int32, n+2)
+	pow1 := make([]uint64, n+1)
+	pow2 := make([]uint64, n+1)
+
+	pow1[0], pow2[0] = 1, 1
+	for i := 0; i < n; i++ {
+		pow1[i+1] = pow1[i] * hashB1
+		pow2[i+1] = pow2[i] * hashB2
+	}
+
+	var up [LOG][]int32
+	var h1 [LOG][]uint64
+	var h2 [LOG][]uint64
+	for k := 0; k < LOG; k++ {
+		up[k] = make([]int32, n+1)
+		h1[k] = make([]uint64, n+1)
+		h2[k] = make([]uint64, n+1)
+	}
+
+	build := func(u int32, c byte, nx int32) {
+		ui := int(u)
+		chArr[ui] = c
+		nxtArr[ui] = nx
+		lnsArr[ui] = lnsArr[int(nx)] + 1
+		up[0][ui] = nx
+		v := uint64(c-'a') + 1
+		h1[0][ui] = v
+		h2[0][ui] = v
+		for k := 1; k < LOG; k++ {
+			if int(lnsArr[ui]) >= 1<<k {
+				mid := up[k-1][ui]
+				mi := int(mid)
+				up[k][ui] = up[k-1][mi]
+				h1[k][ui] = h1[k-1][ui]*pow1[1<<(k-1)] + h1[k-1][mi]
+				h2[k][ui] = h2[k-1][ui]*pow2[1<<(k-1)] + h2[k-1][mi]
+			}
+		}
+	}
+
+	cmp := func(a, b int32) int {
+		if a == b {
+			return 0
+		}
+		x, y := a, b
+		for k := LOG - 1; k >= 0; k-- {
+			if int(lnsArr[int(x)]) >= 1<<k && int(lnsArr[int(y)]) >= 1<<k &&
+				h1[k][int(x)] == h1[k][int(y)] &&
+				h2[k][int(x)] == h2[k][int(y)] {
+				x = up[k][int(x)]
+				y = up[k][int(y)]
+			}
+		}
+		if x == 0 {
+			if y == 0 {
+				return 0
+			}
+			return -1
+		}
+		if y == 0 {
+			return 1
+		}
+		if chArr[int(x)] < chArr[int(y)] {
+			return -1
+		}
+		return 1
+	}
+
+	jump := func(u int32, d int32) int32 {
+		x := u
+		rem := int(d)
+		for k := LOG - 1; k >= 0; k-- {
+			if rem >= 1<<k {
+				x = up[k][int(x)]
+				rem -= 1 << k
+			}
+		}
+		return x
+	}
+
+	collect := func(u int32, k int) string {
+		buf := make([]byte, 0, k)
+		x := u
+		for k > 0 && x != 0 {
+			buf = append(buf, chArr[int(x)])
+			x = nxtArr[int(x)]
+			k--
+		}
+		return string(buf)
+	}
+
+	lastK := func(u int32, k int) string {
+		start := jump(u, lnsArr[int(u)]-int32(k))
+		return collect(start, k)
+	}
+
 	for i := n - 1; i >= 0; i-- {
+		u := int32(i + 1)
+		build(u, s[i], ansArr[i+1])
 		if i+1 < n && s[i] == s[i+1] {
-			nextDiff[i] = nextDiff[i+1]
+			if cmp(u, ansArr[i+2]) <= 0 {
+				ansArr[i] = u
+			} else {
+				ansArr[i] = ansArr[i+2]
+			}
 		} else {
-			nextDiff[i] = i + 1
+			ansArr[i] = u
 		}
 	}
-	isEmpty := make([]bool, n+1)
-	headChar := make([]byte, n+1)
-	firstDiff := make([]byte, n+1)
-	headRunLen := make([]int, n+1)
-	length := make([]int, n+1)
-	pref := make([]string, n+1)
-	suff := make([]string, n+1)
-	isEmpty[n] = true
-	length[n] = 0
-	for i := n - 1; i >= 0; i-- {
-		c := s[i]
-		k := nextDiff[i] - i
-		r := i + k
-		var chooseSmall bool
-		if r >= n || isEmpty[r] {
-			chooseSmall = true
-		} else {
-			hc := headChar[r]
-			if hc != c {
-				chooseSmall = hc < c
-			} else {
-				fd := firstDiff[r]
-				if fd == 0 {
-					chooseSmall = true
-				} else {
-					chooseSmall = fd < c
-				}
-			}
-		}
-		tMin := k & 1
-		tMax := k
-		t := tMax
-		if chooseSmall {
-			t = tMin
-		}
-		length[i] = t
-		if r <= n {
-			length[i] += length[r]
-		}
-		isEmpty[i] = (length[i] == 0)
-		maxPref := 10
-		if length[i] <= maxPref {
-			var tmp []byte
-			for j := 0; j < t; j++ {
-				tmp = append(tmp, c)
-			}
-			if !isEmpty[r] {
-				want := length[i] - t
-				curPref := pref[r]
-				if len(curPref) > want {
-					curPref = curPref[:want]
-				}
-				tmp = append(tmp, curPref...)
-			}
-			pref[i] = string(tmp)
-		} else {
-			if t >= maxPref {
-				buf := make([]byte, maxPref)
-				for j := range buf {
-					buf[j] = c
-				}
-				pref[i] = string(buf)
-			} else {
-				var buf []byte
-				for j := 0; j < t; j++ {
-					buf = append(buf, c)
-				}
-				need := maxPref - t
-				add := pref[r]
-				if len(add) > need {
-					add = add[:need]
-				}
-				buf = append(buf, add...)
-				pref[i] = string(buf)
-			}
-		}
-		if length[i] <= 2 {
-			var tmp []byte
-			for j := 0; j < t; j++ {
-				tmp = append(tmp, c)
-			}
-			if !isEmpty[r] {
-				add := suff[r]
-				tmp = append(tmp, add...)
-			}
-			suff[i] = string(tmp)
-		} else {
-			if r < n && length[r] >= 2 {
-				suff[i] = suff[r]
-			} else if r < n && length[r] == 1 {
-				tmp := []byte{c, suff[r][0]}
-				suff[i] = string(tmp)
-			} else {
-				suff[i] = string([]byte{c, c})
-			}
-		}
-		if t > 0 {
-			headChar[i] = c
-			headRunLen[i] = t
-			if r >= n || isEmpty[r] {
-				firstDiff[i] = 0
-			} else if headChar[r] != c {
-				firstDiff[i] = headChar[r]
-			} else {
-				firstDiff[i] = firstDiff[r]
-			}
-		} else {
-			headChar[i] = headChar[r]
-			headRunLen[i] = headRunLen[r]
-			firstDiff[i] = firstDiff[r]
-		}
-	}
+
 	var out strings.Builder
 	for i := 0; i < n; i++ {
-		L := length[i]
-		out.WriteString(fmt.Sprintf("%d ", L))
-		if L <= 10 {
-			out.WriteString(pref[i])
+		u := ansArr[i]
+		l := int(lnsArr[int(u)])
+		if l == 0 {
+			out.WriteString("0\n")
+			continue
+		}
+		var res string
+		if l <= 10 {
+			res = collect(u, l)
 		} else {
-			out.WriteString(pref[i][:5])
-			out.WriteString("...")
-			out.WriteString(suff[i])
+			res = collect(u, 5) + "..." + lastK(u, 2)
 		}
-		if i+1 < n {
-			out.WriteByte('\n')
-		}
+		out.WriteString(strconv.Itoa(l))
+		out.WriteByte(' ')
+		out.WriteString(res)
+		out.WriteByte('\n')
 	}
-	return out.String()
+	return strings.TrimSpace(out.String())
 }
 
-func generateTests() []test {
+func generateInputs() []string {
 	rng := rand.New(rand.NewSource(46))
-	tests := []test{}
+	var inputs []string
 	fixed := []string{"a", "aaaa", "abab"}
-	for _, f := range fixed {
-		tests = append(tests, test{f, solveCase(f)})
-	}
-	for len(tests) < 100 {
+	inputs = append(inputs, fixed...)
+	for len(inputs) < 100 {
 		n := rng.Intn(8) + 1
 		var sb strings.Builder
 		for i := 0; i < n; i++ {
 			sb.WriteByte(byte('a' + rng.Intn(3)))
 		}
-		s := sb.String()
-		tests = append(tests, test{s, solveCase(s)})
+		inputs = append(inputs, sb.String())
 	}
-	return tests
+	return inputs
 }
 
 func runBinary(bin, input string) (string, error) {
@@ -182,29 +181,35 @@ func runBinary(bin, input string) (string, error) {
 	}
 	cmd.Stdin = strings.NewReader(input + "\n")
 	var out bytes.Buffer
+	var stderr bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &stderr
 	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+	if err != nil {
+		return "", fmt.Errorf("%v\n%s", err, stderr.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierE.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: verifierE /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	tests := generateTests()
-	for i, t := range tests {
-		got, err := runBinary(bin, t.input)
+
+	inputs := generateInputs()
+	for i, input := range inputs {
+		expected := solveE(input)
+		got, err := runBinary(bin, input)
 		if err != nil {
 			fmt.Printf("Runtime error on test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(t.expected) {
-			fmt.Printf("Wrong answer on test %d\nInput:%s\nExpected:%s\nGot:%s\n", i+1, t.input, t.expected, got)
+		if strings.TrimSpace(got) != strings.TrimSpace(expected) {
+			fmt.Printf("Wrong answer on test %d\nInput:%s\nExpected:%s\nGot:%s\n", i+1, input, expected, got)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed.\n", len(tests))
+	fmt.Printf("All %d tests passed.\n", len(inputs))
 }

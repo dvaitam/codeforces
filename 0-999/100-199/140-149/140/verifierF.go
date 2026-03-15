@@ -3,10 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
+	"sort"
 	"os"
 	"os/exec"
-	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -20,22 +22,16 @@ type pair struct {
 }
 
 func checkCenter(cx2, cy2 int, pts []point, k int) bool {
-	mp := make(map[pair]int)
+	set := make(map[pair]struct{}, len(pts))
 	for _, p := range pts {
-		mp[pair{p.x, p.y}]++
+		set[pair{p.x, p.y}] = struct{}{}
 	}
-	removed := 0
+	miss := 0
 	for _, p := range pts {
-		if mp[pair{p.x, p.y}] == 0 {
-			continue
-		}
-		mp[pair{p.x, p.y}]--
 		sym := pair{cx2 - p.x, cy2 - p.y}
-		if mp[sym] > 0 {
-			mp[sym]--
-		} else {
-			removed++
-			if removed > k {
+		if _, ok := set[sym]; !ok {
+			miss++
+			if miss > k {
 				return false
 			}
 		}
@@ -43,38 +39,134 @@ func checkCenter(cx2, cy2 int, pts []point, k int) bool {
 	return true
 }
 
-func solveF(n, k int, pts []point) string {
+func solveF(n, k int, pts []point) (int, []pair) {
 	if k >= n {
-		return "-1"
+		return -1, nil
 	}
+
+	// Sort points by a unique key to determine which points must be paired
+	sorted := make([]point, n)
+	copy(sorted, pts)
+	sort.Slice(sorted, func(i, j int) bool {
+		if sorted[i].x != sorted[j].x {
+			return sorted[i].x < sorted[j].x
+		}
+		return sorted[i].y < sorted[j].y
+	})
+
+	t := k + 1
+	if t > n {
+		t = n
+	}
+
+	// Any valid center must pair at least one of the first t points with one of the last t points
 	candMap := make(map[pair]struct{})
-	for i := 0; i < n; i++ {
-		candMap[pair{2 * pts[i].x, 2 * pts[i].y}] = struct{}{}
-		for j := i + 1; j < n; j++ {
-			candMap[pair{pts[i].x + pts[j].x, pts[i].y + pts[j].y}] = struct{}{}
+	for i := 0; i < t; i++ {
+		for j := n - t; j < n; j++ {
+			candMap[pair{sorted[i].x + sorted[j].x, sorted[i].y + sorted[j].y}] = struct{}{}
 		}
 	}
-	res := make([]pair, 0)
+
+	var res []pair
 	for c := range candMap {
 		if checkCenter(c.x, c.y, pts, k) {
 			res = append(res, c)
 		}
 	}
-	sort.Slice(res, func(i, j int) bool {
-		if res[i].x != res[j].x {
-			return res[i].x < res[j].x
-		}
-		return res[i].y < res[j].y
-	})
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d\n", len(res)))
-	for _, c := range res {
-		sb.WriteString(fmt.Sprintf("%.1f %.1f\n", float64(c.x)/2.0, float64(c.y)/2.0))
-	}
-	return strings.TrimRight(sb.String(), "\n")
+	return len(res), res
 }
 
-func generateCaseF(rng *rand.Rand) (string, string) {
+func parseCandidateOutput(output string) (int, []pair, error) {
+	fields := strings.Fields(output)
+	if len(fields) == 0 {
+		return 0, nil, fmt.Errorf("empty output")
+	}
+	cnt, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return 0, nil, fmt.Errorf("invalid count %q", fields[0])
+	}
+	if cnt == -1 {
+		if len(fields) != 1 {
+			return -1, nil, fmt.Errorf("expected only -1, got extra tokens")
+		}
+		return -1, nil, nil
+	}
+	if len(fields) != 1+2*cnt {
+		return 0, nil, fmt.Errorf("expected %d coordinate pairs after count %d, got %d tokens total", cnt, cnt, len(fields))
+	}
+	var centers []pair
+	for i := 0; i < cnt; i++ {
+		xf, err1 := strconv.ParseFloat(fields[1+2*i], 64)
+		yf, err2 := strconv.ParseFloat(fields[1+2*i+1], 64)
+		if err1 != nil || err2 != nil {
+			return 0, nil, fmt.Errorf("invalid coordinate at center %d", i+1)
+		}
+		// Convert to doubled integer coordinates
+		cx2 := int(math.Round(xf * 2))
+		cy2 := int(math.Round(yf * 2))
+		centers = append(centers, pair{cx2, cy2})
+	}
+	return cnt, centers, nil
+}
+
+func main() {
+	if len(os.Args) != 2 && !(len(os.Args) == 3 && os.Args[1] == "--") {
+		fmt.Fprintln(os.Stderr, "usage: go run verifierF.go /path/to/binary")
+		os.Exit(1)
+	}
+	bin := os.Args[len(os.Args)-1]
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < 100; i++ {
+		n, k, pts, input := generateCaseF(rng)
+		refCount, refCenters := solveF(n, k, pts)
+
+		got, err := run(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
+			os.Exit(1)
+		}
+
+		gotCount, gotCenters, err := parseCandidateOutput(got)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: invalid output: %v\ninput:\n%soutput:\n%s\n", i+1, err, input, got)
+			os.Exit(1)
+		}
+
+		// Check count matches
+		if gotCount != refCount {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected count %d, got %d\ninput:\n%sexpected centers: %v\ngot output:\n%s\n",
+				i+1, refCount, gotCount, input, refCenters, got)
+			os.Exit(1)
+		}
+
+		if refCount == -1 {
+			continue
+		}
+
+		// Verify each candidate center is valid
+		for ci, c := range gotCenters {
+			if !checkCenter(c.x, c.y, pts, k) {
+				fmt.Fprintf(os.Stderr, "case %d failed: candidate center %d (%.1f, %.1f) is not valid\ninput:\n%s",
+					i+1, ci+1, float64(c.x)/2, float64(c.y)/2, input)
+				os.Exit(1)
+			}
+		}
+
+		// Verify no duplicates
+		seen := make(map[pair]bool)
+		for _, c := range gotCenters {
+			if seen[c] {
+				fmt.Fprintf(os.Stderr, "case %d failed: duplicate center (%.1f, %.1f)\ninput:\n%s",
+					i+1, float64(c.x)/2, float64(c.y)/2, input)
+				os.Exit(1)
+			}
+			seen[c] = true
+		}
+	}
+	fmt.Println("All tests passed")
+}
+
+func generateCaseF(rng *rand.Rand) (int, int, []point, string) {
 	n := rng.Intn(7) + 2
 	k := rng.Intn(3)
 	if k >= n {
@@ -96,9 +188,7 @@ func generateCaseF(rng *rand.Rand) (string, string) {
 	for i := 0; i < n; i++ {
 		sb.WriteString(fmt.Sprintf("%d %d\n", pts[i].x, pts[i].y))
 	}
-	input := sb.String()
-	expect := solveF(n, k, pts)
-	return input, expect
+	return n, k, pts, sb.String()
 }
 
 func run(bin, input string) (string, error) {
@@ -117,26 +207,4 @@ func run(bin, input string) (string, error) {
 		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
 	}
 	return strings.TrimSpace(out.String()), nil
-}
-
-func main() {
-	if len(os.Args) != 2 && !(len(os.Args) == 3 && os.Args[1] == "--") {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierF.go /path/to/binary")
-		os.Exit(1)
-	}
-	bin := os.Args[len(os.Args)-1]
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 100; i++ {
-		in, expect := generateCaseF(rng)
-		got, err := run(bin, in)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
-			os.Exit(1)
-		}
-		if got != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, expect, got, in)
-			os.Exit(1)
-		}
-	}
-	fmt.Println("All tests passed")
 }

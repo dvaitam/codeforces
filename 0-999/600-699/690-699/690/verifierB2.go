@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,9 +13,7 @@ import (
 )
 
 const (
-	refSourceB2 = "690B2.go"
-	refBinaryB2 = "ref690B2.bin"
-	totalTests  = 60
+	totalTests = 60
 )
 
 type point struct {
@@ -36,23 +33,13 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refPath, err := buildReference()
-	if err != nil {
-		fmt.Println("failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(refPath)
-
 	tests := generateTests()
 	for idx, tc := range tests {
 		input := formatInput(tc)
 
-		refOut, err := runProgram(refPath, input)
-		if err != nil {
-			fmt.Printf("reference runtime error on test %d: %v\n", idx+1, err)
-			printInput(input)
-			os.Exit(1)
-		}
+		// Compute expected polygon directly from the grid using inclusion-exclusion
+		expectedPoly := solveFromGrid(tc)
+
 		candOut, err := runProgram(candidate, input)
 		if err != nil {
 			fmt.Printf("candidate runtime error on test %d: %v\n", idx+1, err)
@@ -60,12 +47,6 @@ func main() {
 			os.Exit(1)
 		}
 
-		refPoly, err := parseOutput(refOut)
-		if err != nil {
-			fmt.Printf("failed to parse reference output on test %d: %v\noutput:\n%s\n", idx+1, err, refOut)
-			printInput(input)
-			os.Exit(1)
-		}
 		candPoly, err := parseOutput(candOut)
 		if err != nil {
 			fmt.Printf("failed to parse candidate output on test %d: %v\noutput:\n%s\n", idx+1, err, candOut)
@@ -73,19 +54,22 @@ func main() {
 			os.Exit(1)
 		}
 
-		if len(refPoly) != len(candPoly) {
-			fmt.Printf("test %d failed: expected polygon with %d vertices, got %d\n", idx+1, len(refPoly), len(candPoly))
+		// Normalize both polygons for comparison
+		expectedNorm := normalizePolygon(expectedPoly)
+		candNorm := normalizePolygon(candPoly)
+
+		if len(expectedNorm) != len(candNorm) {
+			fmt.Printf("test %d failed: expected polygon with %d vertices, got %d\n", idx+1, len(expectedNorm), len(candNorm))
 			printInput(input)
-			fmt.Println("Reference output:")
-			fmt.Println(refOut)
+			fmt.Println("Expected polygon:", expectedNorm)
 			fmt.Println("Candidate output:")
 			fmt.Println(candOut)
 			os.Exit(1)
 		}
 
 		match := true
-		for i := range refPoly {
-			if refPoly[i] != candPoly[i] {
+		for i := range expectedNorm {
+			if expectedNorm[i] != candNorm[i] {
 				match = false
 				break
 			}
@@ -93,8 +77,7 @@ func main() {
 		if !match {
 			fmt.Printf("test %d failed: polygon vertices differ\n", idx+1)
 			printInput(input)
-			fmt.Println("Reference output:")
-			fmt.Println(refOut)
+			fmt.Println("Expected polygon:", expectedNorm)
 			fmt.Println("Candidate output:")
 			fmt.Println(candOut)
 			os.Exit(1)
@@ -104,12 +87,52 @@ func main() {
 	fmt.Printf("All %d tests passed\n", len(tests))
 }
 
-func buildReference() (string, error) {
-	cmd := exec.Command("go", "build", "-o", refBinaryB2, refSourceB2)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("%v\n%s", err, string(out))
+// solveFromGrid recovers the convex polygon from the grid using inclusion-exclusion,
+// mirroring the logic of the correct solution.
+func solveFromGrid(tc testCase) []point {
+	n := tc.n
+	m := n + 1
+
+	// Parse grid into cell values c[y][x]
+	c := make([]int, m*m)
+	for row := 0; row < n; row++ {
+		y := n - row
+		base := y * m
+		s := tc.grid[row]
+		for x := 1; x <= n; x++ {
+			c[base+x] = int(s[x-1] - '0')
+		}
 	}
-	return filepath.Join(".", refBinaryB2), nil
+
+	// Inclusion-exclusion: a[y*m+x] tells whether grid point (x,y) is a vertex indicator
+	a := make([]int, m*m)
+	for y := 1; y <= n; y++ {
+		base := y * m
+		prev := base - m
+		for x := 1; x <= n; x++ {
+			a[base+x] = c[base+x] - a[prev+x-1] - a[prev+x] - a[base+x-1]
+		}
+	}
+
+	// Collect all points where a != 0
+	var points []point
+	for x := 0; x <= n; x++ {
+		for y := 0; y <= n; y++ {
+			if a[y*m+x] != 0 {
+				points = append(points, point{x, y})
+			}
+		}
+	}
+
+	// Sort for convex hull
+	sort.Slice(points, func(i, j int) bool {
+		if points[i].x == points[j].x {
+			return points[i].y < points[j].y
+		}
+		return points[i].x < points[j].x
+	})
+
+	return convexHull(points)
 }
 
 func runProgram(path string, input string) (string, error) {

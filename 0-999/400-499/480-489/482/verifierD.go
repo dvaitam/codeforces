@@ -40,15 +40,11 @@ func expected(parents []int) int {
 	}
 	dp := make([]int64, n+1)
 	for i := n; i >= 1; i-- {
-		if len(children[i]) == 0 {
-			dp[i] = 3
-		} else {
-			prod := int64(1)
-			for _, c := range children[i] {
-				prod = prod * dp[c] % mod
-			}
-			dp[i] = (prod + 2) % mod
+		prod := int64(1)
+		for _, c := range children[i] {
+			prod = prod * dp[c] % mod
 		}
+		dp[i] = (prod + 1) % mod
 	}
 	return int(dp[1] % mod)
 }

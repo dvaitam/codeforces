@@ -6,11 +6,116 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
+
+// Embedded reference solver for 1774F2.
+
+const refMOD int64 = 998244353
+const refCAP int64 = 1000000000
+
+func refSolve(input string) int64 {
+	data := []byte(input)
+	pos := 0
+	nextInt := func() int64 {
+		for pos < len(data) && (data[pos] < '0' || data[pos] > '9') {
+			pos++
+		}
+		var v int64
+		for pos < len(data) && data[pos] >= '0' && data[pos] <= '9' {
+			v = v*10 + int64(data[pos]-'0')
+			pos++
+		}
+		return v
+	}
+
+	n := int(nextInt())
+	typ := make([]int, n+1)
+	val := make([]int64, n+1)
+
+	for i := 1; i <= n; i++ {
+		t := int(nextInt())
+		typ[i] = t
+		if t != 3 {
+			val[i] = nextInt()
+		}
+	}
+
+	pow2 := make([]int64, n+1)
+	pow2[0] = 1
+	for i := 1; i <= n; i++ {
+		pow2[i] = (pow2[i-1] * 2) % refMOD
+	}
+
+	pref := make([]int64, n+1)
+	for i := 1; i <= n; i++ {
+		switch typ[i] {
+		case 1:
+			pref[i] = pref[i-1]
+		case 2:
+			s := pref[i-1] + val[i]
+			if s > refCAP {
+				s = refCAP
+			}
+			pref[i] = s
+		case 3:
+			s := pref[i-1] * 2
+			if s > refCAP {
+				s = refCAP
+			}
+			pref[i] = s
+		}
+	}
+
+	countSubsets := func(weights []int64, limit int64) int64 {
+		if limit < 0 {
+			return 0
+		}
+		var cnt int64
+		m := len(weights)
+		for i, w := range weights {
+			if limit >= w {
+				cnt += int64(1) << uint(m-i-1)
+				limit -= w
+			}
+		}
+		return cnt + 1
+	}
+
+	var ans int64
+	var suffixDamage int64
+	zeroRepeats := 0
+	weights := make([]int64, 0, 32)
+
+	for i := n; i >= 1; i-- {
+		if typ[i] == 1 {
+			limit := val[i] - 1 - suffixDamage
+			if limit >= 0 {
+				c := countSubsets(weights, limit) % refMOD
+				ans = (ans + c*pow2[zeroRepeats]) % refMOD
+			}
+		}
+
+		switch typ[i] {
+		case 2:
+			suffixDamage += val[i]
+			if suffixDamage > refCAP {
+				suffixDamage = refCAP
+			}
+		case 3:
+			t := pref[i-1]
+			if t == 0 {
+				zeroRepeats++
+			} else if t < refCAP {
+				weights = append(weights, t)
+			}
+		}
+	}
+
+	return ans % refMOD
+}
 
 type testCase struct {
 	input string
@@ -23,30 +128,9 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refSrc, err := locateReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	refBin, err := buildReference(refSrc)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
 	tests := generateTests()
 	for idx, tc := range tests {
-		wantOut, err := runProgram(refBin, tc.input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\nInput:\n%s\n", idx+1, err, tc.input)
-			os.Exit(1)
-		}
-		want, err := parseOutput(wantOut)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference produced invalid output on test %d: %v\nOutput:\n%s\n", idx+1, err, wantOut)
-			os.Exit(1)
-		}
+		want := refSolve(tc.input)
 
 		gotOut, err := runProgram(candidate, tc.input)
 		if err != nil {
@@ -65,28 +149,6 @@ func main() {
 		}
 	}
 	fmt.Printf("All %d tests passed.\n", len(tests))
-}
-
-func locateReference() (string, error) {
-	candidates := []string{
-		"1774F2.go",
-		filepath.Join("1000-1999", "1700-1799", "1770-1779", "1774", "1774F2.go"),
-	}
-	for _, path := range candidates {
-		if _, err := os.Stat(path); err == nil {
-			return path, nil
-		}
-	}
-	return "", fmt.Errorf("could not find 1774F2.go")
-}
-
-func buildReference(src string) (string, error) {
-	outPath := filepath.Join(os.TempDir(), fmt.Sprintf("ref1774F2_%d.bin", time.Now().UnixNano()))
-	cmd := exec.Command("go", "build", "-o", outPath, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, string(out))
-	}
-	return outPath, nil
 }
 
 func runProgram(target, input string) (string, error) {
