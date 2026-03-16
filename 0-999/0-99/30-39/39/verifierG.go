@@ -6,12 +6,44 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
+var refBinPath string
+
+func buildRef() error {
+	refPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refPath == "" {
+		return fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	outBin := filepath.Join(os.TempDir(), "ref39G")
+	content, err := os.ReadFile(refPath)
+	if err != nil {
+		return fmt.Errorf("read reference: %v", err)
+	}
+	if strings.Contains(string(content), "#include") {
+		cppPath := filepath.Join(os.TempDir(), "ref39G.cpp")
+		if err := os.WriteFile(cppPath, content, 0644); err != nil {
+			return err
+		}
+		cmd := exec.Command("g++", "-O2", "-o", outBin, cppPath)
+		if o, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("build ref (c++) failed: %v\n%s", err, o)
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", outBin, refPath)
+		if o, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("build ref failed: %v\n%s", err, o)
+		}
+	}
+	refBinPath = outBin
+	return nil
+}
+
 func solveG(input string) string {
-	cmd := exec.Command("go", "run", "39G.go")
+	cmd := exec.Command(refBinPath)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -70,6 +102,11 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+	if err := buildRef(); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
+		os.Exit(1)
+	}
+	defer os.Remove(refBinPath)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	cases := make([]string, 100)
 	for i := 0; i < 100; i++ {

@@ -16,13 +16,33 @@ func main() {
 	for ; t > 0; t-- {
 		var n int
 		fmt.Fscan(in, &n)
-		counts := make(map[int]int)
+		a := make([]int64, n)
 		for i := 0; i < n; i++ {
-			var x int
-			fmt.Fscan(in, &x)
-			counts[x]++
+			fmt.Fscan(in, &a[i])
 		}
-		if len(counts) == 1 {
+		// Odd-indexed (1-based: 1,3,5,...) and even-indexed (2,4,6,...) are independent
+		var sumOdd, sumEven int64
+		var cntOdd, cntEven int64
+		for i := 0; i < n; i++ {
+			if i%2 == 0 { // 1-based odd
+				sumOdd += a[i]
+				cntOdd++
+			} else {
+				sumEven += a[i]
+				cntEven++
+			}
+		}
+		ok := true
+		if cntOdd > 0 && sumOdd%cntOdd != 0 {
+			ok = false
+		}
+		if cntEven > 0 && sumEven%cntEven != 0 {
+			ok = false
+		}
+		if ok && cntOdd > 0 && cntEven > 0 && sumOdd/cntOdd != sumEven/cntEven {
+			ok = false
+		}
+		if ok {
 			fmt.Fprintln(out, "YES")
 		} else {
 			fmt.Fprintln(out, "NO")

@@ -6,23 +6,9 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
-
-func buildRef() (string, error) {
-	_, cur, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(cur)
-	src := filepath.Join(dir, "1914B.go")
-	bin := filepath.Join(os.TempDir(), "1914B_ref.bin")
-	cmd := exec.Command("go", "build", "-o", bin, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
-	}
-	return bin, nil
-}
 
 func run(bin string, input []byte) (string, error) {
 	var cmd *exec.Cmd
@@ -42,40 +28,66 @@ func run(bin string, input []byte) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func genTest() []byte {
+func genTest() ([]byte, int, int) {
 	n := rand.Intn(49) + 2 // 2..50
 	k := rand.Intn(n)
-	return []byte(fmt.Sprintf("1\n%d %d\n", n, k))
+	return []byte(fmt.Sprintf("1\n%d %d\n", n, k)), n, k
+}
+
+// validate checks that the output is a valid permutation of 1..n with exactly k inversions.
+func validate(output string, n, k int) error {
+	tokens := strings.Fields(output)
+	if len(tokens) != n {
+		return fmt.Errorf("expected %d numbers, got %d", n, len(tokens))
+	}
+	perm := make([]int, n)
+	used := make([]bool, n+1)
+	for i, tok := range tokens {
+		var v int
+		if _, err := fmt.Sscan(tok, &v); err != nil {
+			return fmt.Errorf("bad token %q: %v", tok, err)
+		}
+		if v < 1 || v > n {
+			return fmt.Errorf("value %d out of range [1,%d]", v, n)
+		}
+		if used[v] {
+			return fmt.Errorf("duplicate value %d", v)
+		}
+		used[v] = true
+		perm[i] = v
+	}
+	// Count inversions
+	inv := 0
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			if perm[i] > perm[j] {
+				inv++
+			}
+		}
+	}
+	if inv != k {
+		return fmt.Errorf("expected %d inversions, got %d", k, inv)
+	}
+	return nil
 }
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	if len(os.Args) < 2 {
-		fmt.Println("usage: go run verifierB.go /path/to/binary")
+		fmt.Println("usage: verifierB /path/to/binary")
 		return
 	}
 	cand := os.Args[1]
-	ref, err := buildRef()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 
 	for i := 1; i <= 100; i++ {
-		in := genTest()
-		expected, err := run(ref, in)
-		if err != nil {
-			fmt.Printf("reference failed on test %d: %v\n", i, err)
-			os.Exit(1)
-		}
+		in, n, k := genTest()
 		got, err := run(cand, in)
 		if err != nil {
 			fmt.Printf("runtime error on test %d: %v\n", i, err)
 			os.Exit(1)
 		}
-		if expected != got {
-			fmt.Printf("wrong answer on test %d\ninput:\n%sexpected:%s\ngot:%s\n", i, string(in), expected, got)
+		if err := validate(got, n, k); err != nil {
+			fmt.Printf("wrong answer on test %d (n=%d, k=%d): %v\noutput: %s\n", i, n, k, err, got)
 			os.Exit(1)
 		}
 	}

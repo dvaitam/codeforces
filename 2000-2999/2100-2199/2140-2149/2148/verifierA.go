@@ -12,13 +12,37 @@ import (
 	"time"
 )
 
-const refSource = "2000-2999/2100-2199/2140-2149/2148/2148A.go"
+var refSource = os.Getenv("REFERENCE_SOURCE_PATH")
 
 type testCase struct {
 	name  string
 	input string
 	t     int
 	pairs [][2]int
+}
+
+func buildRef(refPath string) (string, error) {
+	outBin := filepath.Join(os.TempDir(), "ref2148A")
+	content, err := os.ReadFile(refPath)
+	if err != nil {
+		return "", fmt.Errorf("read reference: %v", err)
+	}
+	if strings.Contains(string(content), "#include") {
+		cppPath := filepath.Join(os.TempDir(), "ref2148A.cpp")
+		if err := os.WriteFile(cppPath, content, 0644); err != nil {
+			return "", err
+		}
+		cmd := exec.Command("g++", "-O2", "-o", outBin, cppPath)
+		if o, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build ref (c++) failed: %v\n%s", err, o)
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", outBin, refPath)
+		if o, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build ref failed: %v\n%s", err, o)
+		}
+	}
+	return outBin, nil
 }
 
 func runProgram(bin, input string) (string, error) {
@@ -97,11 +121,16 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to resolve candidate path: %v\n", err)
 		os.Exit(1)
 	}
-	refBin, err := filepath.Abs(refSource)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to resolve reference path: %v\n", err)
+	if refSource == "" {
+		fmt.Fprintf(os.Stderr, "REFERENCE_SOURCE_PATH not set\n")
 		os.Exit(1)
 	}
+	refBin, err := buildRef(refSource)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
+		os.Exit(1)
+	}
+	defer os.Remove(refBin)
 
 	tests := append(manualTests(), randomTests(100)...)
 	for idx, tc := range tests {

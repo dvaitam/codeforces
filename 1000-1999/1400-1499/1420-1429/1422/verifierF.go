@@ -212,7 +212,18 @@ func main() {
 			fmt.Printf("Runtime error on test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(t.expected) {
+		gotFields := strings.Fields(got)
+		expFields := strings.Fields(t.expected)
+		match := len(gotFields) == len(expFields)
+		if match {
+			for k := range gotFields {
+				if gotFields[k] != expFields[k] {
+					match = false
+					break
+				}
+			}
+		}
+		if !match {
 			fmt.Printf("Wrong answer on test %d\nInput:\n%sExpected:%s\nGot:%s\n", i+1, t.input, t.expected, got)
 			os.Exit(1)
 		}

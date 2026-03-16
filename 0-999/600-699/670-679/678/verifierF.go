@@ -4,10 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"math"
 	"os"
 	"os/exec"
-	"sort"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -770,188 +769,45 @@ const embeddedTestcases = `100
 1 4 1
 1 1 3`
 
-type Query struct {
-	t   int
-	a   int64
-	b   int64
-	idx int
-	q   int64
-}
-
-type SegmentLine struct {
-	a, b int64
-	l, r int
-}
-
-type Line struct {
-	m int64
-	c int64
-}
-type LCNode struct {
-	ln          Line
-	left, right *LCNode
-}
-
-var (
-	seg     [][]int
-	lines   []SegmentLine
-	queries []Query
-	answers []string
-	xs      []int64
-	m       int
-	n       int
-)
-
-func eval(ln Line, x int64) int64 {
-	return ln.m*x + ln.c
-}
-
-func insert(node *LCNode, l, r int, ln Line) *LCNode {
-	if node == nil {
-		return &LCNode{ln: ln}
+func buildReference() (string, func(), error) {
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		return "", nil, fmt.Errorf("REFERENCE_SOURCE_PATH not set")
 	}
-	newNode := &LCNode{ln: node.ln, left: node.left, right: node.right}
-	node = newNode
-	mid := (l + r) / 2
-	midX := xs[mid]
-	if eval(ln, midX) > eval(node.ln, midX) {
-		node.ln, ln = ln, node.ln
-	}
-	if l == r {
-		return node
-	}
-	if eval(ln, xs[l]) > eval(node.ln, xs[l]) {
-		node.left = insert(node.left, l, mid, ln)
-	} else if eval(ln, xs[r]) > eval(node.ln, xs[r]) {
-		node.right = insert(node.right, mid+1, r, ln)
-	}
-	return node
-}
 
-func query(node *LCNode, l, r int, x int64) int64 {
-	if node == nil {
-		return math.MinInt64
+	content, err := os.ReadFile(refSrc)
+	if err != nil {
+		return "", nil, fmt.Errorf("cannot read reference source: %v", err)
 	}
-	res := eval(node.ln, x)
-	if l == r {
-		return res
+
+	tmpDir, err := os.MkdirTemp("", "678F-ref")
+	if err != nil {
+		return "", nil, err
 	}
-	mid := (l + r) / 2
-	if x <= xs[mid] {
-		if v := query(node.left, l, mid, x); v > res {
-			res = v
+	cleanup := func() { os.RemoveAll(tmpDir) }
+
+	binPath := filepath.Join(tmpDir, "ref_678F")
+
+	if strings.Contains(string(content), "#include") {
+		cppPath := filepath.Join(tmpDir, "ref.cpp")
+		if err := os.WriteFile(cppPath, content, 0644); err != nil {
+			cleanup()
+			return "", nil, err
+		}
+		cmd := exec.Command("g++", "-O2", "-o", binPath, cppPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			cleanup()
+			return "", nil, fmt.Errorf("g++ build failed: %v\n%s", err, string(out))
 		}
 	} else {
-		if v := query(node.right, mid+1, r, x); v > res {
-			res = v
-		}
-	}
-	return res
-}
-
-func addSeg(node, l, r, ql, qr, idx int) {
-	if ql <= l && r <= qr {
-		seg[node] = append(seg[node], idx)
-		return
-	}
-	mid := (l + r) / 2
-	if ql <= mid {
-		addSeg(node*2, l, mid, ql, qr, idx)
-	}
-	if qr > mid {
-		addSeg(node*2+1, mid+1, r, ql, qr, idx)
-	}
-}
-
-func dfs(node, l, r int, root *LCNode) {
-	for _, idx := range seg[node] {
-		ln := lines[idx]
-		root = insert(root, 0, m-1, Line{m: ln.a, c: ln.b})
-	}
-	if l == r {
-		q := queries[l]
-		if q.t == 3 {
-			if root == nil {
-				answers[l] = "EMPTY SET"
-			} else {
-				val := query(root, 0, m-1, q.q)
-				answers[l] = fmt.Sprintf("%d", val)
-			}
-		}
-		return
-	}
-	mid := (l + r) / 2
-	dfs(node*2, l, mid, root)
-	dfs(node*2+1, mid+1, r, root)
-}
-
-func solveCase(input string) string {
-	reader := bufio.NewReader(strings.NewReader(input))
-	if _, err := fmt.Fscan(reader, &n); err != nil {
-		return ""
-	}
-	if n <= 0 {
-		return ""
-	}
-
-	queries = make([]Query, n+1)
-	lines = make([]SegmentLine, 0)
-	addMap := make(map[int]int)
-	xsList := make([]int64, 0)
-
-	for i := 1; i <= n; i++ {
-		var t int
-		fmt.Fscan(reader, &t)
-		if t == 1 {
-			var a, b int64
-			fmt.Fscan(reader, &a, &b)
-			queries[i] = Query{t: t}
-			lineIdx := len(lines)
-			lines = append(lines, SegmentLine{a: a, b: b, l: i, r: n})
-			addMap[i] = lineIdx
-			queries[i].idx = lineIdx
-		} else if t == 2 {
-			var idx int
-			fmt.Fscan(reader, &idx)
-			queries[i] = Query{t: t, idx: idx}
-			lineIdx := addMap[idx]
-			lines[lineIdx].r = i - 1
-		} else {
-			var qv int64
-			fmt.Fscan(reader, &qv)
-			queries[i] = Query{t: t, q: qv}
-			xsList = append(xsList, qv)
+		cmd := exec.Command("go", "build", "-o", binPath, refSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			cleanup()
+			return "", nil, fmt.Errorf("go build failed: %v\n%s", err, string(out))
 		}
 	}
 
-	if len(xsList) == 0 {
-		xsList = append(xsList, 0)
-	}
-	sort.Slice(xsList, func(i, j int) bool { return xsList[i] < xsList[j] })
-	xs = make([]int64, 0, len(xsList))
-	for i, v := range xsList {
-		if i == 0 || v != xsList[i-1] {
-			xs = append(xs, v)
-		}
-	}
-	m = len(xs)
-
-	seg = make([][]int, 4*n+5)
-	for idx, ln := range lines {
-		addSeg(1, 1, n, ln.l, ln.r, idx)
-	}
-
-	answers = make([]string, n+1)
-	dfs(1, 1, n, nil)
-
-	var sb strings.Builder
-	for i := 1; i <= n; i++ {
-		if queries[i].t == 3 {
-			sb.WriteString(answers[i])
-			sb.WriteByte('\n')
-		}
-	}
-	return strings.TrimSpace(sb.String())
+	return binPath, cleanup, nil
 }
 
 func runProg(exe, input string) (string, error) {
@@ -970,10 +826,17 @@ func runProg(exe, input string) (string, error) {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierF.go /path/to/binary")
+		fmt.Println("usage: verifierF /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+
+	refBin, cleanup, err := buildReference()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
 
 	scan := bufio.NewScanner(strings.NewReader(embeddedTestcases))
 	scan.Split(bufio.ScanWords)
@@ -1034,14 +897,33 @@ func main() {
 			sb.WriteByte('\n')
 		}
 		input := sb.String()
-		expect := solveCase(input)
+
+		expect, err := runProg(refBin, input)
+		if err != nil {
+			fmt.Printf("case %d: reference runtime error: %v\n%s", caseIdx, err, expect)
+			os.Exit(1)
+		}
+
 		got, err := runProg(bin, input)
 		if err != nil {
 			fmt.Printf("case %d: runtime error: %v\n%s", caseIdx, err, got)
 			os.Exit(1)
 		}
-		if got != expect {
-			fmt.Printf("case %d failed:\nexpected:\n%s\n got:\n%s\n", caseIdx, expect, got)
+
+		// Compare using fields (whitespace-insensitive)
+		gotFields := strings.Fields(got)
+		expFields := strings.Fields(expect)
+		match := len(gotFields) == len(expFields)
+		if match {
+			for k := range gotFields {
+				if gotFields[k] != expFields[k] {
+					match = false
+					break
+				}
+			}
+		}
+		if !match {
+			fmt.Printf("case %d failed:\nexpected:\n%s\ngot:\n%s\n", caseIdx, expect, got)
 			os.Exit(1)
 		}
 	}

@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const refSource = "./2050B.go"
+var refSource = os.Getenv("REFERENCE_SOURCE_PATH")
 
 type testCase struct {
 	name  string
@@ -71,19 +71,43 @@ func fail(format string, args ...interface{}) {
 }
 
 func buildReference() (string, error) {
+	if refSource == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
 	tmp, err := os.CreateTemp("", "2050B-ref-*")
 	if err != nil {
 		return "", err
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
+	content, err := os.ReadFile(refSource)
+	if err != nil {
 		os.Remove(tmp.Name())
-		return "", fmt.Errorf("go build failed: %v\n%s", err, out.String())
+		return "", fmt.Errorf("read reference: %v", err)
+	}
+	if strings.Contains(string(content), "#include") {
+		cppPath := filepath.Join(os.TempDir(), "ref2050B.cpp")
+		if err := os.WriteFile(cppPath, content, 0644); err != nil {
+			os.Remove(tmp.Name())
+			return "", err
+		}
+		cmd := exec.Command("g++", "-O2", "-o", tmp.Name(), cppPath)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		if err := cmd.Run(); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("g++ build failed: %v\n%s", err, out.String())
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", tmp.Name(), refSource)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		if err := cmd.Run(); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("go build failed: %v\n%s", err, out.String())
+		}
 	}
 	return tmp.Name(), nil
 }

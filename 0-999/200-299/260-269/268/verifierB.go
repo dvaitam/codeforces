@@ -11,7 +11,7 @@ import (
 )
 
 func solveCase(n int64) int64 {
-	return n * (n + 1) / 2
+	return n + (n-1)*n*(n+1)/6
 }
 
 func generateCase(rng *rand.Rand) (string, string) {

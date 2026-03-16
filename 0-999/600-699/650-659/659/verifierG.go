@@ -11,11 +11,31 @@ import (
 )
 
 func buildModel() (string, error) {
-	modelPath := filepath.Join(filepath.Dir(os.Args[0]), "659G.go")
-	out := filepath.Join(os.TempDir(), "modelG.bin")
-	cmd := exec.Command("go", "build", "-o", out, modelPath)
-	err := cmd.Run()
-	return out, err
+	refPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refPath == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	outBin := filepath.Join(os.TempDir(), "modelG.bin")
+	content, err := os.ReadFile(refPath)
+	if err != nil {
+		return "", fmt.Errorf("read reference: %v", err)
+	}
+	if strings.Contains(string(content), "#include") {
+		cppPath := filepath.Join(os.TempDir(), "ref659G.cpp")
+		if err := os.WriteFile(cppPath, content, 0644); err != nil {
+			return "", err
+		}
+		cmd := exec.Command("g++", "-O2", "-o", outBin, cppPath)
+		if o, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build model (c++) failed: %v\n%s", err, o)
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", outBin, refPath)
+		if o, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build model failed: %v\n%s", err, o)
+		}
+	}
+	return outBin, nil
 }
 
 func solveWithModel(model, input string) (string, error) {

@@ -11,7 +11,7 @@ import (
 )
 
 // Embedded testcases from testcasesA.txt.
-const embeddedTestcasesA = `120
+const embeddedTestcasesA = `81
 50
 1 4 6 10 13 14 17 18 19 21 26 28 29 31 32 33 34 36 37 39 40 41 43 46 47 50 52 54 56 58 59 61 62 63 65 66 67 68 69 70 71 75 78 79 81 82 83 85 88 89
 43

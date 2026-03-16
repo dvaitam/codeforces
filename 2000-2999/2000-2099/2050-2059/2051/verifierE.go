@@ -1,16 +1,15 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
-	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -19,16 +18,6 @@ func main() {
 		os.Exit(1)
 	}
 	candidatePath := os.Args[1]
-
-	inputData, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		fail("failed to read input: %v", err)
-	}
-
-	testCount, err := parseTestCount(inputData)
-	if err != nil {
-		fail("failed to parse input: %v", err)
-	}
 
 	refBin, cleanupRef, err := buildReference()
 	if err != nil {
@@ -42,27 +31,30 @@ func main() {
 	}
 	defer cleanupCand()
 
-	refOut, refErr, err := runProgram(refBin, inputData)
-	if err != nil {
-		fail("reference runtime error: %v\n%s", err, refErr)
-	}
-	expected, err := parseOutputs(refOut, testCount)
-	if err != nil {
-		fail("failed to parse reference output: %v\noutput:\n%s", err, refOut)
-	}
+	tests := generateTests()
+	for idx, tc := range tests {
+		refOut, refErr, err := runProgram(refBin, []byte(tc.input))
+		if err != nil {
+			fail("reference runtime error on test %d: %v\n%s", idx+1, err, refErr)
+		}
+		expected, err := parseOutputs(refOut, tc.t)
+		if err != nil {
+			fail("failed to parse reference output on test %d: %v\noutput:\n%s", idx+1, err, refOut)
+		}
 
-	candOut, candErr, err := runProgram(candBin, inputData)
-	if err != nil {
-		fail("candidate runtime error: %v\n%s", err, candErr)
-	}
-	got, err := parseOutputs(candOut, testCount)
-	if err != nil {
-		fail("invalid candidate output: %v\noutput:\n%s", err, candOut)
-	}
+		candOut, candErr, err := runProgram(candBin, []byte(tc.input))
+		if err != nil {
+			fail("candidate runtime error on test %d: %v\n%s", idx+1, err, candErr)
+		}
+		got, err := parseOutputs(candOut, tc.t)
+		if err != nil {
+			fail("invalid candidate output on test %d: %v\noutput:\n%s", idx+1, err, candOut)
+		}
 
-	for i := 0; i < testCount; i++ {
-		if got[i] != expected[i] {
-			fail("test case %d: wrong answer, expected %d got %d", i+1, expected[i], got[i])
+		for i := 0; i < tc.t; i++ {
+			if got[i] != expected[i] {
+				fail("test %d case %d: wrong answer, expected %d got %d\ninput:\n%s", idx+1, i+1, expected[i], got[i], tc.input)
+			}
 		}
 	}
 
@@ -74,37 +66,97 @@ func fail(format string, args ...interface{}) {
 	os.Exit(1)
 }
 
-func parseTestCount(data []byte) (int, error) {
-	reader := bufio.NewReader(bytes.NewReader(data))
-	var t int
-	if _, err := fmt.Fscan(reader, &t); err != nil {
-		return 0, err
+type testCase struct {
+	input string
+	t     int
+}
+
+func generateTests() []testCase {
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	var tests []testCase
+
+	// Manual test from problem statement
+	tests = append(tests, testCase{
+		input: "5\n3 1\n4 2 3 2 1\n5 5 3\n3 1 2 3\n5 2 1 4 2\n3 2\n2 1 2\n4 3 2 2 1\n1 1\n1\n1\n4 2\n2 1 2 1\n3 2 1 3\n",
+		t:     5,
+	})
+
+	// Random tests
+	for i := 0; i < 50; i++ {
+		t := rng.Intn(5) + 1
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "%d\n", t)
+		for j := 0; j < t; j++ {
+			n := rng.Intn(20) + 1
+			k := rng.Intn(n) + 1
+			fmt.Fprintf(&sb, "%d %d\n", n, k)
+			a := make([]int, n)
+			for x := 0; x < n; x++ {
+				a[x] = rng.Intn(n) + 1
+			}
+			for x := 0; x < n; x++ {
+				if x > 0 {
+					sb.WriteByte(' ')
+				}
+				fmt.Fprintf(&sb, "%d", a[x])
+			}
+			sb.WriteByte('\n')
+			b := make([]int, n)
+			for x := 0; x < n; x++ {
+				b[x] = rng.Intn(n) + 1
+			}
+			for x := 0; x < n; x++ {
+				if x > 0 {
+					sb.WriteByte(' ')
+				}
+				fmt.Fprintf(&sb, "%d", b[x])
+			}
+			sb.WriteByte('\n')
+		}
+		tests = append(tests, testCase{input: sb.String(), t: t})
 	}
-	return t, nil
+	return tests
 }
 
 func buildReference() (string, func(), error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", nil, fmt.Errorf("cannot determine verifier directory")
+	refPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refPath == "" {
+		return "", nil, fmt.Errorf("REFERENCE_SOURCE_PATH not set")
 	}
-	dir := filepath.Dir(file)
-	src := filepath.Join(dir, "2051E.go")
-
 	tmp, err := os.CreateTemp("", "2051E-ref-*")
 	if err != nil {
 		return "", nil, err
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), src)
-	cmd.Dir = dir
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
+	content, err := os.ReadFile(refPath)
+	if err != nil {
 		os.Remove(tmp.Name())
-		return "", nil, fmt.Errorf("%v\n%s", err, out.String())
+		return "", nil, fmt.Errorf("read reference: %v", err)
+	}
+	if strings.Contains(string(content), "#include") {
+		cppPath := filepath.Join(os.TempDir(), "ref2051E.cpp")
+		if err := os.WriteFile(cppPath, content, 0644); err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, err
+		}
+		cmd := exec.Command("g++", "-O2", "-o", tmp.Name(), cppPath)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		if err := cmd.Run(); err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("build ref (c++): %v\n%s", err, out.String())
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", tmp.Name(), refPath)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		if err := cmd.Run(); err != nil {
+			os.Remove(tmp.Name())
+			return "", nil, fmt.Errorf("%v\n%s", err, out.String())
+		}
 	}
 	cleanup := func() {
 		os.Remove(tmp.Name())

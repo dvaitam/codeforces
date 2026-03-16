@@ -6,31 +6,8 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 )
-
-const referenceSolutionRel = "2000-2999/2000-2099/2000-2009/2000/2000D.go"
-
-var referenceSolutionPath string
-
-func init() {
-	referenceSolutionPath = referenceSolutionRel
-	if _, file, _, ok := runtime.Caller(0); ok {
-		dir := filepath.Dir(file)
-		candidate := filepath.Join(dir, "2000D.go")
-		if _, err := os.Stat(candidate); err == nil {
-			referenceSolutionPath = candidate
-			return
-		}
-	}
-	if abs, err := filepath.Abs(referenceSolutionRel); err == nil {
-		if _, err := os.Stat(abs); err == nil {
-			referenceSolutionPath = abs
-		}
-	}
-}
 
 type testCase struct {
 	name string
@@ -121,45 +98,41 @@ func randomTests() []testCase {
 	return tests
 }
 
-func runProgram(path, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	} else {
-		cmd = exec.Command(path)
+// solveCase computes the correct answer for one test case.
+// The problem: pair up L positions (from left) with R positions (from right)
+// greedily, and sum the subarray between each pair.
+func solveCase(a []int64, s string) int64 {
+	n := len(a)
+	prefix := make([]int64, n+1)
+	for i := 0; i < n; i++ {
+		prefix[i+1] = prefix[i] + a[i]
 	}
+
+	var ans int64
+	l := 0
+	r := n - 1
+	for l < r {
+		if s[l] == 'L' && s[r] == 'R' {
+			ans += prefix[r+1] - prefix[l]
+			l++
+			r--
+		} else if s[l] != 'L' {
+			l++
+		} else {
+			r--
+		}
+	}
+	return ans
+}
+
+func runProgram(path, input string) (string, error) {
+	cmd := exec.Command(path)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	err := cmd.Run()
 	return out.String(), err
-}
-
-func buildReferenceBinary() (string, func(), error) {
-	if referenceSolutionPath == "" {
-		return "", nil, fmt.Errorf("reference solution path not set")
-	}
-	if _, err := os.Stat(referenceSolutionPath); err != nil {
-		return "", nil, fmt.Errorf("reference solution not found: %v", err)
-	}
-	tmpDir, err := os.MkdirTemp("", "2000D-ref")
-	if err != nil {
-		return "", nil, err
-	}
-	binPath := filepath.Join(tmpDir, "ref_2000D")
-	cmd := exec.Command("go", "build", "-o", binPath, referenceSolutionPath)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.RemoveAll(tmpDir)
-		return "", nil, fmt.Errorf("failed to build reference: %v\n%s", err, out.String())
-	}
-	cleanup := func() {
-		os.RemoveAll(tmpDir)
-	}
-	return binPath, cleanup, nil
 }
 
 func parseOutputs(output string, t int) ([]int64, error) {
@@ -183,7 +156,7 @@ func parseOutputs(output string, t int) ([]int64, error) {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierD.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: verifierD /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
@@ -191,22 +164,10 @@ func main() {
 	tests := append(deterministicTests(), randomTests()...)
 	input := formatTests(tests)
 
-	refBin, cleanup, err := buildReferenceBinary()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
-	refOut, err := runProgram(refBin, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference runtime error: %v\noutput:\n%s\n", err, refOut)
-		os.Exit(1)
-	}
-	expected, err := parseOutputs(refOut, len(tests))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to parse reference output: %v\noutput:\n%s\n", err, refOut)
-		os.Exit(1)
+	// Compute expected answers using built-in solver
+	expected := make([]int64, len(tests))
+	for i, tc := range tests {
+		expected[i] = solveCase(tc.a, tc.s)
 	}
 
 	userOut, err := runProgram(bin, input)

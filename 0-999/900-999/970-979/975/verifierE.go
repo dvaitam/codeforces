@@ -7,29 +7,14 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
 
-// PT represents a point or vector in 2D.
 type PT struct{ x, y float64 }
-
-func (p PT) Add(q PT) PT      { return PT{p.x + q.x, p.y + q.y} }
-func (p PT) Sub(q PT) PT      { return PT{p.x - q.x, p.y - q.y} }
-func (p PT) Mul(t float64) PT { return PT{p.x * t, p.y * t} }
-func (p PT) Div(t float64) PT { return PT{p.x / t, p.y / t} }
-func (p PT) Rot(t float64) PT {
-	c, s := math.Cos(t), math.Sin(t)
-	return PT{p.x*c - p.y*s, p.x*s + p.y*c}
-}
-
-func Dot(p, q PT) float64   { return p.x*q.x + p.y*q.y }
-func Cross(p, q PT) float64 { return p.x*q.y - p.y*q.x }
-func Angle(p, q PT) float64 { return math.Atan2(Cross(p, q), Dot(p, q)) }
-
-// query types
 
 type query struct {
 	typ  int
@@ -42,57 +27,7 @@ type testCase struct {
 	qs  []query
 }
 
-func solveCase(tc testCase) string {
-	n := len(tc.pts)
-	pts := make([]PT, n)
-	copy(pts, tc.pts)
-	// compute centroid
-	var cen PT
-	mass := 0.0
-	for i := 2; i < n; i++ {
-		p0 := pts[0]
-		p1 := pts[i-1]
-		p2 := pts[i]
-		temp := PT{(p0.x + p1.x + p2.x) / 3.0, (p0.y + p1.y + p2.y) / 3.0}
-		area2 := math.Abs(Cross(p1.Sub(p0), p2.Sub(p0)))
-		cen = cen.Mul(mass).Add(temp.Mul(area2)).Div(mass + area2)
-		mass += area2
-	}
-	for i := 0; i < n; i++ {
-		pts[i] = pts[i].Sub(cen)
-	}
-	a, b := 0, 1
-	ang := 0.0
-	const twoPi = 2 * math.Pi
-	up := PT{0, 1}
-	var sb strings.Builder
-	for _, qu := range tc.qs {
-		if qu.typ == 1 {
-			c1 := qu.f - 1
-			if b == c1 {
-				a, b = b, a
-			}
-			r := pts[b].Rot(ang)
-			cen = cen.Add(r)
-			tang := Angle(r, up)
-			ang += tang
-			ang = math.Mod(ang, twoPi)
-			if ang < 0 {
-				ang += twoPi
-			}
-			cen = cen.Sub(pts[b].Rot(ang))
-			a = qu.t - 1
-		} else {
-			c := qu.v - 1
-			r := pts[c].Rot(ang)
-			p := r.Add(cen)
-			sb.WriteString(fmt.Sprintf("%.8f %.8f\n", p.x, p.y))
-		}
-	}
-	return sb.String()
-}
-
-func buildCase(tc testCase) (string, string) {
+func buildCase(tc testCase) string {
 	var sb strings.Builder
 	n := len(tc.pts)
 	q := len(tc.qs)
@@ -107,7 +42,7 @@ func buildCase(tc testCase) (string, string) {
 			sb.WriteString(fmt.Sprintf("2 %d\n", qu.v))
 		}
 	}
-	return sb.String(), solveCase(tc)
+	return sb.String()
 }
 
 func randomPolygon(rng *rand.Rand) []PT {
@@ -127,7 +62,7 @@ func randomPolygon(rng *rand.Rand) []PT {
 	return pts
 }
 
-func genCase(rng *rand.Rand) (string, string) {
+func genCase(rng *rand.Rand) string {
 	tc := testCase{}
 	tc.pts = randomPolygon(rng)
 	q := rng.Intn(5) + 1
@@ -153,28 +88,73 @@ func genCase(rng *rand.Rand) (string, string) {
 	return buildCase(tc)
 }
 
-func runCase(bin, in, exp string) error {
+func buildReference() (string, func(), error) {
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		return "", nil, fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+
+	content, err := os.ReadFile(refSrc)
+	if err != nil {
+		return "", nil, fmt.Errorf("cannot read reference source: %v", err)
+	}
+
+	tmpDir, err := os.MkdirTemp("", "975E-ref")
+	if err != nil {
+		return "", nil, err
+	}
+	cleanup := func() { os.RemoveAll(tmpDir) }
+
+	binPath := filepath.Join(tmpDir, "ref_975E")
+
+	if strings.Contains(string(content), "#include") {
+		cppPath := filepath.Join(tmpDir, "ref.cpp")
+		if err := os.WriteFile(cppPath, content, 0644); err != nil {
+			cleanup()
+			return "", nil, err
+		}
+		cmd := exec.Command("g++", "-O2", "-o", binPath, cppPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			cleanup()
+			return "", nil, fmt.Errorf("g++ build failed: %v\n%s", err, string(out))
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", binPath, refSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			cleanup()
+			return "", nil, fmt.Errorf("go build failed: %v\n%s", err, string(out))
+		}
+	}
+
+	return binPath, cleanup, nil
+}
+
+func runBin(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(in)
+	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	gotFields := strings.Fields(strings.TrimSpace(out.String()))
-	expFields := strings.Fields(strings.TrimSpace(exp))
+	return strings.TrimSpace(out.String()), nil
+}
+
+func compareOutputs(got, exp string) error {
+	gotFields := strings.Fields(got)
+	expFields := strings.Fields(exp)
 	if len(gotFields) != len(expFields) {
 		return fmt.Errorf("expected %d numbers got %d", len(expFields), len(gotFields))
 	}
 	for i := 0; i < len(expFields); i++ {
 		g, err := strconv.ParseFloat(gotFields[i], 64)
 		if err != nil {
-			return fmt.Errorf("bad output: %v", err)
+			return fmt.Errorf("bad output token %q: %v", gotFields[i], err)
 		}
 		e, _ := strconv.ParseFloat(expFields[i], 64)
 		if math.Abs(g-e) > 1e-4*math.Max(1, math.Abs(e)) {
-			return fmt.Errorf("expected %v got %v", exp, out.String())
+			return fmt.Errorf("value mismatch at position %d: expected %v got %v", i, e, g)
 		}
 	}
 	return nil
@@ -182,14 +162,35 @@ func runCase(bin, in, exp string) error {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierE.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: verifierE /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+
+	refBin, cleanup, err := buildReference()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		in, exp := genCase(rng)
-		if err := runCase(bin, in, exp); err != nil {
+		in := genCase(rng)
+
+		exp, err := runBin(refBin, in)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\n", i+1, err)
+			os.Exit(1)
+		}
+
+		got, err := runBin(bin, in)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
+			os.Exit(1)
+		}
+
+		if err := compareOutputs(got, exp); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}
