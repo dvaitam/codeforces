@@ -5,46 +5,9 @@ import (
 	"math/big"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
-
-const embeddedSolutionSource = `package main
-
-import (
-   "bufio"
-   "fmt"
-   "math/big"
-   "os"
-)
-
-func main() {
-   in := bufio.NewReader(os.Stdin)
-   var s string
-   if _, err := fmt.Fscan(in, &s); err != nil {
-       return
-   }
-   A := new(big.Int)
-   A.SetString(s, 10)
-   two := big.NewInt(2)
-   thirteen := big.NewInt(13)
-   w := bufio.NewWriter(os.Stdout)
-   defer w.Flush()
-   if A.Cmp(two) == 0 {
-       fmt.Fprintln(w, "YES")
-       fmt.Fprintln(w, 1)
-       fmt.Fprintln(w, 1)
-       fmt.Fprintln(w, 1)
-       fmt.Fprintln(w, 13)
-   } else if A.Cmp(thirteen) == 0 {
-       fmt.Fprintln(w, "YES")
-       fmt.Fprintln(w, 1)
-       fmt.Fprintln(w, 2)
-       fmt.Fprintln(w, 1)
-       fmt.Fprintln(w, 2)
-   } else {
-       fmt.Fprintln(w, "NO")
-   }
-}`
 
 const testcasesRaw = `
 2
@@ -149,25 +112,71 @@ const testcasesRaw = `
 64617
 `
 
-var (
-	_            = embeddedSolutionSource
-	rawTestcases = strings.Fields(testcasesRaw)
-)
+var rawTestcases = strings.Fields(testcasesRaw)
 
-func solveCase(s string) string {
+// Embedded correct solver for 40/D
+// Returns (yes bool, year int, values []string)
+func solve40D(s string) (bool, int, []string) {
 	A := new(big.Int)
 	A.SetString(s, 10)
-	two := big.NewInt(2)
-	thirteen := big.NewInt(13)
 
-	switch {
-	case A.Cmp(two) == 0:
-		return "YES\n1\n1\n1\n13"
-	case A.Cmp(thirteen) == 0:
-		return "YES\n1\n2\n1\n2"
-	default:
-		return "NO"
+	base := big.NewInt(12)
+	tmp := new(big.Int).Set(A)
+	digits := make([]int, 0)
+
+	for tmp.Sign() > 0 {
+		q := new(big.Int)
+		r := new(big.Int)
+		q.QuoRem(tmp, base, r)
+		digits = append(digits, int(r.Int64()))
+		tmp = q
 	}
+
+	if len(digits) == 0 {
+		digits = append(digits, 0)
+	}
+
+	nzPos := make([]int, 0, 2)
+	nzVal := make([]int, 0, 2)
+	for i, d := range digits {
+		if d != 0 {
+			nzPos = append(nzPos, i)
+			nzVal = append(nzVal, d)
+		}
+	}
+
+	yes := false
+	year := 0
+
+	if len(nzPos) == 1 && nzVal[0] == 2 {
+		year = 2*nzPos[0] + 1
+		yes = true
+	} else if len(nzPos) == 2 && nzVal[0] == 1 && nzVal[1] == 1 {
+		year = nzPos[0] + nzPos[1] + 1
+		yes = true
+	}
+
+	if !yes {
+		return false, 0, nil
+	}
+
+	sExp := year - 1
+	pow12 := make([]*big.Int, sExp+1)
+	pow12[0] = big.NewInt(1)
+	for i := 1; i <= sExp; i++ {
+		pow12[i] = new(big.Int).Mul(pow12[i-1], base)
+	}
+
+	values := make([]string, 0)
+	for q := sExp / 2; q >= 0; q-- {
+		p := sExp - q
+		v := new(big.Int).Add(pow12[p], pow12[q])
+		if v.Cmp(A) != 0 {
+			values = append(values, v.String())
+		}
+	}
+
+	return true, year, values
 }
 
 func run(bin, input string) (string, error) {
@@ -180,6 +189,80 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// Validate candidate output for multi-answer problem
+func validate(input string, candOutput string) error {
+	yes, year, values := solve40D(input)
+
+	lines := strings.Split(strings.TrimSpace(candOutput), "\n")
+	for i := range lines {
+		lines[i] = strings.TrimSpace(lines[i])
+	}
+
+	if !yes {
+		if len(lines) != 1 || lines[0] != "NO" {
+			return fmt.Errorf("expected NO, got: %s", candOutput)
+		}
+		return nil
+	}
+
+	// Expected: YES, then numGroups, then year, then numValues, then values
+	if len(lines) < 1 || lines[0] != "YES" {
+		return fmt.Errorf("expected YES, got first line: %s", lines[0])
+	}
+
+	if len(lines) < 2 {
+		return fmt.Errorf("missing number of groups line")
+	}
+	numGroups, err := strconv.Atoi(lines[1])
+	if err != nil || numGroups != 1 {
+		return fmt.Errorf("expected 1 group, got: %s", lines[1])
+	}
+
+	if len(lines) < 3 {
+		return fmt.Errorf("missing year line")
+	}
+	candYear, err := strconv.Atoi(lines[2])
+	if err != nil || candYear != year {
+		return fmt.Errorf("expected year %d, got: %s", year, lines[2])
+	}
+
+	if len(lines) < 4 {
+		return fmt.Errorf("missing numValues line")
+	}
+	numValues, err := strconv.Atoi(lines[3])
+	if err != nil || numValues != len(values) {
+		return fmt.Errorf("expected %d values, got: %s", len(values), lines[3])
+	}
+
+	// Check that candidate lists the same set of values
+	expectedSet := make(map[string]bool)
+	for _, v := range values {
+		expectedSet[v] = true
+	}
+
+	if len(lines) != 4+numValues {
+		return fmt.Errorf("expected %d value lines, got %d total lines", numValues, len(lines)-4)
+	}
+
+	candSet := make(map[string]bool)
+	for i := 4; i < len(lines); i++ {
+		candSet[lines[i]] = true
+	}
+
+	for v := range expectedSet {
+		if !candSet[v] {
+			return fmt.Errorf("missing value %s in candidate output", v)
+		}
+	}
+	for v := range candSet {
+		if !expectedSet[v] {
+			return fmt.Errorf("unexpected value %s in candidate output", v)
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierD.go /path/to/binary")
@@ -188,14 +271,14 @@ func main() {
 	bin := os.Args[1]
 
 	for idx, tc := range rawTestcases {
-		expected := solveCase(tc)
-		got, err := run(bin, tc+"\n")
+		input := tc + "\n"
+		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "test %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if got != expected {
-			fmt.Fprintf(os.Stderr, "test %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx+1, expected, got)
+		if err := validate(tc, got); err != nil {
+			fmt.Fprintf(os.Stderr, "test %d failed: %v\ninput: %s\ngot:\n%s\n", idx+1, err, tc, got)
 			os.Exit(1)
 		}
 	}

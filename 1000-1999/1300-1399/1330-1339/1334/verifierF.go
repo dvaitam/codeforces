@@ -7,100 +7,133 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
 
-const INF int64 = 1 << 60
-
-type Fenwick struct {
-	n    int
-	tree []int64
-}
-
-func NewFenwick(n int) *Fenwick {
-	return &Fenwick{n: n, tree: make([]int64, n+2)}
-}
-
-func (f *Fenwick) add(idx int, val int64) {
-	for idx <= f.n+1 {
-		f.tree[idx] += val
-		idx += idx & -idx
+// Embedded correct solver for 1334/F
+func solveF(input string) string {
+	idx := 0
+	data := []byte(input)
+	nextInt := func() int {
+		n := len(data)
+		for idx < n {
+			c := data[idx]
+			if (c >= '0' && c <= '9') || c == '-' {
+				break
+			}
+			idx++
+		}
+		sign := 1
+		if data[idx] == '-' {
+			sign = -1
+			idx++
+		}
+		val := 0
+		for idx < n {
+			c := data[idx]
+			if c < '0' || c > '9' {
+				break
+			}
+			val = val*10 + int(c-'0')
+			idx++
+		}
+		return sign * val
 	}
-}
 
-func (f *Fenwick) rangeAdd(l, r int, val int64) {
-	if l > r {
-		return
+	n := nextInt()
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		a[i] = nextInt()
 	}
-	f.add(l+1, val)
-	f.add(r+2, -val)
-}
-
-func (f *Fenwick) sum(idx int) int64 {
-	res := int64(0)
-	for idx > 0 {
-		res += f.tree[idx]
-		idx -= idx & -idx
+	p := make([]int64, n)
+	var total int64
+	for i := 0; i < n; i++ {
+		x := int64(nextInt())
+		p[i] = x
+		total += x
 	}
-	return res
-}
-
-func (f *Fenwick) pointQuery(i int) int64 {
-	return f.sum(i + 1)
-}
-
-func expected(a []int, p []int, b []int) string {
-	m := len(b)
-	dpBase := make([]int64, m+1)
+	m := nextInt()
+	b := make([]int, m+1)
 	for i := 1; i <= m; i++ {
-		dpBase[i] = INF
+		b[i] = nextInt()
 	}
-	bit := NewFenwick(m + 1)
 
-	query := func(idx int) int64 { return dpBase[idx] + bit.pointQuery(idx) }
-	setVal := func(idx int, val int64) { dpBase[idx] = val - bit.pointQuery(idx) }
-	rangeAdd := func(l, r int, val int64) { bit.rangeAdd(l, r, val) }
+	exact := make([]int, n+1)
+	for i := 1; i <= m; i++ {
+		exact[b[i]] = i
+	}
 
-	for i := 0; i < len(a); i++ {
-		x := a[i]
-		cost := int64(p[i])
-		pos := sort.Search(len(b), func(j int) bool { return b[j] >= x })
-		if pos == m {
-			rangeAdd(0, m, cost)
-			continue
+	stage := make([]int, n+1)
+	j := 1
+	for v := 1; v <= n; v++ {
+		for j <= m && b[j] < v {
+			j++
 		}
-		old := query(pos)
-		if pos > 0 {
-			rangeAdd(0, pos-1, cost)
+		stage[v] = j
+	}
+
+	// BIT
+	bitN := m
+	bit := make([]int64, bitN+2)
+	bitAdd := func(i int, delta int64) {
+		for i <= bitN {
+			bit[i] += delta
+			i += i & -i
 		}
-		addVal := cost
-		if addVal > 0 {
-			addVal = 0
+	}
+	bitSum := func(i int) int64 {
+		var s int64
+		for i > 0 {
+			s += bit[i]
+			i -= i & -i
 		}
-		rangeAdd(pos, m, addVal)
-		if b[pos] == x {
-			cur := query(pos + 1)
-			if old < cur {
-				setVal(pos+1, old)
+		return s
+	}
+
+	val := make([]int64, m+1)
+	reach := make([]bool, m+1)
+	reach[0] = true
+
+	for i := 0; i < n; i++ {
+		v := a[i]
+		cost := p[i]
+
+		t := stage[v]
+		if t <= m && cost > 0 {
+			bitAdd(t, cost)
+		}
+
+		jj := exact[v]
+		if jj != 0 {
+			var prev int64
+			if jj == 1 {
+				prev = 0
+			} else {
+				if !reach[jj-1] {
+					continue
+				}
+				prev = val[jj-1] + bitSum(jj-1)
+			}
+			cand := prev + cost - bitSum(jj)
+			if !reach[jj] || cand > val[jj] {
+				val[jj] = cand
+				reach[jj] = true
 			}
 		}
 	}
 
-	ans := query(m)
-	if ans >= INF/2 {
+	if !reach[m] {
 		return "NO"
 	}
+	keep := val[m] + bitSum(m)
+	ans := total - keep
 	return fmt.Sprintf("YES\n%d", ans)
 }
 
 func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -118,41 +151,39 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for caseNum := 0; caseNum < 100; caseNum++ {
-		n := rng.Intn(5) + 1
+		n := rng.Intn(8) + 1
 		a := make([]int, n)
 		pArr := make([]int, n)
 		for i := 0; i < n; i++ {
-			a[i] = rng.Intn(10) + 1
+			a[i] = rng.Intn(n) + 1
 			pArr[i] = rng.Intn(11) - 5
 		}
 		m := rng.Intn(n) + 1
-		b := make([]int, m)
-		used := map[int]bool{}
-		for i := 0; i < m; i++ {
-			val := rng.Intn(10) + 1
-			for used[val] {
-				val = rng.Intn(10) + 1
-			}
-			used[val] = true
-			b[i] = val
+		pool := make([]int, n)
+		for i := 0; i < n; i++ {
+			pool[i] = i + 1
 		}
+		rng.Shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
+		b := pool[:m]
 		sort.Ints(b)
+
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d\n", n))
 		for i, v := range a {
 			if i > 0 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(fmt.Sprintf("%d", v))
+			sb.WriteString(strconv.Itoa(v))
 		}
 		sb.WriteString("\n")
 		for i, v := range pArr {
 			if i > 0 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(fmt.Sprintf("%d", v))
+			sb.WriteString(strconv.Itoa(v))
 		}
 		sb.WriteString("\n")
 		sb.WriteString(fmt.Sprintf("%d\n", m))
@@ -160,11 +191,12 @@ func main() {
 			if i > 0 {
 				sb.WriteByte(' ')
 			}
-			sb.WriteString(fmt.Sprintf("%d", v))
+			sb.WriteString(strconv.Itoa(v))
 		}
 		sb.WriteString("\n")
 		input := sb.String()
-		exp := expected(append([]int(nil), a...), append([]int(nil), pArr...), append([]int(nil), b...))
+
+		exp := solveF(input)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", caseNum+1, err, input)

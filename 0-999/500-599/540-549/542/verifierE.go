@@ -15,6 +15,103 @@ type testCase struct {
 	edges [][2]int
 }
 
+// Embedded correct solver for 542/E
+func solveE(input string) string {
+	idx := 0
+	data := []byte(input)
+	readInt := func() int {
+		for idx < len(data) && (data[idx] < '0' || data[idx] > '9') {
+			idx++
+		}
+		val := 0
+		for idx < len(data) && data[idx] >= '0' && data[idx] <= '9' {
+			val = val*10 + int(data[idx]-'0')
+			idx++
+		}
+		return val
+	}
+
+	n := readInt()
+	m := readInt()
+
+	g := make([][]int, n)
+	for i := 0; i < m; i++ {
+		a := readInt() - 1
+		b := readInt() - 1
+		g[a] = append(g[a], b)
+		g[b] = append(g[b], a)
+	}
+
+	color := make([]int, n)
+	for i := 0; i < n; i++ {
+		color[i] = -1
+	}
+
+	queue := make([]int, n)
+	components := make([][]int, 0)
+
+	for i := 0; i < n; i++ {
+		if color[i] != -1 {
+			continue
+		}
+		head, tail := 0, 0
+		queue[tail] = i
+		tail++
+		color[i] = 0
+		comp := make([]int, 0)
+
+		for head < tail {
+			v := queue[head]
+			head++
+			comp = append(comp, v)
+			for _, to := range g[v] {
+				if color[to] == -1 {
+					color[to] = color[v] ^ 1
+					queue[tail] = to
+					tail++
+				} else if color[to] == color[v] {
+					return "-1"
+				}
+			}
+		}
+		components = append(components, comp)
+	}
+
+	dist := make([]int, n)
+	ans := 0
+
+	for _, comp := range components {
+		diam := 0
+		for _, s := range comp {
+			for i := 0; i < n; i++ {
+				dist[i] = -1
+			}
+			head, tail := 0, 0
+			queue[tail] = s
+			tail++
+			dist[s] = 0
+
+			for head < tail {
+				v := queue[head]
+				head++
+				if dist[v] > diam {
+					diam = dist[v]
+				}
+				for _, to := range g[v] {
+					if dist[to] == -1 {
+						dist[to] = dist[v] + 1
+						queue[tail] = to
+						tail++
+					}
+				}
+			}
+		}
+		ans += diam
+	}
+
+	return fmt.Sprintf("%d", ans)
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierE.go /path/to/binary")
@@ -22,41 +119,21 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
 	tests := buildTests()
 	for idx, tc := range tests {
 		input := serialize(tc)
-		refOut, err := runProgram(refBin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\n", idx+1, err)
-			os.Exit(1)
-		}
+		refOut := solveE(input)
 		candOut, err := runProgram(candidate, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "candidate failed on test %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
 		if strings.TrimSpace(refOut) != strings.TrimSpace(candOut) {
-			fmt.Fprintf(os.Stderr, "Mismatch on test %d\nInput:\n%sExpected:\n%sGot:\n%s", idx+1, input, refOut, candOut)
+			fmt.Fprintf(os.Stderr, "Mismatch on test %d\nInput:\n%sExpected:\n%s\nGot:\n%s\n", idx+1, input, refOut, candOut)
 			os.Exit(1)
 		}
 	}
 	fmt.Println("All tests passed")
-}
-
-func buildReference() (string, error) {
-	const refName = "./ref_542E.bin"
-	cmd := exec.Command("go", "build", "-o", refName, "542E.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, string(out))
-	}
-	return refName, nil
 }
 
 func runProgram(target, input string) (string, error) {

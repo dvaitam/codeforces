@@ -1,29 +1,186 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
 
-type testCase struct {
-	input    string
-	expected string
+type Uint64Slice []uint64
+
+func (x Uint64Slice) Len() int           { return len(x) }
+func (x Uint64Slice) Less(i, j int) bool { return x[i] < x[j] }
+func (x Uint64Slice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+
+// Embedded correct solver for 1553/G
+func solveG(input string) string {
+	idx := 0
+	data := []byte(input)
+	readInt := func() int {
+		for idx < len(data) && (data[idx] < '0' || data[idx] > '9') {
+			idx++
+		}
+		val := 0
+		for idx < len(data) && data[idx] >= '0' && data[idx] <= '9' {
+			val = val*10 + int(data[idx]-'0')
+			idx++
+		}
+		return val
+	}
+
+	n := readInt()
+	q := readInt()
+
+	maxA := 1000005
+	spf := make([]int, maxA+1)
+	for i := 2; i <= maxA; i++ {
+		spf[i] = i
+	}
+	for i := 2; i*i <= maxA; i++ {
+		if spf[i] == i {
+			for j := i * i; j <= maxA; j += i {
+				if spf[j] == j {
+					spf[j] = i
+				}
+			}
+		}
+	}
+
+	parent := make([]int, maxA+1)
+	for i := 1; i <= maxA; i++ {
+		parent[i] = i
+	}
+
+	var find func(int) int
+	find = func(i int) int {
+		root := i
+		for parent[root] != root {
+			root = parent[root]
+		}
+		curr := i
+		for curr != root {
+			nxt := parent[curr]
+			parent[curr] = root
+			curr = nxt
+		}
+		return root
+	}
+
+	union := func(i, j int) {
+		rootI := find(i)
+		rootJ := find(j)
+		if rootI != rootJ {
+			parent[rootI] = rootJ
+		}
+	}
+
+	hasPrime := make([]bool, maxA+1)
+	a := make([]int, n+1)
+
+	for i := 1; i <= n; i++ {
+		a[i] = readInt()
+		v := a[i]
+		for v > 1 {
+			p := spf[v]
+			hasPrime[p] = true
+			union(a[i], p)
+			for v%p == 0 {
+				v /= p
+			}
+		}
+	}
+
+	pairs := make([]uint64, 0, n*21)
+
+	for i := 1; i <= n; i++ {
+		S := make([]int, 0, 8)
+		S = append(S, find(a[i]))
+
+		v := a[i] + 1
+		for v > 1 {
+			p := spf[v]
+			if hasPrime[p] {
+				S = append(S, find(p))
+			}
+			for v%p == 0 {
+				v /= p
+			}
+		}
+
+		for j := 0; j < len(S); j++ {
+			for k := j + 1; k < len(S); k++ {
+				u, v := S[j], S[k]
+				if u == v {
+					continue
+				}
+				if u > v {
+					u, v = v, u
+				}
+				pairs = append(pairs, (uint64(u)<<32)|uint64(v))
+			}
+		}
+	}
+
+	sort.Sort(Uint64Slice(pairs))
+
+	var uniquePairs []uint64
+	if len(pairs) > 0 {
+		uniquePairs = make([]uint64, 0, len(pairs))
+		uniquePairs = append(uniquePairs, pairs[0])
+		for i := 1; i < len(pairs); i++ {
+			if pairs[i] != pairs[i-1] {
+				uniquePairs = append(uniquePairs, pairs[i])
+			}
+		}
+	}
+	pairs = uniquePairs
+
+	var out strings.Builder
+	w := bufio.NewWriter(&out)
+
+	for qIdx := 0; qIdx < q; qIdx++ {
+		s := readInt()
+		t := readInt()
+
+		u := find(a[s])
+		v := find(a[t])
+
+		if u == v {
+			fmt.Fprintln(w, 0)
+			continue
+		}
+
+		if u > v {
+			u, v = v, u
+		}
+
+		key := (uint64(u) << 32) | uint64(v)
+
+		idx2 := sort.Search(len(pairs), func(i int) bool {
+			return pairs[i] >= key
+		})
+
+		if idx2 < len(pairs) && pairs[idx2] == key {
+			fmt.Fprintln(w, 1)
+		} else {
+			fmt.Fprintln(w, 2)
+		}
+	}
+	w.Flush()
+
+	return strings.TrimSpace(out.String())
 }
 
 func runBinary(bin, input string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.CommandContext(ctx, "go", "run", bin)
-	} else {
-		cmd = exec.CommandContext(ctx, bin)
-	}
+	cmd := exec.CommandContext(ctx, bin)
 	cmd.Stdin = strings.NewReader(input)
 	out, err := cmd.CombinedOutput()
 	if ctx.Err() == context.DeadlineExceeded {
@@ -35,190 +192,25 @@ func runBinary(bin, input string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-type dsu struct {
-	parent []int
-	size   []int
+func randDistinct(rng *rand.Rand, n, lo, hi int) []int {
+	pool := make([]int, 0, hi-lo+1)
+	for v := lo; v <= hi; v++ {
+		pool = append(pool, v)
+	}
+	rng.Shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
+	return pool[:n]
 }
 
-func newDSU(n int) *dsu {
-	d := &dsu{parent: make([]int, n), size: make([]int, n)}
-	for i := range d.parent {
-		d.parent[i] = i
-		d.size[i] = 1
-	}
-	return d
-}
-
-func (d *dsu) find(x int) int {
-	if d.parent[x] != x {
-		d.parent[x] = d.find(d.parent[x])
-	}
-	return d.parent[x]
-}
-
-func (d *dsu) union(a, b int) {
-	a = d.find(a)
-	b = d.find(b)
-	if a == b {
-		return
-	}
-	if d.size[a] < d.size[b] {
-		a, b = b, a
-	}
-	d.parent[b] = a
-	d.size[a] += d.size[b]
-}
-
-func sieve(n int) []int {
-	spf := make([]int, n+1)
-	for i := 2; i <= n; i++ {
-		if spf[i] == 0 {
-			spf[i] = i
-			if i*i <= n {
-				for j := i * i; j <= n; j += i {
-					if spf[j] == 0 {
-						spf[j] = i
-					}
-				}
-			}
-		}
-	}
-	return spf
-}
-
-func factorize(x int, spf []int) []int {
-	res := []int{}
-	for x > 1 {
-		p := spf[x]
-		res = append(res, p)
-		for x%p == 0 {
-			x /= p
-		}
-	}
-	return res
-}
-
-func uniqueInts(arr []int) []int {
-	m := make(map[int]struct{}, len(arr))
-	out := make([]int, 0, len(arr))
-	for _, v := range arr {
-		if _, ok := m[v]; !ok {
-			m[v] = struct{}{}
-			out = append(out, v)
-		}
-	}
-	return out
-}
-
-func compute(input string) string {
-	rdr := strings.NewReader(strings.TrimSpace(input) + "\n")
-	var n, q int
-	fmt.Fscan(rdr, &n, &q)
-	arr := make([]int, n)
-	maxVal := 1000001
-	for i := 0; i < n; i++ {
-		fmt.Fscan(rdr, &arr[i])
-		if arr[i]+1 > maxVal {
-			maxVal = arr[i] + 1
-		}
-	}
-	spf := sieve(maxVal)
-	d := newDSU(maxVal + 1)
-	for _, x := range arr {
-		fac := uniqueInts(factorize(x, spf))
-		if len(fac) == 0 {
-			continue
-		}
-		base := fac[0]
-		for _, p := range fac[1:] {
-			d.union(base, p)
-		}
-	}
-	roots := make([]int, n)
-	plusRoots := make([][]int, n)
-	edges := make(map[[2]int]struct{})
-	for idx, x := range arr {
-		fac := uniqueInts(factorize(x, spf))
-		baseRoot := d.find(fac[0])
-		roots[idx] = baseRoot
-		unionSet := []int{baseRoot}
-		for _, p := range fac[1:] {
-			rp := d.find(p)
-			if rp != baseRoot {
-				unionSet = append(unionSet, rp)
-			}
-		}
-		fac2 := uniqueInts(factorize(x+1, spf))
-		tmp := make([]int, 0, len(fac2))
-		for _, p := range fac2 {
-			rp := d.find(p)
-			tmp = append(tmp, rp)
-			unionSet = append(unionSet, rp)
-		}
-		plusRoots[idx] = uniqueInts(tmp)
-		unionSet = uniqueInts(unionSet)
-		for i := 0; i < len(unionSet); i++ {
-			for j := i + 1; j < len(unionSet); j++ {
-				a, b := unionSet[i], unionSet[j]
-				if a > b {
-					a, b = b, a
-				}
-				edges[[2]int{a, b}] = struct{}{}
-			}
-		}
-	}
-	var outputs []string
-	for ; q > 0; q-- {
-		var s, t int
-		fmt.Fscan(rdr, &s, &t)
-		s--
-		t--
-		if roots[s] == roots[t] {
-			outputs = append(outputs, "0")
-			continue
-		}
-		checkSetS := append([]int{roots[s]}, plusRoots[s]...)
-		checkSetT := append([]int{roots[t]}, plusRoots[t]...)
-		found := false
-		for _, rs := range checkSetS {
-			for _, rt := range checkSetT {
-				if rs == rt {
-					found = true
-					break
-				}
-				a, b := rs, rt
-				if a > b {
-					a, b = b, a
-				}
-				if _, ok := edges[[2]int{a, b}]; ok {
-					found = true
-					break
-				}
-			}
-			if found {
-				break
-			}
-		}
-		if found {
-			outputs = append(outputs, "1")
-		} else {
-			outputs = append(outputs, "2")
-		}
-	}
-	return strings.Join(outputs, "\n")
-}
-
-func randPerm(n int) []int {
-	p := make([]int, n)
-	for i := 0; i < n; i++ {
-		p[i] = rand.Intn(10) + 1
-	}
-	return p
+type testCase struct {
+	input    string
+	expected string
 }
 
 func generateCases() []testCase {
-	rand.Seed(7)
+	rng := rand.New(rand.NewSource(7))
 	cases := []testCase{}
+
+	// Fixed test
 	fixed := []struct {
 		n, q    int
 		arr     []int
@@ -240,12 +232,14 @@ func generateCases() []testCase {
 			fmt.Fprintf(&sb, "%d %d\n", qv[0], qv[1])
 		}
 		inp := sb.String()
-		cases = append(cases, testCase{inp, compute(inp)})
+		exp := solveG(inp)
+		cases = append(cases, testCase{inp, exp})
 	}
+
 	for len(cases) < 100 {
-		n := rand.Intn(4) + 2
-		q := rand.Intn(3) + 1
-		arr := randPerm(n)
+		n := rng.Intn(4) + 2
+		q := rng.Intn(3) + 1
+		arr := randDistinct(rng, n, 2, 20)
 		var sb strings.Builder
 		fmt.Fprintf(&sb, "%d %d\n", n, q)
 		for i, v := range arr {
@@ -256,12 +250,16 @@ func generateCases() []testCase {
 		}
 		sb.WriteByte('\n')
 		for i := 0; i < q; i++ {
-			s := rand.Intn(n) + 1
-			t := rand.Intn(n) + 1
+			s := rng.Intn(n) + 1
+			t := rng.Intn(n-1) + 1
+			if t >= s {
+				t++
+			}
 			fmt.Fprintf(&sb, "%d %d\n", s, t)
 		}
 		inp := sb.String()
-		cases = append(cases, testCase{inp, compute(inp)})
+		exp := solveG(inp)
+		cases = append(cases, testCase{inp, exp})
 	}
 	return cases
 }
@@ -272,6 +270,7 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+
 	cases := generateCases()
 	for i, tc := range cases {
 		out, err := runBinary(bin, tc.input)

@@ -10,16 +10,143 @@ import (
 	"time"
 )
 
-func buildRef() (string, error) {
-	ref := "./refD.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1187D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
+const INF = int(1e9)
+const MAXN = 300000
+const MAXSIZE = 1 << 19
+
+// Embedded correct solver for 1187/D
+func solveD(input string) string {
+	data := []byte(input)
+	idx := 0
+	nextInt := func() int {
+		n := len(data)
+		for idx < n {
+			c := data[idx]
+			if c >= '0' && c <= '9' {
+				break
+			}
+			idx++
+		}
+		v := 0
+		for idx < n {
+			c := data[idx]
+			if c < '0' || c > '9' {
+				break
+			}
+			v = v*10 + int(c-'0')
+			idx++
+		}
+		return v
 	}
-	return ref, nil
+
+	pos := make([][]int, MAXN+1)
+	ptr := make([]int, MAXN+1)
+	tree := make([]int, 2*MAXSIZE)
+	usedBuf := make([]int, 0, MAXN)
+
+	t := nextInt()
+	var out bytes.Buffer
+
+	for ; t > 0; t-- {
+		n := nextInt()
+		used := usedBuf[:0]
+
+		for i := 1; i <= n; i++ {
+			x := nextInt()
+			if len(pos[x]) == 0 {
+				used = append(used, x)
+			}
+			pos[x] = append(pos[x], i)
+		}
+
+		size := 1
+		for size < n {
+			size <<= 1
+		}
+		limit := size << 1
+		for i := 1; i < limit; i++ {
+			tree[i] = INF
+		}
+		for _, x := range used {
+			tree[size+x-1] = pos[x][0]
+		}
+		for i := size - 1; i > 0; i-- {
+			if tree[i<<1] < tree[i<<1|1] {
+				tree[i] = tree[i<<1]
+			} else {
+				tree[i] = tree[i<<1|1]
+			}
+		}
+
+		ok := true
+		for i := 0; i < n; i++ {
+			x := nextInt()
+			if !ok {
+				continue
+			}
+			if ptr[x] >= len(pos[x]) {
+				ok = false
+				continue
+			}
+			p := pos[x][ptr[x]]
+
+			if x > 1 {
+				l, r := size, size+x-1
+				minv := INF
+				for l < r {
+					if l&1 == 1 {
+						if tree[l] < minv {
+							minv = tree[l]
+						}
+						l++
+					}
+					if r&1 == 1 {
+						r--
+						if tree[r] < minv {
+							minv = tree[r]
+						}
+					}
+					l >>= 1
+					r >>= 1
+				}
+				if minv < p {
+					ok = false
+					continue
+				}
+			}
+
+			ptr[x]++
+			nv := INF
+			if ptr[x] < len(pos[x]) {
+				nv = pos[x][ptr[x]]
+			}
+			id := size + x - 1
+			tree[id] = nv
+			for id >>= 1; id > 0; id >>= 1 {
+				if tree[id<<1] < tree[id<<1|1] {
+					tree[id] = tree[id<<1]
+				} else {
+					tree[id] = tree[id<<1|1]
+				}
+			}
+		}
+
+		if ok {
+			out.WriteString("YES\n")
+		} else {
+			out.WriteString("NO\n")
+		}
+
+		for _, x := range used {
+			pos[x] = pos[x][:0]
+			ptr[x] = 0
+		}
+	}
+
+	return strings.TrimSpace(out.String())
 }
 
-func run(bin, input string) (string, error) {
+func runBin(bin, input string) (string, error) {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
 		cmd = exec.Command("go", "run", bin)
@@ -67,21 +194,11 @@ func main() {
 		os.Exit(1)
 	}
 	cand := os.Args[1]
-	ref, err := buildRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input := generateCase(rng)
-		exp, err := run(ref, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\ninput:%s", i+1, err, input)
-			os.Exit(1)
-		}
-		out, err := run(cand, input)
+		exp := solveD(input)
+		out, err := runBin(cand, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:%s", i+1, err, input)
 			os.Exit(1)
