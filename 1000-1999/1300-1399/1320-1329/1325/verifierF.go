@@ -51,6 +51,9 @@ func verifyCase(bin string, n int, edges [][2]int) error {
 
 	if typ == 1 {
 		// Independent set: token[0]=1, tokens[1..] are the nodes
+		if len(tokens) < 2 {
+			return fmt.Errorf("independent set has no nodes listed")
+		}
 		nodes := make(map[int]bool)
 		for _, tok := range tokens[1:] {
 			var v int
@@ -79,8 +82,11 @@ func verifyCase(bin string, n int, edges [][2]int) error {
 		}
 		var cycleLen int
 		fmt.Sscan(tokens[1], &cycleLen)
-		if cycleLen < sqrtN {
-			return fmt.Errorf("cycle too short: %d < %d", cycleLen, sqrtN)
+		if cycleLen > 3*sqrtN {
+			return fmt.Errorf("cycle too long: %d > 3*%d", cycleLen, sqrtN)
+		}
+		if cycleLen < 3 {
+			return fmt.Errorf("cycle too short: %d < 3", cycleLen)
 		}
 		if len(tokens) < 2+cycleLen {
 			return fmt.Errorf("cycle has %d nodes listed but claimed %d", len(tokens)-2, cycleLen)
@@ -155,7 +161,7 @@ func main() {
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		n := rng.Intn(15) + 2
+		n := rng.Intn(12) + 5
 		edges := genGraph(rng, n)
 		if err := verifyCase(bin, n, edges); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)

@@ -47,19 +47,40 @@ func buildCase(tc testCase) string {
 
 func randomPolygon(rng *rand.Rand) []PT {
 	n := rng.Intn(3) + 3 // 3..5
-	angles := make([]float64, n)
-	for i := 0; i < n; i++ {
-		angles[i] = rng.Float64() * 2 * math.Pi
+	for {
+		angles := make([]float64, n)
+		for i := 0; i < n; i++ {
+			angles[i] = rng.Float64() * 2 * math.Pi
+		}
+		sort.Float64s(angles)
+		pts := make([]PT, n)
+		for i, a := range angles {
+			r := float64(rng.Intn(9) + 1)
+			x := math.Round(r * math.Cos(a))
+			y := math.Round(r * math.Sin(a))
+			pts[i] = PT{x, y}
+		}
+		// Verify non-degenerate (non-zero area)
+		area := 0.0
+		for i := 0; i < n; i++ {
+			j := (i + 1) % n
+			area += pts[i].x*pts[j].y - pts[j].x*pts[i].y
+		}
+		if math.Abs(area) > 0.5 {
+			// Also verify no two points coincide
+			ok := true
+			for i := 0; i < n && ok; i++ {
+				for j := i + 1; j < n && ok; j++ {
+					if pts[i].x == pts[j].x && pts[i].y == pts[j].y {
+						ok = false
+					}
+				}
+			}
+			if ok {
+				return pts
+			}
+		}
 	}
-	sort.Float64s(angles)
-	pts := make([]PT, n)
-	for i, a := range angles {
-		r := float64(rng.Intn(9) + 1)
-		x := math.Round(r * math.Cos(a))
-		y := math.Round(r * math.Sin(a))
-		pts[i] = PT{x, y}
-	}
-	return pts
 }
 
 func genCase(rng *rand.Rand) string {
@@ -88,23 +109,26 @@ func genCase(rng *rand.Rand) string {
 	return buildCase(tc)
 }
 
-// Embedded correct solver for 975E
-func solve975E(input string) string {
+// solveE implements the correct reference solution for problem 975E.
+// It computes the centroid of the polygon using big.Int / big.Float for
+// precision, then tracks a rigid-body rotation+translation as two pins
+// are moved, and reports world-space coordinates for type-2 queries.
+func solveE(input string) string {
+	idx := 0
 	data := []byte(input)
-	p := 0
 	nextInt := func() int64 {
-		for p < len(data) && data[p] <= ' ' {
-			p++
+		for idx < len(data) && data[idx] <= ' ' {
+			idx++
 		}
 		sign := int64(1)
-		if p < len(data) && data[p] == '-' {
+		if idx < len(data) && data[idx] == '-' {
 			sign = -1
-			p++
+			idx++
 		}
 		var v int64
-		for p < len(data) && data[p] > ' ' {
-			v = v*10 + int64(data[p]-'0')
-			p++
+		for idx < len(data) && data[idx] > ' ' {
+			v = v*10 + int64(data[idx]-'0')
+			idx++
 		}
 		return sign * v
 	}
@@ -212,18 +236,6 @@ func solve975E(input string) string {
 	return strings.TrimSpace(string(out))
 }
 
-func runBin(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
-	}
-	return strings.TrimSpace(out.String()), nil
-}
-
 func compareOutputs(got, exp string) error {
 	gotFields := strings.Fields(got)
 	expFields := strings.Fields(exp)
@@ -254,13 +266,18 @@ func main() {
 	for i := 0; i < 100; i++ {
 		in := genCase(rng)
 
-		exp := solve975E(in)
+		exp := solveE(in)
 
-		got, err := runBin(bin, in)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(in)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: runtime error: %v\n%s\ninput:\n%s", i+1, err, out.String(), in)
 			os.Exit(1)
 		}
+		got := strings.TrimSpace(out.String())
 
 		if err := compareOutputs(got, exp); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
