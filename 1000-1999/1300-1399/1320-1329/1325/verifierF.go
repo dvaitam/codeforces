@@ -12,12 +12,7 @@ import (
 )
 
 func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
@@ -30,9 +25,6 @@ func run(bin, input string) (string, error) {
 }
 
 // verifyCase checks that the output is a valid answer for 1325F.
-// The problem: given a graph with n vertices and m edges, either find:
-// 1) An independent set of size ceil(sqrt(n)), or
-// 2) A simple cycle of length at least ceil(sqrt(n))
 func verifyCase(bin string, n int, edges [][2]int) error {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d %d\n", n, len(edges)))
@@ -46,24 +38,21 @@ func verifyCase(bin string, n int, edges [][2]int) error {
 		return err
 	}
 
-	lines := strings.Split(got, "\n")
-	if len(lines) < 2 {
-		return fmt.Errorf("too few output lines")
+	// Parse output using fields for robustness
+	tokens := strings.Fields(got)
+	if len(tokens) < 1 {
+		return fmt.Errorf("empty output")
 	}
 
 	var typ int
-	fmt.Sscan(lines[0], &typ)
+	fmt.Sscan(tokens[0], &typ)
 
 	sqrtN := int(math.Ceil(math.Sqrt(float64(n))))
 
 	if typ == 1 {
-		// Independent set
-		tokens := strings.Fields(lines[1])
-		if len(tokens) < sqrtN {
-			return fmt.Errorf("independent set too small: %d < %d", len(tokens), sqrtN)
-		}
+		// Independent set: token[0]=1, tokens[1..] are the nodes
 		nodes := make(map[int]bool)
-		for _, tok := range tokens {
+		for _, tok := range tokens[1:] {
 			var v int
 			fmt.Sscan(tok, &v)
 			if v < 1 || v > n {
@@ -74,6 +63,9 @@ func verifyCase(bin string, n int, edges [][2]int) error {
 			}
 			nodes[v] = true
 		}
+		if len(nodes) < sqrtN {
+			return fmt.Errorf("independent set too small: %d < %d", len(nodes), sqrtN)
+		}
 		// Check no edge between nodes in the set
 		for _, e := range edges {
 			if nodes[e[0]] && nodes[e[1]] {
@@ -81,23 +73,22 @@ func verifyCase(bin string, n int, edges [][2]int) error {
 			}
 		}
 	} else if typ == 2 {
-		// Cycle
+		// Cycle: token[0]=2, token[1]=cycle length, tokens[2..] are cycle nodes
+		if len(tokens) < 2 {
+			return fmt.Errorf("missing cycle length")
+		}
 		var cycleLen int
-		fmt.Sscan(lines[1], &cycleLen)
+		fmt.Sscan(tokens[1], &cycleLen)
 		if cycleLen < sqrtN {
 			return fmt.Errorf("cycle too short: %d < %d", cycleLen, sqrtN)
 		}
-		if len(lines) < 3 {
-			return fmt.Errorf("missing cycle nodes")
-		}
-		tokens := strings.Fields(lines[2])
-		if len(tokens) < cycleLen {
-			return fmt.Errorf("cycle has %d nodes but claimed %d", len(tokens), cycleLen)
+		if len(tokens) < 2+cycleLen {
+			return fmt.Errorf("cycle has %d nodes listed but claimed %d", len(tokens)-2, cycleLen)
 		}
 		cycle := make([]int, cycleLen)
 		seen := make(map[int]bool)
 		for i := 0; i < cycleLen; i++ {
-			fmt.Sscan(tokens[i], &cycle[i])
+			fmt.Sscan(tokens[2+i], &cycle[i])
 			if cycle[i] < 1 || cycle[i] > n {
 				return fmt.Errorf("node %d out of range", cycle[i])
 			}
@@ -128,20 +119,30 @@ func verifyCase(bin string, n int, edges [][2]int) error {
 }
 
 func genGraph(rng *rand.Rand, n int) [][2]int {
+	edgeSet := make(map[[2]int]bool)
 	edges := make([][2]int, 0)
+	addEdge := func(u, v int) {
+		if u > v {
+			u, v = v, u
+		}
+		if !edgeSet[[2]int{u, v}] {
+			edgeSet[[2]int{u, v}] = true
+			edges = append(edges, [2]int{u, v})
+		}
+	}
+	// Build a spanning tree first
 	for i := 2; i <= n; i++ {
 		p := rng.Intn(i-1) + 1
-		edges = append(edges, [2]int{p, i})
+		addEdge(p, i)
 	}
+	// Add some extra edges
 	mExtra := rng.Intn(n)
 	for i := 0; i < mExtra; i++ {
 		u := rng.Intn(n) + 1
 		v := rng.Intn(n) + 1
-		if u == v {
-			i--
-			continue
+		if u != v {
+			addEdge(u, v)
 		}
-		edges = append(edges, [2]int{u, v})
 	}
 	return edges
 }

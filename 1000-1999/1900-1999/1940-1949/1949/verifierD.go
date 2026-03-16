@@ -40,52 +40,52 @@ func runProg(exe string, input []byte) (string, error) {
 }
 
 func genTest() []byte {
-	n := rand.Intn(4) + 1
+	n := rand.Intn(4) + 2 // 2..5, at least 2 to have off-diagonal entries
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", n))
 	chars := []byte{'F', 'S', '?'}
 	for i := 0; i < n; i++ {
 		for j := 0; j < n; j++ {
-			sb.WriteByte(chars[rand.Intn(len(chars))])
+			if i == j {
+				sb.WriteByte('.')
+			} else if i < j {
+				sb.WriteByte(chars[rand.Intn(len(chars))])
+			} else {
+				// Will be filled to match (j,i) - but for now we need to be symmetric in input
+				// Actually the problem input is a symmetric matrix where grid[i][j] == grid[j][i]
+				// We already wrote grid[j][i] for j < i, so we need to look it up
+				// Simpler: build the grid first, then write it
+				sb.WriteByte('X') // placeholder
+			}
 		}
+		sb.WriteByte('\n')
+	}
+	// Rebuild properly with symmetry
+	sb.Reset()
+	grid := make([][]byte, n)
+	for i := 0; i < n; i++ {
+		grid[i] = make([]byte, n)
+		for j := 0; j < n; j++ {
+			if i == j {
+				grid[i][j] = '.'
+			}
+		}
+	}
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			c := chars[rand.Intn(len(chars))]
+			grid[i][j] = c
+			grid[j][i] = c
+		}
+	}
+	sb.WriteString(fmt.Sprintf("%d\n", n))
+	for i := 0; i < n; i++ {
+		sb.Write(grid[i])
 		sb.WriteByte('\n')
 	}
 	return []byte(sb.String())
 }
 
-// validate checks that the output is a valid answer for problem 1949D.
-// The output should be an n×n matrix where:
-// - '?' positions are replaced with 'F' or 'S'
-// - Non-'?' positions match the input
-// - No guest has more than ⌈3n/4⌉ funny+scary slots
-// - Specifically: for each pair (i,j) with i<j, the character at (i,j) determines
-//   if show (i,j) is Funny or Scary. The constraint is that each show
-//   (each pair i,j with i<j) gets a letter, and for each guest g,
-//   looking at shows involving g, no more than ceil(3n/4) consecutive same-type.
-//
-// Actually the real constraint: we assign F/S to each ? position such that
-// for the symmetric matrix, for each person i, the sequence of shows they
-// participate in (sorted by show number) has no segment of more than
-// floor(3n/4) consecutive F or consecutive S.
-//
-// Simplified validation: check the constraint from the problem.
-// For 1949D: n people, n*(n-1)/2 shows. Show (i,j) is F or S.
-// For each person g, collect types of shows involving g in order of show number.
-// No consecutive run of F or S longer than ceil(3n/4).
-//
-// Actually looking more carefully at the problem:
-// n shows, n guests. Show i has guests who have grid[i][j] != '.' for some j.
-// Wait, re-reading: it's n timeslots, n guests. At timeslot i, guest j
-// participates. grid[i][j] is the type of entertainment at timeslot i for pair.
-// Actually no - the grid is n×n symmetric, grid[i][j] means the type of
-// show for guests i and j together.
-//
-// The constraint: for each guest g (row g), the string formed by
-// grid[g][0..n-1] (excluding diagonal) should not have a consecutive run
-// of F's or S's longer than ceil(3n/4).
-//
-// Simpler: just check that the output is consistent with input and
-// the row-constraint holds.
 func validate(input, output []byte) error {
 	inLines := strings.Split(strings.TrimSpace(string(input)), "\n")
 	if len(inLines) < 1 {
@@ -116,31 +116,34 @@ func validate(input, output []byte) error {
 	// Check consistency with input and symmetry
 	for i := 0; i < n; i++ {
 		for j := 0; j < n; j++ {
-			if grid[i][j] != '?' {
+			if i == j {
+				// diagonal should be '.'
+				if out[i][j] != '.' {
+					return fmt.Errorf("position (%d,%d): expected '.' on diagonal, got %c", i, j, out[i][j])
+				}
+				continue
+			}
+			if grid[i][j] == 'F' || grid[i][j] == 'S' {
 				if out[i][j] != grid[i][j] {
 					return fmt.Errorf("position (%d,%d): expected %c from input, got %c", i, j, grid[i][j], out[i][j])
 				}
-			} else {
+			} else if grid[i][j] == '?' {
 				if out[i][j] != 'F' && out[i][j] != 'S' {
 					return fmt.Errorf("position (%d,%d): expected F or S, got %c", i, j, out[i][j])
 				}
 			}
-			if i != j && out[i][j] != out[j][i] {
+			if out[i][j] != out[j][i] {
 				return fmt.Errorf("not symmetric at (%d,%d): %c vs %c", i, j, out[i][j], out[j][i])
 			}
 		}
 	}
 
-	// Check the constraint: for each pair of guests (i, j) with i < j,
-	// the show type is out[i][j]. Shows are numbered by pairs.
-	// For guest g, collect show types in order of show number.
-	// A show between i and j (i<j) has number based on the pair ordering.
-	// The constraint: consecutive same-type shows for a guest <= ceil(3n/4).
+	// Check the constraint: for each guest g, the sequence of show types
+	// (considering other guests in order) should not have a consecutive run
+	// of F's or S's longer than ceil(3n/4).
 	lim := (3*n + 3) / 4
 
 	for g := 0; g < n; g++ {
-		// Shows involving guest g, in order of the other guest index
-		// (which is the show ordering for this problem)
 		runLen := 0
 		var lastChar byte
 		for j := 0; j < n; j++ {

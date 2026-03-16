@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"math/big"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -88,45 +88,128 @@ func genCase(rng *rand.Rand) string {
 	return buildCase(tc)
 }
 
-func buildReference() (string, func(), error) {
-	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
-	if refSrc == "" {
-		return "", nil, fmt.Errorf("REFERENCE_SOURCE_PATH not set")
-	}
-
-	content, err := os.ReadFile(refSrc)
-	if err != nil {
-		return "", nil, fmt.Errorf("cannot read reference source: %v", err)
-	}
-
-	tmpDir, err := os.MkdirTemp("", "975E-ref")
-	if err != nil {
-		return "", nil, err
-	}
-	cleanup := func() { os.RemoveAll(tmpDir) }
-
-	binPath := filepath.Join(tmpDir, "ref_975E")
-
-	if strings.Contains(string(content), "#include") {
-		cppPath := filepath.Join(tmpDir, "ref.cpp")
-		if err := os.WriteFile(cppPath, content, 0644); err != nil {
-			cleanup()
-			return "", nil, err
+// Embedded correct solver for 975E
+func solve975E(input string) string {
+	data := []byte(input)
+	p := 0
+	nextInt := func() int64 {
+		for p < len(data) && data[p] <= ' ' {
+			p++
 		}
-		cmd := exec.Command("g++", "-O2", "-o", binPath, cppPath)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			cleanup()
-			return "", nil, fmt.Errorf("g++ build failed: %v\n%s", err, string(out))
+		sign := int64(1)
+		if p < len(data) && data[p] == '-' {
+			sign = -1
+			p++
 		}
-	} else {
-		cmd := exec.Command("go", "build", "-o", binPath, refSrc)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			cleanup()
-			return "", nil, fmt.Errorf("go build failed: %v\n%s", err, string(out))
+		var v int64
+		for p < len(data) && data[p] > ' ' {
+			v = v*10 + int64(data[p]-'0')
+			p++
+		}
+		return sign * v
+	}
+
+	n := int(nextInt())
+	q := int(nextInt())
+
+	xi := make([]int64, n+1)
+	yi := make([]int64, n+1)
+	x := make([]float64, n+1)
+	y := make([]float64, n+1)
+
+	for i := 1; i <= n; i++ {
+		xv := nextInt()
+		yv := nextInt()
+		xi[i] = xv
+		yi[i] = yv
+		x[i] = float64(xv)
+		y[i] = float64(yv)
+	}
+
+	var area2, numX, numY big.Int
+	var b1, b2, term big.Int
+
+	for i := 1; i <= n; i++ {
+		j := i + 1
+		if j > n {
+			j = 1
+		}
+		cross := xi[i]*yi[j] - xi[j]*yi[i]
+		area2.Add(&area2, b1.SetInt64(cross))
+
+		term.Mul(b1.SetInt64(cross), b2.SetInt64(xi[i]+xi[j]))
+		numX.Add(&numX, &term)
+
+		term.Mul(b1.SetInt64(cross), b2.SetInt64(yi[i]+yi[j]))
+		numY.Add(&numY, &term)
+	}
+
+	var denom big.Int
+	denom.Mul(&area2, big.NewInt(3))
+
+	prec := uint(256)
+	denF := new(big.Float).SetPrec(prec).SetInt(&denom)
+
+	cxF := new(big.Float).SetPrec(prec).SetInt(&numX)
+	cyF := new(big.Float).SetPrec(prec).SetInt(&numY)
+
+	cxF.Quo(cxF, denF)
+	cyF.Quo(cyF, denF)
+
+	cx, _ := cxF.Float64()
+	cy, _ := cyF.Float64()
+
+	stableC := make([]float64, n+1)
+	stableS := make([]float64, n+1)
+
+	for i := 1; i <= n; i++ {
+		ux := cx - x[i]
+		uy := cy - y[i]
+		r := math.Hypot(ux, uy)
+		stableC[i] = -uy / r
+		stableS[i] = -ux / r
+	}
+
+	curC, curS := 1.0, 0.0
+	tx, ty := 0.0, 0.0
+	p1, p2 := 1, 2
+
+	out := make([]byte, 0, q*40)
+
+	for ; q > 0; q-- {
+		typ := int(nextInt())
+		if typ == 1 {
+			f := int(nextInt())
+			t := int(nextInt())
+
+			g := p1
+			if p1 == f {
+				g = p2
+			}
+
+			wgx := curC*x[g] - curS*y[g] + tx
+			wgy := curS*x[g] + curC*y[g] + ty
+
+			curC = stableC[g]
+			curS = stableS[g]
+
+			tx = wgx - (curC*x[g] - curS*y[g])
+			ty = wgy - (curS*x[g] + curC*y[g])
+
+			p1, p2 = g, t
+		} else {
+			v := int(nextInt())
+			xv := curC*x[v] - curS*y[v] + tx
+			yv := curS*x[v] + curC*y[v] + ty
+
+			out = strconv.AppendFloat(out, xv, 'f', 10, 64)
+			out = append(out, ' ')
+			out = strconv.AppendFloat(out, yv, 'f', 10, 64)
+			out = append(out, '\n')
 		}
 	}
 
-	return binPath, cleanup, nil
+	return strings.TrimSpace(string(out))
 }
 
 func runBin(bin, input string) (string, error) {
@@ -167,22 +250,11 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	refBin, cleanup, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		in := genCase(rng)
 
-		exp, err := runBin(refBin, in)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
+		exp := solve975E(in)
 
 		got, err := runBin(bin, in)
 		if err != nil {

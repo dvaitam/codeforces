@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -10,151 +11,184 @@ import (
 )
 
 const MOD = 1000000007
+const MAXA = 200005
 
-type Fenwick struct {
-	n    int
-	tree []int64
+var spfG [MAXA]int32
+var invG [MAXA]int32
+
+type Node struct {
+	ls, rs int32
+	val    int32
 }
 
-func NewFenwick(n int) *Fenwick {
-	f := &Fenwick{n: n, tree: make([]int64, n+2)}
-	for i := range f.tree {
-		f.tree[i] = 1
-	}
-	return f
+var treeG []Node
+
+type upd struct {
+	pos int32
+	val int32
 }
 
-func (f *Fenwick) mul(i int, v int64) {
-	for ; i <= f.n; i += i & -i {
-		f.tree[i] = f.tree[i] * v % MOD
+func updateTreeBatch(node int32, l, r int32, upds []upd) int32 {
+	newNode := int32(len(treeG))
+	treeG = append(treeG, treeG[node])
+
+	mul := int64(1)
+	for i := 0; i < len(upds); i++ {
+		mul = (mul * int64(upds[i].val)) % MOD
 	}
+	treeG[newNode].val = int32((int64(treeG[newNode].val) * mul) % MOD)
+
+	if l == r {
+		return newNode
+	}
+
+	mid := (l + r) >> 1
+	split := 0
+	for split < len(upds) && upds[split].pos <= mid {
+		split++
+	}
+
+	if split > 0 {
+		treeG[newNode].ls = updateTreeBatch(treeG[node].ls, l, mid, upds[:split])
+	}
+	if split < len(upds) {
+		treeG[newNode].rs = updateTreeBatch(treeG[node].rs, mid+1, r, upds[split:])
+	}
+
+	return newNode
 }
 
-func (f *Fenwick) rangeMul(l, r int, v, invV int64) {
-	if l > r {
-		return
+func queryTree(node int32, l, r int32, ql, qr int32) int32 {
+	if node == 0 {
+		return 1
 	}
-	f.mul(l, v)
-	if r+1 <= f.n {
-		f.mul(r+1, invV)
+	if ql <= l && r <= qr {
+		return treeG[node].val
 	}
-}
-
-func (f *Fenwick) query(x int) int64 {
-	res := int64(1)
-	for i := x; i > 0; i -= i & -i {
-		res = res * f.tree[i] % MOD
+	mid := (l + r) >> 1
+	res := int32(1)
+	if ql <= mid {
+		res = int32((int64(res) * int64(queryTree(treeG[node].ls, l, mid, ql, qr))) % MOD)
+	}
+	if qr > mid {
+		res = int32((int64(res) * int64(queryTree(treeG[node].rs, mid+1, r, ql, qr))) % MOD)
 	}
 	return res
 }
 
-func modPow(a int64, e int) int64 {
-	res := int64(1)
-	for e > 0 {
-		if e&1 != 0 {
-			res = res * a % MOD
+func solve(input string) string {
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	scanner.Split(bufio.ScanWords)
+	buf := make([]byte, 1024*1024)
+	scanner.Buffer(buf, 1024*1024*10)
+
+	scanInt := func() int32 {
+		scanner.Scan()
+		b := scanner.Bytes()
+		res := int32(0)
+		for _, v := range b {
+			res = res*10 + int32(v-'0')
 		}
-		a = a * a % MOD
-		e >>= 1
+		return res
 	}
-	return res
-}
 
-func modInv(a int64) int64 {
-	return modPow(a, MOD-2)
+	n := scanInt()
+
+	a := make([]int32, n+1)
+	for i := int32(1); i <= n; i++ {
+		a[i] = scanInt()
+	}
+
+	treeG = make([]Node, 1, 5000000)
+	treeG[0] = Node{0, 0, 1}
+
+	roots := make([]int32, n+1)
+	roots[0] = 0
+
+	prev := make([]int32, MAXA)
+
+	for i := int32(1); i <= n; i++ {
+		x := a[i]
+		var upds []upd
+
+		for x > 1 {
+			p := spfG[x]
+			pk := int32(1)
+			for x%p == 0 {
+				x /= p
+				pk *= p
+
+				upds = append(upds, upd{pos: i, val: p})
+				if prev[pk] != 0 {
+					upds = append(upds, upd{pos: prev[pk], val: invG[p]})
+				}
+				prev[pk] = i
+			}
+		}
+
+		combined := make([]upd, 0, len(upds))
+		for j := 0; j < len(upds); j++ {
+			u := upds[j]
+			found := false
+			for k := 0; k < len(combined); k++ {
+				if combined[k].pos == u.pos {
+					combined[k].val = int32((int64(combined[k].val) * int64(u.val)) % MOD)
+					found = true
+					break
+				}
+			}
+			if !found {
+				combined = append(combined, u)
+			}
+		}
+
+		for j := 1; j < len(combined); j++ {
+			k := j
+			for k > 0 && combined[k-1].pos > combined[k].pos {
+				combined[k-1], combined[k] = combined[k], combined[k-1]
+				k--
+			}
+		}
+
+		currRoot := roots[i-1]
+		if len(combined) > 0 {
+			currRoot = updateTreeBatch(currRoot, 1, n, combined)
+		}
+		roots[i] = currRoot
+	}
+
+	// Reset prev for next call
+	for i := range prev {
+		prev[i] = 0
+	}
+
+	q := scanInt()
+	last := int32(0)
+
+	var out strings.Builder
+	for i := int32(0); i < q; i++ {
+		x := scanInt()
+		y := scanInt()
+
+		l := int32((int64(last)+int64(x))%int64(n)) + 1
+		r := int32((int64(last)+int64(y))%int64(n)) + 1
+		if l > r {
+			l, r = r, l
+		}
+
+		ans := queryTree(roots[r], 1, n, l, r)
+		out.WriteString(fmt.Sprint(ans))
+		if i+1 < q {
+			out.WriteByte('\n')
+		}
+		last = ans
+	}
+	return out.String()
 }
 
 type test struct {
 	input    string
 	expected string
-}
-
-func solve(input string) string {
-	r := strings.NewReader(input)
-	var n int
-	fmt.Fscan(r, &n)
-	a := make([]int, n+1)
-	maxA := 0
-	for i := 1; i <= n; i++ {
-		fmt.Fscan(r, &a[i])
-		if a[i] > maxA {
-			maxA = a[i]
-		}
-	}
-	spf := make([]int, maxA+1)
-	for i := 2; i <= maxA; i++ {
-		if spf[i] == 0 {
-			for j := i; j <= maxA; j += i {
-				if spf[j] == 0 {
-					spf[j] = i
-				}
-			}
-		}
-	}
-	type pe struct{ pos, exp int }
-	stacks := make([][]pe, maxA+1)
-	for p := 2; p <= maxA; p++ {
-		if spf[p] == p {
-			stacks[p] = []pe{{0, 0}}
-		}
-	}
-	bit := NewFenwick(n)
-	for i := 1; i <= n; i++ {
-		x := a[i]
-		for x > 1 {
-			p := spf[x]
-			cnt := 0
-			for x%p == 0 {
-				x /= p
-				cnt++
-			}
-			if stacks[p] == nil {
-				stacks[p] = []pe{{0, 0}}
-			}
-			stk := stacks[p]
-			for len(stk) > 1 && stk[len(stk)-1].exp <= cnt {
-				last := stk[len(stk)-1]
-				stk = stk[:len(stk)-1]
-				prev := stk[len(stk)-1]
-				pe_k := modPow(int64(p), last.exp)
-				inv_pe_k := modInv(pe_k)
-				l := prev.pos + 1
-				r := last.pos
-				bit.rangeMul(l, r, inv_pe_k, pe_k)
-			}
-			prev := stk[len(stk)-1]
-			pe_v := modPow(int64(p), cnt)
-			inv_pe_v := modInv(pe_v)
-			l := prev.pos + 1
-			r := i
-			bit.rangeMul(l, r, pe_v, inv_pe_v)
-			stk = append(stk, pe{i, cnt})
-			stacks[p] = stk
-		}
-	}
-	var q int
-	fmt.Fscan(r, &q)
-	last := int64(0)
-	var out strings.Builder
-	for qi := 0; qi < q; qi++ {
-		var x, y int
-		fmt.Fscan(r, &x, &y)
-		l := (last+int64(x))%int64(n) + 1
-		rpos := (last+int64(y))%int64(n) + 1
-		if l > rpos {
-			l, rpos = rpos, l
-		}
-		prer := bit.query(int(rpos))
-		prel := bit.query(int(l) - 1)
-		invPrel := modInv(prel)
-		ans := prer * invPrel % MOD
-		out.WriteString(fmt.Sprint(ans))
-		if qi+1 < q {
-			out.WriteByte(' ')
-		}
-		last = ans
-	}
-	return out.String()
 }
 
 func generateTests() []test {
@@ -179,18 +213,16 @@ func generateTests() []test {
 			fmt.Fprintf(&sb, "%d %d\n", x, y)
 		}
 		inp := sb.String()
+
+		// Reset global state for solve
+		treeG = nil
 		tests = append(tests, test{inp, solve(inp)})
 	}
 	return tests
 }
 
 func runBinary(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -200,6 +232,21 @@ func runBinary(bin, input string) (string, error) {
 }
 
 func main() {
+	// Initialize spf and inv tables
+	for i := int32(2); i < MAXA; i++ {
+		if spfG[i] == 0 {
+			for j := i; j < MAXA; j += i {
+				if spfG[j] == 0 {
+					spfG[j] = i
+				}
+			}
+		}
+	}
+	invG[1] = 1
+	for i := int32(2); i < MAXA; i++ {
+		invG[i] = int32((int64(MOD) - int64(MOD/i)) * int64(invG[MOD%i]) % MOD)
+	}
+
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierF.go /path/to/binary")
 		os.Exit(1)
