@@ -42,17 +42,115 @@ func runCase(exe, input, exp string) error {
 	return nil
 }
 
+const testcasesCRaw = `100
+mltvvlmvgobqjmxrpdqkapgjpujaikcrq
+kvxlggclnebauyqphvribcaoyvtikxdvjsaybkbtyciocbppn
+cmzmvpyuxanqgwlre
+cqzaljzuejdqkpqmnspkrqgmqylmmvqbf
+xopzutgmgtpsxinabcugteabgrgnmojesvisklpahmoltd
+rwyoxzwforsfvxf
+ipswbbl
+jsoqyurjaejiiieb
+golqqfnekaq
+jbmlhxojxokrstbeqkogefe
+vwlteggkgijxdxmzmxjuiqqfktj
+zp
+mgczfpwpgaruxxdggk
+qiknkawswhhtrdawpzildmqw
+jwujegotcokcrhcbxixpprougudaucykglgcesvyzkrp
+lfjmhvyelqlpnqnftznpqkpswprtsxvdfql
+wvsljkefpixpnrdlfeewikjpqrtjskbbaojostwtgtq
+jh
+whqfotcnxcjxtlftxkxapheldxm
+fwzgafxwypitcqskszlgajoqkfnbckgrnrhuwblm
+paosjpnewgdwcymghmvmnfzzevqmatorxpoixi
+yohwqfxzbjusyseyghgfdpehyscwo
+ewetjnkxjxyrcuiapypeibqelyw
+ojshgswbcvhvorroueskuupdgjmrtxdygbrrm
+crdexyuccqmuxawfttyzpcofsybgpwhvamvwndqaosbbbtcaq
+xcmsgloxazxfykd
+wwjiawttxqqvulzluscu
+ekpgtmwrlkctcghccqfpcnnsjmrarbloo
+ktfwvnzjhxdobofegsxaovxwmzqxeczd
+xohbtezkqxlerxgpvatqjptxyxumkhlfr
+oiytrkmrsbaoujuqjiuukssgbvexfpurwhdi
+jiwmhqgyubwxabcsdgocagawxeidnkkndtovtsfib
+leobcvlkmv
+pjezobrcjecuelblvvdmrmjydydglxokwa
+rlmqhzqrlakgxnqfdvswwbgrynosffwpibcdhoxibzetcl
+fsggcyhsxoiepcsitynakpdfxhulirzzetyuhiu
+gnrfsnokwohxsbewyvqlnuphajsbj
+pvbhxvm
+zlzonnanmqgjbtomokkmjqufxylhjkgiwajdpbqjfvi
+npwhxztqeyvqgrpuabpsrbronhx
+iwgsvyyenbldemhqjufhbpgmaqibsf
+aa
+nmjgzkjctfujwmc
+okfueoageh
+mwkvrtdryvfb
+hhizcehaeonpninawqstqsmwrh
+lyzlryusui
+pqxfzzlzsiozxaqudehtalepwprquczmrzfn
+ileflmkqfzjqvxaoemsvvsedowmexfeypemmggnauhpdwnoc
+fenyshbzbartuqriocyrtkpwepd
+clxumdpxuhnutyapq
+zgahmpyntwighvtjekhcddrunoitkpdvqij
+necnuuwhtovlitgvcjxkgvgqyogbcraestgzn
+zejwjlxozppdhrblqdgsfnis
+daroxoarguvepowifbqpcthgri
+oetheraiuxcdxvonvn
+udvcovxpwnaosjhdmvekblvoldlvxyximayjzkcj
+mkjlatnthokaoziaucp
+zoikpjlohpawssaguzcrjjkkbu
+powfcnbcsrhuvafss
+tfuwzmjkprjhk
+rybjgjejyuhgvvvltjowlpkhzzltvdnaz
+y
+ppoqflbvschfednvb
+chsgmrhbkfmukplxukdgrvzorfffk
+khfbsmjkurwknfikqyeoxrhyfrkasupet
+cwivrcaxiygdgygtzbikjbrlcz
+vdkktmozx
+fipgrpbcjcbxznimmbsotnkxa
+qyqzrugcg
+nzidmzesinbuowkodskefbtmxxofvxia
+qipjlrdylawwoncwwpawyakhomsftieok
+xzeyeppilzzbumboyjwjnbno
+ygkanfcpmycwnnnupyyaczzyv
+aatnizvzybtbdwjrzoukcgihguvxsapicqiyrae
+hrsksljiblrj
+jbofyxsnrck
+egitbwzjxbygceb
+xnjmagyklmzllbgcstudtwjprmnzz
+cyogwemupy
+wnkfvvsmjfgsywbouyekdtjyprffevzksz
+wzaytkfgpwqzbpbskgoryabbxwdcoyfuxtznpok
+vqamwaucfgdizjsgxhkhbzisnqeqpylyehiackqw
+hbeipuxnklwwfaczxlebmjwpxrafffgivqpul
+putzgffsvnuekuxiyczc
+lrzbsuzdkbqghmkdgimfingoupiivjv
+jdvzynfixeqrbvzvavmjvltykqhitjvl
+wacjsnmchjuffiacacpjmkrcqnornqnedndppxrwuobsoss
+ozsgklyxmhlslkkhmdvxkuqfmshaiympixjennho
+vihdbwiihzaopwaxnvfeobrvikqfcvtevpivbhns
+iqxrdiyhqlxdspnxidamo
+sfaoreqhjap
+vqnllnxyegvujmwmmyqbshyvgcjprgbkjpnkguzcwxa
+wcvdyy
+phsnbtxsntcuveuezjfugltyys
+xarxxuffopyktsbg
+hmdtlpdprqeybxxnifjcgnihasfi
+al
+qwpgybgywnpwhmjclrbupkavpvudyhc
+ifdvovlmfx`
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("Usage: go run verifierC.go /path/to/binary")
 		os.Exit(1)
 	}
 	exe := os.Args[1]
-	data, err := os.ReadFile("testcasesC.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesC.txt:", err)
-		os.Exit(1)
-	}
+	data := []byte(testcasesCRaw)
 	scan := bufio.NewScanner(bytes.NewReader(data))
 	scan.Split(bufio.ScanWords)
 	if !scan.Scan() {

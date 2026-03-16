@@ -9,6 +9,108 @@ import (
 	"strings"
 )
 
+const testcasesARaw = `pxnupcqroattdosfmodtcotpsvzxy
+nbkzfyldgxlfpgigif
+ocguevegahuqsrnskbboah
+lfpxvrkzjuopegnvivwnh
+vdyncuwxre
+wujrdugghbmbfwxp
+jnxqwjbabzgf
+vgnkcqdfabaefhqdrnogjrquzokin
+vwbcwbwgbcqcio
+fwrswnlyowrspjgx
+ypbnahxpzjrcytwx
+atxcnkjra
+qusvnkovyjrtyogqckow
+tyrghsvkgxdiapoozgosqyq
+bjmfvnmwoxhikcrdbrkkllwzli
+cioyv
+cgeunmyawjwfwwe
+jnmllbhvoizeygkdxdk
+ocwmambyeciimidp
+hqibafrgwzocsgufuf
+mwirxhv
+zfahitpihq
+rw
+wx
+mcmismgdbysnvkmuq
+hhoiftlreiknwhzdcoltefls
+jydampryhwmtsyerbqrizeblsv
+rmycdinfstlawrdasyajywzkv
+rfzhxsgelvxkwcjycp
+fmqqxxcz
+ewjsryzqsj
+rwdp
+rohcsb
+oczzwnxqhpuy
+xrxinhikendzzjw
+buruiwutquiezntksmbgavncyw
+lbponcjwu
+fzfuxfkcjlsounitzghm
+y
+sseb
+tocpvmdkeaafuh
+sdpttjhjuajdortlnlswdvgodglsqg
+btzvdxoda
+rsb
+yvqlylznixtjj
+jplo
+zxq
+ondenflabiunyijtyquiazcn
+mhvsjcuwfootwai
+guvqjfkds
+abbyyay
+ngqusebzrweni
+nhv
+hrkijnzttcnutwbkiuhmn
+zwuldlbltipikgkajfzbbwqax
+askdszlmfyusfcrjjcem
+wmfmbanzlfjazggcxbvgl
+hmdtcnjhyq
+ejiapgmyhjtunu
+drkcthbhlarhonqvk
+yttctnihnatu
+pjxqlzodbmmrwoeeusnneqeby
+i
+zufaevyyqekonpmxqti
+alcwuqowtduexfeco
+gboudbciflhmtwrfsvtgqaqlgnn
+qmkfvsgllrp
+kqkc
+pllwhgeieavpe
+fytveycainmeevwnhgsfigpjzbicq
+qfhbxsou
+gfcxjweqignzkmaeabaafwntg
+zdzhfreoahawfwbfcbj
+jlpftrl
+gpptririyhk
+xsrpfyerwsbpmpazxcecfkpxqvbgkz
+senvkkffogbdp
+btnrqvwciyshrovoywotzumr
+byizedxcjfq
+evxdhcoisbbqfgpnc
+e
+alrjtgnnbvxxxvhbfky
+hozwcvjuzwcpahvuvrwuefjx
+nhselpxtwmb
+uwhdxqsswdgsopdtrgfamwocqs
+znoflblwueialoqidshcdyvs
+tnojked
+rjqwbjnapkwjs
+dqjrjplfbvtjsjtiau
+hmwtxzizchnfdm
+fopoxugvwjzaoitlicies
+xxghikiun
+ougchyxkebqprxilayhfe
+bqbxugptwlitydtvvqexmiydafv
+eeydbzbzcqjwfnhmhduxnymmrbo
+xqwdjvhryztsqgwfrtusmliuxsqai
+h
+keeoxivdqmoadtuvpesooyilyy
+yorybkofgnuvytivudy
+wipqjmvbpypimmztwpnoowloyi
+`
+
 func expected(s string) string {
 	stack := make([]byte, 0, len(s))
 	for i := 0; i < len(s); i++ {
@@ -29,13 +131,7 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesARaw))
 	idx := 0
 	for scanner.Scan() {
 		s := strings.TrimSpace(scanner.Text())

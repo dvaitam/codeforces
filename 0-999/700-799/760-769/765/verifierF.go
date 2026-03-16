@@ -10,6 +10,94 @@ import (
 	"strings"
 )
 
+const testcasesFRaw = `15
+4
+7 18 17 11
+2
+1 3
+1 3
+6
+1 18 4 11 11 9
+3
+3 5
+4 6
+2 4
+2
+4 18
+1
+1 2
+4
+0 15 8 19
+2
+1 4
+2 3
+8
+5 16 5 2 20 5 18 3
+5
+6 8
+5 6
+4 8
+3 4
+3 4
+2
+13 8
+3
+1 2
+1 2
+1 2
+8
+16 4 18 12 11 14 1 17
+4
+5 6
+7 8
+2 7
+1 4
+6
+5 6 20 11 20 15
+1
+2 6
+3
+8 5 13
+1
+1 2
+7
+14 16 3 6 5 14 2
+4
+4 6
+3 4
+3 4
+3 5
+2
+9 0
+4
+1 2
+1 2
+1 2
+1 2
+6
+14 11 18 4 18 8
+3
+1 5
+4 6
+1 2
+2
+18 11
+3
+1 2
+1 2
+1 2
+4
+0 10 12 4
+3
+2 4
+1 4
+1 3
+8
+9 16 1 5 4 4 15 20
+1
+6 8
+`
+
 func solveCase(n int, arr []int, queries [][2]int) []int {
 	res := make([]int, len(queries))
 	for idx, q := range queries {
@@ -34,12 +122,7 @@ func main() {
 		fmt.Println("usage: go run verifierF.go /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesF.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesF.txt:", err)
-		os.Exit(1)
-	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
+	scan := bufio.NewScanner(strings.NewReader(testcasesFRaw))
 	scan.Split(bufio.ScanLines)
 	if !scan.Scan() {
 		fmt.Println("invalid test file")

@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,6 +23,18 @@ func buildOracle() (string, error) {
 	return oracle, nil
 }
 
+// generateTestcases creates random test inputs: "n x y" with 2<=n<=200, 1<=y<x<=n.
+func generateTestcases(count int) []string {
+	cases := make([]string, 0, count)
+	for i := 0; i < count; i++ {
+		n := rand.Intn(199) + 2 // n in [2, 200]
+		x := rand.Intn(n-1) + 2 // x in [2, n]
+		y := rand.Intn(x-1) + 1 // y in [1, x-1]
+		cases = append(cases, fmt.Sprintf("%d %d %d", n, x, y))
+	}
+	return cases
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
@@ -36,20 +48,8 @@ func main() {
 	}
 	defer os.Remove(oracle)
 
-	file, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	idx := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		idx++
+	testcases := generateTestcases(100)
+	for idx, line := range testcases {
 		input := "1\n" + line + "\n"
 		cmdO := exec.Command(oracle)
 		cmdO.Stdin = strings.NewReader(input)
@@ -69,18 +69,14 @@ func main() {
 		cmd.Stderr = &stderr
 		err := cmd.Run()
 		if err != nil {
-			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx, err, stderr.String())
+			fmt.Printf("test %d: runtime error: %v\nstderr: %s\n", idx+1, err, stderr.String())
 			os.Exit(1)
 		}
 		got := strings.TrimSpace(out.String())
 		if got != expected {
-			fmt.Printf("test %d failed\nexpected: %s\n got: %s\n", idx, expected, got)
+			fmt.Printf("test %d failed\nexpected: %s\n got: %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "scanner error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("All %d tests passed\n", idx)
+	fmt.Printf("All %d tests passed\n", len(testcases))
 }

@@ -10,6 +10,107 @@ import (
 	"strings"
 )
 
+const testcasesRaw = `4
+6
+6
+7
+5
+6
+7
+5
+2
+8
+5
+2
+8
+3
+6
+4
+3
+6
+8
+4
+2
+7
+7
+8
+8
+4
+7
+5
+8
+4
+6
+1
+2
+8
+6
+7
+4
+7
+1
+1
+7
+2
+5
+4
+6
+3
+2
+3
+6
+1
+4
+1
+1
+7
+1
+3
+2
+4
+2
+8
+4
+1
+7
+2
+3
+4
+4
+7
+7
+8
+1
+7
+4
+7
+1
+5
+1
+6
+6
+6
+8
+3
+2
+5
+2
+2
+5
+1
+3
+3
+7
+4
+6
+4
+7
+2
+2
+8
+2
+8`
+
 func runCandidate(bin, input string) (string, error) {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
@@ -76,13 +177,7 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesE.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcasesE.txt: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())

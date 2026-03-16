@@ -99,12 +99,108 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	data, err := os.ReadFile("testcasesD.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesD.txt:", err)
-		os.Exit(1)
-	}
-	scanner := bufio.NewScanner(bytes.NewReader(data))
+	const testcasesRaw = `cc de
+bccac deefd
+cb ff
+bcaa fdfe
+c d
+ca ed
+bcc efe
+ccba eddd
+abcb feef
+cbcc efde
+b f
+cb ff
+accac feedd
+cbab dedd
+bba dff
+b f
+bcbca deddd
+caabb fedfd
+bba eee
+bcccc dffee
+bb ef
+cba efe
+b f
+caacc eeefe
+cbcba fdfde
+cbb ffe
+ba ee
+bbbaa fffde
+acbab dfeff
+a f
+bca edd
+cca fee
+aa fd
+cab efd
+bcabb feeef
+bbcb dedd
+b f
+bccaa fefff
+cba dfe
+a d
+c f
+bc dd
+caac edfd
+cbaca edefe
+b d
+ac dd
+ba de
+babab fffed
+baaa dddd
+acac feed
+abb fef
+bba eed
+ca ff
+acaa eeff
+bcacb defef
+bcb edd
+cb ff
+b d
+aabb fede
+c f
+bcacb ffdff
+b d
+ba fd
+acbaa edddf
+cbcb ddff
+caacc dfdfe
+aaaac deffe
+bcb efe
+b f
+bc de
+ccccb dfedd
+b f
+ccbc fdde
+ac fe
+cc ef
+cccb dede
+baac edee
+bc ef
+abccc defde
+b d
+cc fd
+ba de
+ac ff
+b d
+b d
+acaa deed
+bcc fed
+b e
+bbaa fffe
+acba edfe
+b f
+acc efe
+bccc fede
+ccacb fedfe
+caccc fddef
+aaca efff
+bcbca eeedf
+a f
+cc ff
+babb eddd`
+
+	scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())

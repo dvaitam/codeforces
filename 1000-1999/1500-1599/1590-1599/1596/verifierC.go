@@ -6,10 +6,109 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 )
+
+const testcasesRaw = `gbo
+ennc
+lvujl
+zlipukb
+hozcwjfwcw
+qd
+vdeshi
+biw
+othlretw
+igc
+flfqog
+fnvalpmh
+nyyj
+vuywnfjn
+knas
+cdx
+ehzio
+uempxtc
+hkqyerhlb
+redkcln
+xst
+w
+tgwryt
+s
+oglenhd
+pwylcn
+mzbrucfrz
+lkpai
+whlniuncj
+t
+tcedctne
+bwesjqs
+bji
+ylxg
+onnusjjerf
+xslcioto
+rujzgryhah
+lbtior
+sfwpvry
+iuxa
+pentc
+bmbvgtu
+vvli
+kdaotatyoo
+iyxntui
+lfdop
+e
+jjecu
+rkyoxwxxn
+htig
+dqbbtau
+txnopibuk
+gzwxi
+nszl
+ur
+rvjzoo
+zjydvnwnj
+zfdewqd
+bjsgsoqxj
+kkvy
+xfvxz
+syrzmygaj
+s
+hnjjddef
+mclcmsvkdg
+kmnjrtyaz
+dm
+gu
+qrskt
+hy
+jwzlhch
+bzwac
+uhrmxjtsa
+cqkrid
+mwhjqun
+dlkjgpc
+foe
+zjldz
+ycnttyr
+j
+dxcue
+kjudi
+wnt
+jsz
+yebcdjsoxm
+wupwtgi
+yqcchdh
+leaiujghof
+hjtspggmjk
+kd
+iiksewd
+umk
+xg
+taxdqruoy
+zbgfenpi
+xmgjczzohn
+plkxqaceqy
+kvvlxb
+kdmygs
+foduy`
 
 func runBinary(path, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -41,15 +140,7 @@ func main() {
 		os.Exit(1)
 	}
 	candidate := os.Args[1]
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	tcPath := filepath.Join(dir, "testcasesC.txt")
-	f, err := os.Open(tcPath)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
 	idx := 0
 	for scanner.Scan() {
 		s := strings.TrimSpace(scanner.Text())

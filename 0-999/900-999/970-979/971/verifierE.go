@@ -44,13 +44,108 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesE.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "cannot open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
+	const testcasesRaw = `20
+4
+5
+3
+3
+12
+12
+18
+14
+4
+17
+9
+11
+20
+15
+13
+6
+15
+15
+16
+10
+15
+20
+1
+14
+9
+4
+15
+1
+19
+6
+0
+11
+15
+12
+0
+16
+2
+2
+12
+0
+11
+1
+3
+19
+0
+8
+20
+9
+7
+4
+18
+9
+6
+3
+13
+14
+10
+12
+5
+10
+13
+20
+13
+4
+14
+4
+16
+10
+4
+6
+5
+14
+11
+12
+13
+15
+12
+7
+6
+14
+6
+18
+1
+12
+1
+7
+20
+2
+5
+11
+1
+20
+5
+7
+19
+9
+19
+2
+16`
+
+	scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -42,6 +40,108 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+const testcasesARaw = `ynbiqpmzjplsg
+ejeydtzirwztejdxc
+prdlnktugrp
+qibzracxmwzvuat
+khxkwcgshhzezroc
+kqp
+jrjw
+rkrg
+rsjoctzmkshjfgfbtvip
+cvy
+ebcwr
+wqiqzhgvsnsio
+vuwzlcktdpsukgha
+dwhlzfknb
+zewh
+su
+tvcadugtsdmcldbtag
+wdpgxz
+va
+ntdichcujlnfbqobtd
+gilxpsfwvgybz
+fkqidt
+vfapvnsqjulmvie
+waoxckxbriehypltjv
+sutewjmxnuca
+gwkfhhuomwvsnbmwsnyv
+fo
+iwf
+qprtyabpkjobzzn
+rucxeam
+kagawyavqtdgdt
+jiwfdpm
+aio
+ieuq
+deiabbgvirkl
+bxwtupwuounlrfgmsja
+eikkz
+wckytbbifesj
+mrejdpxhbjfq
+jmk
+nddrppkzzk
+pdwp
+bjkxvefusmzucc
+gxh
+ma
+mrqj
+pzswvgnclhisyfn
+ldcwaqo
+dpmigub
+tedgoml
+edtpesmuvnqpvkppuv
+rthakwx
+kbqeitzemsj
+czcqbchebjayokfz
+uolqm
+qbscvzzqytcxnygjr
+npzmtshzavaxfjqsikcp
+jynmzmbfu
+hjxkb
+pn
+ptwcv
+zlnbt
+mobdpyeabtteukd
+ulgmzyypdbtwotukud
+jzemzjxvzdqzgbzmolyg
+lzucbbpiaqvssgh
+yuy
+wqnqjdensncdncdny
+xazon
+apkxiclcdlwall
+ahlcte
+agvvxdx
+j
+wathefodplwi
+aglkp
+jrukfscdrs
+fmeezhkqhh
+jlnvbe
+amcwcenjrnxesnjulcho
+uqbmnanxkogl
+pcfzdidrtw
+zwomf
+nfhokqelouucpy
+jawotoa
+jdyujrt
+nwypc
+yhrymiuadivbaimq
+wmodxiljyvgtcbczijr
+dqhyfcnjjqe
+qugrdnurmxyzijolsue
+dwdmms
+ervjlupxngppwqk
+ubojexpbtgalpmaq
+vcv
+albdtaiuwjxhe
+jgdnowkmfknuvneoweq
+egfolzmnzpm
+zgogswbm
+hu
+flb
+`
+
 func main() {
 	if len(os.Args) == 3 && os.Args[1] == "--" {
 		os.Args = append([]string{os.Args[0]}, os.Args[2])
@@ -52,16 +152,7 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	_, self, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(self)
-	file, err := os.Open(filepath.Join(dir, "testcasesA.txt"))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesARaw))
 	idx := 0
 	for scanner.Scan() {
 		s := strings.TrimSpace(scanner.Text())

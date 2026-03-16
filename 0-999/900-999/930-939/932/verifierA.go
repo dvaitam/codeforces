@@ -46,13 +46,108 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
+	const testcasesRaw = `ynbiqpm
+plsgq
+jey
+tz
+rwzte
+dxcvk
+rdlnktug
+poqibzrac
+wzvuatp
+hxkwcg
+hhzezrocck
+pdjrjwdrk
+gztrsjoct
+kshjfgf
+t
+pccvy
+ebc
+vmwqiqzhg
+nsiopvuwzl
+kt
+ps
+ghaxid
+lzfk
+bdzewhb
+urtvcadugt
+dmcldbtagf
+pg
+v
+r
+tdichcu
+lnfbq
+btdwmgil
+sfwvgybz
+fkq
+dtovf
+p
+sqjulmv
+erwao
+kx
+r
+ehypl
+jvlsutewjm
+ucatgwk
+hhu
+mwvsnbmw
+nyvwbfociw
+oqp
+tyabpkjob
+grucxea
+vnkagaw
+v
+tdgdtugji
+dpm
+ai
+zzdieuqu
+deiabb
+virk
+sbxwtu
+wuounlrf
+msja
+eik
+zlwcky
+bbifesjlmr
+jdp
+bjfq
+jm
+jnddrp
+kzzkdpdw
+nbjkxvef
+mzucczcgxh
+m
+d
+rqjopzs
+nclh
+syfng
+dcwaqo
+dpmi
+ubzg
+edgomlredt
+esmuvnqp
+ppuvgr
+hakwxkkbqe
+tzems
+wwzpc
+qb
+he
+j
+y
+kfzeuolq
+qqbscvz
+ytcxnygjr
+npzmtshzav
+x
+jqs
+kcpij
+mzmbfue
+jxkb
+p
+eptwcvw
+zln`
+
+	scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())

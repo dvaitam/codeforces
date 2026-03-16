@@ -2,12 +2,29 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 )
+
+const testcasesBRaw = `15
+yyyyyavqqtdvgqyvgytvtqu
+jjjdp
+uuuuus
+yvvgdvvgpvmvimx
+czqqbbyhzewcjywa
+yyyyynynyn
+ukzkdvvttjduvuekzmej
+p
+aathaatatathehahaahhetf
+dddrdrrtr
+uuadaudud
+mmmmxmxmijmjmmolls
+yyysy
+wwwwwwwwwwwbbmmbmwm
+jjjjzzjjzqzzjmimqjjmqpli
+`
 
 func solveCase(s string) string {
 	seen := make([]bool, 26)
@@ -33,12 +50,7 @@ func main() {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
 		os.Exit(1)
 	}
-	data, err := os.ReadFile("testcasesB.txt")
-	if err != nil {
-		fmt.Println("could not read testcasesB.txt:", err)
-		os.Exit(1)
-	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
+	scan := bufio.NewScanner(strings.NewReader(testcasesBRaw))
 	scan.Split(bufio.ScanLines)
 	if !scan.Scan() {
 		fmt.Println("invalid test file")

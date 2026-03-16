@@ -41,12 +41,437 @@ func runProgram(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func readTests(path string) ([]string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	raw := strings.TrimSpace(string(data))
+const testcasesRaw = `1 1
+1
+
+3 2
+2 1
+2 1
+2 1
+
+1 4
+2 3 4 1
+
+2 2
+2 1
+2 1
+
+4 2
+1 2
+1 2
+2 1
+2 1
+
+4 3
+3 1 2
+3 2 1
+2 3 1
+3 1 2
+
+3 3
+1 2 3
+3 2 1
+2 1 3
+
+4 1
+1
+1
+1
+1
+
+3 3
+2 1 3
+2 1 3
+2 3 1
+
+3 1
+1
+1
+1
+
+2 1
+1
+1
+
+4 3
+1 3 2
+3 2 1
+3 1 2
+1 2 3
+
+1 2
+2 1
+
+2 4
+3 1 2 4
+2 4 1 3
+
+1 3
+1 3 2
+
+1 2
+1 2
+
+2 4
+1 2 3 4
+3 1 4 2
+
+2 3
+1 2 3
+1 2 3
+
+3 2
+2 1
+1 2
+2 1
+
+1 1
+1
+
+2 2
+1 2
+2 1
+
+4 4
+1 2 3 4
+2 4 3 1
+1 2 4 3
+4 3 2 1
+
+2 4
+4 2 3 1
+4 1 3 2
+
+3 2
+2 1
+1 2
+2 1
+
+1 3
+3 1 2
+
+1 3
+3 1 2
+
+1 2
+2 1
+
+1 4
+2 4 3 1
+
+2 4
+1 3 4 2
+4 1 3 2
+
+3 4
+1 4 2 3
+2 3 4 1
+3 4 2 1
+
+2 2
+2 1
+2 1
+
+1 2
+2 1
+
+1 3
+2 3 1
+
+3 4
+4 1 3 2
+3 2 1 4
+2 3 1 4
+
+1 4
+1 4 2 3
+
+4 1
+1
+1
+1
+1
+
+1 1
+1
+
+4 3
+2 3 1
+2 3 1
+1 2 3
+3 2 1
+
+2 3
+3 1 2
+3 2 1
+
+1 1
+1
+
+1 1
+1
+
+2 2
+1 2
+1 2
+
+4 2
+1 2
+2 1
+2 1
+1 2
+
+1 4
+1 4 2 3
+
+4 4
+3 4 1 2
+4 3 1 2
+2 4 1 3
+2 1 3 4
+
+1 1
+1
+
+2 1
+1
+1
+
+1 2
+1 2
+
+1 2
+2 1
+
+1 4
+4 1 2 3
+
+3 2
+1 2
+1 2
+2 1
+
+3 4
+2 4 1 3
+2 1 3 4
+2 4 3 1
+
+3 2
+1 2
+2 1
+2 1
+
+3 3
+3 2 1
+1 2 3
+2 1 3
+
+3 1
+1
+1
+1
+
+2 3
+2 3 1
+2 1 3
+
+3 3
+2 1 3
+1 2 3
+3 2 1
+
+4 3
+2 3 1
+1 2 3
+3 1 2
+3 2 1
+
+2 3
+3 2 1
+1 2 3
+
+1 1
+1
+
+1 2
+2 1
+
+3 3
+2 1 3
+2 3 1
+2 1 3
+
+3 4
+4 3 1 2
+3 1 4 2
+1 4 3 2
+
+4 2
+1 2
+2 1
+2 1
+1 2
+
+1 4
+3 4 1 2
+
+3 3
+2 3 1
+2 3 1
+1 3 2
+
+3 1
+1
+1
+1
+
+3 3
+1 2 3
+1 2 3
+2 3 1
+
+3 2
+1 2
+2 1
+2 1
+
+4 3
+1 2 3
+3 1 2
+3 1 2
+3 1 2
+
+4 1
+1
+1
+1
+1
+
+2 3
+3 1 2
+1 2 3
+
+3 1
+1
+1
+1
+
+3 3
+1 2 3
+1 3 2
+1 2 3
+
+2 2
+1 2
+1 2
+
+2 3
+3 1 2
+1 3 2
+
+2 4
+1 4 2 3
+2 1 3 4
+
+4 2
+2 1
+1 2
+1 2
+2 1
+
+2 3
+2 3 1
+2 3 1
+
+1 2
+1 2
+
+1 4
+2 1 3 4
+
+4 4
+2 3 1 4
+3 2 4 1
+3 4 1 2
+2 4 3 1
+
+1 4
+1 3 4 2
+
+4 4
+3 2 1 4
+3 1 2 4
+1 2 4 3
+1 3 4 2
+
+1 3
+3 2 1
+
+3 3
+2 1 3
+2 3 1
+3 2 1
+
+2 2
+2 1
+1 2
+
+4 3
+1 2 3
+3 1 2
+3 2 1
+3 1 2
+
+4 4
+4 3 2 1
+3 1 2 4
+3 2 1 4
+3 1 2 4
+
+4 3
+1 2 3
+2 1 3
+3 1 2
+2 1 3
+
+4 1
+1
+1
+1
+1
+
+1 4
+3 1 4 2
+
+1 3
+1 3 2
+
+2 4
+1 4 2 3
+1 4 2 3
+
+1 4
+2 4 3 1
+
+3 2
+2 1
+2 1
+2 1
+
+2 2
+2 1
+2 1
+
+2 2
+1 2
+2 1
+
+2 4
+4 1 2 3
+3 2 4 1`
+
+func readTests() ([]string, error) {
+	raw := strings.TrimSpace(testcasesRaw)
 	if !strings.Contains(raw, "\n\n") {
 		lines := strings.Split(raw, "\n")
 		tests := make([]string, 0, len(lines))
@@ -71,7 +496,7 @@ func readTests(path string) ([]string, error) {
 	return tests, nil
 }
 
-func verify(candidate, refSrc, testFile string) error {
+func verify(candidate, refSrc string) error {
 	_, file, _, _ := runtime.Caller(0)
 	dir := filepath.Dir(file)
 	srcPath := filepath.Join(dir, refSrc)
@@ -122,7 +547,7 @@ func verify(candidate, refSrc, testFile string) error {
 		defer cleanup()
 	}
 
-	tests, err := readTests(filepath.Join(dir, testFile))
+	tests, err := readTests()
 	if err != nil {
 		return err
 	}
@@ -149,7 +574,7 @@ func main() {
 		os.Exit(1)
 	}
 	candidate := os.Args[1]
-	if err := verify(candidate, "724B.go", "testcasesB.txt"); err != nil {
+	if err := verify(candidate, "724B.go"); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

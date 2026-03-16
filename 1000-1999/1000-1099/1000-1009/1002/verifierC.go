@@ -9,6 +9,110 @@ import (
 	"strings"
 )
 
+// testcasesRaw contains 100 lines (one per test run).
+// The original testcasesC.txt had 100 empty lines; the verifier just
+// counts iterations, so the line content is irrelevant.
+const testcasesRaw = `.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.`
+
 func runCandidate(bin string) (string, error) {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
@@ -46,13 +150,7 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	f, err := os.Open("testcasesC.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcasesC.txt: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
 	idx := 0
 	for scanner.Scan() {
 		idx++

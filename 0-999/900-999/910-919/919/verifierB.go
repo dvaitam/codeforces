@@ -44,12 +44,109 @@ func main() {
 	if bin == "--" && len(os.Args) == 3 {
 		bin = os.Args[2]
 	}
-	data, err := os.ReadFile("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "could not read testcasesB.txt:", err)
-		os.Exit(1)
-	}
-	scan := bufio.NewScanner(bytes.NewReader(data))
+	const testcasesRaw = `100
+116
+489
+353
+725
+983
+265
+134
+29
+990
+214
+371
+344
+485
+984
+300
+304
+960
+900
+982
+567
+652
+335
+189
+608
+83
+106
+547
+595
+316
+161
+386
+920
+151
+969
+129
+824
+229
+324
+521
+249
+243
+773
+189
+299
+382
+430
+680
+48
+882
+136
+616
+22
+404
+80
+720
+75
+136
+431
+307
+564
+427
+759
+949
+146
+606
+433
+306
+653
+364
+87
+255
+456
+648
+379
+653
+972
+542
+60
+386
+419
+9
+428
+986
+746
+923
+329
+452
+209
+381
+301
+976
+483
+94
+974
+190
+816
+112
+284
+115
+572`
+
+	scan := bufio.NewScanner(strings.NewReader(testcasesRaw))
 	scan.Split(bufio.ScanWords)
 	if !scan.Scan() {
 		fmt.Fprintln(os.Stderr, "invalid test file")

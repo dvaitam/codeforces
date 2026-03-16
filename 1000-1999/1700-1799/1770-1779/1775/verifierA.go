@@ -2,11 +2,112 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
 )
+
+const testcasesRaw = `100
+bbabbbbbb
+aabaaba
+aabba
+bbabb
+baaababba
+baaaaaba
+bba
+babab
+abbaba
+aabb
+aaa
+abb
+aabbbbb
+bab
+baaabaa
+abbaa
+aaaaaaaab
+baa
+aaaabaa
+ababaaab
+baaba
+ababbba
+aaaabbab
+aabbbbbb
+abab
+abaabbbb
+abbbaaa
+baaabbba
+baabab
+abbaabbb
+babaaaabb
+aaaaa
+aabb
+aabbaabb
+ababaabaa
+abb
+abbbb
+aabbaaabb
+babaa
+aabbb
+ababaab
+abbb
+baabb
+babab
+abbaab
+aaaaaabaa
+bbbaba
+ababa
+aaaba
+bbb
+aaaa
+bbba
+bab
+bbbbbaaa
+bbaab
+abbbaaa
+aaa
+abbaa
+bbbaaabab
+bbbaaaa
+bbabb
+bbbbaaaab
+baabbaba
+abbabbba
+baa
+aba
+babbaabb
+ababbaaa
+bbbabbaaa
+baaaab
+baabbaa
+aabaab
+babbba
+aabab
+aaaba
+aaaaaab
+aaaab
+bbb
+aabb
+bbbaaa
+babaaab
+aaabbba
+aabaaabbb
+abbbaabb
+abbabbba
+bbaaa
+aabba
+bbaabbabb
+abababba
+baba
+bababb
+aabaabbb
+abbbaa
+abb
+baaaabb
+aaabb
+bbbbaaaa
+bbabbb
+babbbbab
+abaaa`
 
 // allSplits returns all valid (a,b,c) triples for s satisfying the lexicographic condition
 func allSplits(s string) [][3]string {
@@ -70,12 +171,7 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	data, err := ioutil.ReadFile("problemA.txt")
-	if err != nil {
-		fmt.Println("failed to read problemA.txt:", err)
-		os.Exit(1)
-	}
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
 	if len(lines) == 0 {
 		fmt.Println("problemA.txt is empty")
 		os.Exit(1)

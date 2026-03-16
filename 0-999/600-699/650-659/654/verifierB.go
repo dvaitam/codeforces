@@ -64,14 +64,108 @@ func main() {
 	}
 	defer os.Remove(oracle)
 
-	f, err := os.Open("testcasesB.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
+	const testcasesBRaw = `4
+18
+27
+25
+24
+2
+8
+3
+15
+24
+14
+15
+20
+12
+25
+6
+3
+15
+0
+28
+26
+12
+13
+19
+24
+24
+0
+22
+14
+8
+23
+25
+7
+18
+30
+3
+28
+10
+0
+0
+0
+20
+17
+0
+30
+28
+12
+21
+6
+13
+23
+0
+16
+7
+24
+14
+30
+15
+17
+7
+11
+7
+21
+7
+24
+14
+30
+9
+29
+0
+13
+26
+29
+17
+29
+20
+3
+5
+20
+23
+27
+9
+3
+23
+10
+28
+23
+22
+16
+29
+30
+13
+16
+26
+29
+21
+6
+9
+9
+18`
 
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesBRaw))
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())

@@ -10,6 +10,108 @@ import (
 	"strings"
 )
 
+const testcasesARaw = `865
+395
+777
+912
+431
+42
+266
+989
+524
+498
+415
+941
+803
+850
+311
+992
+489
+367
+598
+914
+930
+224
+517
+143
+289
+144
+774
+98
+634
+819
+257
+932
+546
+723
+830
+617
+924
+151
+318
+102
+748
+76
+921
+871
+701
+339
+484
+574
+104
+363
+445
+324
+626
+656
+935
+210
+990
+566
+489
+454
+887
+534
+267
+64
+825
+941
+562
+938
+15
+96
+737
+861
+409
+728
+845
+804
+685
+641
+2
+627
+506
+848
+889
+342
+250
+748
+334
+721
+892
+65
+196
+940
+582
+228
+245
+823
+991
+146
+823
+557
+`
+
 func isPrime(x int64) bool {
 	if x < 2 {
 		return false
@@ -38,14 +140,8 @@ func main() {
 	}
 	exe := os.Args[1]
 
-	file, err := os.Open("testcasesA.txt")
-	if err != nil {
-		fmt.Println("could not open testcasesA.txt:", err)
-		os.Exit(1)
-	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesARaw))
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())

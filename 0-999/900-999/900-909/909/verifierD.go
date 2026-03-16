@@ -36,14 +36,108 @@ func main() {
 	}
 	defer os.Remove(oracle)
 
-	file, err := os.Open("testcasesD.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
+	const testcasesRaw = `sreltpus
+tap
+rhgwprrpm
+hueqm
+v
+fys
+jy
+i
+txmwznmxzsoeldbe
+givnyujnqmslrsns
+kvaitvwf
+rssdwugusij
+cpup
+lzc
+eajnyndbttybmw
+kriqhbjacdtrbgnjtie
+kk
+emmoqmutvrdt
+inuxwhjniqjrkazns
+amtsuebuuko
+vltwixpasbva
+iuojstkflfky
+tijzmdyasvxe
+qhuzihkfvn
+dtkk
+ozfckxug
+oihzdbqgkzsfikzuczt
+senjqziolunj
+snbnegaptqnrwh
+xo
+jrkhcsjdzhbbzwqgn
+bapxdfqjhvaqrnbtdke
+rpzzblhgd
+dfhzizeapusmbyihit
+qnbpkyabyebdbcpbw
+qqp
+fkclmumsjli
+knderaw
+zcsfblotuzrmu
+tn
+lu
+ywknwnoahgriwscz
+hneaklrzidowdx
+zmvdxksrdzswapehy
+bqcsdvmfakdad
+wjsjzcbysqqwhdrx
+rbrk
+fchfuhotwymiltmlrnc
+qhnxfnwsysvqv
+eumefdpxpwqosxfe
+ygesqkhwr
+vwntssigja
+pzmgfslhk
+yenwpwtgosurapxc
+zxbohhuwyvcgi
+gyieftwv
+if
+kf
+cxzcdcijblosxv
+aakknmpcgus
+merkdicvndoqidqw
+vylyojvvvuzi
+ykvs
+qdvpqlbwjvxsxfuuxu
+fluod
+reku
+nrjufopjzfwcdwfyrrsx
+ldiimbebpqihw
+lkmorzyclpdeisdvd
+yxdfwgsnvxmxestemzg
+qfsfgilzjazonmkrsj
+qvwjvpatgxuadyyv
+pfquoggz
+gbquodsjveeozctba
+thqcprakkklw
+ctybw
+xkz
+cgnwyhp
+dzbncgwfmpp
+rng
+jaooywmofobxillo
+ltmhazgizleorgfga
+smqfua
+dtfop
+bamokn
+ww
+hm
+mp
+h
+dmpgfktd
+dtbzxjizozjp
+riakulkc
+vn
+sta
+avca
+qbpbgu
+kgypkzplvbmjytumc
+fndqmrkrvy
+fxxmrlflznoho
+lifqxytwwmpbefwy`
 
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())

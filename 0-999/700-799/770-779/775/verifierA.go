@@ -73,14 +73,110 @@ func lineToInput(line string) (string, error) {
 	return sb.String(), nil
 }
 
-func loadTests(path string) ([]string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
+const testcasesRaw = `2 2 1 1 2 1 1
+2 2 2 2 0 2 0
+2 1 1 2 1
+3 3 3 0 1 0 2 0 2 1 1 2
+1 2 2 1 2
+3 1 3 1 1 2
+2 1 3 0 0
+3 2 3 2 2 0 2 1 1
+1 3 2 2 0 0
+3 1 1 0 2 1
+1 1 2 2
+2 1 2 2 1
+3 1 3 1 2 0
+3 3 3 1 1 0 2 1 1 2 0 1
+1 1 1 0
+3 3 2 1 0 0 2 0 0 0 0 2
+3 3 2 2 2 1 2 0 0 2 2 1
+3 2 2 1 2 2 2 1 0
+2 3 1 1 2 2 1 0 0
+1 3 2 0 2 0
+2 1 2 1 0
+1 1 3 0
+1 3 3 2 2 2
+1 1 1 2
+1 3 3 0 1 0
+2 1 1 2 0
+1 1 3 0
+2 1 3 0 2
+1 3 2 2 0 1
+1 1 1 2
+2 2 2 0 0 2 1
+1 3 1 2 1 0
+2 2 3 1 2 0 2
+3 1 1 2 0 0
+2 3 2 0 2 1 2 0 0
+2 3 2 2 2 1 2 1 1
+3 2 1 2 2 0 1 2 0
+2 3 1 2 1 0 0 1 1
+3 2 3 1 2 2 2 0 2
+2 2 3 1 2 0 0
+3 1 3 1 0 0
+1 3 2 1 2 2
+3 2 1 1 2 2 1 2 2
+1 1 2 0
+2 3 1 1 2 1 2 2 0
+1 2 2 1 1
+1 2 1 2 2
+1 3 1 0 1 2
+2 2 1 0 0 2 0
+3 3 3 0 0 0 2 2 0 1 1 2
+1 1 2 1
+3 1 1 1 1 0
+2 1 3 2 2
+3 2 1 0 1 0 0 0 0
+3 2 3 1 1 2 0 2 2
+3 3 2 2 2 1 2 1 1 2 0 0
+2 3 2 0 0 0 1 1 1
+2 3 1 1 2 0 0 1 0
+1 3 2 1 1 2
+1 2 1 1 2
+1 1 2 0
+3 3 1 1 1 1 1 1 0 0 2 1
+2 2 2 0 1 0 2
+2 2 1 1 1 2 2
+1 1 3 2
+2 3 1 0 0 0 2 0 0
+2 1 1 1 2
+3 2 2 1 2 2 2 0 1
+1 2 1 1 2
+1 2 1 1 0
+1 3 1 2 1 2
+1 1 2 1
+2 1 3 0 0
+3 1 1 0 1 1
+2 3 1 0 2 1 0 2 1
+3 3 2 2 1 2 1 1 1 2 2 0
+3 3 1 0 1 2 2 1 1 0 2 0
+2 3 1 1 2 1 2 2 1
+1 1 3 0
+1 1 1 0
+2 1 2 1 0
+1 3 2 1 2 1
+3 3 1 2 0 2 2 2 0 2 1 0
+2 3 3 1 1 1 2 2 0
+1 3 1 2 0 1
+3 3 2 1 0 1 1 1 1 1 1 0
+1 3 1 0 1 2
+2 1 1 1 1
+1 2 3 2 0
+3 3 1 1 1 0 2 1 1 1 0 0
+2 1 1 0 2
+3 1 3 1 0 2
+3 3 2 0 1 1 0 0 2 2 1 2
+3 2 3 0 2 2 2 1 0
+2 2 3 2 0 2 0
+1 2 2 1 0
+2 2 3 0 0 0 1
+2 1 3 2 2
+3 1 1 0 2 2
+3 3 2 2 1 0 0 1 2 1 0 0`
+
+func loadTests() ([]string, error) {
 	var tests []string
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
@@ -107,7 +203,7 @@ func main() {
 	}
 	defer os.Remove(oracle)
 
-	tests, err := loadTests("testcasesA.txt")
+	tests, err := loadTests()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

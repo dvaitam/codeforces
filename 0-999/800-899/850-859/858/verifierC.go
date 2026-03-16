@@ -41,14 +41,108 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	file, err := os.Open("testcasesC.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open testcases: %v\n", err)
-		os.Exit(1)
-	}
-	defer file.Close()
+	const testcasesRaw = `lfahlctegagvvxdxajlwath
+fodplwieag
+kpjjrukfscdrsjfmeezhkqhh
+fjlnvbetamcwcenjrnxesnjulchouluqbmnanxkogljpcfzdi
+rtwezwom
+ynnfhokqelou
+cpygjawotoagjdyujrtenwypcvpyhrymiuadivbai
+qswmodxiljyvgtcbczijrkdqhy
+cnjjqesqugr
+nurmxyz
+jolsuefdwdmmsoervj
+upxngppwqkpubojexpbtgal
+maqcvcvxvmalbdtaiuwjxheysjgdnow
+mfknuvneoweqkegfolzmnz
+mxhzgogswbmbhucflbxuvfhtjtcwqyjy
+nobuwqvurxnsopiwpgkibbb
+lajuaecznvh
+mrhogktdtczkkrokiaqbglcgqlggivxxjjqmipl
+hbjrcaopxobznpoodcchdyengotcnrymbfhpheilkndrjt
+zgwjyoqtoruiihadtzwdfxnhgjxvaxrqnbd
+uidxslhvwwrvjhxhcqjvkhlup
+sfezarqklsuazemefqc
+ygzypsywg
+xehymltseupdtaqt
+pojahrufvpzxprkwcietmwg
+zjmbgbkxxhkovxvvhilvf
+alsrbxuelapubahbahuk
+blvne
+oneljfukxzxnma
+irrzxvwoybsdnmfaqetvqxweckh
+hazfxzvrfwcn
+dtuowettbikzxxmaubpcljveohqlfxymkizpmaj
+jrpbyrsrivbomxdmlpbaixbivvswyjvygy
+qkmigdskzhsvxrvlfekxasbselljujkpzm
+nfazesboekaxpvvyixtgcrnifqfcvufsdquzrtm
+nijjanywiirqrkkgwznzeayqezvwzsmlobrnutzzyhalqfvgu
+uwpaxxhshifyncsohxwoqzz
+dgfocnumiinyyltkcjapayigymmnyuuvmwbsolseswikam
+qebcsllacgwdvrpbkakmeyuinvetemj
+bfeepwuwyxbxqbrwxwumflzsccrfigzik
+wiziqoeyorebusfuqbykcguzothzoqfwkuepyrbrcqkay
+dntlso
+mqludekafxeaktgbnubwjz
+btyzwflcnbolttyivjszonfao
+gmclddalafmtwuako
+xwppcbrmzziauqdckldpbequzjbamkfrweff
+fuvhtkapuvmbhhujkfhlhfnolsemsyafsavmwzfeaakqabbyds
+eyevzmzannsvkwhelqgrmcensvldnnhpmhmhupms
+iiqlr
+tt
+phibtkzmudrbewmaynxmndwotoffkpnfsjyqdlleulypuqybgi
+xskjmubjrnbv
+imxgleedtlfansmocuwwvcynrxr
+fegfhaqep
+txjwzkvdznyifkuqkrwemxx
+jhmlmpqjnndveeastuwqdwyuwgtutqdiwxtf
+czbadlxpkdvolswivpzyhfrrc
+qfaufqntvgowvmiasemfosbmzcusmkhqobptdiqprumpifhrlf
+teoccpmsnrciphdjelzd
+vbvesrgab
+rwytpwwdprlykdvahhpjihaplq
+ccjsnhxlmyehjgxypvzljm
+eydmlqphuwlulnilmyywjdpjdoelhxfkphdvmmoq
+sthvmqjphkqvacpkmhnbsybncigxkf
+fzwlahba
+raedttgcxogaqtncrfhhnmpza
+gmybtiaslwlkvouetqcidwdiawet
+vemgsvkgnqqdrdwpdqopforkenimcsqkhohlpynaoxarmyyohn
+ippehojlupteqvcg
+quvdbekbktzfyomvgnpg
+mbzzykyvqgx
+fqrwtsneuwtpvsgtobhpt
+rxgabbehovthvvdyqnuuj
+kpvgflrlwomovkocehydyemowrglwbamgcnssznrguav
+qupjmrrcc
+xpyagntyljcxayzhtasqleoidsoihmmxqkhsicb
+kusspcqpnk
+xadntveyeadwnhbuiimdljltz
+gxrrbkqrafpauikeldtrnzycisdqcsepbqzhldrwg
+wvhmgtwxolfi
+lrggokeirvyyacvkjwzkbctajzdfwigqrlocnqrndcsokfj
+unvwjbaauicvkkru
+bzwhwqeitbzmnishikz
+powdnlfqbhwzpmahcjdfeoaylqndqhpjimn
+wbfwqlghehzjzefrirafhxnwfhyresv
+xhqyjzzwxax
+zgbnfmqmgmrqpdecracaxhxmovinlv
+ixcyfshxgbybqzcwohowyyvetu
+jatelvlljquwieapzxgtmkpjoepjzwklu
+mmsmwqjvyshgngiqfqeztqyryqupkinjouqbzxg
+owcagtdizagftfvlt
+avvaatfjhmpxllcsnz
+wayfatri
+xgmgkfzfpvetsqnsuhabntb
+uueqcnjkuutgwbkekvxipptkiucozyfdqirwmtonvf
+nyevvyzdsydfxpjvxdvyniizdulqrzcabtayedn
+zpakuecwmusxhbgnabtzmerxw
+nmrbxorereugsfcspjii
+mvaubqyycaujey
+yqedkaxkek`
 
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(strings.NewReader(testcasesRaw))
 	idx := 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
