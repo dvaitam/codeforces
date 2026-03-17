@@ -64,12 +64,25 @@ func genBoard(r *rand.Rand, n, m, p int) []string {
 	}
 	// place at least one castle for each player
 	for pid := 0; pid < p; pid++ {
-		for {
+		placed := false
+		for attempts := 0; attempts < 1000; attempts++ {
 			x := r.Intn(n)
 			y := r.Intn(m)
 			if board[x][y] == '.' {
 				board[x][y] = byte('1' + pid)
+				placed = true
 				break
+			}
+		}
+		if !placed {
+			// Force-find a cell to place the player
+			for i := 0; i < n && !placed; i++ {
+				for j := 0; j < m && !placed; j++ {
+					if board[i][j] == '.' || board[i][j] == '#' {
+						board[i][j] = byte('1' + pid)
+						placed = true
+					}
+				}
 			}
 		}
 	}
