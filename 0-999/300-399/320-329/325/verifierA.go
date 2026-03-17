@@ -46,7 +46,11 @@ func expected(rects []Rect) string {
 }
 
 func genSquare(rng *rand.Rand, n int) []Rect {
-	L := rng.Intn(10) + 1
+	minL := n
+	if minL < 1 {
+		minL = 1
+	}
+	L := rng.Intn(10) + minL
 	x0 := rng.Intn(10)
 	y0 := rng.Intn(10)
 	rects := []Rect{{x0, y0, x0 + L, y0 + L}}

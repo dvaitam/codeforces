@@ -143,22 +143,6 @@ var testcases = []int{
 	311,
 }
 
-func solveCase(n int64) []string {
-	cnt := n/2 + 1
-	lines := make([]string, 0, cnt+1)
-	lines = append(lines, fmt.Sprintf("%d", cnt))
-	r, c := int64(1), int64(1)
-	for i := int64(0); i < n; i++ {
-		lines = append(lines, fmt.Sprintf("%d %d", r, c))
-		if i%2 == 1 {
-			r++
-		} else {
-			c++
-		}
-	}
-	return lines
-}
-
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
@@ -168,7 +152,7 @@ func main() {
 
 	for idx, n := range testcases {
 		input := fmt.Sprintf("%d\n", n)
-		wantLines := solveCase(int64(n))
+		expectedM := int64(n)/2 + 1
 		cmd := exec.Command(bin)
 		cmd.Stdin = strings.NewReader(input)
 		out, err := cmd.CombinedOutput()
@@ -177,15 +161,53 @@ func main() {
 			os.Exit(1)
 		}
 		rawLines := strings.Split(strings.TrimSpace(string(out)), "\n")
-		if len(rawLines) != len(wantLines) {
-			fmt.Printf("case %d failed: expected %d lines got %d\n", idx+1, len(wantLines), len(rawLines))
+		if len(rawLines) != n+1 {
+			fmt.Printf("case %d failed: expected %d lines got %d\n", idx+1, n+1, len(rawLines))
 			os.Exit(1)
 		}
-		for i := range wantLines {
-			if strings.TrimSpace(rawLines[i]) != wantLines[i] {
-				fmt.Printf("case %d failed at line %d: expected %s got %s\n", idx+1, i+1, wantLines[i], strings.TrimSpace(rawLines[i]))
+		// First line: m
+		var gotM int64
+		if _, err := fmt.Sscan(strings.TrimSpace(rawLines[0]), &gotM); err != nil || gotM != expectedM {
+			fmt.Printf("case %d failed: expected m=%d got %s\n", idx+1, expectedM, strings.TrimSpace(rawLines[0]))
+			os.Exit(1)
+		}
+		// Parse coordinates
+		type pt struct{ r, c int64 }
+		pts := make([]pt, n)
+		for i := 0; i < n; i++ {
+			var r, c int64
+			if _, err := fmt.Sscan(strings.TrimSpace(rawLines[i+1]), &r, &c); err != nil {
+				fmt.Printf("case %d failed: invalid line %d: %s\n", idx+1, i+2, rawLines[i+1])
 				os.Exit(1)
 			}
+			if r < 1 || r > gotM || c < 1 || c > gotM {
+				fmt.Printf("case %d failed: point %d (%d,%d) out of range [1,%d]\n", idx+1, i+1, r, c, gotM)
+				os.Exit(1)
+			}
+			pts[i] = pt{r, c}
+		}
+		// Check constraint: for all i,j: |r_i-r_j|+|c_i-c_j| >= |i-j|
+		ok := true
+		for i := 0; i < n && ok; i++ {
+			for j := i + 1; j < n && ok; j++ {
+				dr := pts[i].r - pts[j].r
+				if dr < 0 {
+					dr = -dr
+				}
+				dc := pts[i].c - pts[j].c
+				if dc < 0 {
+					dc = -dc
+				}
+				dist := dr + dc
+				diff := int64(j - i)
+				if dist < diff {
+					fmt.Printf("case %d failed: dist(%d,%d)=%d < %d\n", idx+1, i+1, j+1, dist, diff)
+					ok = false
+				}
+			}
+		}
+		if !ok {
+			os.Exit(1)
 		}
 	}
 	fmt.Printf("All %d tests passed\n", len(testcases))

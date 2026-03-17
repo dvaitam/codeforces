@@ -6,10 +6,18 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
+
+var refSource = func() string {
+	if p := os.Getenv("REFERENCE_SOURCE_PATH"); p != "" {
+		return p
+	}
+	return "./2071F.go"
+}()
 
 type testCase struct {
 	n int
@@ -24,12 +32,12 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, err := buildReference()
+	refBin, cleanup, err := buildReference()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.Remove(refBin)
+	defer cleanup()
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	tests := buildTestSuite(rng)
@@ -56,13 +64,101 @@ func main() {
 	fmt.Println("All tests passed")
 }
 
-func buildReference() (string, error) {
-	const refBin = "./ref_2071F.bin"
-	cmd := exec.Command("go", "build", "-o", refBin, "2071F.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, string(out))
+// isJavaSource returns true if content looks like Java source code.
+func isJavaSource(content []byte) bool {
+	s := string(content)
+	return strings.Contains(s, "public class") || strings.Contains(s, "import java.")
+}
+
+// buildReference reads the reference source, detects language, compiles, and
+// returns a command-runner string plus a cleanup function.
+func buildReference() (string, func(), error) {
+	src := filepath.Clean(refSource)
+	content, err := os.ReadFile(src)
+	if err != nil {
+		return "", func() {}, fmt.Errorf("read reference source %s: %v", src, err)
 	}
-	return refBin, nil
+
+	if isJavaSource(content) {
+		return buildJavaReference(content)
+	}
+
+	if strings.Contains(string(content), "#include") {
+		return buildCppReference(content)
+	}
+
+	// Default: Go source
+	return buildGoReference(src)
+}
+
+func buildGoReference(src string) (string, func(), error) {
+	tmp, err := os.CreateTemp("", "ref_2071F_*.bin")
+	if err != nil {
+		return "", func() {}, err
+	}
+	tmp.Close()
+	binPath := tmp.Name()
+
+	cmd := exec.Command("go", "build", "-o", binPath, src)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(binPath)
+		return "", func() {}, fmt.Errorf("failed to build Go reference: %v\n%s", err, string(out))
+	}
+	return binPath, func() { os.Remove(binPath) }, nil
+}
+
+func buildCppReference(content []byte) (string, func(), error) {
+	tmp, err := os.CreateTemp("", "ref_2071F_*.bin")
+	if err != nil {
+		return "", func() {}, err
+	}
+	tmp.Close()
+	binPath := tmp.Name()
+
+	cppSrc := binPath + ".cpp"
+	if err := os.WriteFile(cppSrc, content, 0644); err != nil {
+		os.Remove(binPath)
+		return "", func() {}, err
+	}
+
+	cmd := exec.Command("g++", "-O2", "-o", binPath, cppSrc)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(binPath)
+		os.Remove(cppSrc)
+		return "", func() {}, fmt.Errorf("failed to build C++ reference: %v\n%s", err, string(out))
+	}
+	os.Remove(cppSrc)
+	return binPath, func() { os.Remove(binPath) }, nil
+}
+
+func buildJavaReference(content []byte) (string, func(), error) {
+	// Create a temp directory for Java compilation.
+	tmpDir, err := os.MkdirTemp("", "ref_2071F_java_*")
+	if err != nil {
+		return "", func() {}, err
+	}
+
+	javaSrc := filepath.Join(tmpDir, "Main.java")
+	if err := os.WriteFile(javaSrc, content, 0644); err != nil {
+		os.RemoveAll(tmpDir)
+		return "", func() {}, err
+	}
+
+	cmd := exec.Command("javac", javaSrc)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		os.RemoveAll(tmpDir)
+		return "", func() {}, fmt.Errorf("failed to compile Java reference: %v\n%s", err, out.String())
+	}
+
+	// Return a special marker; we handle Java execution in runProgram.
+	// The "binary" path is the tmpDir with a sentinel suffix.
+	marker := tmpDir + "/.java_main"
+	os.WriteFile(marker, []byte(tmpDir), 0644)
+
+	return marker, func() { os.RemoveAll(tmpDir) }, nil
 }
 
 func runAndParse(target, input string, tests int) ([]int64, error) {
@@ -75,11 +171,17 @@ func runAndParse(target, input string, tests int) ([]int64, error) {
 
 func runProgram(target, input string) (string, error) {
 	var cmd *exec.Cmd
-	if strings.HasSuffix(target, ".go") {
+
+	if strings.HasSuffix(target, "/.java_main") {
+		// Java reference: run with java -cp <dir> Main
+		classDir := filepath.Dir(target)
+		cmd = exec.Command("java", "-cp", classDir, "Main")
+	} else if strings.HasSuffix(target, ".go") {
 		cmd = exec.Command("go", "run", target)
 	} else {
 		cmd = exec.Command(target)
 	}
+
 	cmd.Stdin = strings.NewReader(input)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

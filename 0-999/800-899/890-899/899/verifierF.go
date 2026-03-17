@@ -96,11 +96,15 @@ func solve(input string) string {
 		fmt.Fscan(in, &l, &r, &cs)
 		c := cs[0]
 		idx := charIndex(c)
+		total := global.Sum(n)
+		if total == 0 || l > total || r > total {
+			continue
+		}
 		lIdx := global.FindKth(l)
 		rIdx := global.FindKth(r)
 		limit := rIdx
 		pos := bits[idx].FindNextFrom(lIdx)
-		for pos <= limit {
+		for pos <= limit && pos <= n {
 			if alive[pos] {
 				alive[pos] = false
 				global.Add(pos, -1)
@@ -133,14 +137,14 @@ func generateTests() []test {
 		fmt.Fprintf(&sb, "%d %d\n", n, m)
 		sb.Write(cur)
 		sb.WriteByte('\n')
+		curLen := len(cur)
 		for i := 0; i < m; i++ {
-			if len(cur) == 0 {
+			if curLen == 0 {
 				fmt.Fprintf(&sb, "1 1 a\n")
-				cur = cur[:0]
 				continue
 			}
-			l := rand.Intn(len(cur)) + 1
-			r := rand.Intn(len(cur)-l+1) + l
+			l := rand.Intn(curLen) + 1
+			r := rand.Intn(curLen-l+1) + l
 			c := chars[rand.Intn(len(chars))]
 			fmt.Fprintf(&sb, "%d %d %c\n", l, r, c)
 			filtered := make([]byte, 0, len(cur))
@@ -152,6 +156,7 @@ func generateTests() []test {
 				filtered = append(filtered, ch)
 			}
 			cur = filtered
+			curLen = len(cur)
 		}
 		inp := sb.String()
 		tests = append(tests, test{inp, solve(inp)})

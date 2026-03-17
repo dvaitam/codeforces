@@ -2,19 +2,13 @@ package main
 
 import (
 	"bytes"
-	"compress/gzip"
-	"encoding/base64"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
+	"time"
 )
-
-// Embedded gzipped+base64 testcases from testcasesG.txt.
-const encodedTestcases = `
-H4sIAI4EK2kC/1VU2bHEIAz7pwpKWF8Q+m/sgSycvNlJhgUfkiziPbp262O/vY9m/fy0yw9L2Y+32Eex1w+CAv9Pku89P6F5bH1h25iw6yFEqtTCie/VRMTiiXZtzqKBwqdprhQR0YAKkdk+gDT6bH7jkIOOPyAFMkeWowpYaTWM3P4B28CG3g2FGIpo45Fv2IZGWdbAf+/zHI0v2uS1OwbECZIblCDfglwDjlEyMSnhoTGgnGcVykD9yYkdkDfGqYMmHKdEB+sqWZ8sUQPRRPRBkwM5Q8SUS7n0Q2YctEkWkNpllZEPIUn1la3gqanFVUuqtM1RiuMbnLTnhlxdDKBAiOJaT1Umnbhbl7hxK/jHgJJ9NqvLd4HvOUkTK04sXZSELzVlktRVkCoSnE6SkuZ0XkDEh3jJyOCkZL9K39FSXfmUyzLxOqSUnVRfwCDXQfsop/yUk1/BJGdYpnlXo0TTjKr5jna9cu/Q/97neYrR+52w4kXHIGfWrXmIJWp4VrPR8i90KLtHzSv1sVJt0v5B9qtQC7VzmEiJy8s0NIl9pLh3EPMKxhowyv1MZqy0P8ffpetMBQAA
-`
 
 type edge struct {
 	u, v int
@@ -73,7 +67,7 @@ func (d *dsu) connected(n int) bool {
 func solve(tc testCase) string {
 	cur := tc.edges
 	ans := 0
-	for bit := 30; bit >= 0; bit-- {
+	for bit := 29; bit >= 0; bit-- {
 		d := newDSU(tc.n)
 		nextEdges := make([]edge, 0, len(cur))
 		mask := 1 << uint(bit)
@@ -92,77 +86,36 @@ func solve(tc testCase) string {
 	return fmt.Sprint(ans)
 }
 
-func decodeTestcases() (string, error) {
-	data, err := base64.StdEncoding.DecodeString(encodedTestcases)
-	if err != nil {
-		return "", err
-	}
-	r, err := gzip.NewReader(bytes.NewReader(data))
-	if err != nil {
-		return "", err
-	}
-	defer r.Close()
-	var out bytes.Buffer
-	if _, err := out.ReadFrom(r); err != nil {
-		return "", err
-	}
-	return out.String(), nil
-}
-
-func parseTestcases() ([]testCase, error) {
-	raw, err := decodeTestcases()
-	if err != nil {
-		return nil, err
-	}
+func generateTests(rng *rand.Rand) []testCase {
 	var cases []testCase
-	lines := strings.Split(strings.TrimSpace(raw), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
+	for len(cases) < 100 {
+		n := rng.Intn(6) + 2 // 2..7 nodes
+		// Generate a random spanning tree first to ensure connectivity
+		edges := make([]edge, 0)
+		for i := 2; i <= n; i++ {
+			u := rng.Intn(i-1) + 1
+			w := rng.Intn(1024) // weights up to 1023
+			edges = append(edges, edge{u: u, v: i, w: w})
 		}
-		tokens := strings.Fields(line)
-		if len(tokens) < 2 {
-			continue
-		}
-		ints := make([]int, 0, len(tokens))
-		for _, tok := range tokens {
-			val, err := strconv.Atoi(tok)
-			if err != nil {
-				return nil, err
+		// Add some extra random edges
+		extra := rng.Intn(n)
+		for j := 0; j < extra; j++ {
+			u := rng.Intn(n) + 1
+			v := rng.Intn(n) + 1
+			if u == v {
+				continue
 			}
-			ints = append(ints, val)
+			w := rng.Intn(1024)
+			edges = append(edges, edge{u: u, v: v, w: w})
 		}
-		n := ints[0]
-		m := ints[1]
-		needed := 2 + 3*m
-		for len(ints) < needed {
-			ints = append(ints, 0) // pad missing edge data with zeros
-		}
-		edges := make([]edge, m)
-		maxNode := n
-		pos := 2
-		for i := 0; i < m; i++ {
-			u := ints[pos]
-			v := ints[pos+1]
-			w := ints[pos+2]
-			edges[i] = edge{u: u, v: v, w: w}
-			if u > maxNode {
-				maxNode = u
-			}
-			if v > maxNode {
-				maxNode = v
-			}
-			pos += 3
-		}
-		cases = append(cases, testCase{n: maxNode, edges: edges})
+		cases = append(cases, testCase{n: n, edges: edges})
 	}
-	return cases, nil
+	return cases
 }
 
 func runCandidate(bin string, tc testCase) (string, error) {
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "1 %d %d\n", tc.n, len(tc.edges))
+	fmt.Fprintf(&sb, "1\n%d %d\n", tc.n, len(tc.edges))
 	for _, e := range tc.edges {
 		fmt.Fprintf(&sb, "%d %d %d\n", e.u, e.v, e.w)
 	}
@@ -185,11 +138,8 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	cases, err := parseTestcases()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	cases := generateTests(rng)
 
 	for idx, tc := range cases {
 		expect := solve(tc)

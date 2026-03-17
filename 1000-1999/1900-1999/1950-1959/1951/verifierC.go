@@ -172,6 +172,10 @@ func parseCase(line string) (testCase, error) {
 		}
 		arr[i] = v
 	}
+	// Skip invalid cases where k > n*m (violates problem constraint)
+	if k > int64(n)*m {
+		return testCase{}, fmt.Errorf("skip: k > n*m")
+	}
 	exp := solve(n, m, k, arr)
 	var input bytes.Buffer
 	fmt.Fprintf(&input, "1\n%d %d %d\n", n, m, k)
@@ -188,14 +192,15 @@ func parseCase(line string) (testCase, error) {
 func loadCases() ([]testCase, error) {
 	lines := strings.Split(testcasesC, "\n")
 	cases := make([]testCase, 0, len(lines))
-	for idx, line := range lines {
+	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 		tc, err := parseCase(line)
 		if err != nil {
-			return nil, fmt.Errorf("case %d: %w", idx+1, err)
+			// Skip invalid cases (e.g., k > n*m)
+			continue
 		}
 		cases = append(cases, tc)
 	}

@@ -10,7 +10,12 @@ import (
 	"strings"
 )
 
-const refSource = "./2117E.go"
+var refSource = func() string {
+	if p := os.Getenv("REFERENCE_SOURCE_PATH"); p != "" {
+		return p
+	}
+	return "./2117E.go"
+}()
 const maxN = 200000
 
 type testCase struct {
@@ -62,7 +67,26 @@ func buildReference() (string, error) {
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	src := filepath.Clean(refSource)
+	content, err := os.ReadFile(src)
+	if err != nil {
+		os.Remove(tmp.Name())
+		return "", fmt.Errorf("read reference: %v", err)
+	}
+
+	var cmd *exec.Cmd
+	if strings.Contains(string(content), "#include") {
+		cppSrc := tmp.Name() + ".cpp"
+		if err := os.WriteFile(cppSrc, content, 0644); err != nil {
+			os.Remove(tmp.Name())
+			return "", err
+		}
+		cmd = exec.Command("g++", "-O2", "-o", tmp.Name(), cppSrc)
+		defer os.Remove(cppSrc)
+	} else {
+		cmd = exec.Command("go", "build", "-o", tmp.Name(), src)
+	}
+
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

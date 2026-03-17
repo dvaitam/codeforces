@@ -25,27 +25,37 @@ func isqrt(n int64) int64 {
 	return x
 }
 
+func rowCount(j, n int64) int64 {
+	jj := j * j
+	if jj+j <= n {
+		d := 4*n - 3*jj - 2*j + 1
+		s := isqrt(d)
+		r := (s - j - 1) / 2
+		return 2*r + j + 1
+	}
+	d := 4*n - 3*jj - 4*j
+	if d < 0 {
+		return 0
+	}
+	s := isqrt(d)
+	t := (j - s + 1) / 2
+	return j - 2*t + 1
+}
+
 func solve(k int64) int64 {
-	R := k - 1
-	T := 4 * R * R
-	Ymax := isqrt(T / 3)
+	n := (k*k - 1) / 3
 	var ans int64
-	for y := int64(0); y <= Ymax; y++ {
-		t := T - 3*y*y
-		if t < 0 {
-			continue
+	for j := int64(0); ; j++ {
+		jj := j * j
+		fmin := jj + j - jj/4
+		if fmin > n {
+			break
 		}
-		xmax := isqrt(t)
-		var cnt int64
-		if y%2 == 0 {
-			cnt = 2*(xmax/2) + 1
+		c := rowCount(j, n)
+		if j == 0 {
+			ans += c
 		} else {
-			cnt = 2 * ((xmax + 1) / 2)
-		}
-		if y == 0 {
-			ans += cnt
-		} else {
-			ans += 2 * cnt
+			ans += 2 * c
 		}
 	}
 	return ans

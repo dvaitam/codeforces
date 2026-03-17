@@ -121,14 +121,14 @@ const testcasesCount = 100
 
 func solveCase(n, k int, s string) int {
 	right := make([]int, n)
-	next := n * 2
+	next := n + k + 1
 	for i := n - 1; i >= 0; i-- {
 		if s[i] == '1' {
 			next = i
 		}
 		right[i] = next
 	}
-	last := -n * 2
+	last := -(k + 1)
 	ans := 0
 	for i := 0; i < n; i++ {
 		if s[i] == '1' {

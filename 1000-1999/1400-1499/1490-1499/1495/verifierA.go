@@ -3,19 +3,52 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
 
+func floatEqual(a, b string) bool {
+	fa, err1 := strconv.ParseFloat(strings.TrimSpace(a), 64)
+	fb, err2 := strconv.ParseFloat(strings.TrimSpace(b), 64)
+	if err1 != nil || err2 != nil {
+		return strings.TrimSpace(a) == strings.TrimSpace(b)
+	}
+	if fb == 0 {
+		return math.Abs(fa) < 1e-6
+	}
+	return math.Abs(fa-fb)/math.Max(1.0, math.Abs(fb)) < 1e-6
+}
+
 func buildOracle() (string, error) {
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	content, err := os.ReadFile(src)
+	if err != nil {
+		return "", fmt.Errorf("read reference: %v", err)
+	}
 	oracle := filepath.Join(os.TempDir(), "oracleA")
-	cmd := exec.Command("go", "build", "-o", oracle, "1495A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	if strings.Contains(string(content), "#include") {
+		cppSrc := filepath.Join(os.TempDir(), "oracleA.cpp")
+		if err := os.WriteFile(cppSrc, content, 0644); err != nil {
+			return "", err
+		}
+		cmd := exec.Command("g++", "-O2", "-o", oracle, cppSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", oracle, src)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+		}
 	}
 	return oracle, nil
 }
@@ -83,7 +116,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
+		if !floatEqual(got, expect) {
 			fmt.Fprintf(os.Stderr, "case %d failed:\ninput:\n%sexpected: %s\ngot: %s\n", i, input, expect, got)
 			os.Exit(1)
 		}

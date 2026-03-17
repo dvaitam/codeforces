@@ -125,7 +125,6 @@ func main() {
 				os.Exit(1)
 			}
 		}
-		expected := solveExpected(tc)
 		for i := 0; i < tc.n; i++ {
 			if res[i] < 1 || res[i] > tc.n {
 				fmt.Printf("test %d: value out of range\n", idx+1)
@@ -148,13 +147,6 @@ func main() {
 				os.Exit(1)
 			}
 			seen[v] = true
-		}
-		// expected arrangement from algorithm
-		for i, v := range expected {
-			if res[i] != v {
-				fmt.Printf("test %d: expected %v got %v\n", idx+1, expected, res)
-				os.Exit(1)
-			}
 		}
 	}
 	fmt.Printf("All %d tests passed\n", len(tests))

@@ -1,16 +1,97 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
+
+func parseTest(in []byte) (int, int, [][]int) {
+	sc := bufio.NewScanner(bytes.NewReader(in))
+	sc.Split(bufio.ScanWords)
+	readInt := func() int {
+		sc.Scan()
+		v, _ := strconv.Atoi(sc.Text())
+		return v
+	}
+	n := readInt()
+	m := readInt()
+	acts := make([][]int, n)
+	for i := 0; i < n; i++ {
+		k := readInt()
+		a := make([]int, k)
+		for j := 0; j < k; j++ {
+			a[j] = readInt()
+		}
+		sort.Ints(a)
+		acts[i] = a
+	}
+	return n, m, acts
+}
+
+func validateAnswer(in []byte, expected, got string) bool {
+	expLines := strings.Fields(expected)
+	gotLines := strings.Fields(got)
+
+	if len(expLines) == 0 || len(gotLines) == 0 {
+		return false
+	}
+
+	expYes := strings.ToUpper(expLines[0]) == "YES"
+	gotYes := strings.ToUpper(gotLines[0]) == "YES"
+
+	if !expYes && !gotYes {
+		return true // both NO
+	}
+	if expYes != gotYes {
+		return false // disagree on YES/NO
+	}
+
+	// Both YES, validate candidate's pair
+	if len(gotLines) < 3 {
+		return false
+	}
+	u, err1 := strconv.Atoi(gotLines[1])
+	v, err2 := strconv.Atoi(gotLines[2])
+	if err1 != nil || err2 != nil {
+		return false
+	}
+
+	_, _, acts := parseTest(in)
+	u--
+	v--
+	if u < 0 || u >= len(acts) || v < 0 || v >= len(acts) || u == v {
+		return false
+	}
+
+	// Check goodPair: shared element, unique in both
+	a, b := acts[u], acts[v]
+	i, j := 0, 0
+	shared, diffA, diffB := false, false, false
+	for i < len(a) && j < len(b) {
+		if a[i] == b[j] {
+			shared = true
+			i++
+			j++
+		} else if a[i] < b[j] {
+			diffA = true
+			i++
+		} else {
+			diffB = true
+			j++
+		}
+	}
+	if i < len(a) { diffA = true }
+	if j < len(b) { diffB = true }
+	return shared && diffA && diffB
+}
 
 func buildIfGo(path string) (string, func(), error) {
 	if strings.HasSuffix(path, ".go") {
@@ -42,13 +123,29 @@ func runProg(exe string, input []byte) (string, error) {
 }
 
 func buildRef() (string, error) {
-	_, cur, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(cur)
-	src := filepath.Join(dir, "1949F.go")
-	refBin := filepath.Join(os.TempDir(), "1949F_ref.bin")
-	cmd := exec.Command("go", "build", "-o", refBin, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	content, err := os.ReadFile(src)
+	if err != nil {
+		return "", fmt.Errorf("read reference: %v", err)
+	}
+	refBin := "/tmp/1949F_ref.bin"
+	if strings.Contains(string(content), "#include") {
+		cppSrc := "/tmp/1949F_ref.cpp"
+		if err := os.WriteFile(cppSrc, content, 0644); err != nil {
+			return "", err
+		}
+		cmd := exec.Command("g++", "-O2", "-o", refBin, cppSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", refBin, src)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
+		}
 	}
 	return refBin, nil
 }
@@ -56,17 +153,30 @@ func buildRef() (string, error) {
 func genTest() []byte {
 	n := rand.Intn(5) + 2
 	m := rand.Intn(8) + n
+	if m < 4 {
+		m = 4
+	}
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
 	for i := 0; i < n; i++ {
-		k := rand.Intn(4) + 1
-		sb.WriteString(fmt.Sprintf("%d ", k))
-		for j := 0; j < k; j++ {
+		maxK := 4
+		if m < maxK {
+			maxK = m
+		}
+		k := rand.Intn(maxK) + 1
+		// Generate k unique activities
+		used := make(map[int]bool)
+		acts := make([]int, 0, k)
+		for len(acts) < k {
 			val := rand.Intn(m) + 1
-			sb.WriteString(fmt.Sprintf("%d", val))
-			if j+1 < k {
-				sb.WriteByte(' ')
+			if !used[val] {
+				used[val] = true
+				acts = append(acts, val)
 			}
+		}
+		sb.WriteString(fmt.Sprintf("%d", k))
+		for _, a := range acts {
+			sb.WriteString(fmt.Sprintf(" %d", a))
 		}
 		sb.WriteByte('\n')
 	}
@@ -103,7 +213,7 @@ func main() {
 			fmt.Printf("runtime error on test %d: %v\n%s", i, err, got)
 			os.Exit(1)
 		}
-		if expected != got {
+		if !validateAnswer(in, expected, got) {
 			fmt.Printf("wrong answer on test %d\ninput:\n%sexpected:%s\ngot:%s\n", i, string(in), expected, got)
 			os.Exit(1)
 		}

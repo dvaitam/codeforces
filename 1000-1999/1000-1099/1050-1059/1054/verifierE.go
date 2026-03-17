@@ -13,127 +13,6 @@ type testCase struct {
 	input string
 }
 
-const solution1054ESource = `package main
-
-import (
-	"bufio"
-	"fmt"
-	"os"
-)
-
-func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
-	defer out.Flush()
-
-	var ys, xs int
-	fmt.Fscan(in, &ys, &xs)
-	jed := make([]int, ys)
-	zer := make([]int, ys)
-	chce1 := make([]int, ys)
-	chce0 := make([]int, ys)
-
-	type op struct{ y1, x1, y2, x2 int }
-	R := make([]op, 0)
-	K := make([]op, 0)
-
-	for y := 0; y < ys; y++ {
-		opp := ys - 1 - y
-		for x := 0; x < xs; x++ {
-			var buf string
-			fmt.Fscan(in, &buf)
-			for z := len(buf) - 1; z >= 0; z-- {
-				if buf[z] == '1' {
-					if x == 1 {
-						jed[opp]++
-						R = append(R, op{y, x, opp, x})
-					} else {
-						jed[y]++
-						R = append(R, op{y, x, y, 1})
-					}
-				} else {
-					if x == 0 {
-						zer[opp]++
-						R = append(R, op{y, x, opp, x})
-					} else {
-						zer[y]++
-						R = append(R, op{y, x, y, 0})
-					}
-				}
-			}
-		}
-	}
-	for y := 0; y < ys; y++ {
-		opp := ys - 1 - y
-		for x := 0; x < xs; x++ {
-			var buf string
-			fmt.Fscan(in, &buf)
-			for z := len(buf) - 1; z >= 0; z-- {
-				if buf[z] == '1' {
-					if x == 1 {
-						chce1[opp]++
-						K = append(K, op{opp, x, y, x})
-					} else {
-						chce1[y]++
-						K = append(K, op{y, 1, y, x})
-					}
-				} else {
-					if x == 0 {
-						chce0[opp]++
-						K = append(K, op{opp, x, y, x})
-					} else {
-						chce0[y]++
-						K = append(K, op{y, 0, y, x})
-					}
-				}
-			}
-		}
-	}
-	// balance ones
-	for ym, yd := 0, 0; ; {
-		for ym < ys && jed[ym] >= chce1[ym] {
-			ym++
-		}
-		if ym == ys {
-			break
-		}
-		for jed[yd] <= chce1[yd] {
-			yd++
-		}
-		jed[yd]--
-		jed[ym]++
-		R = append(R, op{yd, 1, ym, 1})
-	}
-	// balance zeros
-	for ym, yd := 0, 0; ; {
-		for ym < ys && zer[ym] >= chce0[ym] {
-			ym++
-		}
-		if ym == ys {
-			break
-		}
-		for zer[yd] <= chce0[yd] {
-			yd++
-		}
-		zer[yd]--
-		zer[ym]++
-		R = append(R, op{yd, 0, ym, 0})
-	}
-	total := len(R) + len(K)
-	fmt.Fprintln(out, total)
-	for _, v := range R {
-		// convert to 1-based
-		fmt.Fprintf(out, "%d %d %d %d\n", v.y1+1, v.x1+1, v.y2+1, v.x2+1)
-	}
-	for _, v := range K {
-		fmt.Fprintf(out, "%d %d %d %d\n", v.y1+1, v.x1+1, v.y2+1, v.x2+1)
-	}
-}
-`
-
-// Keep the embedded reference solution reachable so it is preserved in the binary.
-var _ = solution1054ESource
-
 var testcases = []testCase{
 	{input: "3 2 1 1 0 1 0 1 1 1 0 1 0 1"},
 	{input: "3 3 0 01 11 10 00 11 01 0 0 0 01 11 10 00 11 01 0 0"},
@@ -237,127 +116,58 @@ var testcases = []testCase{
 	{input: "3 3 01 00 11 01 0 0 00 0 0 01 00 11 01 0 0 00 0 0"},
 }
 
-type operation struct {
-	y1 int
-	x1 int
-	y2 int
-	x2 int
+func parseGrid(scanner *bufio.Scanner, n, m int) [][]string {
+	grid := make([][]string, n)
+	for i := 0; i < n; i++ {
+		grid[i] = make([]string, m)
+		for j := 0; j < m; j++ {
+			scanner.Scan()
+			grid[i][j] = scanner.Text()
+		}
+	}
+	return grid
 }
 
-func solveCase(input string) (string, error) {
-	reader := bufio.NewReader(strings.NewReader(input))
-	var ys, xs int
-	if _, err := fmt.Fscan(reader, &ys, &xs); err != nil {
-		return "", err
-	}
-	jed := make([]int, ys)
-	zer := make([]int, ys)
-	chce1 := make([]int, ys)
-	chce0 := make([]int, ys)
-
-	R := make([]operation, 0)
-	K := make([]operation, 0)
-
-	for y := 0; y < ys; y++ {
-		opp := ys - 1 - y
-		for x := 0; x < xs; x++ {
-			var buf string
-			if _, err := fmt.Fscan(reader, &buf); err != nil {
-				return "", err
-			}
-			for z := len(buf) - 1; z >= 0; z-- {
-				if buf[z] == '1' {
-					if x == 1 {
-						jed[opp]++
-						R = append(R, operation{y, x, opp, x})
-					} else {
-						jed[y]++
-						R = append(R, operation{y, x, y, 1})
-					}
-				} else {
-					if x == 0 {
-						zer[opp]++
-						R = append(R, operation{y, x, opp, x})
-					} else {
-						zer[y]++
-						R = append(R, operation{y, x, y, 0})
-					}
-				}
-			}
-		}
-	}
-	for y := 0; y < ys; y++ {
-		opp := ys - 1 - y
-		for x := 0; x < xs; x++ {
-			var buf string
-			if _, err := fmt.Fscan(reader, &buf); err != nil {
-				return "", err
-			}
-			for z := len(buf) - 1; z >= 0; z-- {
-				if buf[z] == '1' {
-					if x == 1 {
-						chce1[opp]++
-						K = append(K, operation{opp, x, y, x})
-					} else {
-						chce1[y]++
-						K = append(K, operation{y, 1, y, x})
-					}
-				} else {
-					if x == 0 {
-						chce0[opp]++
-						K = append(K, operation{opp, x, y, x})
-					} else {
-						chce0[y]++
-						K = append(K, operation{y, 0, y, x})
-					}
-				}
-			}
-		}
-	}
-
-	for ym, yd := 0, 0; ; {
-		for ym < ys && jed[ym] >= chce1[ym] {
-			ym++
-		}
-		if ym == ys {
-			break
-		}
-		for jed[yd] <= chce1[yd] {
-			yd++
-		}
-		jed[yd]--
-		jed[ym]++
-		R = append(R, operation{yd, 1, ym, 1})
-	}
-
-	for ym, yd := 0, 0; ; {
-		for ym < ys && zer[ym] >= chce0[ym] {
-			ym++
-		}
-		if ym == ys {
-			break
-		}
-		for zer[yd] <= chce0[yd] {
-			yd++
-		}
-		zer[yd]--
-		zer[ym]++
-		R = append(R, operation{yd, 0, ym, 0})
-	}
-
-	var sb strings.Builder
-	total := len(R) + len(K)
-	fmt.Fprintf(&sb, "%d\n", total)
-	for _, v := range R {
-		fmt.Fprintf(&sb, "%d %d %d %d\n", v.y1+1, v.x1+1, v.y2+1, v.x2+1)
-	}
-	for _, v := range K {
-		fmt.Fprintf(&sb, "%d %d %d %d\n", v.y1+1, v.x1+1, v.y2+1, v.x2+1)
-	}
-	return sb.String(), nil
+func parseInput(input string) (int, int, [][]string, [][]string) {
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	scanner.Split(bufio.ScanWords)
+	scanner.Scan()
+	n := 0
+	fmt.Sscan(scanner.Text(), &n)
+	scanner.Scan()
+	m := 0
+	fmt.Sscan(scanner.Text(), &m)
+	init := parseGrid(scanner, n, m)
+	fin := parseGrid(scanner, n, m)
+	return n, m, init, fin
 }
 
-func runCase(exe, input, exp string) error {
+func simulateOps(n, m int, grid [][]string, ops [][4]int) error {
+	for idx, op := range ops {
+		x1, y1, x2, y2 := op[0]-1, op[1]-1, op[2]-1, op[3]-1
+		if x1 < 0 || x1 >= n || y1 < 0 || y1 >= m || x2 < 0 || x2 >= n || y2 < 0 || y2 >= m {
+			return fmt.Errorf("op %d: coords out of range", idx+1)
+		}
+		if x1 == x2 && y1 == y2 {
+			return fmt.Errorf("op %d: same cell", idx+1)
+		}
+		if x1 != x2 && y1 != y2 {
+			return fmt.Errorf("op %d: not same row or column", idx+1)
+		}
+		if len(grid[x1][y1]) == 0 {
+			return fmt.Errorf("op %d: source cell empty", idx+1)
+		}
+		s := grid[x1][y1]
+		ch := s[len(s)-1]
+		grid[x1][y1] = s[:len(s)-1]
+		grid[x2][y2] = string(ch) + grid[x2][y2]
+	}
+	return nil
+}
+
+func runCase(exe, input string) error {
+	n, m, initGrid, finGrid := parseInput(input)
+
 	cmd := exec.Command(exe)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
@@ -366,9 +176,48 @@ func runCase(exe, input, exp string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	got := strings.TrimSpace(out.String())
-	if got != strings.TrimSpace(exp) {
-		return fmt.Errorf("expected %q got %q", exp, got)
+
+	// Parse output
+	scanner := bufio.NewScanner(strings.NewReader(strings.TrimSpace(out.String())))
+	scanner.Split(bufio.ScanWords)
+	if !scanner.Scan() {
+		return fmt.Errorf("no output")
+	}
+	var q int
+	fmt.Sscan(scanner.Text(), &q)
+
+	// Check q limit
+	totalS := 0
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			totalS += len(initGrid[i][j])
+		}
+	}
+	if q < 0 || q > 4*totalS {
+		return fmt.Errorf("q=%d exceeds 4*s=%d", q, 4*totalS)
+	}
+
+	ops := make([][4]int, q)
+	for i := 0; i < q; i++ {
+		for j := 0; j < 4; j++ {
+			if !scanner.Scan() {
+				return fmt.Errorf("missing op data at op %d", i+1)
+			}
+			fmt.Sscan(scanner.Text(), &ops[i][j])
+		}
+	}
+
+	if err := simulateOps(n, m, initGrid, ops); err != nil {
+		return err
+	}
+
+	// Check final state matches
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			if initGrid[i][j] != finGrid[i][j] {
+				return fmt.Errorf("cell (%d,%d) is %q, expected %q", i+1, j+1, initGrid[i][j], finGrid[i][j])
+			}
+		}
 	}
 	return nil
 }
@@ -382,12 +231,7 @@ func main() {
 
 	for idx, tc := range testcases {
 		input := tc.input + "\n"
-		expected, err := solveCase(input)
-		if err != nil {
-			fmt.Printf("test %d: failed to compute expected output: %v\n", idx+1, err)
-			os.Exit(1)
-		}
-		if err := runCase(bin, input, expected); err != nil {
+		if err := runCase(bin, input); err != nil {
 			fmt.Printf("test %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}

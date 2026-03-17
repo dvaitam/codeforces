@@ -22,10 +22,29 @@ func runExe(path, input string) (string, error) {
 }
 
 func buildRef() (string, error) {
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return "", fmt.Errorf("read reference: %v", err)
+	}
 	ref := "./refD.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1105D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build reference failed: %v: %s", err, string(out))
+	if strings.Contains(string(data), "#include") {
+		cppPath := src + ".cpp"
+		if err := os.WriteFile(cppPath, data, 0644); err != nil {
+			return "", fmt.Errorf("write cpp: %v", err)
+		}
+		cmd := exec.Command("g++", "-O2", "-o", ref, cppPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build reference cpp failed: %v: %s", err, string(out))
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", ref, src)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build reference failed: %v: %s", err, string(out))
+		}
 	}
 	return ref, nil
 }

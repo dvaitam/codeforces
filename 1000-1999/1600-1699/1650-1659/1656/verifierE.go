@@ -6,20 +6,79 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
 
+func equivAnswer(got, expect string) bool {
+	if got == expect {
+		return true
+	}
+	// Accept negated version (swap bipartite coloring)
+	gTokens := strings.Fields(got)
+	eTokens := strings.Fields(expect)
+	if len(gTokens) != len(eTokens) {
+		return false
+	}
+	for i := range gTokens {
+		gv, err1 := strconv.Atoi(gTokens[i])
+		ev, err2 := strconv.Atoi(eTokens[i])
+		if err1 != nil || err2 != nil {
+			return false
+		}
+		if gv != ev && gv != -ev {
+			return false
+		}
+	}
+	// Check all are same sign or all negated
+	if len(gTokens) == 0 {
+		return true
+	}
+	g0, _ := strconv.Atoi(gTokens[0])
+	e0, _ := strconv.Atoi(eTokens[0])
+	neg := (g0 == -e0)
+	for i := range gTokens {
+		gv, _ := strconv.Atoi(gTokens[i])
+		ev, _ := strconv.Atoi(eTokens[i])
+		if neg {
+			if gv != -ev {
+				return false
+			}
+		} else {
+			if gv != ev {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func buildOracle() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	src := filepath.Join(dir, "1656E.go")
-	bin := filepath.Join(os.TempDir(), "oracle1656E.bin")
-	cmd := exec.Command("go", "build", "-o", bin, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	// Detect C++ by checking content
+	content, err := os.ReadFile(src)
+	if err != nil {
+		return "", fmt.Errorf("read reference: %v", err)
+	}
+	bin := "/tmp/oracle1656E.bin"
+	if strings.Contains(string(content), "#include") {
+		cppSrc := "/tmp/oracle1656E.cpp"
+		if err := os.WriteFile(cppSrc, content, 0644); err != nil {
+			return "", err
+		}
+		cmd := exec.Command("g++", "-O2", "-o", bin, cppSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", bin, src)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+		}
 	}
 	return bin, nil
 }
@@ -86,7 +145,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "candidate runtime error on test %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
+		if !equivAnswer(strings.TrimSpace(got), strings.TrimSpace(expect)) {
 			fmt.Printf("test %d failed\ninput:\n%sexpected: %s\ngot: %s\n", i+1, input, expect, got)
 			os.Exit(1)
 		}
