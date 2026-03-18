@@ -50,16 +50,38 @@ func computeIncome(t []int64, fol []int) []int64 {
 	return inc
 }
 
+// validFollow returns a random follower target for node i that avoids
+// self-follow and mutual follow.
+func validFollow(rng *rand.Rand, fol []int, i int) int {
+	n := len(fol)
+	for {
+		j := rng.Intn(n)
+		if j == i {
+			continue // no self-follow
+		}
+		if fol[j] == i {
+			continue // no mutual follow
+		}
+		return j
+	}
+}
+
 func genCase(rng *rand.Rand) testCase {
-	n := rng.Intn(4) + 2 // 2..5
+	n := rng.Intn(3) + 3 // 3..5 (problem requires n >= 3)
 	q := rng.Intn(4) + 2 // 2..5
 	t := make([]int64, n)
 	for i := range t {
 		t[i] = int64(rng.Intn(10) + 1)
 	}
 	fol := make([]int, n)
+	// Initialize follows: assign sequentially first to avoid conflicts,
+	// then randomize while respecting constraints.
 	for i := range fol {
-		fol[i] = rng.Intn(n)
+		fol[i] = (i + 1) % n // safe: no self-follow, no mutual follow for n>=3
+	}
+	// Shuffle: re-pick each follow target randomly while respecting constraints.
+	for i := range fol {
+		fol[i] = validFollow(rng, fol, i)
 	}
 	var qs []query
 	var sb strings.Builder
@@ -78,24 +100,52 @@ func genCase(rng *rand.Rand) testCase {
 		fmt.Fprintf(&sb, "%d", v+1)
 	}
 	sb.WriteByte('\n')
+	// Save initial fol state before queries mutate it.
+	initFol := make([]int, n)
+	copy(initFol, fol)
+	// Ensure at least one output query (type 2 or 3) as the problem guarantees.
+	mustOutput := rng.Intn(q)
 	for i := 0; i < q; i++ {
 		typ := rng.Intn(3) + 1
+		if i == mustOutput && typ == 1 {
+			typ = 2 + rng.Intn(2) // force type 2 or 3
+		}
 		if typ == 1 {
-			a := rng.Intn(n) + 1
-			b := rng.Intn(n) + 1
-			qs = append(qs, query{1, a, b})
-			fmt.Fprintf(&sb, "1 %d %d\n", a, b)
-			fol[a-1] = b - 1
-		} else if typ == 2 {
+			a := rng.Intn(n) // 0-indexed node
+			// Collect all valid targets for a type-1 query.
+			var cands []int
+			for b := 0; b < n; b++ {
+				if b == a {
+					continue // no self-follow
+				}
+				if fol[b] == a {
+					continue // no mutual follow
+				}
+				if fol[a] == b {
+					continue // problem guarantees i didn't already follow j
+				}
+				cands = append(cands, b)
+			}
+			if len(cands) == 0 {
+				// No valid type-1 target; fall back to type 2.
+				typ = 2
+			} else {
+				b := cands[rng.Intn(len(cands))]
+				qs = append(qs, query{1, a + 1, b + 1})
+				fmt.Fprintf(&sb, "1 %d %d\n", a+1, b+1)
+				fol[a] = b
+			}
+		}
+		if typ == 2 {
 			a := rng.Intn(n) + 1
 			qs = append(qs, query{2, a, 0})
 			fmt.Fprintf(&sb, "2 %d\n", a)
-		} else {
+		} else if typ == 3 {
 			qs = append(qs, query{3, 0, 0})
 			fmt.Fprintln(&sb, "3")
 		}
 	}
-	return testCase{n, q, t, fol, qs, sb.String()}
+	return testCase{n, q, t, initFol, qs, sb.String()}
 }
 
 func run(bin, input string) (string, error) {
