@@ -11,106 +11,106 @@ import (
 )
 
 // Embedded testcases previously stored in testcasesC.txt.
-const testcasesCData = `2 a b
-6 ebe e dd cedec a dcd ebeb ba cb ee
-7 ebdde ecc bdde dc eecd ceed bcbe dcc eeeeee cbde eac abaaea
-6 baebc ba aacc ba a a a cbb ea eabb
-2 c c
-7 acde acdeb baca d ee decb cce aeba abb ad beabbd c
-3 e cd ea a
-8 baea aa b babaedd edb bddeae adeeb d aea cccca daacbad d ddbeea c
-2 c b
-9 aecd bcdacaaa dbaaed d cdbcc edddcdbb ecedaeea cb daa b dbcdb abeda ebecbb bdcebdda bdeadcd ddcec
-3 e d ac ed
-4 a be dba eb ee d
-4 e ddc ebd bac d aed
-7 ceda e bdc babddd cbaced c e edbc bdec c ccc deaebd
-10 eac b ebecaaad bccacd bddcdb bccbabdb bcbbbc ddcceeecd eeacc dbccdda cdb a bcadae bedecd ccb abbccbdc acbbb c
-7 eabbad cbce acedb d dece eaeee dddbdd daade ae ad dac c
-5 ab acda badb b a ea ebb dab
-10 ba baebdced ebeabbbdb cdbdb ccaeadc edcbd eaa bbbdeabac eabbecab be adc bcce dd d acabd cedeeb bbddcdd ebedd
-5 ecca ce beeb bec a b ace cda
-8 acee bb ed aedcad bbec bbeceed dbbea bbe ddaddd dcbb ae aeeaa ddbe ace
-7 deadb aad b bbcbea bcaee b bace cdaecc aecaec cdc ebaac acea
-3 dd b e a
-7 bcaabe da aea be aa daeceb e eddbb bdca bedde dbdebc ac
-4 d cdd bd cb ad adc
-2 e c
-5 dcee beeb ccda da edee adde ecb bb
-8 dbdc edc ccadea da a ccecdbc aeeddeb aeac c baac dead ebbecb cde ddcae
-5 bcc be be bdce eb d cbbe de
-2 b a
-3 bb de a ac
-2 d a
-3 bb ac d e
-6 aee ad be dba dab ec abb ac c c
-3 c d c a
-7 baeabd cdcc b aaabcb eeb b bcabd da dde bea abdbdb ceeaae
-4 e aec e b ddd c
-5 c d e c ebc babb bd ac
-8 aada aabdab dcbbccc becce dddc bdce edec aeacd daeed cbbca bbdbeb dbacd ea cbbead
-10 d cbbdbbebe ececb e eaadbec adcbd b cdceca adbbdd dca ada ebaacbeed eecaaab e abaccaaea cadbda bbed aecabebab
-5 ea ae bc abb ac bbbd aab cce
-6 c d beecc dedae eb badae da db cebd ac
-7 dbb cdcaa a ca ebbb a a adee eaab b ac ecabe
-6 ea aa d aeab abc b ad dac ebcdb bbdda
-9 cadaddb eaedcad cdbbb ac dde b a aceb dca eebadcb b abbde daacdeee dadd ebc eae
-4 c aee dc eeb e b
-7 cabeab aad ebae dacbee ac cdc bcea aeead dede dac a ec
-5 ae cca c bbc dee cec ddad e
-4 c de d de da dec
-8 beaabc acadcd bdeced cacb cababbc cebcdeb a b adcb bda ddcabd ed dceb dbdc
-5 dace ccb aaab cc ba e edc bb
-3 ed de cb da
-8 edbbece cdbc dab ceebeed ebc bceebe a edaeba e cbdbee cdcbeae dadbb ad cb
-3 aa da b bd
-5 babe c bc ccbd eea e ce bb
-5 dcbc d bcce b ecad daad dabb dce
-7 ceede dbee bb baaada edbc baad ebbe baa bb bacabc e ebcaec
-5 eb da cdea eb c d d b
-8 eda da eebba dced dcbe cedca a dacacab bccba eaa eb c badca ddb
-2 d c
-4 edc c ba c dea bcc
-6 eabe eeb ccb d dd e dcc dac caad ba
-8 cedad abbabd dabebe acebbe dbcdabd b cea e ecd eace cbcaac aeeb adae dcbdcec
-7 bee cacc edecb b edc daecd aee ccaeee e aaed bcbdec dccdca
-10 dbdbedeee adeb edbedca dcacabe caaca cddbbe e edbbddee a dc ccebeda ba adebeeac edeedca adea eed dcbbcdda dbdeceb
-9 ceac a ebd daaec d cebbc bbdceeea accdcd cbedbc caddbced b eaaae aaa beac aadbdc edab
-7 cd dbbd cbdd ba ddaaa db bbcaca cbbcb c eeed bdbaab dacb
-3 dc e e bc
-4 cde b c eb d bb
-8 ecacdc adcccac eda dbaed cacecea cbb e eadbbb dece d aea bdbe ded bcdeac
-10 acec bcadcacde bae beeb ceecbeab eccdce bebcdcbe ebede bdececce addcac daeb d cdd eabbcabb bcae eea ade e
-5 cee c ee bbcd bb bdc bdc da
-3 b dd ba bd
-8 d ebcbaae bedcbde cdd ba accd d dbbcbdb cbbb ecedded bbabca ddccb dee eeccbd
-8 ad cbd e aaccd cbe b ebc cedeecd baeecce a ce adc aea ae
-3 bd c ee ac
-4 cdd d ed d aa dcb
-2 c e
-10 bdcbec e eccdddcda acea dddda ceebca dec aecabceb aba acec c ac cbdabaa bdecddab caccdaa abddedab a acedcbda
-5 ee b a aec a eae dc bd
-8 adeabca cbb aa de dbeabee ebdebbb ccc d abcacd dcac ada eed dedaee dbacabd
-10 bcce ceacbbacb d ec dcececc dddaacae e d bcb aa bb aebeeeed eadebdee aceabdda e deac dcccababa bacdcae
-4 a aa d ac c ce
-4 bc b cda daa a dd
-6 aa edc ddba b cabe eedd b e bcecd dd
-9 cecbda eacba c aebbcaa bbeacec e dade bebadbcc dcc aebce daccab ba acdc ba bbb aeeee
-8 eeb cdd deda cdad abebe eceab caadc dcea bdd bebe abddc ace dbbbb ccecc
-10 adcdec aaebbadb cbc c bb eedeadde cbcda d ea ab dbbebb b ecdecbeec bcaea abe ecdda ed daeddc
-8 bbbbc acccbdc dbd aeb d eadcdae ce eaac beeaaaa dddeac cadc ebaa d beecde
-7 ccde d bdec d ea d caaba e adbd aceceb cecb dccaeb
-2 b c
-8 d adbe ceae ebaaad ac cbdcba da daded dca cabcb aab dbadc e eccbab
-10 baabdc acaca d edbb deac ab decad ddbcaabee b dcbdeca cca b cbbda dabbc dbaca e bdedb bdcae
-9 edcddcad a a cc e aacdadda a abbcab ce adbcbc e eedaab bbeace cbedbca dcdbedbd cbccd
-8 bbacba dddaba a cbcb ccccc aadecd acdb aadbcd adaaea ccbeccc bba aa eddcecb eaaa
-6 da dacc d dbda bcbe bedb eddd dcda bbb cc
-9 aacc adacedeb eebdc aeedeac ee ed aadac cddaeaa bddbeeed dc cedebc b decbacaa bdbbdaac cacdad ceae
-7 ab b cd bbaecc edd ebba cbb cbdcae e ecbcca bbcabe eeee
+const testcasesCData = `2 a a
+2 b b
+2 e a
+2 d e
 2 a a
-9 abcbbd dedc bdabaa ecaca ddcccced edebeca add ceb dcba bd ecb cb eadd ddbaaca dd dac
-9 cabbe ab dcb bd eba b ddabc cccbdcb ceb ddeeee e baebcabe ddbcade aceadbc b dbdda`
+2 e b
+2 e b
+2 b d
+2 a b
+2 c c
+3 bc ca a b
+3 ce e c cc
+3 ad d ea e
+3 ce e ec e
+3 c ab bc a
+3 cd d d dc
+3 c bc cb c
+3 e eb b bb
+3 c eb bc e
+3 cd c dc c
+3 bd d b dd
+3 b e be bb
+3 ed dc e c
+3 aa a aa a
+3 d de a ea
+4 ece a ea ec e cea
+4 b acd cdb ac a db
+4 ea e ce ace e eac
+4 eae e eea e ae ee
+4 ab b cb bab c cba
+4 a ae aeb b bb ebb
+4 b c beb ebc be bc
+4 ba abb bba a a ab
+4 b ab aaa aa aab a
+4 cd dbe c be cdb e
+4 d dba a db aa baa
+4 a daa aaa d da aa
+4 edb b bed be b db
+4 a ad ea dea ade a
+4 bd ddd bdd b dd d
+5 c ad a dc adc dcdc cdc adcd
+5 ee e cbae cba baee cb aee c
+5 bae ae ee eeb e ebae eeba e
+5 daeb ebe e da be aebe dae d
+5 cdb cbcd b bcdb c cb db cbc
+5 ec bec aeb aebe c a ebec ae
+5 dece e ee ecee de dec cee d
+5 a bc aaeb ebc aa c aebc aae
+5 caa aa a edc e ed dcaa edca
+5 cb ed cbd ded d cbde bded c
+5 cc dbac dba bacc acc c db d
+5 bbb bbbb ebb bb eb b e ebbb
+5 cba c ada cb da cbad a bada
+5 bdc c dc abdc ba b babd bab
+5 ac c aac ecaa e caac eca ec
+6 a deea cc cdeea ccdee eea c ccd ea ccde
+6 c dacec acec cdac cd ec cec cdace cda c
+6 db b ddb bddb eb e ebbdd ebbd ebb bbddb
+6 ecddd ee eec e d ddd eecd cddd eecdd dd
+6 ab bbb b abcb abcbb abc cbbb bb bcbbb a
+6 dddbb dd d dbba ddd bba ddbba ba dddb a
+6 a e ad ee adbd adbde adb bdee dee dbdee
+6 cbc c bdd bddc b ddcbc bd bc dcbc bddcb
+6 cce eabb cceab ceabb c b abb cc ccea bb
+6 abd dabd d edd ed eddab bd ddabd e edda
+7 ee ebdbc eee c bc eeebd eeebdb dbc eebdbc e bdbc eeeb
+7 eea eea adeea ea eeade e eadeea deea ee eead eeadee a
+7 cdc dccd dc dcc dccdcd ccdcdc dc cdcdc dccdc d dcdc c
+7 baebb b bae aebbbd baeb ba bbd bbbd bd ebbbd d baebbb
+7 bcaea aeace bc b eace ace bca e ce caeace bcae bcaeac
+7 eae ea eaced eaea aced ed e aeaced eaeac d ced eaeace
+7 ce dbece ece bdbece d e db dbd dbdb dbdbec bece dbdbe
+7 d d deedc dee edcad deedca deed eedcad ad dcad de cad
+7 eaeb d eae ea abd e ebabd eaebab aebabd bd eaeba babd
+7 bcecde b e bce bc ee cdee ecdee cecdee bcecd bcec dee
+8 abcaeb a bb bbb ab abcaebb abca b bcaebbb abcae aebbb abc ebbb caebbb
+8 bcaae aae caebc caeb ae caebcaa aebcaae c e caae caebca ca ebcaae cae
+8 acdaadd add dd bacdaad aadd bac bacd bacda ba b cdaadd bacdaa daadd d
+8 ed edeeeb ed d edeeebe bed edeee e eeebed edee eebed ede deeebed ebed
+8 cabbbea cabbb cabbbe ab eab ca b abbbeab cab bbbeab bbeab beab cabb c
+8 ebb bdaebb aebb daebb cebd cebdae bb cebda ebdaebb cebdaeb c b ce ceb
+8 ea eeddaea ce ceedd ceedda ceeddae daea a c cee ddaea aea eddaea ceed
+8 eab abdedcb eabdedc e eabde ea cb dcb bdedcb b edcb eabded eabd dedcb
+8 ddcdea dd eada deada da ddcdead cdeada d ddcde ddcd a dcdeada ddc ada
+8 eceddab ddabc bc eced ceddabc eddabc abc e c ecedda dabc ece ec ecedd
+9 abadabd e ed abd edabadab d edabada dabadabd bd edabad dabd edab eda badabd edaba adabd
+9 a acdcec cecacc acd c acdcecac cc acdc ecacc acc acdceca acdce cacc ac dcecacc cdcecacc
+9 bda bdac bdacdddb bd acdddbd cdddbd b bdacddd bdacdd ddbd dacdddbd dbd dddbd bdacd bd d
+9 dccedace edace adc ccedace ad adcc adccedac ce e a adcce dace cedace adcced ace adcceda
+9 bcaac daadbc d caac aadbcaac daadbca daadbcaa dbcaac daadb ac da daad adbcaac aac daa c
+9 edeb d bbd debbd edebdeb bd bdebbd ed debdebbd ebdebbd edebdebb e edebde ede ebbd edebd
+9 cd cdcbddab d bd dabd abd cdcbd cdcbdd cdcbdda cdcb c cbddabd dcbddabd cdc ddabd bddabd
+9 bbecbaa ecbb ecbbecba ecbbe aa ecbbec becbaa ecb a ec baa cbbecbaa e cbaa ecbbecb ecbaa
+10 c ece cdcc eceecbcdc bcdcc ecbcdcc e dcc eceec ecee cbcdcc eceecb ceecbcdcc eceecbc eecbcdcc ec eceecbcd cc
+10 dcced dccedca bda da dcabda cabda d dc edcabda dcce dcc cedcabda dccedcab a dccedcabd abda dccedc ccedcabda
+10 bebddce ebddcedeb bebddced bebddc dcedeb be b bebdd edeb bebddcede deb b beb bebd cedeb bddcedeb eb ddcedeb
+10 cbadabea a adc bea adcbadab adcbadabe adcb badabea adabea adcba dcbadabea ea dabea adcbada ad abea adcbad a
+10 becbaaba baaba cbbecbaab cbbecba ba bbecbaaba aba a cbbec cbbe ecbaaba cbbecbaa cbb cb c cbbecb aaba cbaaba
+10 debe de aa debeaecd d debea deb daa ecdaa ebeaecdaa debeaecda aecdaa cdaa a debeae eaecdaa debeaec beaecdaa
+10 deedaa d deecde dee deecd ecdeedaa de a eedaa deecdee deecdeed daa deecdeeda aa edaa cdeedaa deec eecdeedaa`
 
 const embeddedRefGo = `package main
 
