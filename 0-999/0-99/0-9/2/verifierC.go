@@ -10,6 +10,133 @@ import (
 	"strings"
 )
 
+// Correct embedded solver for 2C: Apollonius point.
+func solveC(x1, y1, r1, x2, y2, r2, x3, y3, r3 float64) string {
+	if r1 == r2 && r2 == r3 {
+		B1 := -2 * (x1 - x2)
+		C1 := -2 * (y1 - y2)
+		D1 := x1*x1 + y1*y1 - (x2*x2 + y2*y2)
+
+		B2 := -2 * (x2 - x3)
+		C2 := -2 * (y2 - y3)
+		D2 := x2*x2 + y2*y2 - (x3*x3 + y3*y3)
+
+		det := B1*C2 - B2*C1
+		if math.Abs(det) > 1e-9 {
+			X := (C1*D2 - C2*D1) / det
+			Y := (D1*B2 - D2*B1) / det
+			return fmt.Sprintf("%.5f %.5f", X, Y)
+		}
+		return ""
+	}
+
+	alpha := r3*r3 - r2*r2
+	beta := r1*r1 - r3*r3
+	gamma := r2*r2 - r1*r1
+
+	U := 2.0 * (alpha*x1 + beta*x2 + gamma*x3)
+	V := 2.0 * (alpha*y1 + beta*y2 + gamma*y3)
+	W := -(alpha*(x1*x1 + y1*y1) + beta*(x2*x2 + y2*y2) + gamma*(x3*x3 + y3*y3))
+
+	A12 := r2*r2 - r1*r1
+	B12 := -2 * (r2*r2*x1 - r1*r1*x2)
+	C12 := -2 * (r2*r2*y1 - r1*r1*y2)
+	D12 := r2*r2*(x1*x1 + y1*y1) - r1*r1*(x2*x2 + y2*y2)
+
+	A23 := r3*r3 - r2*r2
+	B23 := -2 * (r3*r3*x2 - r2*r2*x3)
+	C23 := -2 * (r3*r3*y2 - r2*r2*y3)
+	D23 := r3*r3*(x2*x2 + y2*y2) - r2*r2*(x3*x3 + y3*y3)
+
+	A31 := r1*r1 - r3*r3
+	B31 := -2 * (r1*r1*x3 - r3*r3*x1)
+	C31 := -2 * (r1*r1*y3 - r3*r3*y1)
+	D31 := r1*r1*(x3*x3 + y3*y3) - r3*r3*(x1*x1 + y1*y1)
+
+	var A, B, C, D float64
+	if math.Abs(A12) >= math.Abs(A23) && math.Abs(A12) >= math.Abs(A31) {
+		A, B, C, D = A12, B12, C12, D12
+	} else if math.Abs(A23) >= math.Abs(A12) && math.Abs(A23) >= math.Abs(A31) {
+		A, B, C, D = A23, B23, C23, D23
+	} else {
+		A, B, C, D = A31, B31, C31, D31
+	}
+
+	var qa, qb, qc float64
+	var solveX bool
+	if math.Abs(V) >= math.Abs(U) {
+		solveX = true
+		m := -U / V
+		k := -W / V
+		qa = A * (1 + m*m)
+		qb = A*2*m*k + B + C*m
+		qc = A*k*k + C*k + D
+	} else {
+		solveX = false
+		m := -V / U
+		k := -W / U
+		qa = A * (1 + m*m)
+		qb = A*2*m*k + B*m + C
+		qc = A*k*k + B*k + D
+	}
+
+	delta := qb*qb - 4*qa*qc
+	maxVal := math.Max(qb*qb, math.Abs(4*qa*qc))
+	epsD := 1e-10 * maxVal
+	if delta < -epsD {
+		return ""
+	}
+	if delta < 0 {
+		delta = 0
+	}
+
+	root1 := (-qb + math.Sqrt(delta)) / (2 * qa)
+	root2 := (-qb - math.Sqrt(delta)) / (2 * qa)
+
+	var cands [][2]float64
+	if solveX {
+		m := -U / V
+		k := -W / V
+		cands = append(cands, [2]float64{root1, m*root1 + k})
+		cands = append(cands, [2]float64{root2, m*root2 + k})
+	} else {
+		m := -V / U
+		k := -W / U
+		cands = append(cands, [2]float64{m*root1 + k, root1})
+		cands = append(cands, [2]float64{m*root2 + k, root2})
+	}
+
+	bestRatio := math.MaxFloat64
+	var bestCand [2]float64
+	found := false
+
+	for _, cand := range cands {
+		cx, cy := cand[0], cand[1]
+		dist1 := math.Sqrt((cx-x1)*(cx-x1) + (cy-y1)*(cy-y1))
+		dist2 := math.Sqrt((cx-x2)*(cx-x2) + (cy-y2)*(cy-y2))
+		dist3 := math.Sqrt((cx-x3)*(cx-x3) + (cy-y3)*(cy-y3))
+
+		ratio1 := dist1 / r1
+		ratio2 := dist2 / r2
+		ratio3 := dist3 / r3
+
+		if math.Abs(ratio1-ratio2) > 1e-4*math.Max(1.0, ratio1) || math.Abs(ratio1-ratio3) > 1e-4*math.Max(1.0, ratio1) {
+			continue
+		}
+
+		if ratio1 < bestRatio {
+			bestRatio = ratio1
+			bestCand = cand
+			found = true
+		}
+	}
+
+	if found {
+		return fmt.Sprintf("%.5f %.5f", bestCand[0], bestCand[1])
+	}
+	return ""
+}
+
 // Embedded copy of testcasesC.txt to remove external dependency.
 const testcasesC = `957 767 971 738 -885 94 -827 -261 856
 -654 507 829 371 748 316 -485 240 218
@@ -114,113 +241,7 @@ const testcasesC = `957 767 971 738 -885 94 -827 -261 856
 -369 -538 787 -878 815 176 202 -738 528
 789 -810 779 -686 778 371 258 488 409`
 
-// Geometry primitives from 2C.go.
-const eps = 1e-8
-
-type point struct{ x, y float64 }
-
-func (p point) sub(a point) point   { return point{p.x - a.x, p.y - a.y} }
-func (p point) add(a point) point   { return point{p.x + a.x, p.y + a.y} }
-func (p point) mul(k float64) point { return point{p.x * k, p.y * k} }
-func (p point) len() float64        { return math.Hypot(p.x, p.y) }
-
 type circle struct{ x, y, r float64 }
-
-func (c circle) o() point { return point{c.x, c.y} }
-
-type line struct{ a, b, c float64 } // ax + by + c = 0
-type carrier struct {
-	typ int
-	c   circle
-	l   line
-} // 0 circle, 1 line
-
-func crossLL(l1, l2 line) []point {
-	det := l1.a*l2.b - l1.b*l2.a
-	if math.Abs(det) < eps {
-		return nil
-	}
-	det1 := -(l1.c*l2.b - l1.b*l2.c)
-	det2 := -(l1.a*l2.c - l1.c*l2.a)
-	return []point{{det1 / det, det2 / det}}
-}
-
-func crossCL(c circle, l line) []point {
-	var res []point
-	al, be := l.b, -l.a
-	var x0, y0 float64
-	if math.Abs(l.a) < math.Abs(l.b) {
-		x0 = 0
-		y0 = -l.c / l.b
-	} else {
-		y0 = 0
-		x0 = -l.c / l.a
-	}
-	A := al*al + be*be
-	B := 2*al*(x0-c.x) + 2*be*(y0-c.y)
-	Cq := (x0-c.x)*(x0-c.x) + (y0-c.y)*(y0-c.y) - c.r*c.r
-	D := B*B - 4*A*Cq
-	if D < -eps {
-		return nil
-	}
-	if D < 0 {
-		D = 0
-	}
-	t1 := (-B + math.Sqrt(D)) / (2 * A)
-	res = append(res, point{x0 + al*t1, y0 + be*t1})
-	t2 := (-B - math.Sqrt(D)) / (2 * A)
-	res = append(res, point{x0 + al*t2, y0 + be*t2})
-	return res
-}
-
-func crossCLgen(cl1, cl2 carrier) []point {
-	if cl1.typ == 0 && cl2.typ == 0 {
-		c1, c2 := cl1.c, cl2.c
-		a := 2 * (c2.x - c1.x)
-		b := 2 * (c2.y - c1.y)
-		c0 := c2.r*c2.r - c1.r*c1.r + c1.x*c1.x - c2.x*c2.x + c1.y*c1.y - c2.y*c2.y
-		return crossCL(c1, line{a, b, c0})
-	}
-	if cl1.typ == 0 && cl2.typ == 1 {
-		return crossCL(cl1.c, cl2.l)
-	}
-	if cl1.typ == 1 && cl2.typ == 0 {
-		return crossCL(cl2.c, cl1.l)
-	}
-	if cl1.typ == 1 && cl2.typ == 1 {
-		return crossLL(cl1.l, cl2.l)
-	}
-	return nil
-}
-
-func getL(c1, c2 circle) carrier {
-	a := 2*c2.x - 2*c1.x
-	b := 2*c2.y - 2*c1.y
-	c0 := c1.x*c1.x - c2.x*c2.x + c1.y*c1.y - c2.y*c2.y
-	return carrier{typ: 1, l: line{a, b, c0}}
-}
-
-func getC(c1, c2 circle) carrier {
-	if c1.r > c2.r {
-		return getC(c2, c1)
-	}
-	cr := c1.r / c2.r
-	o1 := c1.o()
-	o2 := c2.o()
-	v := o2.sub(o1)
-	p1 := o1.add(v.mul(cr / (1 + cr)))
-	p2 := o1.add(v.mul(cr / (cr - 1)))
-	o := p1.add(p2).mul(0.5)
-	r := p1.sub(o).len()
-	return carrier{typ: 0, c: circle{o.x, o.y, r}}
-}
-
-func getCL(c1, c2 circle) carrier {
-	if math.Abs(c1.r-c2.r) < eps {
-		return getL(c1, c2)
-	}
-	return getC(c1, c2)
-}
 
 type testCase struct {
 	c [3]circle
@@ -251,35 +272,9 @@ func parseCases() ([]testCase, error) {
 }
 
 func expected(tc testCase) string {
-	cl1 := getCL(tc.c[0], tc.c[1])
-	cl2 := getCL(tc.c[1], tc.c[2])
-	cr := crossCLgen(cl1, cl2)
-	mi := 1e100
-	var ans point
-	for _, p := range cr {
-		var q [3]float64
-		ok := true
-		for j := 0; j < 3; j++ {
-			q[j] = p.sub(tc.c[j].o()).len() / tc.c[j].r
-			if math.Abs(q[j]-q[0]) > eps {
-				ok = false
-			}
-		}
-		if q[0] < 1-eps {
-			ok = false
-		}
-		if !ok {
-			continue
-		}
-		if q[0] < mi {
-			mi = q[0]
-			ans = p
-		}
-	}
-	if mi < 1e50 {
-		return fmt.Sprintf("%.5f %.5f", ans.x, ans.y)
-	}
-	return ""
+	return solveC(tc.c[0].x, tc.c[0].y, tc.c[0].r,
+		tc.c[1].x, tc.c[1].y, tc.c[1].r,
+		tc.c[2].x, tc.c[2].y, tc.c[2].r)
 }
 
 func runCandidate(bin, input string) (string, error) {

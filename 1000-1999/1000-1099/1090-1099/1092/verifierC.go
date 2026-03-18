@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -111,9 +112,166 @@ const testcasesCData = `2 a b
 9 abcbbd dedc bdabaa ecaca ddcccced edebeca add ceb dcba bd ecb cb eadd ddbaaca dd dac
 9 cabbe ab dcb bd eba b ddabc cccbdcb ceb ddeeee e baebcabe ddbcade aceadbc b dbdda`
 
+const embeddedRefGo = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func main() {
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
+	if !scanner.Scan() {
+		return
+	}
+	var n int
+	fmt.Sscanf(scanner.Text(), "%d", &n)
+
+	strs := make([]string, 2*n-2)
+	var l1, l2 string
+	for i := 0; i < 2*n-2; i++ {
+		scanner.Scan()
+		strs[i] = scanner.Text()
+		if len(strs[i]) == n-1 {
+			if l1 == "" {
+				l1 = strs[i]
+			} else {
+				l2 = strs[i]
+			}
+		}
+	}
+
+	cand1 := l1 + string(l2[n-2])
+	cand2 := l2 + string(l1[n-2])
+
+	if check(cand1, n, strs) {
+		return
+	}
+	check(cand2, n, strs)
+}
+
+func check(s string, n int, strs []string) bool {
+	usedP := make([]bool, n)
+	ans := make([]byte, 2*n-2)
+	for i, str := range strs {
+		l := len(str)
+		isP := s[:l] == str
+		isS := s[n-l:] == str
+
+		if isP && !usedP[l] {
+			ans[i] = 'P'
+			usedP[l] = true
+		} else if isS {
+			ans[i] = 'S'
+		} else {
+			return false
+		}
+	}
+	fmt.Println(string(ans))
+	return true
+}
+`
+
 type testCase struct {
 	n     int
 	frags []string
+}
+
+func parseTestCases(data string) ([]testCase, error) {
+	lines := strings.Split(data, "\n")
+	cases := make([]testCase, 0, len(lines))
+	for idx, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		n, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return nil, fmt.Errorf("line %d: invalid n: %w", idx+1, err)
+		}
+		if len(parts) < 2*n-1 {
+			return nil, fmt.Errorf("line %d: expected %d fragments, got %d", idx+1, 2*n-2, len(parts)-1)
+		}
+		cases = append(cases, testCase{n: n, frags: parts[1 : 2*n-1]})
+	}
+	return cases, nil
+}
+
+func buildRef() (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("getwd: %v", err)
+	}
+	ref := filepath.Join(wd, "refC.bin")
+	goPath := filepath.Join(wd, "refC.go")
+	if err := os.WriteFile(goPath, []byte(embeddedRefGo), 0644); err != nil {
+		return "", fmt.Errorf("write go: %v", err)
+	}
+	cmd := exec.Command("go", "build", "-o", ref, goPath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("build reference go: %v: %s", err, string(out))
+	}
+	return ref, nil
+}
+
+func runBin(path, input string) (string, error) {
+	cmd := exec.Command(path)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
+func runCase(bin, ref string, tc testCase) error {
+	if tc.n <= 1 {
+		return nil
+	}
+	frags := tc.frags
+	var input strings.Builder
+	input.WriteString(strconv.Itoa(tc.n))
+	input.WriteByte('\n')
+	for i, s := range frags {
+		if i > 0 {
+			input.WriteByte(' ')
+		}
+		input.WriteString(s)
+	}
+	input.WriteByte('\n')
+
+	inStr := input.String()
+
+	exp, err := runBin(ref, inStr)
+	if err != nil {
+		return fmt.Errorf("reference error: %v", err)
+	}
+
+	got, err := runBin(bin, inStr)
+	if err != nil {
+		return fmt.Errorf("candidate error: %v", err)
+	}
+
+	if len(got) != len(exp) {
+		return fmt.Errorf("invalid answer length %d, expected %d", len(got), len(exp))
+	}
+
+	// Both must be valid P/S assignments of the same length.
+	// We validate structurally: for each position, it must be P or S,
+	// and the implied string must be consistent.
+	if got != exp {
+		// Different assignments can both be valid. Validate got independently.
+		if err := validateAnswer(tc.n, frags, got); err != nil {
+			return fmt.Errorf("invalid answer %q: %v", got, err)
+		}
+	}
+	return nil
 }
 
 func hasPrefix(s, t string) bool {
@@ -130,10 +288,6 @@ func hasSuffix(s, t string) bool {
 	return s[len(s)-len(t):] == t
 }
 
-// validateAnswer checks whether the candidate's P/S assignment is valid:
-// there must exist a string of length n such that each fragment marked P is a
-// prefix and each fragment marked S is a suffix, with exactly one P and one S
-// per length.
 func validateAnswer(n int, frags []string, answer string) error {
 	m := len(frags)
 	if len(answer) != m {
@@ -145,8 +299,6 @@ func validateAnswer(n int, frags []string, answer string) error {
 		}
 	}
 
-	// Identify the two longest fragments (length n-1). One must be P, one S.
-	// Build the candidate string from them.
 	var longestP, longestS string
 	for i, ch := range answer {
 		if len(frags[i]) == n-1 {
@@ -160,15 +312,11 @@ func validateAnswer(n int, frags []string, answer string) error {
 	if longestP == "" || longestS == "" {
 		return fmt.Errorf("no length-%d fragment assigned as P or S", n-1)
 	}
-	// The candidate string: prefix of length n-1 determines first n-1 chars,
-	// suffix of length n-1 determines last n-1 chars. They must agree on the
-	// overlapping n-2 chars.
 	if n >= 3 && longestP[1:] != longestS[:n-2] {
 		return fmt.Errorf("longest P %q and S %q overlap mismatch", longestP, longestS)
 	}
 	s := longestP + string(longestS[n-2])
 
-	// Now verify every fragment against s.
 	for i, ch := range answer {
 		frag := frags[i]
 		if ch == 'P' {
@@ -182,7 +330,6 @@ func validateAnswer(n int, frags []string, answer string) error {
 		}
 	}
 
-	// Check that each length from 1..n-1 has exactly one P and one S.
 	pCount := make(map[int]int)
 	sCount := make(map[int]int)
 	for i, ch := range answer {
@@ -194,103 +341,9 @@ func validateAnswer(n int, frags []string, answer string) error {
 		}
 	}
 	for l := 1; l < n; l++ {
-		if pCount[l]+sCount[l] != 2 {
-			// The test data may not have exactly 2 of each length; skip this check
-			// if the total count for this length isn't 2.
-			continue
-		}
 		if pCount[l] != 1 || sCount[l] != 1 {
 			return fmt.Errorf("length %d: P=%d S=%d, expected 1 each", l, pCount[l], sCount[l])
 		}
-	}
-	return nil
-}
-
-func normalizeFrags(frags []string, n int) []string {
-	res := append([]string(nil), frags...)
-	m := 2*n - 2
-	if len(res) > m {
-		res = res[:m]
-	}
-	for len(res) < m {
-		res = append(res, "")
-	}
-	count := 0
-	placeholder := "a"
-	if n > 1 {
-		placeholder = strings.Repeat("a", n-1)
-	}
-	for _, s := range res {
-		if len(s) == n-1 {
-			count++
-		}
-	}
-	for i := 0; count < 2 && i < len(res); i++ {
-		if len(res[i]) != n-1 {
-			res[i] = placeholder
-			count++
-		}
-	}
-	return res
-}
-
-func parseTestCases(data string) ([]testCase, error) {
-	lines := strings.Split(data, "\n")
-	cases := make([]testCase, 0, len(lines))
-	for idx, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		parts := strings.Fields(line)
-		n, err := strconv.Atoi(parts[0])
-		if err != nil {
-			return nil, fmt.Errorf("line %d: invalid n: %w", idx+1, err)
-		}
-		if len(parts) != 2*n-1 {
-			return nil, fmt.Errorf("line %d: expected %d fragments, got %d", idx+1, 2*n-2, len(parts)-1)
-		}
-		cases = append(cases, testCase{n: n, frags: parts[1:]})
-	}
-	return cases, nil
-}
-
-func runCase(bin string, tc testCase) error {
-	if tc.n <= 1 {
-		return nil
-	}
-	frags := normalizeFrags(tc.frags, tc.n)
-	var input strings.Builder
-	input.WriteString(strconv.Itoa(tc.n))
-	input.WriteByte('\n')
-	for i, s := range frags {
-		if i > 0 {
-			input.WriteByte(' ')
-		}
-		input.WriteString(s)
-	}
-	input.WriteByte('\n')
-
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input.String())
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
-	}
-	got := strings.TrimSpace(out.String())
-
-	// Validate the candidate's answer instead of comparing to one specific solution,
-	// because multiple valid P/S assignments may exist.
-	if err := validateAnswer(tc.n, frags, got); err != nil {
-		return fmt.Errorf("invalid answer %q: %v", got, err)
 	}
 	return nil
 }
@@ -302,6 +355,17 @@ func main() {
 	}
 	bin := os.Args[1]
 
+	ref, err := buildRef()
+	if err != nil {
+		fmt.Println("failed to build reference:", err)
+		os.Exit(1)
+	}
+	defer func() {
+		os.Remove(ref)
+		wd, _ := os.Getwd()
+		os.Remove(filepath.Join(wd, "refC.go"))
+	}()
+
 	cases, err := parseTestCases(testcasesCData)
 	if err != nil {
 		fmt.Println("failed to parse embedded testcases:", err)
@@ -309,7 +373,7 @@ func main() {
 	}
 
 	for i, tc := range cases {
-		if err := runCase(bin, tc); err != nil {
+		if err := runCase(bin, ref, tc); err != nil {
 			fmt.Printf("case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}

@@ -6,37 +6,197 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
 type Point struct{ x, y int }
-type Rect struct{ x1, y1, x2, y2 int }
+
+const embeddedRefGo = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"math/bits"
+	"os"
+)
+
+type FastScanner struct {
+	data []byte
+	idx  int
+}
+
+func NewFastScanner() *FastScanner {
+	data, _ := io.ReadAll(os.Stdin)
+	return &FastScanner{data: data}
+}
+
+func (fs *FastScanner) NextInt() int {
+	n := len(fs.data)
+	for fs.idx < n {
+		c := fs.data[fs.idx]
+		if c == '-' || (c >= '0' && c <= '9') {
+			break
+		}
+		fs.idx++
+	}
+	sign := 1
+	if fs.data[fs.idx] == '-' {
+		sign = -1
+		fs.idx++
+	}
+	val := 0
+	for fs.idx < n {
+		c := fs.data[fs.idx]
+		if c < '0' || c > '9' {
+			break
+		}
+		val = val*10 + int(c-'0')
+		fs.idx++
+	}
+	return sign * val
+}
+
+func main() {
+	in := NewFastScanner()
+
+	wx1 := in.NextInt()
+	wy1 := in.NextInt()
+	wx2 := in.NextInt()
+	wy2 := in.NextInt()
+
+	if wx1 >= wx2 || wy2 >= wy1 {
+		out := bufio.NewWriterSize(os.Stdout, 1<<20)
+		fmt.Fprint(out, 0)
+		out.Flush()
+		return
+	}
+
+	n := in.NextInt()
+	events := make([][]int, 15002)
+
+	fx := in.NextInt()
+	fy := in.NextInt()
+	px, py := fx, fy
+
+	for i := 1; i < n; i++ {
+		x := in.NextInt()
+		y := in.NextInt()
+		if x == px {
+			a, b := py, y
+			if a > b {
+				a, b = b, a
+			}
+			events[a] = append(events[a], x)
+			events[b] = append(events[b], x)
+		}
+		px, py = x, y
+	}
+
+	if px == fx {
+		a, b := py, fy
+		if a > b {
+			a, b = b, a
+		}
+		events[a] = append(events[a], px)
+		events[b] = append(events[b], px)
+	}
+
+	width := wx2 - wx1
+	words := (width + 63) >> 6
+	curr := make([]uint64, words)
+	prev := make([]uint64, words)
+
+	all := ^uint64(0)
+	lastMask := all
+	if rem := width & 63; rem != 0 {
+		lastMask = (uint64(1) << uint(rem)) - 1
+	}
+
+	var aCount, bCount, cCount, dCount int64
+	havePrev := false
+
+	for y := 0; y < wy1; y++ {
+		for _, x := range events[y] {
+			if x >= wx2 {
+				continue
+			}
+			if x <= wx1 {
+				for i := 0; i < words; i++ {
+					curr[i] ^= all
+				}
+			} else {
+				start := x - wx1
+				wi := start >> 6
+				bi := uint(start & 63)
+				curr[wi] ^= all << bi
+				for i := wi + 1; i < words; i++ {
+					curr[i] ^= all
+				}
+			}
+		}
+
+		curr[words-1] &= lastMask
+
+		if y < wy2 {
+			continue
+		}
+
+		var ones, hadj, vadj, blocks int64
+		var carry1, carry2 uint64
+
+		if havePrev {
+			for i := 0; i < words; i++ {
+				w := curr[i]
+				ones += int64(bits.OnesCount64(w))
+				hadj += int64(bits.OnesCount64(w & ((w << 1) | carry1)))
+				carry1 = w >> 63
+
+				c := w & prev[i]
+				vadj += int64(bits.OnesCount64(c))
+				blocks += int64(bits.OnesCount64(c & ((c << 1) | carry2)))
+				carry2 = c >> 63
+			}
+			cCount += vadj
+			dCount += blocks
+		} else {
+			for i := 0; i < words; i++ {
+				w := curr[i]
+				ones += int64(bits.OnesCount64(w))
+				hadj += int64(bits.OnesCount64(w & ((w << 1) | carry1)))
+				carry1 = w >> 63
+			}
+			havePrev = true
+		}
+
+		aCount += ones
+		bCount += hadj
+		copy(prev, curr)
+	}
+
+	ans := aCount - bCount - cCount + dCount
+
+	out := bufio.NewWriterSize(os.Stdout, 1<<20)
+	fmt.Fprint(out, ans)
+	out.Flush()
+}
+`
 
 func buildRef() (string, error) {
-	src := os.Getenv("REFERENCE_SOURCE_PATH")
-	if src == "" {
-		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
-	}
-	data, err := os.ReadFile(src)
+	wd, err := os.Getwd()
 	if err != nil {
-		return "", fmt.Errorf("read reference: %v", err)
+		return "", fmt.Errorf("getwd: %v", err)
 	}
-	ref := "./refG.bin"
-	if strings.Contains(string(data), "#include") {
-		cppPath := "refG.cpp"
-		if err := os.WriteFile(cppPath, data, 0644); err != nil {
-			return "", fmt.Errorf("write cpp: %v", err)
-		}
-		cmd := exec.Command("g++", "-O2", "-o", ref, cppPath)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("build reference cpp: %v: %s", err, string(out))
-		}
-	} else {
-		cmd := exec.Command("go", "build", "-o", ref, src)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("build reference: %v: %s", err, string(out))
-		}
+	ref := filepath.Join(wd, "refG.bin")
+	goPath := filepath.Join(wd, "refG.go")
+	if err := os.WriteFile(goPath, []byte(embeddedRefGo), 0644); err != nil {
+		return "", fmt.Errorf("write go: %v", err)
+	}
+	cmd := exec.Command("go", "build", "-o", ref, goPath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("build reference go: %v: %s", err, string(out))
 	}
 	return ref, nil
 }
@@ -83,7 +243,11 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.Remove(ref)
+	defer func() {
+		os.Remove(ref)
+		wd, _ := os.Getwd()
+		os.Remove(filepath.Join(wd, "refG.go"))
+	}()
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {

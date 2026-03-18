@@ -6,46 +6,178 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
 
-func prepareReference() (string, func(), error) {
-	refPath := os.Getenv("REFERENCE_SOURCE_PATH")
-	if refPath == "" {
-		refPath = "45F.go"
-	}
-	content, err := os.ReadFile(refPath)
-	if err != nil {
-		return "", nil, fmt.Errorf("cannot read reference at %s: %v", refPath, err)
-	}
-	if strings.Contains(string(content), "#include") {
-		tmpCpp := filepath.Join(os.TempDir(), fmt.Sprintf("ref45F_%d.cpp", time.Now().UnixNano()))
-		if err := os.WriteFile(tmpCpp, content, 0644); err != nil {
-			return "", nil, err
+// Embedded correct solver for 45F.
+func solveF(input string) string {
+	var m, n int
+	fmt.Sscanf(input, "%d %d", &m, &n)
+
+	minFunc := func(a, b int) int {
+		if a < b {
+			return a
 		}
-		tmpBin := tmpCpp + ".bin"
-		cmd := exec.Command("g++", "-O2", "-o", tmpBin, tmpCpp)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			os.Remove(tmpCpp)
-			return "", nil, fmt.Errorf("C++ compile failed: %v\n%s", err, string(out))
+		return b
+	}
+	maxFunc := func(a, b int) int {
+		if a > b {
+			return a
 		}
-		os.Remove(tmpCpp)
-		return tmpBin, func() { os.Remove(tmpBin) }, nil
+		return b
 	}
-	tmpGo := filepath.Join(os.TempDir(), fmt.Sprintf("ref45F_%d.go", time.Now().UnixNano()))
-	if err := os.WriteFile(tmpGo, content, 0644); err != nil {
-		return "", nil, err
+	min3 := func(a, b, c int) int {
+		return minFunc(a, minFunc(b, c))
 	}
-	tmpBin := tmpGo + ".bin"
-	cmd := exec.Command("go", "build", "-o", tmpBin, tmpGo)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		os.Remove(tmpGo)
-		return "", nil, fmt.Errorf("Go build failed: %v\n%s", err, string(out))
+	ceilDiv2 := func(a int) int {
+		if a <= 0 {
+			return 0
+		}
+		return (a + 1) / 2
 	}
-	os.Remove(tmpGo)
-	return tmpBin, func() { os.Remove(tmpBin) }, nil
+
+	var parent [3][2][100005]int
+	var vis [3][2][100005]bool
+
+	for t := 0; t < 3; t++ {
+		for b := 0; b < 2; b++ {
+			for k := 0; k <= m+1; k++ {
+				parent[t][b][k] = k
+			}
+		}
+	}
+
+	var find func(t, b, k int) int
+	find = func(t, b, k int) int {
+		if parent[t][b][k] == k {
+			return k
+		}
+		parent[t][b][k] = find(t, b, parent[t][b][k])
+		return parent[t][b][k]
+	}
+
+	type TK struct{ t, k int }
+
+	getTypes := func(G, W int) []TK {
+		var res []TK
+		if G == 0 {
+			res = append(res, TK{0, W})
+		}
+		if G == m {
+			res = append(res, TK{2, W})
+		}
+		if G == W {
+			res = append(res, TK{1, W})
+		}
+		return res
+	}
+
+	type Range struct{ t, L, R int }
+
+	getB0Transitions := func(t, k int) []Range {
+		var res []Range
+		if t == 0 {
+			if k >= 1 {
+				res = append(res, Range{0, maxFunc(0, k-n), k - 1})
+			}
+		} else if t == 2 {
+			if k >= 1 {
+				res = append(res, Range{2, maxFunc(0, k-n), k - 1})
+			}
+			L := maxFunc(0, ceilDiv2(m+k-n))
+			R := minFunc(k, (m+k-1)/2)
+			if L <= R {
+				res = append(res, Range{1, L, R})
+			}
+			if n >= m {
+				maxY := min3(k, n-m, m)
+				if maxY >= 0 {
+					res = append(res, Range{0, k - maxY, k})
+				}
+			}
+		} else if t == 1 {
+			if k >= 1 && n >= 2 {
+				res = append(res, Range{1, maxFunc(0, k-n/2), k - 1})
+			}
+			if k >= 1 && n >= k {
+				res = append(res, Range{0, maxFunc(0, k-(n-k)), k})
+			}
+		}
+		return res
+	}
+
+	getGW := func(t, k int) (int, int) {
+		if t == 0 {
+			return 0, k
+		}
+		if t == 1 {
+			return k, k
+		}
+		return m, k
+	}
+
+	markVisited := func(G, W, b int) {
+		for _, tk := range getTypes(G, W) {
+			if !vis[tk.t][b][tk.k] {
+				vis[tk.t][b][tk.k] = true
+				parent[tk.t][b][tk.k] = find(tk.t, b, tk.k+1)
+			}
+		}
+	}
+
+	type State struct {
+		G, W, b, dist int
+	}
+
+	queue := make([]State, 0, 1000000)
+	queue = append(queue, State{m, m, 0, 0})
+	markVisited(m, m, 0)
+
+	for len(queue) > 0 {
+		curr := queue[0]
+		queue = queue[1:]
+
+		if curr.G == 0 && curr.W == 0 && curr.b == 1 {
+			return fmt.Sprintf("%d", curr.dist)
+		}
+
+		var targets []Range
+		if curr.b == 0 {
+			for _, tk := range getTypes(curr.G, curr.W) {
+				targets = append(targets, getB0Transitions(tk.t, tk.k)...)
+			}
+		} else {
+			Gd := m - curr.G
+			Wd := m - curr.W
+			for _, tkd := range getTypes(Gd, Wd) {
+				targetsd := getB0Transitions(tkd.t, tkd.k)
+				for _, r := range targetsd {
+					var st int
+					if r.t == 0 {
+						st = 2
+					} else if r.t == 1 {
+						st = 1
+					} else if r.t == 2 {
+						st = 0
+					}
+					targets = append(targets, Range{st, m - r.R, m - r.L})
+				}
+			}
+		}
+
+		for _, r := range targets {
+			k := find(r.t, 1-curr.b, r.L)
+			for k <= r.R {
+				Gnew, Wnew := getGW(r.t, k)
+				queue = append(queue, State{Gnew, Wnew, 1 - curr.b, curr.dist + 1})
+				markVisited(Gnew, Wnew, 1-curr.b)
+				k = find(r.t, 1-curr.b, k+1)
+			}
+		}
+	}
+
+	return "-1"
 }
 
 func run(bin, input string) (string, error) {
@@ -73,21 +205,9 @@ func main() {
 	}
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	bin := os.Args[1]
-	refBin, cleanup, err := prepareReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	if cleanup != nil {
-		defer cleanup()
-	}
 	for i := 0; i < 100; i++ {
 		in := generateCase(rng)
-		exp, err := run(refBin, in)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
+		exp := solveF(in)
 		out, err := run(bin, in)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)

@@ -13,30 +13,132 @@ import (
 
 type edge struct{ u, v int }
 
+const embeddedRefSource = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func main() {
+	reader := bufio.NewReader(os.Stdin)
+	var n, k int
+	if _, err := fmt.Fscan(reader, &n, &k); err != nil {
+		return
+	}
+
+	adj := make([][]int, n+1)
+	for i := 0; i < n-1; i++ {
+		var u, v int
+		fmt.Fscan(reader, &u, &v)
+		adj[u] = append(adj[u], v)
+		adj[v] = append(adj[v], u)
+	}
+
+	MOD := 1000000007
+
+	dp := make([][]int, n+1)
+	for i := 1; i <= n; i++ {
+		dp[i] = make([]int, 2*k+1)
+	}
+
+	var dfs func(u, p int)
+	dfs = func(u, p int) {
+		dp[u][0] = 1
+		if k+1 <= 2*k {
+			dp[u][k+1] = 1
+		}
+
+		for _, v := range adj[u] {
+			if v == p {
+				continue
+			}
+			dfs(v, u)
+
+			nextDp := make([]int, 2*k+1)
+			for i := 0; i <= 2*k; i++ {
+				if dp[u][i] == 0 {
+					continue
+				}
+				for j := 0; j <= 2*k; j++ {
+					if dp[v][j] == 0 {
+						continue
+					}
+
+					cU := i
+					if i > k {
+						cU = 1000000000
+					}
+					dU := -1000000000
+					if i > k {
+						dU = i - k - 1
+					}
+
+					cV := j + 1
+					if j > k {
+						cV = 1000000000
+					}
+					dV := -1000000000
+					if j > k {
+						dV = j - k
+					}
+
+					newC := cU
+					if cV < newC {
+						newC = cV
+					}
+
+					newD := -1000000000
+					if dU != -1000000000 && dU+cV > k {
+						if dU > newD {
+							newD = dU
+						}
+					}
+					if dV != -1000000000 && dV+cU > k {
+						if dV > newD {
+							newD = dV
+						}
+					}
+
+					var newState int
+					if newD != -1000000000 {
+						newState = newD + k + 1
+					} else {
+						newState = newC
+					}
+
+					if newState <= 2*k {
+						nextDp[newState] = (nextDp[newState] + (dp[u][i]*dp[v][j])%MOD) % MOD
+					}
+				}
+			}
+			for i := 0; i <= 2*k; i++ {
+				dp[u][i] = nextDp[i]
+			}
+		}
+	}
+
+	dfs(1, 0)
+
+	ans := 0
+	for i := 0; i <= k; i++ {
+		ans = (ans + dp[1][i]) % MOD
+	}
+	fmt.Println(ans)
+}
+`
+
 func buildRef() (string, error) {
-	src := os.Getenv("REFERENCE_SOURCE_PATH")
-	if src == "" {
-		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
-	}
-	data, err := os.ReadFile(src)
-	if err != nil {
-		return "", fmt.Errorf("read reference: %v", err)
-	}
 	ref := "./refE.bin"
-	if strings.Contains(string(data), "#include") {
-		cppPath := "refE.cpp"
-		if err := os.WriteFile(cppPath, data, 0644); err != nil {
-			return "", fmt.Errorf("write cpp: %v", err)
-		}
-		cmd := exec.Command("g++", "-O2", "-o", ref, cppPath)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("build reference cpp: %v: %s", err, string(out))
-		}
-	} else {
-		cmd := exec.Command("go", "build", "-o", ref, src)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("build reference: %v: %s", err, string(out))
-		}
+	tmpGo := "refE_src.go"
+	if err := os.WriteFile(tmpGo, []byte(embeddedRefSource), 0644); err != nil {
+		return "", fmt.Errorf("write embedded source: %v", err)
+	}
+	defer os.Remove(tmpGo)
+	cmd := exec.Command("go", "build", "-o", ref, tmpGo)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("build reference: %v: %s", err, string(out))
 	}
 	return ref, nil
 }
