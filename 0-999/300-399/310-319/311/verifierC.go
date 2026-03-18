@@ -98,17 +98,29 @@ func generateCaseC(rng *rand.Rand) (string, string) {
 	for i := range c {
 		c[i] = int64(rng.Intn(50) + 1)
 	}
+	// Track current treasure values so type-2 ops respect 0 <= y < c[x].
+	curC := make([]int64, n)
+	copy(curC, c)
+
 	ops := make([]Operation, 0, m)
 	queryCount := 0
 	for i := 0; i < m; i++ {
 		typ := rng.Intn(3) + 1
+		if typ == 2 {
+			x := rng.Intn(n) + 1
+			if curC[x-1] <= 1 {
+				// Cannot reduce further while keeping value positive; pick another op type.
+				typ = 1 + 2*rng.Intn(2) // 1 or 3
+			} else {
+				y := int64(rng.Intn(int(curC[x-1]-1))) + 1 // 1 <= y < curC[x-1]
+				curC[x-1] -= y
+				ops = append(ops, Operation{typ: 2, x: x, y: y})
+				continue
+			}
+		}
 		if typ == 1 {
 			x := rng.Intn(5) + 1
 			ops = append(ops, Operation{typ: 1, x: x})
-		} else if typ == 2 {
-			x := rng.Intn(n) + 1
-			y := int64(rng.Intn(10) + 1)
-			ops = append(ops, Operation{typ: 2, x: x, y: y})
 		} else {
 			ops = append(ops, Operation{typ: 3})
 			queryCount++
