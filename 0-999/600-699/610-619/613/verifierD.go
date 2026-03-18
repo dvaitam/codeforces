@@ -13,9 +13,29 @@ type Case struct{ input string }
 
 func buildRef() (string, error) {
 	ref := "./refD.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "613D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		src = "613D.go"
+	}
+	raw, err := os.ReadFile(src)
+	if err != nil {
+		return "", fmt.Errorf("failed to read reference source %q: %v", src, err)
+	}
+	// Detect C++ by checking for #include
+	if strings.Contains(string(raw), "#include") {
+		cppSrc := "./refD.cpp"
+		if err := os.WriteFile(cppSrc, raw, 0644); err != nil {
+			return "", fmt.Errorf("failed to write C++ source: %v", err)
+		}
+		cmd := exec.Command("g++", "-O2", "-o", ref, cppSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("failed to build C++ reference: %v\n%s", err, out)
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", ref, src)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
+		}
 	}
 	return ref, nil
 }

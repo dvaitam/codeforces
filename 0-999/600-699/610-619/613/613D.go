@@ -123,35 +123,28 @@ func buildVirtualTree(nodes []int, imp []bool) (int, map[int][]Edge, bool) {
 	return root, vt, impossible
 }
 
-func solve(v int, vt map[int][]Edge, imp []bool) (int, bool) {
+func solve(v int, vt map[int][]Edge, imp []bool) (int, int) {
+	// returns (cost, activeCount) where activeCount is the number of
+	// active (open) important-node paths emerging from this subtree
 	cost := 0
-	openCnt := 0
+	active := 0
 	for _, e := range vt[v] {
-		c, open := solve(e.to, vt, imp)
+		c, a := solve(e.to, vt, imp)
 		cost += c
-		if open {
-			if e.w > 1 {
-				cost++
-			} else {
-				if imp[v] {
-					cost++
-				} else {
-					openCnt++
-				}
-			}
-		}
+		active += a
 	}
 	if imp[v] {
-		return cost, true
+		// Each active path reaching an important node needs a cut
+		cost += active
+		return cost, 1
 	}
-	if openCnt >= 2 {
+	if active >= 2 {
+		// Cut this non-important node to separate all active paths
 		cost++
-		return cost, false
+		return cost, 0
 	}
-	if openCnt == 1 {
-		return cost, true
-	}
-	return cost, false
+	// active is 0 or 1; pass through
+	return cost, active
 }
 
 func main() {
@@ -194,11 +187,9 @@ func main() {
 		if bad {
 			fmt.Fprintln(out, -1)
 		} else {
-			res, open := solve(root, vt, imp)
-			if open && !imp[root] {
-				res++
-			}
+			res, _ := solve(root, vt, imp)
 			fmt.Fprintln(out, res)
+
 		}
 		for _, x := range nodes {
 			imp[x] = false

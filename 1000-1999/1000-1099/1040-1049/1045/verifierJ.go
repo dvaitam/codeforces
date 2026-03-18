@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-const refSource = "1000-1999/1000-1099/1040-1049/1045/1045J.go"
 
 func main() {
 	if len(os.Args) != 2 {
@@ -49,35 +48,50 @@ func main() {
 }
 
 func buildReference() (string, error) {
+	refPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refPath == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+
+	// Read reference source to detect language
+	srcBytes, err := os.ReadFile(refPath)
+	if err != nil {
+		return "", fmt.Errorf("cannot read reference source: %v", err)
+	}
+	srcContent := string(srcBytes)
+
 	tmp, err := os.CreateTemp("", "1045J-ref-*")
 	if err != nil {
 		return "", err
 	}
 	tmp.Close()
 
-	src := os.Getenv("REFERENCE_SOURCE_PATH")
-	if strings.TrimSpace(src) == "" {
-		src = refSource
-	}
-	absSrc, err := filepath.Abs(src)
-	if err != nil {
-		return "", err
-	}
-	srcDir := filepath.Dir(absSrc)
-	srcFile := filepath.Base(absSrc)
-
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), srcFile)
-	cmd.Dir = srcDir
-	cmd.Env = append(os.Environ(),
-		"GO111MODULE=off",
-		"GOWORK=off",
-	)
-	var combined bytes.Buffer
-	cmd.Stdout = &combined
-	cmd.Stderr = &combined
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, combined.String())
+	if strings.Contains(srcContent, "#include") {
+		// C++ source: copy to .cpp file, compile with g++
+		cppPath := tmp.Name() + ".cpp"
+		if err := os.WriteFile(cppPath, srcBytes, 0644); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("failed to write cpp source: %v", err)
+		}
+		defer os.Remove(cppPath)
+		cmd := exec.Command("g++", "-O2", "-o", tmp.Name(), cppPath)
+		var combined bytes.Buffer
+		cmd.Stdout = &combined
+		cmd.Stderr = &combined
+		if err := cmd.Run(); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("%v\n%s", err, combined.String())
+		}
+	} else {
+		// Go source
+		cmd := exec.Command("go", "build", "-o", tmp.Name(), refPath)
+		var combined bytes.Buffer
+		cmd.Stdout = &combined
+		cmd.Stderr = &combined
+		if err := cmd.Run(); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("%v\n%s", err, combined.String())
+		}
 	}
 	return tmp.Name(), nil
 }

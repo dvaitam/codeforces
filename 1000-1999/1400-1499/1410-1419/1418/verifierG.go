@@ -18,7 +18,7 @@ func generateCase(rng *rand.Rand) string {
 		if i > 0 {
 			sb.WriteByte(' ')
 		}
-		fmt.Fprintf(&sb, "%d", rng.Intn(5)+1)
+		fmt.Fprintf(&sb, "%d", rng.Intn(n)+1)
 	}
 	sb.WriteByte('\n')
 	return sb.String()
