@@ -6,17 +6,50 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+func prepareReference() (string, func(), error) {
+	refPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refPath == "" {
+		refPath = "45F.go"
 	}
+	content, err := os.ReadFile(refPath)
+	if err != nil {
+		return "", nil, fmt.Errorf("cannot read reference at %s: %v", refPath, err)
+	}
+	if strings.Contains(string(content), "#include") {
+		tmpCpp := filepath.Join(os.TempDir(), fmt.Sprintf("ref45F_%d.cpp", time.Now().UnixNano()))
+		if err := os.WriteFile(tmpCpp, content, 0644); err != nil {
+			return "", nil, err
+		}
+		tmpBin := tmpCpp + ".bin"
+		cmd := exec.Command("g++", "-O2", "-o", tmpBin, tmpCpp)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			os.Remove(tmpCpp)
+			return "", nil, fmt.Errorf("C++ compile failed: %v\n%s", err, string(out))
+		}
+		os.Remove(tmpCpp)
+		return tmpBin, func() { os.Remove(tmpBin) }, nil
+	}
+	tmpGo := filepath.Join(os.TempDir(), fmt.Sprintf("ref45F_%d.go", time.Now().UnixNano()))
+	if err := os.WriteFile(tmpGo, content, 0644); err != nil {
+		return "", nil, err
+	}
+	tmpBin := tmpGo + ".bin"
+	cmd := exec.Command("go", "build", "-o", tmpBin, tmpGo)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(tmpGo)
+		return "", nil, fmt.Errorf("Go build failed: %v\n%s", err, string(out))
+	}
+	os.Remove(tmpGo)
+	return tmpBin, func() { os.Remove(tmpBin) }, nil
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -40,10 +73,17 @@ func main() {
 	}
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	bin := os.Args[1]
-	ref := "45F.go"
+	refBin, cleanup, err := prepareReference()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if cleanup != nil {
+		defer cleanup()
+	}
 	for i := 0; i < 100; i++ {
 		in := generateCase(rng)
-		exp, err := run(ref, in)
+		exp, err := run(refBin, in)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\n", i+1, err)
 			os.Exit(1)

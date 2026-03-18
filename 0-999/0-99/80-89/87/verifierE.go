@@ -12,13 +12,32 @@ import (
 
 type point struct{ x, y int }
 
-func buildOracle() (string, error) {
-	exe := "oracleE"
-	cmd := exec.Command("go", "build", "-o", exe, "./0-999/0-99/80-89/87/87E.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle: %v\n%s", err, out)
+func buildRef() (string, error) {
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
 	}
-	return exe, nil
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return "", fmt.Errorf("read reference: %v", err)
+	}
+	ref := "./refE.bin"
+	if strings.Contains(string(data), "#include") {
+		cppPath := "refE.cpp"
+		if err := os.WriteFile(cppPath, data, 0644); err != nil {
+			return "", fmt.Errorf("write cpp: %v", err)
+		}
+		cmd := exec.Command("g++", "-O2", "-o", ref, cppPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build reference cpp: %v: %s", err, string(out))
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", ref, src)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build reference: %v: %s", err, string(out))
+		}
+	}
+	return ref, nil
 }
 
 func genTriangle(rng *rand.Rand) []point {
@@ -66,11 +85,11 @@ func runProg(exe, input string) (string, error) {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierE.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: verifierE /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
+	oracle, err := buildRef()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -79,7 +98,7 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input := generateCase(rng)
-		exp, err := runProg("./"+oracle, input)
+		exp, err := runProg(oracle, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle failure on case %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)

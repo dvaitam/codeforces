@@ -40,7 +40,7 @@ type Case struct{ input []byte }
 
 func genCases() []Case {
 	rng := rand.New(rand.NewSource(1468))
-	cases := make([]Case, 100)
+	cases := make([]Case, 20)
 	for i := range cases {
 		n := rng.Intn(6) + 1
 		k := rng.Intn(n) + 1

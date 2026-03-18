@@ -5,13 +5,13 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
-
-const refSource = "2000-2999/2000-2099/2040-2049/2042/2042F.go"
 
 func main() {
 	if len(os.Args) != 2 {
@@ -19,15 +19,7 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	inputData, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		fail("failed to read input: %v", err)
-	}
-
-	answerCount, err := countType3Queries(inputData)
-	if err != nil {
-		fail("failed to parse input: %v", err)
-	}
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	refBin, err := buildReference()
 	if err != nil {
@@ -35,95 +27,149 @@ func main() {
 	}
 	defer os.Remove(refBin)
 
-	refOut, err := runProgram(exec.Command(refBin), inputData)
-	if err != nil {
-		fail("reference execution failed: %v", err)
-	}
-	expected, err := parseInts(refOut, answerCount)
-	if err != nil {
-		fail("invalid reference output: %v", err)
-	}
+	numCases := 30
+	for tc := 0; tc < numCases; tc++ {
+		inputData, answerCount := genCase(rng)
 
-	candOut, err := runProgram(commandFor(candidate), inputData)
-	if err != nil {
-		fail("candidate execution failed: %v", err)
-	}
-	got, err := parseInts(candOut, answerCount)
-	if err != nil {
-		fail("invalid candidate output: %v", err)
-	}
+		refOut, err := runProgram(exec.Command(refBin), inputData)
+		if err != nil {
+			fail("reference execution failed on case %d: %v", tc+1, err)
+		}
+		expected, err := parseInts(refOut, answerCount)
+		if err != nil {
+			fail("invalid reference output on case %d: %v", tc+1, err)
+		}
 
-	for i := 0; i < answerCount; i++ {
-		if got[i] != expected[i] {
-			fail("wrong answer on query %d: expected %d, got %d", i+1, expected[i], got[i])
+		candOut, err := runProgram(commandFor(candidate), inputData)
+		if err != nil {
+			fail("candidate execution failed on case %d: %v", tc+1, err)
+		}
+		got, err := parseInts(candOut, answerCount)
+		if err != nil {
+			fail("invalid candidate output on case %d: %v", tc+1, err)
+		}
+
+		for i := 0; i < answerCount; i++ {
+			if got[i] != expected[i] {
+				fail("wrong answer on case %d query %d: expected %d, got %d", tc+1, i+1, expected[i], got[i])
+			}
 		}
 	}
 
 	fmt.Println("OK")
 }
 
-func countType3Queries(data []byte) (int, error) {
-	reader := bufio.NewReader(bytes.NewReader(data))
-	var n int
-	if _, err := fmt.Fscan(reader, &n); err != nil {
-		return 0, err
-	}
+func genCase(rng *rand.Rand) ([]byte, int) {
+	n := rng.Intn(8) + 2 // 2..9
+	a := make([]int64, n)
+	b := make([]int64, n)
 	for i := 0; i < n; i++ {
-		var tmp int64
-		if _, err := fmt.Fscan(reader, &tmp); err != nil {
-			return 0, err
-		}
+		a[i] = int64(rng.Intn(201)) - 100 // -100..100
+		b[i] = int64(rng.Intn(201)) - 100
 	}
-	for i := 0; i < n; i++ {
-		var tmp int64
-		if _, err := fmt.Fscan(reader, &tmp); err != nil {
-			return 0, err
-		}
+	q := rng.Intn(10) + 1
+	type query struct {
+		t    int
+		p    int
+		x    int64
+		l, r int
 	}
-	var q int
-	if _, err := fmt.Fscan(reader, &q); err != nil {
-		return 0, err
-	}
-	cnt := 0
+	queries := make([]query, q)
+	answerCount := 0
 	for i := 0; i < q; i++ {
-		var t int
-		if _, err := fmt.Fscan(reader, &t); err != nil {
-			return 0, err
-		}
-		switch t {
-		case 1, 2:
-			var p int
-			var x int64
-			if _, err := fmt.Fscan(reader, &p, &x); err != nil {
-				return 0, err
-			}
-		case 3:
-			var l, r int
-			if _, err := fmt.Fscan(reader, &l, &r); err != nil {
-				return 0, err
-			}
-			cnt++
-		default:
-			return 0, fmt.Errorf("unknown query type %d", t)
+		t := rng.Intn(3) + 1
+		if t == 1 || t == 2 {
+			p := rng.Intn(n) + 1
+			x := int64(rng.Intn(201)) - 100
+			queries[i] = query{t: t, p: p, x: x}
+		} else {
+			l := rng.Intn(n-1) + 1
+			r := l + rng.Intn(n-l) + 1
+			queries[i] = query{t: 3, l: l, r: r}
+			answerCount++
 		}
 	}
-	return cnt, nil
+	// Ensure at least one type-3 query
+	if answerCount == 0 {
+		l := rng.Intn(n-1) + 1
+		r := l + rng.Intn(n-l) + 1
+		queries = append(queries, query{t: 3, l: l, r: r})
+		q++
+		answerCount++
+	}
+
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d\n", n)
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		fmt.Fprintf(&sb, "%d", a[i])
+	}
+	sb.WriteByte('\n')
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			sb.WriteByte(' ')
+		}
+		fmt.Fprintf(&sb, "%d", b[i])
+	}
+	sb.WriteByte('\n')
+	fmt.Fprintf(&sb, "%d\n", q)
+	for _, qr := range queries {
+		if qr.t == 1 || qr.t == 2 {
+			fmt.Fprintf(&sb, "%d %d %d\n", qr.t, qr.p, qr.x)
+		} else {
+			fmt.Fprintf(&sb, "%d %d %d\n", qr.t, qr.l, qr.r)
+		}
+	}
+	return []byte(sb.String()), answerCount
 }
 
 func buildReference() (string, error) {
+	refPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refPath == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+
+	// Read reference source to detect language
+	srcBytes, err := os.ReadFile(refPath)
+	if err != nil {
+		return "", fmt.Errorf("cannot read reference source: %v", err)
+	}
+	srcContent := string(srcBytes)
+
 	tmp, err := os.CreateTemp("", "2042F-ref-*")
 	if err != nil {
 		return "", err
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
-	var combined bytes.Buffer
-	cmd.Stdout = &combined
-	cmd.Stderr = &combined
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, combined.String())
+	if strings.Contains(srcContent, "#include") {
+		// C++ source: copy to .cpp file, compile with g++
+		cppPath := tmp.Name() + ".cpp"
+		if err := os.WriteFile(cppPath, srcBytes, 0644); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("failed to write cpp source: %v", err)
+		}
+		defer os.Remove(cppPath)
+		cmd := exec.Command("g++", "-O2", "-o", tmp.Name(), cppPath)
+		var combined bytes.Buffer
+		cmd.Stdout = &combined
+		cmd.Stderr = &combined
+		if err := cmd.Run(); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("%v\n%s", err, combined.String())
+		}
+	} else {
+		// Go source
+		cmd := exec.Command("go", "build", "-o", tmp.Name(), refPath)
+		var combined bytes.Buffer
+		cmd.Stdout = &combined
+		cmd.Stderr = &combined
+		if err := cmd.Run(); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("%v\n%s", err, combined.String())
+		}
 	}
 	return tmp.Name(), nil
 }
@@ -160,12 +206,6 @@ func parseInts(out string, expectedCount int) ([]int64, error) {
 			return nil, err
 		}
 		ans = append(ans, v)
-	}
-	var extra string
-	if _, err := fmt.Fscan(reader, &extra); err == nil {
-		return nil, fmt.Errorf("unexpected extra output token %q", extra)
-	} else if err != io.EOF {
-		return nil, err
 	}
 	return ans, nil
 }

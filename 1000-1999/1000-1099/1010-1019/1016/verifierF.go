@@ -6,24 +6,45 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
 
 func buildRef() (string, error) {
-	_, cur, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(cur)
+	srcPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if srcPath == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	// Read source to detect if it is C++.
+	data, err := os.ReadFile(srcPath)
+	if err != nil {
+		return "", fmt.Errorf("cannot read reference source: %v", err)
+	}
+	isCpp := strings.Contains(string(data), "#include")
+
 	tmp, err := os.CreateTemp("", "refF-*.bin")
 	if err != nil {
 		return "", err
 	}
 	tmp.Close()
 	path := tmp.Name()
-	cmd := exec.Command("go", "build", "-o", path, filepath.Join(dir, "1016F.go"))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build reference failed: %v\n%s", err, out)
+
+	if isCpp {
+		// Copy to a .cpp file, compile with g++.
+		cppPath := path + ".cpp"
+		if err := os.WriteFile(cppPath, data, 0644); err != nil {
+			return "", fmt.Errorf("failed to write cpp file: %v", err)
+		}
+		defer os.Remove(cppPath)
+		cmd := exec.Command("g++", "-O2", "-o", path, cppPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build C++ reference failed: %v\n%s", err, out)
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", path, srcPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build Go reference failed: %v\n%s", err, out)
+		}
 	}
 	return path, nil
 }
@@ -32,8 +53,8 @@ func run(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
-	cmd.Stdout = &out
 	cmd.Stderr = &out
+	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
@@ -41,11 +62,11 @@ func run(bin, input string) (string, error) {
 }
 
 func genCase(rng *rand.Rand) string {
-	n := rng.Intn(5) + 2
+	n := rng.Intn(5) + 3 // problem requires n >= 3
 	m := rng.Intn(5) + 1
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d %d\n", n, m)
-	// edges
+	// edges: random tree (path graph)
 	for i := 0; i < n-1; i++ {
 		u := i + 1
 		v := i + 2
@@ -61,7 +82,7 @@ func genCase(rng *rand.Rand) string {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierF.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: verifierF /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]

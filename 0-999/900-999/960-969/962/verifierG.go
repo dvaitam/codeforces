@@ -13,86 +13,39 @@ import (
 type Point struct{ x, y int }
 type Rect struct{ x1, y1, x2, y2 int }
 
-func insideRect(p Point, r Rect) bool {
-	return p.x > r.x1 && p.x < r.x2 && p.y > r.y2 && p.y < r.y1
+func buildRef() (string, error) {
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return "", fmt.Errorf("read reference: %v", err)
+	}
+	ref := "./refG.bin"
+	if strings.Contains(string(data), "#include") {
+		cppPath := "refG.cpp"
+		if err := os.WriteFile(cppPath, data, 0644); err != nil {
+			return "", fmt.Errorf("write cpp: %v", err)
+		}
+		cmd := exec.Command("g++", "-O2", "-o", ref, cppPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build reference cpp: %v: %s", err, string(out))
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", ref, src)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build reference: %v: %s", err, string(out))
+		}
+	}
+	return ref, nil
 }
 
-func pointInPolygon(pt Point, poly []Point) bool {
-	inside := false
-	n := len(poly)
-	for i, j := 0, n-1; i < n; j, i = i, i+1 {
-		xi, yi := poly[i].x, poly[i].y
-		xj, yj := poly[j].x, poly[j].y
-		if (yi > pt.y) != (yj > pt.y) {
-			if int64(pt.x-xi) < int64(xj-xi)*int64(pt.y-yi)/int64(yj-yi) {
-				inside = !inside
-			}
-		}
-	}
-	return inside
-}
-
-func solve(r Rect, poly []Point) int {
-	cross := 0
-	n := len(poly)
-	for i := 0; i < n; i++ {
-		a := poly[i]
-		b := poly[(i+1)%n]
-		ia := insideRect(a, r)
-		ib := insideRect(b, r)
-		if ia != ib {
-			cross++
-			continue
-		}
-		if ia || ib {
-			continue
-		}
-		if a.x == b.x {
-			x := a.x
-			if x > r.x1 && x < r.x2 {
-				low, high := a.y, b.y
-				if low > high {
-					low, high = high, low
-				}
-				if low < r.y2 && high > r.y2 {
-					cross++
-				}
-				if low < r.y1 && high > r.y1 {
-					cross++
-				}
-			}
-		} else if a.y == b.y {
-			y := a.y
-			if y > r.y2 && y < r.y1 {
-				low, high := a.x, b.x
-				if low > high {
-					low, high = high, low
-				}
-				if low < r.x1 && high > r.x1 {
-					cross++
-				}
-				if low < r.x2 && high > r.x2 {
-					cross++
-				}
-			}
-		}
-	}
-	if cross > 0 {
-		return cross / 2
-	}
-	center := Point{(r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2}
-	if pointInPolygon(center, poly) || insideRect(poly[0], r) {
-		return 1
-	}
-	return 0
-}
-
-func genCase(rng *rand.Rand) (string, string) {
+func genCase(rng *rand.Rand) string {
 	x1 := rng.Intn(20)
 	x2 := x1 + rng.Intn(5) + 1
 	y2 := rng.Intn(20)
 	y1 := y2 + rng.Intn(5) + 1
-	r := Rect{x1, y1, x2, y2}
 	// polygon as rectangle
 	px1 := rng.Intn(20)
 	py2 := rng.Intn(20)
@@ -100,41 +53,53 @@ func genCase(rng *rand.Rand) (string, string) {
 	py1 := py2 + rng.Intn(5) + 1
 	poly := []Point{{px1, py1}, {px2, py1}, {px2, py2}, {px1, py2}}
 	n := len(poly)
-	input := fmt.Sprintf("%d %d %d %d\n%d\n", r.x1, r.y1, r.x2, r.y2, n)
+	input := fmt.Sprintf("%d %d %d %d\n%d\n", x1, y1, x2, y2, n)
 	for _, p := range poly {
 		input += fmt.Sprintf("%d %d\n", p.x, p.y)
 	}
-	out := solve(r, poly)
-	expected := fmt.Sprintf("%d\n", out)
-	return input, expected
+	return input
 }
 
-func runCase(bin, input, expected string) error {
-	cmd := exec.Command(bin)
+func runBin(path, input string) (string, error) {
+	cmd := exec.Command(path)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	if strings.TrimSpace(out.String()) != strings.TrimSpace(expected) {
-		return fmt.Errorf("expected %s got %s", expected, out.String())
-	}
-	return nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierG.go /path/to/binary")
+		fmt.Println("usage: verifierG /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+	ref, err := buildRef()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer os.Remove(ref)
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		in, exp := genCase(rng)
-		if err := runCase(bin, in, exp); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
+		input := genCase(rng)
+		exp, err := runBin(ref, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: reference error: %v\ninput:\n%s", i+1, err, input)
+			os.Exit(1)
+		}
+		got, err := runBin(bin, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: candidate error: %v\ninput:\n%s", i+1, err, input)
+			os.Exit(1)
+		}
+		if got != exp {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, exp, got, input)
 			os.Exit(1)
 		}
 	}

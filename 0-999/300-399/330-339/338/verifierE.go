@@ -51,6 +51,12 @@ func main() {
 }
 
 func locateReference() (string, error) {
+	refPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refPath != "" {
+		if _, err := os.Stat(refPath); err == nil {
+			return refPath, nil
+		}
+	}
 	candidates := []string{
 		"338E.go",
 		filepath.Join("0-999", "300-399", "330-339", "338", "338E.go"),
@@ -64,11 +70,34 @@ func locateReference() (string, error) {
 }
 
 func buildReference(src string) (string, error) {
-	outPath := filepath.Join(os.TempDir(), fmt.Sprintf("ref338E_%d.bin", time.Now().UnixNano()))
-	cmd := exec.Command("go", "build", "-o", outPath, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, string(out))
+	content, err := os.ReadFile(src)
+	if err != nil {
+		return "", fmt.Errorf("cannot read reference: %v", err)
 	}
+	outPath := filepath.Join(os.TempDir(), fmt.Sprintf("ref338E_%d.bin", time.Now().UnixNano()))
+	if strings.Contains(string(content), "#include") {
+		tmpCpp := outPath + ".cpp"
+		if err := os.WriteFile(tmpCpp, content, 0644); err != nil {
+			return "", err
+		}
+		cmd := exec.Command("g++", "-O2", "-o", outPath, tmpCpp)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			os.Remove(tmpCpp)
+			return "", fmt.Errorf("C++ compile failed: %v\n%s", err, string(out))
+		}
+		os.Remove(tmpCpp)
+		return outPath, nil
+	}
+	tmpGo := outPath + ".go"
+	if err := os.WriteFile(tmpGo, content, 0644); err != nil {
+		return "", err
+	}
+	cmd := exec.Command("go", "build", "-o", outPath, tmpGo)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(tmpGo)
+		return "", fmt.Errorf("Go build failed: %v\n%s", err, string(out))
+	}
+	os.Remove(tmpGo)
 	return outPath, nil
 }
 

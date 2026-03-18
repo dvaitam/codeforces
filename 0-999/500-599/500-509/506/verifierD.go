@@ -13,8 +13,6 @@ import (
 )
 
 const (
-	refSourceD = "506D.go"
-	refBinaryD = "ref506D.bin"
 	totalTests = 90
 )
 
@@ -106,11 +104,35 @@ func main() {
 }
 
 func buildReference() (string, error) {
-	cmd := exec.Command("go", "build", "-o", refBinaryD, refSourceD)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("%v\n%s", err, string(out))
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
 	}
-	return filepath.Join(".", refBinaryD), nil
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return "", fmt.Errorf("read reference: %v", err)
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("getwd: %v", err)
+	}
+	ref := filepath.Join(wd, "ref506D.bin")
+	if strings.Contains(string(data), "#include") {
+		cppPath := filepath.Join(wd, "ref506D.cpp")
+		if err := os.WriteFile(cppPath, data, 0644); err != nil {
+			return "", fmt.Errorf("write cpp: %v", err)
+		}
+		cmd := exec.Command("g++", "-O2", "-o", ref, cppPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build reference cpp: %v: %s", err, string(out))
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", ref, src)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build reference: %v: %s", err, string(out))
+		}
+	}
+	return ref, nil
 }
 
 func runProgram(path string, input []byte) (string, error) {

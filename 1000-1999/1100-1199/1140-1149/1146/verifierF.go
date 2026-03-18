@@ -27,8 +27,10 @@ func solve(n int, parents []int) int {
 		p := parents[i-2]
 		children[p] = append(children[p], i)
 	}
-	leafCount := make([]int, n+1)
-	dp := make([]int, n+1)
+	// dp0[u] = partitions where no group extends through u to its parent
+	// dp1[u] = partitions where a merged group extends through u to its parent
+	dp0 := make([]int, n+1)
+	dp1 := make([]int, n+1)
 	type fr struct{ u, state int }
 	stack := []fr{{1, 0}}
 	for len(stack) > 0 {
@@ -42,25 +44,60 @@ func solve(n int, parents []int) int {
 			}
 		} else {
 			if len(children[u]) == 0 {
-				leafCount[u] = 1
-				dp[u] = 1
+				dp0[u] = 1
+				dp1[u] = 1
 			} else {
-				tot := 0
-				prod := 1
+				k := len(children[u])
+				// P = product of (dp0[ch] + dp1[ch]) for all children
+				P := 1
 				for _, ch := range children[u] {
-					tot += leafCount[ch]
-					prod = mul(prod, dp[ch])
+					P = mul(P, add(dp0[ch], dp1[ch]))
 				}
-				leafCount[u] = tot
-				if tot >= 2 {
-					dp[u] = add(prod, 1)
-				} else {
-					dp[u] = prod
+				// Z = product of dp0[ch] for all children
+				Z := 1
+				for _, ch := range children[u] {
+					Z = mul(Z, dp0[ch])
 				}
+				// S = sum over j of dp1[c_j] * product_{k!=j} dp0[c_k]
+				// Use prefix/suffix products of dp0
+				pref := make([]int, k)
+				suff := make([]int, k)
+				for j := 0; j < k; j++ {
+					ch := children[u][j]
+					if j == 0 {
+						pref[j] = dp0[ch]
+					} else {
+						pref[j] = mul(pref[j-1], dp0[ch])
+					}
+				}
+				for j := k - 1; j >= 0; j-- {
+					ch := children[u][j]
+					if j == k-1 {
+						suff[j] = dp0[ch]
+					} else {
+						suff[j] = mul(suff[j+1], dp0[ch])
+					}
+				}
+				S := 0
+				for j := 0; j < k; j++ {
+					ch := children[u][j]
+					term := dp1[ch]
+					if j > 0 {
+						term = mul(term, pref[j-1])
+					}
+					if j < k-1 {
+						term = mul(term, suff[j+1])
+					}
+					S = add(S, term)
+				}
+				// dp0 = P - S (zero open + 2+ open that merge and close)
+				dp0[u] = (P - S%mod + mod) % mod
+				// dp1 = P - Z (at least one open child, group extends through u)
+				dp1[u] = (P - Z%mod + mod) % mod
 			}
 		}
 	}
-	return dp[1]
+	return dp0[1]
 }
 
 func genCase(rng *rand.Rand) (string, string) {

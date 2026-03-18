@@ -116,109 +116,6 @@ type testCase struct {
 	frags []string
 }
 
-func normalizeFrags(frags []string, n int) []string {
-	res := append([]string(nil), frags...)
-	m := 2*n - 2
-	if len(res) > m {
-		res = res[:m]
-	}
-	for len(res) < m {
-		res = append(res, "")
-	}
-	count := 0
-	var longest string
-	placeholder := "a"
-	if n > 1 {
-		placeholder = strings.Repeat("a", n-1)
-	}
-	for _, s := range res {
-		if len(s) == n-1 {
-			count++
-		}
-		if len(s) > len(longest) {
-			longest = s
-		}
-	}
-	if longest == "" {
-		longest = placeholder
-	}
-	for i := 0; count < 2 && i < len(res); i++ {
-		if len(res[i]) != n-1 {
-			res[i] = placeholder
-			count++
-		}
-	}
-	return res
-}
-
-// solve mirrors the logic from 1092C.go for a single test case.
-func solve(n int, inputs []string) string {
-	frags := normalizeFrags(inputs, n)
-	m := len(frags)
-	var lenNminus []string
-	for _, s := range frags {
-		if len(s) == n-1 {
-			lenNminus = append(lenNminus, s)
-		}
-	}
-	candidates := make([]string, 0, len(lenNminus)*len(lenNminus))
-	for i := 0; i < len(lenNminus); i++ {
-		for j := 0; j < len(lenNminus); j++ {
-			if i == j {
-				continue
-			}
-			s1, s2 := lenNminus[i], lenNminus[j]
-			candidates = append(candidates, s1+string(s2[len(s2)-1]))
-		}
-	}
-	if len(candidates) == 0 {
-		longest := []string{"", ""}
-		for _, s := range frags {
-			if len(s) > len(longest[0]) {
-				longest[1] = longest[0]
-				longest[0] = s
-			} else if len(s) > len(longest[1]) {
-				longest[1] = s
-			}
-		}
-		s1, s2 := longest[0], longest[1]
-		if s2 == "" {
-			s2 = s1
-		}
-		candidates = append(candidates, s1+string(s2[len(s2)-1]))
-		candidates = append(candidates, s2+string(s1[len(s1)-1]))
-	}
-	for _, cand := range candidates {
-		res := make([]byte, m)
-		if testCandidate(cand, frags, res) {
-			return string(res)
-		}
-	}
-	// Fallback (should not happen): mark all as 'P'.
-	res := bytes.Repeat([]byte{'P'}, m)
-	return string(res)
-}
-
-func testCandidate(pref string, inputs []string, res []byte) bool {
-	used := make(map[string]int)
-	for i, s := range inputs {
-		if hasSuffix(pref, s) {
-			if used[s] == 0 {
-				res[i] = 'S'
-				used[s] = 1
-			} else {
-				res[i] = 'P'
-				used[s]++
-			}
-		} else if hasPrefix(pref, s) {
-			res[i] = 'P'
-		} else {
-			return false
-		}
-	}
-	return true
-}
-
 func hasPrefix(s, t string) bool {
 	if len(s) < len(t) {
 		return false
@@ -231,6 +128,110 @@ func hasSuffix(s, t string) bool {
 		return false
 	}
 	return s[len(s)-len(t):] == t
+}
+
+// validateAnswer checks whether the candidate's P/S assignment is valid:
+// there must exist a string of length n such that each fragment marked P is a
+// prefix and each fragment marked S is a suffix, with exactly one P and one S
+// per length.
+func validateAnswer(n int, frags []string, answer string) error {
+	m := len(frags)
+	if len(answer) != m {
+		return fmt.Errorf("answer length %d != expected %d", len(answer), m)
+	}
+	for _, ch := range answer {
+		if ch != 'P' && ch != 'S' {
+			return fmt.Errorf("invalid character %q in answer", ch)
+		}
+	}
+
+	// Identify the two longest fragments (length n-1). One must be P, one S.
+	// Build the candidate string from them.
+	var longestP, longestS string
+	for i, ch := range answer {
+		if len(frags[i]) == n-1 {
+			if ch == 'P' {
+				longestP = frags[i]
+			} else {
+				longestS = frags[i]
+			}
+		}
+	}
+	if longestP == "" || longestS == "" {
+		return fmt.Errorf("no length-%d fragment assigned as P or S", n-1)
+	}
+	// The candidate string: prefix of length n-1 determines first n-1 chars,
+	// suffix of length n-1 determines last n-1 chars. They must agree on the
+	// overlapping n-2 chars.
+	if n >= 3 && longestP[1:] != longestS[:n-2] {
+		return fmt.Errorf("longest P %q and S %q overlap mismatch", longestP, longestS)
+	}
+	s := longestP + string(longestS[n-2])
+
+	// Now verify every fragment against s.
+	for i, ch := range answer {
+		frag := frags[i]
+		if ch == 'P' {
+			if !hasPrefix(s, frag) {
+				return fmt.Errorf("fragment %d %q marked P but is not prefix of %q", i, frag, s)
+			}
+		} else {
+			if !hasSuffix(s, frag) {
+				return fmt.Errorf("fragment %d %q marked S but is not suffix of %q", i, frag, s)
+			}
+		}
+	}
+
+	// Check that each length from 1..n-1 has exactly one P and one S.
+	pCount := make(map[int]int)
+	sCount := make(map[int]int)
+	for i, ch := range answer {
+		l := len(frags[i])
+		if ch == 'P' {
+			pCount[l]++
+		} else {
+			sCount[l]++
+		}
+	}
+	for l := 1; l < n; l++ {
+		if pCount[l]+sCount[l] != 2 {
+			// The test data may not have exactly 2 of each length; skip this check
+			// if the total count for this length isn't 2.
+			continue
+		}
+		if pCount[l] != 1 || sCount[l] != 1 {
+			return fmt.Errorf("length %d: P=%d S=%d, expected 1 each", l, pCount[l], sCount[l])
+		}
+	}
+	return nil
+}
+
+func normalizeFrags(frags []string, n int) []string {
+	res := append([]string(nil), frags...)
+	m := 2*n - 2
+	if len(res) > m {
+		res = res[:m]
+	}
+	for len(res) < m {
+		res = append(res, "")
+	}
+	count := 0
+	placeholder := "a"
+	if n > 1 {
+		placeholder = strings.Repeat("a", n-1)
+	}
+	for _, s := range res {
+		if len(s) == n-1 {
+			count++
+		}
+	}
+	for i := 0; count < 2 && i < len(res); i++ {
+		if len(res[i]) != n-1 {
+			res[i] = placeholder
+			count++
+		}
+	}
+	return res
 }
 
 func parseTestCases(data string) ([]testCase, error) {
@@ -285,12 +286,11 @@ func runCase(bin string, tc testCase) error {
 		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
 	got := strings.TrimSpace(out.String())
-	expected := solve(tc.n, frags)
-	if len(got) != len(expected) || strings.Contains(got, "\x00") {
-		got = expected
-	}
-	if got != expected {
-		return fmt.Errorf("expected %s got %s", expected, got)
+
+	// Validate the candidate's answer instead of comparing to one specific solution,
+	// because multiple valid P/S assignments may exist.
+	if err := validateAnswer(tc.n, frags, got); err != nil {
+		return fmt.Errorf("invalid answer %q: %v", got, err)
 	}
 	return nil
 }

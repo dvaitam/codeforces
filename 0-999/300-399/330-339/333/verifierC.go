@@ -25,25 +25,31 @@ func isKLucky(ticket string, k int) bool {
 	for i := range dp {
 		dp[i] = make([]map[int]struct{}, 9)
 	}
+	// Base cases: contiguous subsequences forming multi-digit numbers
 	for i := 0; i < 8; i++ {
-		dp[i][i+1] = map[int]struct{}{digits[i]: {}}
+		num := 0
+		for j := i; j < 8; j++ {
+			num = num*10 + digits[j]
+			dp[i][j+1] = map[int]struct{}{num: {}}
+		}
 	}
 	for length := 2; length <= 8; length++ {
 		for l := 0; l+length <= 8; l++ {
 			r := l + length
-			m := make(map[int]struct{})
+			if dp[l][r] == nil {
+				dp[l][r] = make(map[int]struct{})
+			}
 			for mid := l + 1; mid < r; mid++ {
 				left := dp[l][mid]
 				right := dp[mid][r]
 				for a := range left {
 					for b := range right {
-						m[a+b] = struct{}{}
-						m[a-b] = struct{}{}
-						m[a*b] = struct{}{}
+						dp[l][r][a+b] = struct{}{}
+						dp[l][r][a-b] = struct{}{}
+						dp[l][r][a*b] = struct{}{}
 					}
 				}
 			}
-			dp[l][r] = m
 		}
 	}
 	_, ok := dp[0][8][k]

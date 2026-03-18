@@ -6,12 +6,52 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
+var refBin string
+
+func prepareReference() (string, func(), error) {
+	refPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refPath == "" {
+		refPath = "39K.go"
+	}
+	content, err := os.ReadFile(refPath)
+	if err != nil {
+		return "", nil, fmt.Errorf("cannot read reference at %s: %v", refPath, err)
+	}
+	if strings.Contains(string(content), "#include") {
+		tmpCpp := filepath.Join(os.TempDir(), fmt.Sprintf("ref39K_%d.cpp", time.Now().UnixNano()))
+		if err := os.WriteFile(tmpCpp, content, 0644); err != nil {
+			return "", nil, err
+		}
+		tmpBinPath := tmpCpp + ".bin"
+		cmd := exec.Command("g++", "-O2", "-o", tmpBinPath, tmpCpp)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			os.Remove(tmpCpp)
+			return "", nil, fmt.Errorf("C++ compile failed: %v\n%s", err, string(out))
+		}
+		os.Remove(tmpCpp)
+		return tmpBinPath, func() { os.Remove(tmpBinPath) }, nil
+	}
+	tmpGo := filepath.Join(os.TempDir(), fmt.Sprintf("ref39K_%d.go", time.Now().UnixNano()))
+	if err := os.WriteFile(tmpGo, content, 0644); err != nil {
+		return "", nil, err
+	}
+	tmpBinPath := tmpGo + ".bin"
+	cmd := exec.Command("go", "build", "-o", tmpBinPath, tmpGo)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(tmpGo)
+		return "", nil, fmt.Errorf("Go build failed: %v\n%s", err, string(out))
+	}
+	os.Remove(tmpGo)
+	return tmpBinPath, func() { os.Remove(tmpBinPath) }, nil
+}
+
 func solveK(input string) string {
-	cmd := exec.Command("go", "run", "39K.go")
+	cmd := exec.Command(refBin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -86,6 +126,16 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+	var cleanup func()
+	var err error
+	refBin, cleanup, err = prepareReference()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to prepare reference: %v\n", err)
+		os.Exit(1)
+	}
+	if cleanup != nil {
+		defer cleanup()
+	}
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	cases := make([]string, 100)
 	for i := 0; i < 100; i++ {

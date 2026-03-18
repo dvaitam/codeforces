@@ -319,7 +319,26 @@ func main() {
 			fmt.Printf("test %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if got != expect {
+		// Compare numerically with tolerance rather than exact string match,
+		// because different floating-point approaches may diverge in the last digit.
+		if expect == "" && got == "" {
+			continue
+		}
+		if (expect == "") != (got == "") {
+			fmt.Printf("Test %d failed:\ninput:\n%s\nexpected:\n%q\ngot:\n%q\n", idx+1, input, expect, got)
+			os.Exit(1)
+		}
+		var ex, ey, gx, gy float64
+		if _, err := fmt.Sscanf(expect, "%f %f", &ex, &ey); err != nil {
+			fmt.Printf("Test %d: failed to parse expected %q: %v\n", idx+1, expect, err)
+			os.Exit(1)
+		}
+		if _, err := fmt.Sscanf(got, "%f %f", &gx, &gy); err != nil {
+			fmt.Printf("Test %d: failed to parse got %q: %v\n", idx+1, got, err)
+			os.Exit(1)
+		}
+		const tol = 1e-3
+		if math.Abs(ex-gx) > tol || math.Abs(ey-gy) > tol {
 			fmt.Printf("Test %d failed:\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", idx+1, input, expect, got)
 			os.Exit(1)
 		}

@@ -6,38 +6,10 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
-
-func runBinary(path, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	} else {
-		cmd = exec.Command(path)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
-}
-
-func buildOracle() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	exe := filepath.Join(dir, "oracleD")
-	src := filepath.Join(dir, "778D.go")
-	cmd := exec.Command("go", "build", "-o", exe, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle: %v\n%s", err, out)
-	}
-	return exe, nil
-}
 
 func genGrid(rng *rand.Rand, n, m int) []string {
 	g := make([][]byte, n)
@@ -80,34 +52,120 @@ func genCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
+// checkAnswer verifies that the candidate output is a valid transformation
+// from grid1 to grid2 via the given sequence of operations.
+func checkAnswer(n, m int, grid1 [][]byte, grid2 [][]byte, output string) error {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) == 0 {
+		return fmt.Errorf("empty output")
+	}
+	cnt, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+	if err != nil {
+		return fmt.Errorf("cannot parse count: %v", err)
+	}
+	if cnt == -1 {
+		// Candidate says impossible. Check if it's actually possible by
+		// seeing if the reference can solve it. Since genCase always produces
+		// valid domino tilings with same dimensions, a solution always exists.
+		return fmt.Errorf("candidate says -1 but solution should exist")
+	}
+	if len(lines) != cnt+1 {
+		return fmt.Errorf("expected %d operation lines, got %d", cnt, len(lines)-1)
+	}
+
+	// Apply operations to grid1
+	g := make([][]byte, n)
+	for i := range g {
+		g[i] = make([]byte, m)
+		copy(g[i], grid1[i])
+	}
+
+	for idx := 1; idx <= cnt; idx++ {
+		parts := strings.Fields(strings.TrimSpace(lines[idx]))
+		if len(parts) != 2 {
+			return fmt.Errorf("op %d: expected 2 values, got %d", idx, len(parts))
+		}
+		r, err1 := strconv.Atoi(parts[0])
+		c, err2 := strconv.Atoi(parts[1])
+		if err1 != nil || err2 != nil {
+			return fmt.Errorf("op %d: parse error", idx)
+		}
+		r-- // 1-indexed to 0-indexed
+		c--
+		if r < 0 || r+1 >= n || c < 0 || c+1 >= m {
+			return fmt.Errorf("op %d: (%d,%d) out of bounds", idx, r+1, c+1)
+		}
+		// Check that the 2x2 block is a valid state to flip
+		a, b := g[r][c], g[r][c+1]
+		d, e := g[r+1][c], g[r+1][c+1]
+		if a == 'L' && b == 'R' && d == 'L' && e == 'R' {
+			// horizontal pair -> vertical pair
+			g[r][c], g[r][c+1] = 'U', 'U'
+			g[r+1][c], g[r+1][c+1] = 'D', 'D'
+		} else if a == 'U' && b == 'U' && d == 'D' && e == 'D' {
+			// vertical pair -> horizontal pair
+			g[r][c], g[r][c+1] = 'L', 'R'
+			g[r+1][c], g[r+1][c+1] = 'L', 'R'
+		} else {
+			return fmt.Errorf("op %d: invalid 2x2 block at (%d,%d): %c%c/%c%c", idx, r+1, c+1, a, b, d, e)
+		}
+	}
+
+	// Check final grid matches grid2
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			if g[i][j] != grid2[i][j] {
+				return fmt.Errorf("after ops, grid[%d][%d]=%c but target=%c", i, j, g[i][j], grid2[i][j])
+			}
+		}
+	}
+	return nil
+}
+
+func parseInput(input string) (int, int, [][]byte, [][]byte) {
+	lines := strings.Split(strings.TrimSpace(input), "\n")
+	parts := strings.Fields(lines[0])
+	n, _ := strconv.Atoi(parts[0])
+	m, _ := strconv.Atoi(parts[1])
+	g1 := make([][]byte, n)
+	for i := 0; i < n; i++ {
+		g1[i] = []byte(strings.TrimSpace(lines[1+i]))
+	}
+	g2 := make([][]byte, n)
+	for i := 0; i < n; i++ {
+		g2[i] = []byte(strings.TrimSpace(lines[1+n+i]))
+	}
+	return n, m, g1, g2
+}
+
+func runBinary(path, input string) (string, error) {
+	cmd := exec.Command(path)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	err := cmd.Run()
+	return strings.TrimSpace(out.String()), err
+}
+
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierD.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: verifierD /path/to/binary")
 		os.Exit(1)
 	}
 	candidate := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for t := 0; t < 100; t++ {
 		input := genCase(rng)
 		candOut, cErr := runBinary(candidate, input)
-		refOut, rErr := runBinary(oracle, input)
 		if cErr != nil {
 			fmt.Fprintf(os.Stderr, "case %d: candidate error: %v\ninput:\n%s", t+1, cErr, input)
 			os.Exit(1)
 		}
-		if rErr != nil {
-			fmt.Fprintf(os.Stderr, "case %d: oracle error: %v\ninput:\n%s", t+1, rErr, input)
-			os.Exit(1)
-		}
-		if candOut != refOut {
-			fmt.Fprintf(os.Stderr, "case %d failed\ninput:\n%s\nexpected:%s\nactual:%s\n", t+1, input, refOut, candOut)
+		n, m, g1, g2 := parseInput(input)
+		if err := checkAnswer(n, m, g1, g2, candOut); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s\noutput:\n%s\n", t+1, err, input, candOut)
 			os.Exit(1)
 		}
 	}
