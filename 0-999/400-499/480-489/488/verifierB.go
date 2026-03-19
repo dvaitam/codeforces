@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -13,20 +15,56 @@ import (
 )
 
 func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
 	return strings.TrimSpace(out.String()), nil
+}
+
+func buildReference() (string, error) {
+	srcPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if srcPath == "" {
+		_, file, _, ok := runtime.Caller(0)
+		if !ok {
+			return "", fmt.Errorf("cannot determine verifier directory and REFERENCE_SOURCE_PATH not set")
+		}
+		srcPath = filepath.Join(filepath.Dir(file), "488B.go")
+	}
+	content, err := os.ReadFile(srcPath)
+	if err != nil {
+		return "", fmt.Errorf("read reference source: %v", err)
+	}
+	tmp, err := os.CreateTemp("", "488B-ref-*")
+	if err != nil {
+		return "", err
+	}
+	tmp.Close()
+	if strings.Contains(string(content), "#include") {
+		cppPath := tmp.Name() + ".cpp"
+		if err := os.WriteFile(cppPath, content, 0644); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("write cpp: %v", err)
+		}
+		defer os.Remove(cppPath)
+		cmd := exec.Command("g++", "-O2", "-o", tmp.Name(), cppPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("%v\n%s", err, string(out))
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", tmp.Name(), srcPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("%v\n%s", err, string(out))
+		}
+	}
+	return tmp.Name(), nil
 }
 
 func generateCase(rng *rand.Rand) string {
@@ -47,7 +85,12 @@ func main() {
 	}
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	bin := os.Args[1]
-	ref := "488B.go"
+	refBin, err := buildReference()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
+		os.Exit(1)
+	}
+	defer os.Remove(refBin)
 	var cases []string
 	// simple deterministic cases
 	cases = append(cases, "0\n")
@@ -56,7 +99,7 @@ func main() {
 		cases = append(cases, generateCase(rng))
 	}
 	for i, in := range cases {
-		exp, err := run(ref, in)
+		exp, err := run(refBin, in)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\n", i+1, err)
 			os.Exit(1)

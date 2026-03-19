@@ -11,12 +11,31 @@ import (
 )
 
 func buildRef() (string, error) {
-	ref := "./refF.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1945F.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
 	}
-	return ref, nil
+	content, err := os.ReadFile(refSrc)
+	if err != nil {
+		return "", fmt.Errorf("read reference source: %v", err)
+	}
+	bin := os.TempDir() + "/1945F_ref.bin"
+	if strings.Contains(string(content), "#include") {
+		cppSrc := os.TempDir() + "/1945F_ref.cpp"
+		if err := os.WriteFile(cppSrc, content, 0644); err != nil {
+			return "", fmt.Errorf("write cpp source: %v", err)
+		}
+		cmd := exec.Command("g++", "-O2", "-o", bin, cppSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build c++ reference failed: %v\n%s", err, string(out))
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", bin, refSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
+		}
+	}
+	return bin, nil
 }
 
 func generatePerm(rng *rand.Rand, n int) []int {
@@ -82,7 +101,7 @@ func runCase(exe, ref, input string) error {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierF.go /path/to/binary")
+		fmt.Println("usage: verifierF /path/to/binary")
 		os.Exit(1)
 	}
 	exe := os.Args[1]

@@ -11,12 +11,31 @@ import (
 )
 
 func buildRef() (string, error) {
-	ref := "./refD.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1603D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
 	}
-	return ref, nil
+	content, err := os.ReadFile(refSrc)
+	if err != nil {
+		return "", fmt.Errorf("read reference source: %v", err)
+	}
+	bin := os.TempDir() + "/1603D_ref.bin"
+	if strings.Contains(string(content), "#include") {
+		cppSrc := os.TempDir() + "/1603D_ref.cpp"
+		if err := os.WriteFile(cppSrc, content, 0644); err != nil {
+			return "", fmt.Errorf("write cpp source: %v", err)
+		}
+		cmd := exec.Command("g++", "-O2", "-o", bin, cppSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build c++ reference failed: %v\n%s", err, string(out))
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", bin, refSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
+		}
+	}
+	return bin, nil
 }
 
 func generateCase(rng *rand.Rand) string {
@@ -26,24 +45,7 @@ func generateCase(rng *rand.Rand) string {
 }
 
 func runCmd(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		tmp, err := os.CreateTemp("", "candidate-*")
-		if err != nil {
-			return "", err
-		}
-		tmp.Close()
-		exe := tmp.Name()
-		build := exec.Command("go", "build", "-o", exe, bin)
-		if out, err := build.CombinedOutput(); err != nil {
-			os.Remove(exe)
-			return "", fmt.Errorf("build error: %v\n%s", err, out)
-		}
-		defer os.Remove(exe)
-		cmd = exec.Command(exe)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -72,7 +74,7 @@ func runCase(exe, ref, input string) error {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierD.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: verifierD /path/to/binary")
 		os.Exit(1)
 	}
 	exe := os.Args[1]

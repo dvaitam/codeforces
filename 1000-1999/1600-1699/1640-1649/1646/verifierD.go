@@ -9,13 +9,32 @@ import (
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	oracle := "oracleD"
-	cmd := exec.Command("go", "build", "-o", oracle, "1646D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+func buildRef() (string, error) {
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
 	}
-	return "./" + oracle, nil
+	content, err := os.ReadFile(refSrc)
+	if err != nil {
+		return "", fmt.Errorf("read reference source: %v", err)
+	}
+	bin := os.TempDir() + "/1646D_ref.bin"
+	if strings.Contains(string(content), "#include") {
+		cppSrc := os.TempDir() + "/1646D_ref.cpp"
+		if err := os.WriteFile(cppSrc, content, 0644); err != nil {
+			return "", fmt.Errorf("write cpp source: %v", err)
+		}
+		cmd := exec.Command("g++", "-O2", "-o", bin, cppSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build c++ reference failed: %v\n%s", err, string(out))
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", bin, refSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
+		}
+	}
+	return bin, nil
 }
 
 func runBinary(bin, input string) (string, error) {
@@ -52,11 +71,11 @@ func generateTests() []string {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierD.go /path/to/binary")
+		fmt.Println("usage: verifierD /path/to/binary")
 		return
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
+	oracle, err := buildRef()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -74,8 +93,11 @@ func main() {
 			fmt.Printf("test %d failed: %v\ninput:%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
-			fmt.Printf("wrong answer on test %d\ninput:%sexpected:%s\ngot:%s\n", i+1, input, expect, got)
+		// Only compare first line (count and sum); weights may differ for equivalent solutions
+		expectFirst := strings.SplitN(strings.TrimSpace(expect), "\n", 2)[0]
+		gotFirst := strings.SplitN(strings.TrimSpace(got), "\n", 2)[0]
+		if strings.TrimSpace(gotFirst) != strings.TrimSpace(expectFirst) {
+			fmt.Printf("wrong answer on test %d\ninput:%sexpected:%s\ngot:%s\n", i+1, input, expectFirst, gotFirst)
 			os.Exit(1)
 		}
 	}

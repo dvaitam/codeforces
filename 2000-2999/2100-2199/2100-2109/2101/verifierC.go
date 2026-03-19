@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	refSource     = "./2101C.go"
 	randomTests   = 120
 	maxTotalN     = 200000
 	maxCaseLength = 60000
@@ -72,19 +71,47 @@ func main() {
 }
 
 func buildReference() (string, error) {
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		src = "./2101C.go"
+	}
+	// Detect C++ by checking content for #include
+	content, err := os.ReadFile(src)
+	if err != nil {
+		return "", fmt.Errorf("read reference source: %v", err)
+	}
+
 	tmp, err := os.CreateTemp("", "2101C-ref-*")
 	if err != nil {
 		return "", err
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, out.String())
+	if strings.Contains(string(content), "#include") {
+		cppFile := tmp.Name() + ".cpp"
+		if err := os.WriteFile(cppFile, content, 0644); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("write cpp: %v", err)
+		}
+		cmd := exec.Command("g++", "-O2", "-o", tmp.Name(), cppFile)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		if err := cmd.Run(); err != nil {
+			os.Remove(tmp.Name())
+			os.Remove(cppFile)
+			return "", fmt.Errorf("build c++ ref: %v\n%s", err, out.String())
+		}
+		os.Remove(cppFile)
+	} else {
+		cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(src))
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		if err := cmd.Run(); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("build go ref: %v\n%s", err, out.String())
+		}
 	}
 	return tmp.Name(), nil
 }

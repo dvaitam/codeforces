@@ -14,47 +14,128 @@ import (
 const negInf = math.MinInt64 / 4
 
 func solve(l int, a []int64, s string) int64 {
-	dp1 := make([][]int64, l)
-	for i := range dp1 {
-		dp1[i] = make([]int64, l)
-		for j := range dp1[i] {
-			dp1[i][j] = negInf
+	// dp[i][j][k] = max score to reduce substring s[i..j] (0-indexed) to a palindrome of length k
+	// E[i][j] = max score to completely remove s[i..j]
+	dp := make([][][]int64, l)
+	for i := range dp {
+		dp[i] = make([][]int64, l)
+		for j := range dp[i] {
+			dp[i][j] = make([]int64, l+1)
+			for k := range dp[i][j] {
+				dp[i][j][k] = negInf
+			}
 		}
 	}
+	E := make([][]int64, l+1)
+	for i := range E {
+		E[i] = make([]int64, l)
+		for j := range E[i] {
+			E[i][j] = negInf
+		}
+	}
+	// Base: empty intervals
+	// E[i][i-1] = 0 means empty interval is "fully removed" with score 0
+	// We handle this via the loop below.
+
 	for i := 0; i < l; i++ {
+		dp[i][i][1] = 0 // s[i..i] is already a palindrome of length 1, no cost yet
 		if a[1] >= 0 {
-			dp1[i][i] = a[1]
+			E[i][i] = a[1] // delete single char palindrome
 		}
 	}
+
 	for length := 2; length <= l; length++ {
 		for i := 0; i+length-1 < l; i++ {
 			j := i + length - 1
-			if s[i] == s[j] && a[length] >= 0 {
-				if length == 2 {
-					dp1[i][j] = max64(dp1[i][j], a[length])
-				} else if dp1[i+1][j-1] > negInf {
-					dp1[i][j] = max64(dp1[i][j], dp1[i+1][j-1]+a[length])
+
+			for k := 1; k <= length; k++ {
+				res := int64(negInf)
+
+				// Option 1: strip a completely deleted prefix
+				for m := i; m < j; m++ {
+					v1 := E[i][m]
+					if v1 != negInf {
+						v2 := dp[m+1][j][k]
+						if v2 != negInf && v1+v2 > res {
+							res = v1 + v2
+						}
+					}
+				}
+
+				// Option 2: strip a completely deleted suffix
+				for m := i + 1; m <= j; m++ {
+					v1 := dp[i][m-1][k]
+					if v1 != negInf {
+						v2 := E[m][j]
+						if v2 != negInf && v1+v2 > res {
+							res = v1 + v2
+						}
+					}
+				}
+
+				// Option 3: match outer characters of palindrome
+				if s[i] == s[j] {
+					if k == 2 {
+						// inner part [i+1..j-1] must be fully removed
+						if i+1 > j-1 {
+							// nothing inside
+							if int64(0) > res {
+								res = 0
+							}
+						} else {
+							v := E[i+1][j-1]
+							if v != negInf && v > res {
+								res = v
+							}
+						}
+					} else if k > 2 {
+						v := dp[i+1][j-1][k-2]
+						if v != negInf && v > res {
+							res = v
+						}
+					}
+				}
+
+				dp[i][j][k] = res
+			}
+
+			// Compute E[i][j]
+			resE := int64(negInf)
+			// From a single palindrome of length k
+			for k := 1; k <= length; k++ {
+				if dp[i][j][k] != negInf && a[k] >= 0 {
+					if dp[i][j][k]+a[k] > resE {
+						resE = dp[i][j][k] + a[k]
+					}
 				}
 			}
-			for k := i; k < j; k++ {
-				if dp1[i][k] > negInf && dp1[k+1][j] > negInf {
-					dp1[i][j] = max64(dp1[i][j], dp1[i][k]+dp1[k+1][j])
+			// Split into two fully deleted parts
+			for m := i; m < j; m++ {
+				v1 := E[i][m]
+				if v1 != negInf {
+					v2 := E[m+1][j]
+					if v2 != negInf && v1+v2 > resE {
+						resE = v1 + v2
+					}
 				}
 			}
+			E[i][j] = resE
 		}
 	}
-	dp2 := make([]int64, l+1)
+
+	// F[i] = max score for first i characters (s[0..i-1])
+	F := make([]int64, l+1)
 	for i := 1; i <= l; i++ {
-		dp2[i] = dp2[i-1]
+		F[i] = F[i-1]
 		for j := 0; j < i; j++ {
-			if dp1[j][i-1] > negInf {
-				if dp2[j]+dp1[j][i-1] > dp2[i] {
-					dp2[i] = dp2[j] + dp1[j][i-1]
+			if E[j][i-1] != negInf {
+				if F[j]+E[j][i-1] > F[i] {
+					F[i] = F[j] + E[j][i-1]
 				}
 			}
 		}
 	}
-	return dp2[l]
+	return F[l]
 }
 
 func max64(a, b int64) int64 {

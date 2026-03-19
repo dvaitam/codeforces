@@ -6,14 +6,35 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
 func buildReference() (string, error) {
-	ref := "refG1.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1702G1.go")
-	if err := cmd.Run(); err != nil {
-		return "", err
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		src = "1702G1.go"
+	}
+	// Detect C++ by checking content for #include
+	content, err := os.ReadFile(src)
+	if err != nil {
+		return "", fmt.Errorf("read reference source: %v", err)
+	}
+	ref := filepath.Join(os.TempDir(), "refG1.bin")
+	if strings.Contains(string(content), "#include") {
+		cppFile := filepath.Join(os.TempDir(), "refG1.cpp")
+		if err := os.WriteFile(cppFile, content, 0644); err != nil {
+			return "", fmt.Errorf("write cpp: %v", err)
+		}
+		cmd := exec.Command("g++", "-O2", "-o", ref, cppFile)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build c++ ref: %v\n%s", err, out)
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", ref, src)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build go ref: %v\n%s", err, out)
+		}
 	}
 	return ref, nil
 }
@@ -50,7 +71,9 @@ func main() {
 		fmt.Fprintln(&input)
 	}
 
-	expOut, err := exec.Command("./" + ref).CombinedOutput()
+	refCmd := exec.Command(ref)
+	refCmd.Stdin = bytes.NewReader(input.Bytes())
+	expOut, err := refCmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("failed to run reference solution:", err)
 		os.Exit(1)

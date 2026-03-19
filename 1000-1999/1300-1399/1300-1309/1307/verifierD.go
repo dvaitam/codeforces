@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -12,12 +13,7 @@ import (
 )
 
 func runCandidate(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
@@ -52,7 +48,7 @@ func bfs(start, n int, adj [][]int) []int {
 }
 
 func solve(input string) string {
-	in := strings.NewReader(input)
+	in := bufio.NewReader(strings.NewReader(input))
 	var n, m, k int
 	fmt.Fscan(in, &n, &m, &k)
 	special := make([]int, k)
@@ -73,9 +69,9 @@ func solve(input string) string {
 		return d1[special[i]]-d2[special[i]] < d1[special[j]]-d2[special[j]]
 	})
 	best := 0
-	mxD1 := -1000000000
+	mxD1 := -1
 	for _, u := range special {
-		if mxD1 > -1000000000 {
+		if mxD1 >= 0 {
 			cand := mxD1 + d2[u] + 1
 			if cand > best {
 				best = cand
@@ -85,10 +81,7 @@ func solve(input string) string {
 			mxD1 = d1[u]
 		}
 	}
-	if best > L0 {
-		best = L0
-	}
-	if best == 0 {
+	if best > L0 || best == 0 {
 		best = L0
 	}
 	return fmt.Sprintf("%d", best)
@@ -96,8 +89,16 @@ func solve(input string) string {
 
 func generateCase(rng *rand.Rand) (string, string) {
 	n := rng.Intn(6) + 2
-	m := n - 1 + rng.Intn(n)
+	maxEdges := n * (n - 1) / 2
+	extra := rng.Intn(n)
+	m := n - 1 + extra
+	if m > maxEdges {
+		m = maxEdges
+	}
 	k := rng.Intn(n-1) + 2
+	if k > n {
+		k = n
+	}
 	adjSet := make(map[[2]int]struct{})
 	edges := make([][2]int, 0, m)
 	// build tree
@@ -107,20 +108,25 @@ func generateCase(rng *rand.Rand) (string, string) {
 		adjSet[[2]int{i, j}] = struct{}{}
 		adjSet[[2]int{j, i}] = struct{}{}
 	}
-	// add extra edges
-	for len(edges) < m {
+	// add extra edges (with cap to avoid infinite loop)
+	attempts := 0
+	for len(edges) < m && attempts < 1000 {
 		u := rng.Intn(n) + 1
 		v := rng.Intn(n) + 1
 		if u == v {
+			attempts++
 			continue
 		}
 		if _, ok := adjSet[[2]int{u, v}]; ok {
+			attempts++
 			continue
 		}
 		edges = append(edges, [2]int{u, v})
 		adjSet[[2]int{u, v}] = struct{}{}
 		adjSet[[2]int{v, u}] = struct{}{}
+		attempts = 0
 	}
+	m = len(edges) // actual number of edges added
 	specials := rng.Perm(n)[:k]
 	for i := range specials {
 		specials[i]++

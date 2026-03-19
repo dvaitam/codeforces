@@ -12,12 +12,31 @@ import (
 )
 
 func compileRef() (string, error) {
-	dir := filepath.Dir(os.Args[0])
-	src := filepath.Join(dir, "1037E.go")
-	out := filepath.Join(os.TempDir(), "ref1037E.bin")
-	cmd := exec.Command("go", "build", "-o", out, src)
-	if err := cmd.Run(); err != nil {
+	src := os.Getenv("REFERENCE_SOURCE_PATH")
+	if src == "" {
+		dir := filepath.Dir(os.Args[0])
+		src = filepath.Join(dir, "1037E.go")
+	}
+	raw, err := os.ReadFile(src)
+	if err != nil {
 		return "", err
+	}
+	out := filepath.Join(os.TempDir(), "ref1037E.bin")
+	content := string(raw)
+	if strings.Contains(content, "#include") {
+		cppSrc := src + ".cpp"
+		if err := os.WriteFile(cppSrc, raw, 0644); err != nil {
+			return "", err
+		}
+		cmd := exec.Command("g++", "-O2", "-o", out, cppSrc)
+		if err := cmd.Run(); err != nil {
+			return "", err
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", out, src)
+		if err := cmd.Run(); err != nil {
+			return "", err
+		}
 	}
 	return out, nil
 }

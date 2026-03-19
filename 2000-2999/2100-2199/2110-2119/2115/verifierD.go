@@ -84,30 +84,49 @@ func main() {
 }
 
 func buildReference() (string, error) {
-	dir, err := verifierDir()
-	if err != nil {
-		return "", err
+	srcPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if srcPath == "" {
+		// Fallback: look next to the verifier source using runtime.Caller
+		_, file, _, ok := runtime.Caller(0)
+		if !ok {
+			return "", fmt.Errorf("cannot determine verifier directory and REFERENCE_SOURCE_PATH not set")
+		}
+		srcPath = filepath.Join(filepath.Dir(file), refSource)
 	}
+
+	// Detect C++ by checking file content for #include
+	content, err := os.ReadFile(srcPath)
+	if err != nil {
+		return "", fmt.Errorf("read reference source: %v", err)
+	}
+
 	tmp, err := os.CreateTemp("", "2115D-ref-*")
 	if err != nil {
 		return "", err
 	}
 	tmp.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Join(dir, refSource))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, string(out))
+	if strings.Contains(string(content), "#include") {
+		// C++ source: copy to .cpp and compile with g++
+		cppPath := tmp.Name() + ".cpp"
+		if err := os.WriteFile(cppPath, content, 0644); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("write cpp: %v", err)
+		}
+		defer os.Remove(cppPath)
+		cmd := exec.Command("g++", "-O2", "-o", tmp.Name(), cppPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("%v\n%s", err, string(out))
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", tmp.Name(), srcPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("%v\n%s", err, string(out))
+		}
 	}
 	return tmp.Name(), nil
-}
-
-func verifierDir() (string, error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("cannot determine verifier directory")
-	}
-	return filepath.Dir(file), nil
 }
 
 func runProgram(target, input string) (string, error) {

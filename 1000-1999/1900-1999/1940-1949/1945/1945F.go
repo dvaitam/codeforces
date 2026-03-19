@@ -2,24 +2,11 @@ package main
 
 import (
 	"bufio"
-	"container/heap"
 	"fmt"
+	"math"
 	"os"
+	"sort"
 )
-
-type IntHeap []int
-
-func (h IntHeap) Len() int            { return len(h) }
-func (h IntHeap) Less(i, j int) bool  { return h[i] < h[j] }
-func (h IntHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
-func (h *IntHeap) Push(x interface{}) { *h = append(*h, x.(int)) }
-func (h *IntHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[:n-1]
-	return x
-}
 
 func main() {
 	in := bufio.NewReader(os.Stdin)
@@ -39,29 +26,59 @@ func main() {
 		for i := 1; i <= n; i++ {
 			fmt.Fscan(in, &p[i])
 		}
-		valByPos := make([]int, n+1)
-		for i := 1; i <= n; i++ {
-			valByPos[i] = v[p[i]]
-		}
 
-		h := &IntHeap{}
-		heap.Init(h)
+		// For each k (number of mushrooms picked), positions p[1]..p[k-1] become 0.
+		// We want to pick k mushrooms to maximize:
+		//   (# picked with nonzero power) * min(nonzero powers among picked)
+		// Nonzero means the mushroom index is NOT in {p[1]..p[k-1]}.
+		// So usable = picked mushrooms whose index is in {p[k]..p[n]}.
+		// We want to maximize |usable| * min(v[i] for i in usable), minimizing |usable| on ties.
+
 		bestStrength := int64(0)
 		bestCount := 0
-		for r := n; r >= 1; r-- {
-			heap.Push(h, valByPos[r])
-			if h.Len() > r {
-				heap.Pop(h)
+
+		for k := 1; k <= n; k++ {
+			// Zeroed indices: p[1]..p[k-1]
+			zeroed := make(map[int]bool, k-1)
+			for i := 1; i < k; i++ {
+				zeroed[p[i]] = true
 			}
-			if h.Len() == r {
-				minVal := (*h)[0]
-				strength := int64(r) * int64(minVal)
-				if strength > bestStrength || (strength == bestStrength && r < bestCount) {
+
+			// Collect values of all mushrooms NOT zeroed
+			var vals []int
+			for i := 1; i <= n; i++ {
+				if !zeroed[i] {
+					vals = append(vals, v[i])
+				}
+			}
+
+			// We can pick up to k mushrooms. Usable ones are those not zeroed.
+			// To maximize strength, pick the top-valued non-zeroed mushrooms.
+			// We can pick at most k total, but we want to maximize usable count * min.
+			// Since picking zeroed mushrooms doesn't help (they contribute 0),
+			// we should pick only non-zeroed mushrooms (up to k of them).
+			sort.Sort(sort.Reverse(sort.IntSlice(vals)))
+
+			maxPick := k
+			if maxPick > len(vals) {
+				maxPick = len(vals)
+			}
+
+			for h := 1; h <= maxPick; h++ {
+				minVal := math.MaxInt64
+				for j := 0; j < h; j++ {
+					if vals[j] < minVal {
+						minVal = vals[j]
+					}
+				}
+				strength := int64(h) * int64(minVal)
+				if strength > bestStrength || (strength == bestStrength && h < bestCount) {
 					bestStrength = strength
-					bestCount = r
+					bestCount = h
 				}
 			}
 		}
+
 		fmt.Fprintln(out, bestStrength, bestCount)
 	}
 }

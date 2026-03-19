@@ -115,6 +115,17 @@ func validate(tc testCase, output string) error {
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	scanner.Split(bufio.ScanWords)
 	if !scanner.Scan() {
+		// No output at all
+		if tc.k == 0 && tc.possible {
+			// k=0 with no swaps needed: empty output is correct
+			if !strings.Contains(tc.initial, "RL") {
+				return nil
+			}
+			return fmt.Errorf("process not finished but no output")
+		}
+		if !tc.possible {
+			return fmt.Errorf("no output, expected -1")
+		}
 		return fmt.Errorf("no output")
 	}
 	tok := scanner.Text()

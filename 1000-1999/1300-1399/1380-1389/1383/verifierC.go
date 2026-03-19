@@ -6,19 +6,40 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
 
-func run(bin string, input []byte) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+func buildRef() (string, error) {
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
 	}
+	content, err := os.ReadFile(refSrc)
+	if err != nil {
+		return "", fmt.Errorf("read reference source: %v", err)
+	}
+	bin := os.TempDir() + "/1383C_ref.bin"
+	if strings.Contains(string(content), "#include") {
+		cppSrc := os.TempDir() + "/1383C_ref.cpp"
+		if err := os.WriteFile(cppSrc, content, 0644); err != nil {
+			return "", fmt.Errorf("write cpp source: %v", err)
+		}
+		cmd := exec.Command("g++", "-O2", "-o", bin, cppSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build c++ reference failed: %v\n%s", err, string(out))
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", bin, refSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
+		}
+	}
+	return bin, nil
+}
+
+func run(bin string, input []byte) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = bytes.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
@@ -28,18 +49,6 @@ func run(bin string, input []byte) (string, error) {
 		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
 	return strings.TrimSpace(out.String()), nil
-}
-
-func buildRef() (string, error) {
-	_, cur, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(cur)
-	src := filepath.Join(dir, "1383C.go")
-	bin := filepath.Join(os.TempDir(), "1383C_ref.bin")
-	cmd := exec.Command("go", "build", "-o", bin, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
-	}
-	return bin, nil
 }
 
 func genCase(rng *rand.Rand) []byte {
@@ -55,13 +64,13 @@ func genCase(rng *rand.Rand) []byte {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("usage: go run verifierC.go /path/to/binary")
+		fmt.Println("usage: verifierC /path/to/binary")
 		os.Exit(1)
 	}
 	cand := os.Args[1]
 	ref, err := buildRef()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	defer os.Remove(ref)

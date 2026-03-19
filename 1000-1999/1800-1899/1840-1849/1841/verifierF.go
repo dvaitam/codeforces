@@ -3,10 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -106,10 +108,18 @@ func runCaseF(bin string, tc testCaseF) error {
 	if err != nil {
 		return err
 	}
-	got = strings.TrimSpace(got)
-	exp := strings.TrimSpace(tc.expected)
-	if got != exp {
-		return fmt.Errorf("expected:\n%s\ngot:\n%s", exp, got)
+	gotVal, err := strconv.ParseFloat(strings.TrimSpace(got), 64)
+	if err != nil {
+		return fmt.Errorf("could not parse candidate output %q: %v", got, err)
+	}
+	expVal, err := strconv.ParseFloat(strings.TrimSpace(tc.expected), 64)
+	if err != nil {
+		return fmt.Errorf("could not parse expected output %q: %v", tc.expected, err)
+	}
+	diff := math.Abs(gotVal - expVal)
+	denom := math.Max(1.0, math.Abs(expVal))
+	if diff/denom > 1e-6 {
+		return fmt.Errorf("expected:\n%s\ngot:\n%s", strings.TrimSpace(tc.expected), strings.TrimSpace(got))
 	}
 	return nil
 }

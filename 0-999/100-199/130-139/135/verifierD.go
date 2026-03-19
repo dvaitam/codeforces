@@ -34,92 +34,128 @@ func solveCase(grid [][]byte) int {
 		return 0
 	}
 	m := len(grid[0])
-	outside := make([][]bool, n)
-	for i := range outside {
-		outside[i] = make([]bool, m)
+
+	// Flood-fill '0' cells reachable from boundary (4-connectivity) to find exterior
+	exterior := make([][]bool, n)
+	for i := range exterior {
+		exterior[i] = make([]bool, m)
 	}
-	dq := make([][2]int, 0)
+	queue := make([][2]int, 0)
 	for i := 0; i < n; i++ {
-		for _, j := range []int{0, m - 1} {
-			if grid[i][j] == '0' && !outside[i][j] {
-				outside[i][j] = true
-				dq = append(dq, [2]int{i, j})
+		for j := 0; j < m; j++ {
+			if (i == 0 || i == n-1 || j == 0 || j == m-1) && grid[i][j] == '0' && !exterior[i][j] {
+				exterior[i][j] = true
+				queue = append(queue, [2]int{i, j})
 			}
 		}
 	}
-	for j := 0; j < m; j++ {
-		for _, i := range []int{0, n - 1} {
-			if grid[i][j] == '0' && !outside[i][j] {
-				outside[i][j] = true
-				dq = append(dq, [2]int{i, j})
+	dx4 := [4]int{-1, 1, 0, 0}
+	dy4 := [4]int{0, 0, -1, 1}
+	for idx := 0; idx < len(queue); idx++ {
+		r, c := queue[idx][0], queue[idx][1]
+		for d := 0; d < 4; d++ {
+			nr, nc := r+dx4[d], c+dy4[d]
+			if nr >= 0 && nr < n && nc >= 0 && nc < m && grid[nr][nc] == '0' && !exterior[nr][nc] {
+				exterior[nr][nc] = true
+				queue = append(queue, [2]int{nr, nc})
 			}
 		}
 	}
-	for idx := 0; idx < len(dq); idx++ {
-		r, c := dq[idx][0], dq[idx][1]
-		for _, d := range [][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
-			nr, nc := r+d[0], c+d[1]
-			if nr >= 0 && nr < n && nc >= 0 && nc < m && grid[nr][nc] == '0' && !outside[nr][nc] {
-				outside[nr][nc] = true
-				dq = append(dq, [2]int{nr, nc})
-			}
-		}
-	}
-	dr := [4]int{-1, 0, 1, 0}
-	dc := [4]int{0, 1, 0, -1}
-	visited := make([][][]bool, n)
-	for i := range visited {
-		visited[i] = make([][]bool, m)
-		for j := range visited[i] {
-			visited[i][j] = make([]bool, 4)
-		}
-	}
+
+	// Check for 2x2 blocks of '1's (valid cycle of length 4 with empty interior)
 	best := 0
-	for r := 0; r < n; r++ {
-		for c := 0; c < m; c++ {
-			if grid[r][c] != '1' {
-				continue
+	for i := 0; i < n-1; i++ {
+		for j := 0; j < m-1; j++ {
+			if grid[i][j] == '1' && grid[i+1][j] == '1' && grid[i][j+1] == '1' && grid[i+1][j+1] == '1' {
+				if 4 > best {
+					best = 4
+				}
 			}
-			for d := 0; d < 4; d++ {
-				nr, nc := r+dr[d], c+dc[d]
-				if nr < 0 || nr >= n || nc < 0 || nc >= m || grid[nr][nc] != '1' {
-					continue
-				}
-				if visited[r][c][d] {
-					continue
-				}
-				cr, cc, dir := r, c, d
-				startR, startC, startDir := r, c, d
-				length := 0
-				infinite := false
-				for {
-					visited[cr][cc][dir] = true
-					nr, nc := cr+dr[dir], cc+dc[dir]
-					if nr < 0 || nr >= n || nc < 0 || nc >= m || grid[nr][nc] != '1' {
-						infinite = true
-						break
-					}
-					found := false
-					for _, turn := range []int{1, 0, 3, 2} {
-						nd := (dir + turn) & 3
-						wr, wc := nr+dr[nd], nc+dc[nd]
-						if wr >= 0 && wr < n && wc >= 0 && wc < m && grid[wr][wc] == '1' {
-							cr, cc, dir = nr, nc, nd
-							found = true
-							break
+		}
+	}
+
+	// Find connected components of interior '0' cells (holes) using 8-connectivity
+	visited0 := make([][]bool, n)
+	for i := range visited0 {
+		visited0[i] = make([]bool, m)
+	}
+	dx8 := [8]int{-1, -1, -1, 0, 0, 1, 1, 1}
+	dy8 := [8]int{-1, 0, 1, -1, 1, -1, 0, 1}
+
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			if grid[i][j] == '0' && !exterior[i][j] && !visited0[i][j] {
+				// BFS this interior '0' region with 8-connectivity
+				comp := make([][2]int, 0)
+				comp = append(comp, [2]int{i, j})
+				visited0[i][j] = true
+				inBorder := make(map[[2]int]bool)
+				for idx := 0; idx < len(comp); idx++ {
+					r, c := comp[idx][0], comp[idx][1]
+					for d := 0; d < 8; d++ {
+						nr, nc := r+dx8[d], c+dy8[d]
+						if nr < 0 || nr >= n || nc < 0 || nc >= m {
+							continue
+						}
+						if grid[nr][nc] == '0' && !exterior[nr][nc] && !visited0[nr][nc] {
+							visited0[nr][nc] = true
+							comp = append(comp, [2]int{nr, nc})
+						} else if grid[nr][nc] == '1' {
+							inBorder[[2]int{nr, nc}] = true
 						}
 					}
-					if !found {
-						infinite = true
-						break
+				}
+
+				borderCells := make([][2]int, 0, len(inBorder))
+				for cell := range inBorder {
+					borderCells = append(borderCells, cell)
+				}
+
+				if len(borderCells) < 4 {
+					continue
+				}
+
+				// Check that each border cell has exactly 2 border neighbors (4-connectivity)
+				valid := true
+				for _, cell := range borderCells {
+					count := 0
+					for d := 0; d < 4; d++ {
+						nr, nc := cell[0]+dx4[d], cell[1]+dy4[d]
+						if inBorder[[2]int{nr, nc}] {
+							count++
+						}
 					}
-					length++
-					if cr == startR && cc == startC && dir == startDir {
+					if count != 2 {
+						valid = false
 						break
 					}
 				}
-				if !infinite && length > 0 && length > best {
-					best = length
+				if !valid {
+					continue
+				}
+
+				// Check that border cells form a single connected cycle (4-connectivity)
+				visitedB := make(map[[2]int]bool)
+				bq := make([][2]int, 0)
+				bq = append(bq, borderCells[0])
+				visitedB[borderCells[0]] = true
+				for idx := 0; idx < len(bq); idx++ {
+					cell := bq[idx]
+					for d := 0; d < 4; d++ {
+						nr, nc := cell[0]+dx4[d], cell[1]+dy4[d]
+						nb := [2]int{nr, nc}
+						if inBorder[nb] && !visitedB[nb] {
+							visitedB[nb] = true
+							bq = append(bq, nb)
+						}
+					}
+				}
+				if len(visitedB) != len(borderCells) {
+					continue
+				}
+
+				if len(borderCells) > best {
+					best = len(borderCells)
 				}
 			}
 		}

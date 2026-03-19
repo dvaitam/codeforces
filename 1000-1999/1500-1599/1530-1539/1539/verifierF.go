@@ -30,77 +30,63 @@ func (tc Test) Input() string {
 
 func expected(tc Test) string {
 	n := tc.n
-	a := make([]int, n+1)
-	for i := 1; i <= n; i++ {
-		a[i] = tc.a[i-1]
-	}
-	leftLess := make([]int, n+2)
-	rightLess := make([]int, n+2)
-	leftGreater := make([]int, n+2)
-	rightGreater := make([]int, n+2)
-	stack := make([]int, 0, n)
-	for i := 1; i <= n; i++ {
-		for len(stack) > 0 && a[stack[len(stack)-1]] >= a[i] {
-			stack = stack[:len(stack)-1]
+	a := tc.a // 0-indexed
+	res := make([]int, n)
+	for i := 0; i < n; i++ {
+		best := 0
+		for l := 0; l <= i; l++ {
+			for r := i; r < n; r++ {
+				// Sort subsegment [l..r], find position of a[i], compute distance to center
+				seg := make([]int, r-l+1)
+				copy(seg, a[l:r+1])
+				length := len(seg)
+				// Count elements < a[i] and elements > a[i]
+				less := 0
+				greater := 0
+				equal := 0
+				for _, v := range seg {
+					if v < a[i] {
+						less++
+					} else if v > a[i] {
+						greater++
+					} else {
+						equal++
+					}
+				}
+				// Element a[i] can be placed at any position in [less+1, less+equal] (1-indexed)
+				// Center position: if length is odd, (length+1)/2; if even, length/2 + 1
+				var center int
+				if length%2 == 1 {
+					center = (length + 1) / 2
+				} else {
+					center = length/2 + 1
+				}
+				// Try placing a[i] as far from center as possible
+				// Possible positions: less+1 to less+equal
+				lo := less + 1
+				hi := less + equal
+				d1 := center - lo
+				if d1 < 0 {
+					d1 = -d1
+				}
+				d2 := center - hi
+				if d2 < 0 {
+					d2 = -d2
+				}
+				d := d1
+				if d2 > d {
+					d = d2
+				}
+				if d > best {
+					best = d
+				}
+			}
 		}
-		if len(stack) > 0 {
-			leftLess[i] = stack[len(stack)-1]
-		} else {
-			leftLess[i] = 0
-		}
-		stack = append(stack, i)
-	}
-	stack = stack[:0]
-	for i := n; i >= 1; i-- {
-		for len(stack) > 0 && a[stack[len(stack)-1]] >= a[i] {
-			stack = stack[:len(stack)-1]
-		}
-		if len(stack) > 0 {
-			rightLess[i] = stack[len(stack)-1]
-		} else {
-			rightLess[i] = n + 1
-		}
-		stack = append(stack, i)
-	}
-	stack = stack[:0]
-	for i := 1; i <= n; i++ {
-		for len(stack) > 0 && a[stack[len(stack)-1]] <= a[i] {
-			stack = stack[:len(stack)-1]
-		}
-		if len(stack) > 0 {
-			leftGreater[i] = stack[len(stack)-1]
-		} else {
-			leftGreater[i] = 0
-		}
-		stack = append(stack, i)
-	}
-	stack = stack[:0]
-	for i := n; i >= 1; i-- {
-		for len(stack) > 0 && a[stack[len(stack)-1]] <= a[i] {
-			stack = stack[:len(stack)-1]
-		}
-		if len(stack) > 0 {
-			rightGreater[i] = stack[len(stack)-1]
-		} else {
-			rightGreater[i] = n + 1
-		}
-		stack = append(stack, i)
-	}
-	res := make([]int, n+1)
-	for i := 1; i <= n; i++ {
-		lenMin := rightLess[i] - leftLess[i] - 1
-		distMin := lenMin / 2
-		lenMax := rightGreater[i] - leftGreater[i] - 1
-		distMax := (lenMax+1)/2 - 1
-		if distMin > distMax {
-			res[i] = distMin
-		} else {
-			res[i] = distMax
-		}
+		res[i] = best
 	}
 	var out strings.Builder
-	for i := 1; i <= n; i++ {
-		if i > 1 {
+	for i := 0; i < n; i++ {
+		if i > 0 {
 			out.WriteByte(' ')
 		}
 		out.WriteString(fmt.Sprintf("%d", res[i]))
@@ -130,7 +116,7 @@ func genTest(rng *rand.Rand) Test {
 	n := rng.Intn(20) + 1
 	arr := make([]int, n)
 	for i := range arr {
-		arr[i] = rng.Intn(50)
+		arr[i] = rng.Intn(n) + 1
 	}
 	return Test{n: n, a: arr}
 }

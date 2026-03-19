@@ -150,7 +150,7 @@ func main() {
 		var n, k int
 		fmt.Fscan(in, &n, &k)
 		if k > K {
-			fmt.Fprintln(out, 0)
+			fmt.Fprintln(out, n)
 			continue
 		}
 		fmt.Fprintln(out, dp[k][n])

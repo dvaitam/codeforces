@@ -25,7 +25,43 @@ func run(bin string, input string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(out.String()), nil
+	return out.String(), nil
+}
+
+// normalizeTokens extracts all whitespace-separated tokens and joins them with single spaces.
+func normalizeTokens(s string) string {
+	return strings.Join(strings.Fields(s), " ")
+}
+
+func buildRef() (string, error) {
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		refSrc = "773D.go"
+	}
+	refBin := "./773D_ref"
+
+	// Check if reference is C++ by reading content
+	content, err := os.ReadFile(refSrc)
+	if err != nil {
+		return "", fmt.Errorf("read reference source: %v", err)
+	}
+	if strings.Contains(string(content), "#include") {
+		// C++ source saved as .go, copy to .cpp and compile
+		cppSrc := "./773D_ref.cpp"
+		if err := os.WriteFile(cppSrc, content, 0644); err != nil {
+			return "", fmt.Errorf("write cpp: %v", err)
+		}
+		cmd := exec.Command("g++", "-O2", "-o", refBin, cppSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("compile C++: %v\n%s", err, out)
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", refBin, refSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("compile Go: %v\n%s", err, out)
+		}
+	}
+	return refBin, nil
 }
 
 func main() {
@@ -34,8 +70,8 @@ func main() {
 		os.Exit(1)
 	}
 	userBin := os.Args[1]
-	refBin := "./773D_ref"
-	if err := exec.Command("go", "build", "-o", refBin, "773D.go").Run(); err != nil {
+	refBin, err := buildRef()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "failed to build reference solution:", err)
 		os.Exit(1)
 	}
@@ -65,8 +101,8 @@ func main() {
 			fmt.Fprintln(os.Stderr, "program failed on test", t+1, ":", err)
 			os.Exit(1)
 		}
-		if expect != strings.TrimSpace(got) {
-			fmt.Fprintf(os.Stderr, "mismatch on test %d: expected %s got %s\n", t+1, expect, got)
+		if normalizeTokens(expect) != normalizeTokens(got) {
+			fmt.Fprintf(os.Stderr, "mismatch on test %d: expected %s got %s\n", t+1, normalizeTokens(expect), normalizeTokens(got))
 			os.Exit(1)
 		}
 	}

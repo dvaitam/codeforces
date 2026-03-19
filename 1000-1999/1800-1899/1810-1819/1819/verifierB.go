@@ -6,27 +6,36 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
 
-func baseDir() string {
-	_, file, _, _ := runtime.Caller(0)
-	return filepath.Dir(file)
-}
-
-func prepareBinary(path, tag string) (string, error) {
-	if strings.HasSuffix(path, ".go") {
-		bin := filepath.Join(os.TempDir(), tag)
-		cmd := exec.Command("go", "build", "-o", bin, path)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("build %s: %v\n%s", path, err, out)
-		}
-		return bin, nil
+func buildRef() (string, error) {
+	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
+	if refSrc == "" {
+		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
 	}
-	return path, nil
+	content, err := os.ReadFile(refSrc)
+	if err != nil {
+		return "", fmt.Errorf("read reference source: %v", err)
+	}
+	bin := os.TempDir() + "/1819B_ref.bin"
+	if strings.Contains(string(content), "#include") {
+		cppSrc := os.TempDir() + "/1819B_ref.cpp"
+		if err := os.WriteFile(cppSrc, content, 0644); err != nil {
+			return "", fmt.Errorf("write cpp source: %v", err)
+		}
+		cmd := exec.Command("g++", "-O2", "-o", bin, cppSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build c++ reference failed: %v\n%s", err, string(out))
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", bin, refSrc)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
+		}
+	}
+	return bin, nil
 }
 
 func runBinary(path, input string) (string, error) {
@@ -75,20 +84,16 @@ func genCase(rng *rand.Rand) string {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierB.go /path/to/binary")
+		fmt.Fprintln(os.Stderr, "usage: verifierB /path/to/binary")
 		os.Exit(1)
 	}
-	candPath, err := prepareBinary(os.Args[1], "candB")
+	candPath := os.Args[1]
+	refPath, err := buildRef()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	refSrc := filepath.Join(baseDir(), "1819B.go")
-	refPath, err := prepareBinary(refSrc, "refB")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	defer os.Remove(refPath)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input := genCase(rng)
@@ -102,7 +107,29 @@ func main() {
 			fmt.Fprintf(os.Stderr, "candidate failed on case %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if exp != got {
+		// Compare as sets of pairs (order may differ)
+		expLines := strings.Split(strings.TrimSpace(exp), "\n")
+		gotLines := strings.Split(strings.TrimSpace(got), "\n")
+		if len(expLines) == 0 || len(gotLines) == 0 || strings.TrimSpace(expLines[0]) != strings.TrimSpace(gotLines[0]) {
+			fmt.Printf("case %d failed (count mismatch)\ninput:\n%sexpected:%s\ngot:%s\n", i+1, input, exp, got)
+			os.Exit(1)
+		}
+		if len(expLines) != len(gotLines) {
+			fmt.Printf("case %d failed (line count mismatch)\ninput:\n%sexpected:%s\ngot:%s\n", i+1, input, exp, got)
+			os.Exit(1)
+		}
+		expSet := make(map[string]bool)
+		for _, l := range expLines[1:] {
+			expSet[strings.TrimSpace(l)] = true
+		}
+		match := true
+		for _, l := range gotLines[1:] {
+			if !expSet[strings.TrimSpace(l)] {
+				match = false
+				break
+			}
+		}
+		if !match {
 			fmt.Printf("case %d failed\ninput:\n%sexpected:%s\ngot:%s\n", i+1, input, exp, got)
 			os.Exit(1)
 		}

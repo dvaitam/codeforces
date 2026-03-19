@@ -2,40 +2,43 @@ package main
 
 import (
 	"bufio"
-	"container/heap"
 	"fmt"
 	"os"
 	"sort"
 )
 
-type IntMinHeap []int
+// DSU for slot scheduling
+type DSU struct {
+	parent []int
+}
 
-func (h IntMinHeap) Len() int            { return len(h) }
-func (h IntMinHeap) Less(i, j int) bool  { return h[i] < h[j] }
-func (h IntMinHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
-func (h *IntMinHeap) Push(x interface{}) { *h = append(*h, x.(int)) }
-func (h *IntMinHeap) Pop() interface{} {
-	old := *h
-	x := old[len(old)-1]
-	*h = old[:len(old)-1]
+func NewDSU(n int) *DSU {
+	p := make([]int, n+1)
+	for i := range p {
+		p[i] = i
+	}
+	return &DSU{p}
+}
+
+func (d *DSU) Find(x int) int {
+	for d.parent[x] != x {
+		d.parent[x] = d.parent[d.parent[x]]
+		x = d.parent[x]
+	}
 	return x
 }
 
-type IntMaxHeap []int
-
-func (h IntMaxHeap) Len() int            { return len(h) }
-func (h IntMaxHeap) Less(i, j int) bool  { return h[i] > h[j] } // max-heap
-func (h IntMaxHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
-func (h *IntMaxHeap) Push(x interface{}) { *h = append(*h, x.(int)) }
-func (h *IntMaxHeap) Pop() interface{} {
-	old := *h
-	x := old[len(old)-1]
-	*h = old[:len(old)-1]
-	return x
+type Item struct {
+	pos      int
+	deadline int
+	weight   int
 }
 
-type pair struct {
-	cap, dist int
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 func main() {
@@ -48,87 +51,52 @@ func main() {
 	for ; T > 0; T-- {
 		var n int
 		fmt.Fscan(in, &n)
-		posByVal := make([][]int, n+1)
-		for i := 1; i <= n; i++ {
-			var v int
-			fmt.Fscan(in, &v)
-			if v > n {
-				v = n
-			}
-			posByVal[v] = append(posByVal[v], i)
+		a := make([]int, n)
+		for i := 0; i < n; i++ {
+			fmt.Fscan(in, &a[i])
 		}
 
-		minH := &IntMinHeap{}
-		maxH := &IntMaxHeap{}
-		heap.Init(minH)
-		heap.Init(maxH)
-		alive := make([]bool, n+1) // 1-based positions
-		cnt := 0
-
-		popMin := func() int {
-			for minH.Len() > 0 {
-				x := heap.Pop(minH).(int)
-				if alive[x] {
-					return x
-				}
+		items := make([]Item, n)
+		for i := 0; i < n; i++ {
+			d := 2 * a[i]
+			if d > 2*n {
+				d = 2 * n
 			}
-			return -1
-		}
-		popMax := func() int {
-			for maxH.Len() > 0 {
-				x := heap.Pop(maxH).(int)
-				if alive[x] {
-					return x
-				}
-			}
-			return -1
-		}
-
-		var pairs []pair
-		for v := n; v >= 1; v-- {
-			for _, p := range posByVal[v] {
-				heap.Push(minH, p)
-				heap.Push(maxH, p)
-				alive[p] = true
-				cnt++
-			}
-			for cnt >= 2 {
-				l := popMin()
-				r := popMax()
-				if l == -1 || r == -1 {
-					break
-				}
-				if l == r {
-					// put back if only one distinct element
-					heap.Push(minH, l)
-					heap.Push(maxH, r)
-					break
-				}
-				alive[l] = false
-				alive[r] = false
-				cnt -= 2
-				pairs = append(pairs, pair{cap: v, dist: r - l})
+			items[i] = Item{
+				pos:      i + 1,
+				deadline: d,
+				weight:   abs(2*(i+1) - n - 1),
 			}
 		}
 
-		sort.Slice(pairs, func(i, j int) bool {
-			if pairs[i].cap == pairs[j].cap {
-				return pairs[i].dist > pairs[j].dist
+		sort.Slice(items, func(i, j int) bool {
+			if items[i].weight == items[j].weight {
+				return items[i].pos > items[j].pos
 			}
-			return pairs[i].cap < pairs[j].cap
+			return items[i].weight > items[j].weight
 		})
 
-		// Select feasible pairs with maximum total distance.
-		distH := &IntMinHeap{}
-		heap.Init(distH)
-		var total int64
-		for _, p := range pairs {
-			heap.Push(distH, p.dist)
-			total += int64(p.dist)
-			if distH.Len() > p.cap {
-				removed := heap.Pop(distH).(int)
-				total -= int64(removed)
+		dsu := NewDSU(2 * n)
+		accepted := make([]int, 0, n)
+
+		for _, item := range items {
+			slot := dsu.Find(item.deadline)
+			if slot > 0 {
+				accepted = append(accepted, item.pos)
+				dsu.parent[slot] = slot - 1
 			}
+		}
+
+		sort.Ints(accepted)
+		m := len(accepted)
+		k := m / 2
+
+		var total int64
+		for i := 0; i < k; i++ {
+			total -= int64(accepted[i])
+		}
+		for i := m - k; i < m; i++ {
+			total += int64(accepted[i])
 		}
 
 		fmt.Fprintln(out, total)

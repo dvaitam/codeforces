@@ -6,6 +6,8 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -146,25 +148,48 @@ func parseTestcases() ([]testCase, error) {
 	return cases, nil
 }
 
-// solveCase mirrors 248C.go logic; returns (ok, xw).
-func solveCase(tc testCase) (bool, float64) {
-	y1, y2, yw, xb, yb, _ := tc.y1, tc.y2, tc.yw, tc.xb, tc.yb, tc.r
-	yLow := 2*yw - y2
-	yHigh := 2*yw - y1
-	yPrime := (yLow + yHigh) / 2.0
-	denom := yPrime - yb
-	if denom == 0 {
-		return false, -1
+func buildReference() (string, error) {
+	srcPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if srcPath == "" {
+		_, file, _, ok := runtime.Caller(0)
+		if !ok {
+			return "", fmt.Errorf("cannot determine verifier directory and REFERENCE_SOURCE_PATH not set")
+		}
+		srcPath = filepath.Join(filepath.Dir(file), "248C.go")
 	}
-	xw := xb * (yPrime - yw) / denom
-	if xw <= 0 {
-		return false, -1
+	content, err := os.ReadFile(srcPath)
+	if err != nil {
+		return "", fmt.Errorf("read reference source: %v", err)
 	}
-	return true, xw
+	tmp, err := os.CreateTemp("", "248C-ref-*")
+	if err != nil {
+		return "", err
+	}
+	tmp.Close()
+	if strings.Contains(string(content), "#include") {
+		cppPath := tmp.Name() + ".cpp"
+		if err := os.WriteFile(cppPath, content, 0644); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("write cpp: %v", err)
+		}
+		defer os.Remove(cppPath)
+		cmd := exec.Command("g++", "-O2", "-o", tmp.Name(), cppPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("%v\n%s", err, string(out))
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", tmp.Name(), srcPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("%v\n%s", err, string(out))
+		}
+	}
+	return tmp.Name(), nil
 }
 
-func runCandidate(bin string, tc testCase) (float64, error) {
-	input := fmt.Sprintf("%.10f %.10f %.10f %.10f %.10f %.10f\n", tc.y1, tc.y2, tc.yw, tc.xb, tc.yb, tc.r)
+func runProgram(bin string, tc testCase) (float64, error) {
+	input := fmt.Sprintf("%d %d %d %d %d %d\n", int(tc.y1), int(tc.y2), int(tc.yw), int(tc.xb), int(tc.yb), int(tc.r))
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
@@ -188,19 +213,31 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+
+	refBin, err := buildReference()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
+		os.Exit(1)
+	}
+	defer os.Remove(refBin)
+
 	tests, err := parseTestcases()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to parse testcases: %v\n", err)
 		os.Exit(1)
 	}
 	for i, tc := range tests {
-		ok, exp := solveCase(tc)
-		got, err := runCandidate(bin, tc)
+		exp, err := runProgram(refBin, tc)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		got, err := runProgram(bin, tc)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if !ok {
+		if exp == -1 {
 			if got != -1 {
 				fmt.Fprintf(os.Stderr, "case %d failed: expected -1 got %f\n", i+1, got)
 				os.Exit(1)

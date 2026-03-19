@@ -6,162 +6,53 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
 
-type Matrix struct {
-	n  [][]float64
-	sz int
+func buildReference() (string, error) {
+	srcPath := os.Getenv("REFERENCE_SOURCE_PATH")
+	if srcPath == "" {
+		_, file, _, ok := runtime.Caller(0)
+		if !ok {
+			return "", fmt.Errorf("cannot determine verifier directory and REFERENCE_SOURCE_PATH not set")
+		}
+		srcPath = filepath.Join(filepath.Dir(file), "446D.go")
+	}
+	content, err := os.ReadFile(srcPath)
+	if err != nil {
+		return "", fmt.Errorf("read reference source: %v", err)
+	}
+	tmp, err := os.CreateTemp("", "446D-ref-*")
+	if err != nil {
+		return "", err
+	}
+	tmp.Close()
+	if strings.Contains(string(content), "#include") {
+		cppPath := tmp.Name() + ".cpp"
+		if err := os.WriteFile(cppPath, content, 0644); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("write cpp: %v", err)
+		}
+		defer os.Remove(cppPath)
+		cmd := exec.Command("g++", "-O2", "-o", tmp.Name(), cppPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("%v\n%s", err, string(out))
+		}
+	} else {
+		cmd := exec.Command("go", "build", "-o", tmp.Name(), srcPath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			os.Remove(tmp.Name())
+			return "", fmt.Errorf("%v\n%s", err, string(out))
+		}
+	}
+	return tmp.Name(), nil
 }
 
-func NewMatrix(sz int) *Matrix {
-	n := make([][]float64, sz)
-	for i := range n {
-		n[i] = make([]float64, sz)
-	}
-	return &Matrix{n: n, sz: sz}
-}
-
-func (m *Matrix) Multiply(o *Matrix) *Matrix {
-	sz := m.sz
-	res := NewMatrix(sz)
-	for i := 0; i < sz; i++ {
-		for k := 0; k < sz; k++ {
-			mik := m.n[i][k]
-			if mik != 0 {
-				for j := 0; j < sz; j++ {
-					res.n[i][j] += mik * o.n[k][j]
-				}
-			}
-		}
-	}
-	return res
-}
-
-func (m *Matrix) Pow(exp int64) *Matrix {
-	sz := m.sz
-	res := NewMatrix(sz)
-	for i := 0; i < sz; i++ {
-		res.n[i][i] = 1
-	}
-	base := m
-	for exp > 0 {
-		if exp&1 == 1 {
-			res = res.Multiply(base)
-		}
-		base = base.Multiply(base)
-		exp >>= 1
-	}
-	return res
-}
-
-func expected(n, m int, k int64, a []int, edges [][2]int) float64 {
-	adj := make([][]int, n+1)
-	for _, e := range edges {
-		u, v := e[0], e[1]
-		adj[u] = append(adj[u], v)
-		adj[v] = append(adj[v], u)
-	}
-	comp := make([]int, n+1)
-	W := 0
-	for i := 1; i <= n; i++ {
-		if a[i] == 0 && comp[i] == 0 {
-			W++
-			queue := []int{i}
-			comp[i] = W
-			for len(queue) > 0 {
-				u := queue[0]
-				queue = queue[1:]
-				for _, v := range adj[u] {
-					if a[v] == 0 && comp[v] == 0 {
-						comp[v] = W
-						queue = append(queue, v)
-					}
-				}
-			}
-		}
-	}
-	B := 0
-	for i := 1; i <= n; i++ {
-		if a[i] == 1 {
-			B++
-			comp[i] = B
-		}
-	}
-	cnt := make([][]int, B)
-	for i := 0; i < B; i++ {
-		cnt[i] = make([]int, W)
-	}
-	Cnt := make([][]int, B)
-	for i := 0; i < B; i++ {
-		Cnt[i] = make([]int, B)
-	}
-	for _, e := range edges {
-		u, v := e[0], e[1]
-		if a[u] == 1 && a[v] == 1 {
-			ui, vi := comp[u]-1, comp[v]-1
-			Cnt[ui][vi]++
-			Cnt[vi][ui]++
-		} else if a[u] == 1 && a[v] == 0 {
-			ui, vj := comp[u]-1, comp[v]-1
-			cnt[ui][vj]++
-		} else if a[u] == 0 && a[v] == 1 {
-			ui, vj := comp[v]-1, comp[u]-1
-			cnt[ui][vj]++
-		}
-	}
-	s1 := make([]int, W)
-	for j := 0; j < W; j++ {
-		sum := 0
-		for i := 0; i < B; i++ {
-			sum += cnt[i][j]
-		}
-		s1[j] = sum
-	}
-	s2 := make([]int, B)
-	for i := 0; i < B; i++ {
-		sum := 0
-		for j := 0; j < B; j++ {
-			sum += Cnt[j][i]
-		}
-		for j := 0; j < W; j++ {
-			sum += cnt[i][j]
-		}
-		s2[i] = sum
-	}
-	p := NewMatrix(B)
-	for i := 0; i < B; i++ {
-		if s2[i] == 0 {
-			continue
-		}
-		for j := 0; j < B; j++ {
-			p.n[i][j] = float64(Cnt[i][j]) / float64(s2[i])
-			extra := 0.0
-			for k2 := 0; k2 < W; k2++ {
-				if s1[k2] == 0 {
-					continue
-				}
-				extra += (float64(cnt[i][k2]) / float64(s2[i])) * (float64(cnt[j][k2]) / float64(s1[k2]))
-			}
-			p.n[i][j] += extra
-		}
-	}
-	exp := k - 2
-	pPow := p.Pow(exp)
-	j0 := comp[1] - 1
-	ans := 0.0
-	if j0 >= 0 && j0 < W {
-		for i := 0; i < B; i++ {
-			if s1[j0] > 0 {
-				ans += (float64(cnt[i][j0]) / float64(s1[j0])) * pPow.n[j0][B-1]
-			}
-		}
-	}
-	return ans
-}
-
-func generateCase(rng *rand.Rand) (string, float64) {
+func generateCase(rng *rand.Rand) string {
 	n := rng.Intn(4) + 2
 	maxM := n * (n - 1) / 2
 	m := n - 1 + rng.Intn(maxM-(n-1)+1)
@@ -219,8 +110,7 @@ func generateCase(rng *rand.Rand) (string, float64) {
 	for _, e := range edges {
 		sb.WriteString(fmt.Sprintf("%d %d\n", e[0], e[1]))
 	}
-	ans := expected(n, len(edges), k, a, edges)
-	return sb.String(), ans
+	return sb.String()
 }
 
 func run(bin, input string) (string, error) {
@@ -247,9 +137,27 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+
+	refBin, err := buildReference()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
+		os.Exit(1)
+	}
+	defer os.Remove(refBin)
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		in, exp := generateCase(rng)
+		in := generateCase(rng)
+		refOut, err := run(refBin, in)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\ninput:\n%s", i+1, err, in)
+			os.Exit(1)
+		}
+		var exp float64
+		if _, err := fmt.Sscan(refOut, &exp); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: cannot parse reference output %q: %v\n", i+1, refOut, err)
+			os.Exit(1)
+		}
 		out, err := run(bin, in)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)

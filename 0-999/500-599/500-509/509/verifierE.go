@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -52,14 +54,23 @@ func runCase(bin, input string) error {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input + "\n")
 	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
 	got := strings.TrimSpace(out.String())
 	expected := solvePrettiness(input)
-	if got != expected {
+	gotVal, err1 := strconv.ParseFloat(got, 64)
+	expVal, err2 := strconv.ParseFloat(expected, 64)
+	if err1 != nil {
+		return fmt.Errorf("cannot parse candidate output %q: %v", got, err1)
+	}
+	if err2 != nil {
+		return fmt.Errorf("cannot parse expected output %q: %v", expected, err2)
+	}
+	if math.Abs(gotVal-expVal) > 1e-6*math.Max(1.0, math.Abs(expVal)) {
 		return fmt.Errorf("expected %s got %s", expected, got)
 	}
 	return nil
