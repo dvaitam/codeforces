@@ -33,35 +33,95 @@ func normalizeTokens(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
 
-func buildRef() (string, error) {
-	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
-	if refSrc == "" {
-		refSrc = "773D.go"
+// refSolve is the correct embedded reference solver for 773D.
+// Given an upper-triangular weight matrix for a complete graph, it computes
+// for each root r: sum over all other vertices v of the max edge weight
+// on the path from r to v in the MST (Prim's algorithm).
+func refSolve(input string) string {
+	tokens := strings.Fields(input)
+	idx := 0
+	nextInt := func() int {
+		v := 0
+		s := tokens[idx]
+		idx++
+		for _, c := range s {
+			v = v*10 + int(c-'0')
+		}
+		return v
 	}
-	refBin := "./773D_ref"
 
-	// Check if reference is C++ by reading content
-	content, err := os.ReadFile(refSrc)
-	if err != nil {
-		return "", fmt.Errorf("read reference source: %v", err)
+	n := nextInt()
+	if n == 0 {
+		return ""
 	}
-	if strings.Contains(string(content), "#include") {
-		// C++ source saved as .go, copy to .cpp and compile
-		cppSrc := "./773D_ref.cpp"
-		if err := os.WriteFile(cppSrc, content, 0644); err != nil {
-			return "", fmt.Errorf("write cpp: %v", err)
-		}
-		cmd := exec.Command("g++", "-O2", "-o", refBin, cppSrc)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("compile C++: %v\n%s", err, out)
-		}
-	} else {
-		cmd := exec.Command("go", "build", "-o", refBin, refSrc)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("compile Go: %v\n%s", err, out)
+
+	adj := make([][]int, n)
+	for i := 0; i < n; i++ {
+		adj[i] = make([]int, n)
+	}
+	for i := 0; i < n-1; i++ {
+		for j := i + 1; j < n; j++ {
+			w := nextInt()
+			adj[i][j] = w
+			adj[j][i] = w
 		}
 	}
-	return refBin, nil
+
+	// Prim's MST
+	inTree := make([]bool, n)
+	minEdge := make([]int, n)
+	parent := make([]int, n)
+	for i := 0; i < n; i++ {
+		minEdge[i] = int(2e9)
+		parent[i] = -1
+	}
+	minEdge[0] = 0
+
+	type Edge struct{ to, w int }
+	mst := make([][]Edge, n)
+
+	for i := 0; i < n; i++ {
+		u := -1
+		for j := 0; j < n; j++ {
+			if !inTree[j] && (u == -1 || minEdge[j] < minEdge[u]) {
+				u = j
+			}
+		}
+		inTree[u] = true
+		if parent[u] != -1 {
+			mst[u] = append(mst[u], Edge{parent[u], minEdge[u]})
+			mst[parent[u]] = append(mst[parent[u]], Edge{u, minEdge[u]})
+		}
+		for v := 0; v < n; v++ {
+			if !inTree[v] && adj[u][v] < minEdge[v] {
+				minEdge[v] = adj[u][v]
+				parent[v] = u
+			}
+		}
+	}
+
+	var parts []string
+	for r := 0; r < n; r++ {
+		var sum int64
+		var dfs func(u, p, maxW int)
+		dfs = func(u, p, maxW int) {
+			if u != r {
+				sum += int64(maxW)
+			}
+			for _, edge := range mst[u] {
+				if edge.to != p {
+					newMax := maxW
+					if edge.w > newMax {
+						newMax = edge.w
+					}
+					dfs(edge.to, u, newMax)
+				}
+			}
+		}
+		dfs(r, -1, 0)
+		parts = append(parts, fmt.Sprintf("%d", sum))
+	}
+	return strings.Join(parts, " ")
 }
 
 func main() {
@@ -70,11 +130,6 @@ func main() {
 		os.Exit(1)
 	}
 	userBin := os.Args[1]
-	refBin, err := buildRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference solution:", err)
-		os.Exit(1)
-	}
 	rand.Seed(42)
 	for t := 0; t < 100; t++ {
 		n := rand.Intn(4) + 2
@@ -91,11 +146,7 @@ func main() {
 		}
 		sb.WriteByte('\n')
 		input := sb.String()
-		expect, err := run(refBin, input)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "reference failed on test", t+1, ":", err)
-			os.Exit(1)
-		}
+		expect := refSolve(input)
 		got, err := run(userBin, input)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "program failed on test", t+1, ":", err)

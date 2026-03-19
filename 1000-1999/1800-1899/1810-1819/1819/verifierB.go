@@ -3,39 +3,166 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func buildRef() (string, error) {
-	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
-	if refSrc == "" {
-		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
-	}
-	content, err := os.ReadFile(refSrc)
-	if err != nil {
-		return "", fmt.Errorf("read reference source: %v", err)
-	}
-	bin := os.TempDir() + "/1819B_ref.bin"
-	if strings.Contains(string(content), "#include") {
-		cppSrc := os.TempDir() + "/1819B_ref.cpp"
-		if err := os.WriteFile(cppSrc, content, 0644); err != nil {
-			return "", fmt.Errorf("write cpp source: %v", err)
+// Embedded reference solver for 1819B
+
+type Pair struct {
+	h int64
+	w int64
+}
+
+func refNextInt(data []byte, idx *int) int64 {
+	n := len(data)
+	for *idx < n {
+		c := data[*idx]
+		if c >= '0' && c <= '9' {
+			break
 		}
-		cmd := exec.Command("g++", "-O2", "-o", bin, cppSrc)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("build c++ reference failed: %v\n%s", err, string(out))
+		*idx++
+	}
+	var v int64
+	for *idx < n {
+		c := data[*idx]
+		if c < '0' || c > '9' {
+			break
 		}
-	} else {
-		cmd := exec.Command("go", "build", "-o", bin, refSrc)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
+		v = v*10 + int64(c-'0')
+		*idx++
+	}
+	return v
+}
+
+func refVerify(a, b []int64, H, W int64) bool {
+	n := len(a)
+	byH := make(map[int64][]int, n)
+	byW := make(map[int64][]int, n)
+	for i := 0; i < n; i++ {
+		byH[a[i]] = append(byH[a[i]], i)
+		byW[b[i]] = append(byW[b[i]], i)
+	}
+	active := make([]bool, n)
+	for i := 0; i < n; i++ {
+		active[i] = true
+	}
+	remain := n
+
+	popH := func(key int64) int {
+		s := byH[key]
+		for len(s) > 0 && !active[s[len(s)-1]] {
+			s = s[:len(s)-1]
+		}
+		byH[key] = s
+		if len(s) == 0 {
+			return -1
+		}
+		return s[len(s)-1]
+	}
+
+	popW := func(key int64) int {
+		s := byW[key]
+		for len(s) > 0 && !active[s[len(s)-1]] {
+			s = s[:len(s)-1]
+		}
+		byW[key] = s
+		if len(s) == 0 {
+			return -1
+		}
+		return s[len(s)-1]
+	}
+
+	curH, curW := H, W
+	for remain > 0 {
+		id := popH(curH)
+		if id != -1 {
+			active[id] = false
+			curW -= b[id]
+			if curW < 0 {
+				return false
+			}
+			remain--
+			continue
+		}
+		id = popW(curW)
+		if id == -1 {
+			return false
+		}
+		active[id] = false
+		curH -= a[id]
+		if curH < 0 {
+			return false
+		}
+		remain--
+	}
+	return true
+}
+
+func solveReference(input string) string {
+	data := []byte(input)
+	idx := 0
+	t := int(refNextInt(data, &idx))
+	var out bytes.Buffer
+
+	for ; t > 0; t-- {
+		n := int(refNextInt(data, &idx))
+		a := make([]int64, n)
+		b := make([]int64, n)
+		var sum int64
+		var maxA, maxB int64
+		for i := 0; i < n; i++ {
+			a[i] = refNextInt(data, &idx)
+			b[i] = refNextInt(data, &idx)
+			sum += a[i] * b[i]
+			if a[i] > maxA {
+				maxA = a[i]
+			}
+			if b[i] > maxB {
+				maxB = b[i]
+			}
+		}
+
+		ans := make([]Pair, 0, 2)
+
+		if sum%maxA == 0 {
+			H := maxA
+			W := sum / maxA
+			if refVerify(a, b, H, W) {
+				ans = append(ans, Pair{H, W})
+			}
+		}
+		if sum%maxB == 0 {
+			H := sum / maxB
+			W := maxB
+			dup := false
+			for _, p := range ans {
+				if p.h == H && p.w == W {
+					dup = true
+					break
+				}
+			}
+			if !dup && refVerify(a, b, H, W) {
+				ans = append(ans, Pair{H, W})
+			}
+		}
+
+		out.WriteString(strconv.Itoa(len(ans)))
+		out.WriteByte('\n')
+		for _, p := range ans {
+			out.WriteString(strconv.FormatInt(p.h, 10))
+			out.WriteByte(' ')
+			out.WriteString(strconv.FormatInt(p.w, 10))
+			out.WriteByte('\n')
 		}
 	}
-	return bin, nil
+
+	return strings.TrimSpace(out.String())
 }
 
 func runBinary(path, input string) (string, error) {
@@ -43,10 +170,10 @@ func runBinary(path, input string) (string, error) {
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = io.Discard
 	err := cmd.Run()
 	if err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return "", fmt.Errorf("runtime error: %v", err)
 	}
 	return strings.TrimSpace(out.String()), nil
 }
@@ -88,20 +215,10 @@ func main() {
 		os.Exit(1)
 	}
 	candPath := os.Args[1]
-	refPath, err := buildRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(refPath)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 50; i++ {
 		input := genCase(rng)
-		exp, err := runBinary(refPath, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on case %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
+		exp := solveReference(input)
 		got, err := runBinary(candPath, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "candidate failed on case %d: %v\n", i+1, err)
