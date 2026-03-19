@@ -6,36 +6,96 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
 
-func buildRef() (string, error) {
-	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
-	if refSrc == "" {
-		return "", fmt.Errorf("REFERENCE_SOURCE_PATH not set")
-	}
-	content, err := os.ReadFile(refSrc)
-	if err != nil {
-		return "", fmt.Errorf("read reference source: %v", err)
-	}
-	bin := os.TempDir() + "/1945F_ref.bin"
-	if strings.Contains(string(content), "#include") {
-		cppSrc := os.TempDir() + "/1945F_ref.cpp"
-		if err := os.WriteFile(cppSrc, content, 0644); err != nil {
-			return "", fmt.Errorf("write cpp source: %v", err)
+type refPair struct {
+	v   int
+	pos int
+}
+
+// refSolve is the correct embedded reference solver for 1945F.
+// Ported directly from the accepted CF solution.
+func refSolve(input string) string {
+	tokens := strings.Fields(input)
+	idx := 0
+	nextInt := func() int {
+		v := 0
+		s := tokens[idx]
+		idx++
+		neg := false
+		start := 0
+		if s[0] == '-' {
+			neg = true
+			start = 1
 		}
-		cmd := exec.Command("g++", "-O2", "-o", bin, cppSrc)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("build c++ reference failed: %v\n%s", err, string(out))
+		for i := start; i < len(s); i++ {
+			v = v*10 + int(s[i]-'0')
 		}
-	} else {
-		cmd := exec.Command("go", "build", "-o", bin, refSrc)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
+		if neg {
+			v = -v
 		}
+		return v
 	}
-	return bin, nil
+
+	t := nextInt()
+	var results []string
+
+	for ; t > 0; t-- {
+		n := nextInt()
+
+		values := make([]int, n+1)
+		for i := 1; i <= n; i++ {
+			values[i] = nextInt()
+		}
+
+		pairs := make([]refPair, n)
+		for pos := 1; pos <= n; pos++ {
+			pidx := nextInt()
+			pairs[pos-1] = refPair{v: values[pidx], pos: pos}
+		}
+
+		sort.Slice(pairs, func(i, j int) bool {
+			return pairs[i].v > pairs[j].v
+		})
+
+		active := make([]bool, n+2)
+		total, h, small := 0, 0, 0
+		bestProd := int64(-1)
+		bestK := 0
+
+		for i := 0; i < n; {
+			val := pairs[i].v
+			j := i
+			for j < n && pairs[j].v == val {
+				pos := pairs[j].pos
+				active[pos] = true
+				total++
+				if pos <= h {
+					small++
+				}
+				for total-small >= h+1 {
+					h++
+					if active[h] {
+						small++
+					}
+				}
+				j++
+			}
+
+			prod := int64(h) * int64(val)
+			if prod > bestProd || (prod == bestProd && h < bestK) {
+				bestProd = prod
+				bestK = h
+			}
+			i = j
+		}
+
+		results = append(results, fmt.Sprintf("%d %d", bestProd, bestK))
+	}
+	return strings.Join(results, "\n")
 }
 
 func generatePerm(rng *rand.Rand, n int) []int {
@@ -73,16 +133,8 @@ func generateCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
-func runCase(exe, ref, input string) error {
-	cmdRef := exec.Command(ref)
-	cmdRef.Stdin = strings.NewReader(input)
-	var refOut bytes.Buffer
-	cmdRef.Stdout = &refOut
-	cmdRef.Stderr = &refOut
-	if err := cmdRef.Run(); err != nil {
-		return fmt.Errorf("reference runtime error: %v\n%s", err, refOut.String())
-	}
-	expected := strings.TrimSpace(refOut.String())
+func runCase(exe, input string) error {
+	expected := strings.TrimSpace(refSolve(input))
 
 	cmd := exec.Command(exe)
 	cmd.Stdin = strings.NewReader(input)
@@ -105,16 +157,10 @@ func main() {
 		os.Exit(1)
 	}
 	exe := os.Args[1]
-	ref, err := buildRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		in := generateCase(rng)
-		if err := runCase(exe, ref, in); err != nil {
+		if err := runCase(exe, in); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}

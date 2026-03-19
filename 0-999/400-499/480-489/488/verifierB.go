@@ -6,13 +6,85 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
+
+// Embedded reference solver for 488B.
+const embeddedSolver488B = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func main() {
+	in := bufio.NewReader(os.Stdin)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+
+	var n int
+	if _, err := fmt.Fscan(in, &n); err != nil {
+		return
+	}
+
+	a := make([]int, n)
+	minA := 501
+	for i := 0; i < n; i++ {
+		fmt.Fscan(in, &a[i])
+		if a[i] < minA {
+			minA = a[i]
+		}
+	}
+
+	if n == 0 {
+		fmt.Fprintln(out, "YES")
+		fmt.Fprintln(out, 1)
+		fmt.Fprintln(out, 1)
+		fmt.Fprintln(out, 3)
+		fmt.Fprintln(out, 3)
+		return
+	}
+
+	for base := 1; base <= minA; base++ {
+		for b := base; b <= 2*base; b++ {
+			cand := [4]int{base, b, 4*base - b, 3 * base}
+			used := [4]bool{}
+			ok := true
+
+			for _, v := range a {
+				found := false
+				for i := 0; i < 4; i++ {
+					if !used[i] && cand[i] == v {
+						used[i] = true
+						found = true
+						break
+					}
+				}
+				if !found {
+					ok = false
+					break
+				}
+			}
+
+			if ok {
+				fmt.Fprintln(out, "YES")
+				for i := 0; i < 4; i++ {
+					if !used[i] {
+						fmt.Fprintln(out, cand[i])
+					}
+				}
+				return
+			}
+		}
+	}
+
+	fmt.Fprintln(out, "NO")
+}
+`
 
 func run(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
@@ -28,43 +100,32 @@ func run(bin, input string) (string, error) {
 }
 
 func buildReference() (string, error) {
-	srcPath := os.Getenv("REFERENCE_SOURCE_PATH")
-	if srcPath == "" {
-		_, file, _, ok := runtime.Caller(0)
-		if !ok {
-			return "", fmt.Errorf("cannot determine verifier directory and REFERENCE_SOURCE_PATH not set")
-		}
-		srcPath = filepath.Join(filepath.Dir(file), "488B.go")
-	}
-	content, err := os.ReadFile(srcPath)
+	tmpSrc, err := os.CreateTemp("", "488B-src-*.go")
 	if err != nil {
-		return "", fmt.Errorf("read reference source: %v", err)
+		return "", err
 	}
+	srcPath := tmpSrc.Name()
+	if _, err := tmpSrc.WriteString(embeddedSolver488B); err != nil {
+		tmpSrc.Close()
+		os.Remove(srcPath)
+		return "", err
+	}
+	tmpSrc.Close()
+	defer os.Remove(srcPath)
+
 	tmp, err := os.CreateTemp("", "488B-ref-*")
 	if err != nil {
 		return "", err
 	}
+	binPath := tmp.Name()
 	tmp.Close()
-	if strings.Contains(string(content), "#include") {
-		cppPath := tmp.Name() + ".cpp"
-		if err := os.WriteFile(cppPath, content, 0644); err != nil {
-			os.Remove(tmp.Name())
-			return "", fmt.Errorf("write cpp: %v", err)
-		}
-		defer os.Remove(cppPath)
-		cmd := exec.Command("g++", "-O2", "-o", tmp.Name(), cppPath)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			os.Remove(tmp.Name())
-			return "", fmt.Errorf("%v\n%s", err, string(out))
-		}
-	} else {
-		cmd := exec.Command("go", "build", "-o", tmp.Name(), srcPath)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			os.Remove(tmp.Name())
-			return "", fmt.Errorf("%v\n%s", err, string(out))
-		}
+
+	cmd := exec.Command("go", "build", "-o", binPath, srcPath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(binPath)
+		return "", fmt.Errorf("%v\n%s", err, string(out))
 	}
-	return tmp.Name(), nil
+	return binPath, nil
 }
 
 func generateCase(rng *rand.Rand) string {

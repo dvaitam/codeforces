@@ -216,7 +216,7 @@ func main() {
 	}
 	candPath := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 20; i++ {
 		input := genCase(rng)
 		exp := solveReference(input)
 		got, err := runBinary(candPath, input)

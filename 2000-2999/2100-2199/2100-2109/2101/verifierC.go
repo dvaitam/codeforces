@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -23,6 +25,111 @@ type testCase struct {
 	a []int
 }
 
+type dsu struct {
+	parent []int
+}
+
+func newDSU(n int) *dsu {
+	p := make([]int, n+1)
+	for i := range p {
+		p[i] = i
+	}
+	return &dsu{p}
+}
+
+func (d *dsu) find(x int) int {
+	if d.parent[x] == x {
+		return x
+	}
+	d.parent[x] = d.find(d.parent[x])
+	return d.parent[x]
+}
+
+func (d *dsu) union(x, y int) {
+	rx := d.find(x)
+	ry := d.find(y)
+	if rx != ry {
+		d.parent[rx] = ry
+	}
+}
+
+func iabs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+// refSolve is the correct embedded reference solver for 2101C.
+// It processes multiple test cases from a single input string.
+func refSolve(input string) []int64 {
+	reader := bufio.NewReader(strings.NewReader(input))
+	var t int
+	fmt.Fscan(reader, &t)
+
+	results := make([]int64, 0, t)
+
+	for tc := 0; tc < t; tc++ {
+		var n int
+		fmt.Fscan(reader, &n)
+
+		type Item struct {
+			id       int
+			deadline int
+			weight   int
+		}
+
+		items := make([]Item, n)
+		for i := 0; i < n; i++ {
+			var a int
+			fmt.Fscan(reader, &a)
+			items[i] = Item{
+				id:       i + 1,
+				deadline: 2 * a,
+				weight:   iabs(2*(i+1) - n - 1),
+			}
+		}
+
+		sort.Slice(items, func(i, j int) bool {
+			if items[i].weight == items[j].weight {
+				return items[i].id > items[j].id
+			}
+			return items[i].weight > items[j].weight
+		})
+
+		dsuObj := newDSU(2 * n)
+		accepted := make([]int, 0, n)
+
+		for _, item := range items {
+			d := item.deadline
+			if d > 2*n {
+				d = 2 * n
+			}
+			slot := dsuObj.find(d)
+			if slot > 0 {
+				accepted = append(accepted, item.id)
+				dsuObj.union(slot, slot-1)
+			}
+		}
+
+		sort.Ints(accepted)
+		m := len(accepted)
+		k := m / 2
+
+		var profit int64
+		for i := 0; i < k; i++ {
+			profit -= int64(accepted[i])
+		}
+		for i := m - k; i < m; i++ {
+			profit += int64(accepted[i])
+		}
+
+		results = append(results, profit)
+	}
+
+	return results
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierC.go /path/to/candidate")
@@ -30,23 +137,10 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, err := buildReference()
-	if err != nil {
-		fail("failed to build reference: %v", err)
-	}
-	defer os.Remove(refBin)
-
 	tests := buildTests()
 	input := buildInput(tests)
 
-	expectRaw, err := runProgram(exec.Command(refBin), input)
-	if err != nil {
-		fail("reference failed: %v\n%s", err, expectRaw)
-	}
-	expect, err := parseOutputs(expectRaw, len(tests))
-	if err != nil {
-		fail("could not parse reference output: %v\n%s", err, expectRaw)
-	}
+	expect := refSolve(input)
 
 	gotRaw, err := runProgram(commandFor(candidate), input)
 	if err != nil {
@@ -68,52 +162,6 @@ func main() {
 	}
 
 	fmt.Printf("All %d test cases passed.\n", len(tests))
-}
-
-func buildReference() (string, error) {
-	src := os.Getenv("REFERENCE_SOURCE_PATH")
-	if src == "" {
-		src = "./2101C.go"
-	}
-	// Detect C++ by checking content for #include
-	content, err := os.ReadFile(src)
-	if err != nil {
-		return "", fmt.Errorf("read reference source: %v", err)
-	}
-
-	tmp, err := os.CreateTemp("", "2101C-ref-*")
-	if err != nil {
-		return "", err
-	}
-	tmp.Close()
-
-	if strings.Contains(string(content), "#include") {
-		cppFile := tmp.Name() + ".cpp"
-		if err := os.WriteFile(cppFile, content, 0644); err != nil {
-			os.Remove(tmp.Name())
-			return "", fmt.Errorf("write cpp: %v", err)
-		}
-		cmd := exec.Command("g++", "-O2", "-o", tmp.Name(), cppFile)
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &out
-		if err := cmd.Run(); err != nil {
-			os.Remove(tmp.Name())
-			os.Remove(cppFile)
-			return "", fmt.Errorf("build c++ ref: %v\n%s", err, out.String())
-		}
-		os.Remove(cppFile)
-	} else {
-		cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(src))
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &out
-		if err := cmd.Run(); err != nil {
-			os.Remove(tmp.Name())
-			return "", fmt.Errorf("build go ref: %v\n%s", err, out.String())
-		}
-	}
-	return tmp.Name(), nil
 }
 
 func buildTests() []testCase {

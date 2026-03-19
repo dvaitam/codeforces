@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/bits"
@@ -25,33 +26,18 @@ func run(bin string, input []byte) (string, error) {
 }
 
 // refSolve is the correct embedded reference solver for 1383C.
+// Ported directly from the accepted CF solution.
 func refSolve(input []byte) string {
-	tokens := strings.Fields(string(input))
-	idx := 0
-	nextInt := func() int {
-		v := 0
-		s := tokens[idx]
-		idx++
-		for _, c := range s {
-			v = v*10 + int(c-'0')
-		}
-		return v
-	}
+	in := bufio.NewReaderSize(bytes.NewReader(input), 1<<20)
+	var buf bytes.Buffer
+	out := bufio.NewWriterSize(&buf, 1<<20)
 
-	t := nextInt()
-	var results []string
+	var t int
+	fmt.Fscan(in, &t)
 	for ; t > 0; t-- {
-		n := nextInt()
-		a := make([]byte, n)
-		b := make([]byte, n)
-		aStr := tokens[idx]
-		idx++
-		bStr := tokens[idx]
-		idx++
-		for i := 0; i < n; i++ {
-			a[i] = aStr[i]
-			b[i] = bStr[i]
-		}
+		var n int
+		var a, b string
+		fmt.Fscan(in, &n, &a, &b)
 
 		var dir [20][20]bool
 		var used [20]bool
@@ -156,9 +142,10 @@ func refSolve(input []byte) string {
 			ans += (m - 1) + fvs
 		}
 
-		results = append(results, fmt.Sprintf("%d", ans))
+		fmt.Fprintln(out, ans)
 	}
-	return strings.Join(results, "\n")
+	out.Flush()
+	return strings.TrimSpace(buf.String())
 }
 
 func genCase(rng *rand.Rand) []byte {

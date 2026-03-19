@@ -6,8 +6,6 @@ import (
 	"math"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 )
@@ -116,6 +114,61 @@ const testcasesCData = `
 20 25 36 10 4 2
 `
 
+// Embedded reference solver for 248C.
+const embeddedSolver248C = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"math"
+	"os"
+)
+
+func main() {
+	in := bufio.NewReader(os.Stdin)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+
+	var y1, y2, yw, xb, yb, r int64
+	fmt.Fscan(in, &y1, &y2, &yw, &xb, &yb, &r)
+
+	y1f := float64(y1)
+	y2f := float64(y2)
+	ywf := float64(yw)
+	xbf := float64(xb)
+	ybf := float64(yb)
+	rf := float64(r)
+
+	h := ywf - rf
+	a := 2*h - y2f
+	u := 2*h - y1f - rf
+
+	dx := xbf
+	dy := ybf - a
+	rr := rf * rf
+	d2 := dx*dx + dy*dy
+
+	if d2 <= rr {
+		fmt.Fprintln(out, -1)
+		return
+	}
+
+	s := math.Sqrt(d2 - rr)
+	gt := a + (-rr*dy+rf*dx*s)/(dx*dx-rr)
+
+	l := math.Max(a+rf, gt)
+	if l >= u-1e-12 {
+		fmt.Fprintln(out, -1)
+		return
+	}
+
+	gp := (l + u) / 2
+	xw := xbf * (gp - h) / (gp - ybf)
+
+	fmt.Fprintf(out, "%.15f\n", xw)
+}
+`
+
 type testCase struct {
 	y1, y2, yw, xb, yb, r float64
 }
@@ -149,43 +202,32 @@ func parseTestcases() ([]testCase, error) {
 }
 
 func buildReference() (string, error) {
-	srcPath := os.Getenv("REFERENCE_SOURCE_PATH")
-	if srcPath == "" {
-		_, file, _, ok := runtime.Caller(0)
-		if !ok {
-			return "", fmt.Errorf("cannot determine verifier directory and REFERENCE_SOURCE_PATH not set")
-		}
-		srcPath = filepath.Join(filepath.Dir(file), "248C.go")
-	}
-	content, err := os.ReadFile(srcPath)
+	tmpSrc, err := os.CreateTemp("", "248C-src-*.go")
 	if err != nil {
-		return "", fmt.Errorf("read reference source: %v", err)
+		return "", err
 	}
+	srcPath := tmpSrc.Name()
+	if _, err := tmpSrc.WriteString(embeddedSolver248C); err != nil {
+		tmpSrc.Close()
+		os.Remove(srcPath)
+		return "", err
+	}
+	tmpSrc.Close()
+	defer os.Remove(srcPath)
+
 	tmp, err := os.CreateTemp("", "248C-ref-*")
 	if err != nil {
 		return "", err
 	}
+	binPath := tmp.Name()
 	tmp.Close()
-	if strings.Contains(string(content), "#include") {
-		cppPath := tmp.Name() + ".cpp"
-		if err := os.WriteFile(cppPath, content, 0644); err != nil {
-			os.Remove(tmp.Name())
-			return "", fmt.Errorf("write cpp: %v", err)
-		}
-		defer os.Remove(cppPath)
-		cmd := exec.Command("g++", "-O2", "-o", tmp.Name(), cppPath)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			os.Remove(tmp.Name())
-			return "", fmt.Errorf("%v\n%s", err, string(out))
-		}
-	} else {
-		cmd := exec.Command("go", "build", "-o", tmp.Name(), srcPath)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			os.Remove(tmp.Name())
-			return "", fmt.Errorf("%v\n%s", err, string(out))
-		}
+
+	cmd := exec.Command("go", "build", "-o", binPath, srcPath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(binPath)
+		return "", fmt.Errorf("%v\n%s", err, string(out))
 	}
-	return tmp.Name(), nil
+	return binPath, nil
 }
 
 func runProgram(bin string, tc testCase) (float64, error) {
