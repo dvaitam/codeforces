@@ -112,6 +112,9 @@ func getPathQ(start Point, fixed [][]bool, grid [][]int, pos_c Point, n int) []P
 		visited[i] = make([]bool, n+1)
 	}
 	parent := make([][]Point, n+1)
+	for i := 1; i <= n; i++ {
+		parent[i] = make([]Point, n+1)
+	}
 
 	queue := []Point{start}
 	visited[start.x][start.y] = true
