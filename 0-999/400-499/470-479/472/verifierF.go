@@ -383,11 +383,37 @@ func main() {
 		}
 		tok := outScan.Text()
 		if tok == "-1" {
-			// Check if -1 is actually correct: see if X and Y span the same space
-			// A transformation is impossible iff Y is not in the span of X
-			// For the verifier, all embedded cases are solvable, so -1 is wrong
-			fmt.Printf("case %d: reported impossible but solution exists\n", idx+1)
-			os.Exit(1)
+			// Check if -1 is actually correct by verifying Y is not in span of X
+			basis := make([]uint32, 0)
+			for _, v := range c.x {
+				w := v
+				for _, b := range basis {
+					if w^b < w {
+						w ^= b
+					}
+				}
+				if w != 0 {
+					basis = append(basis, w)
+				}
+			}
+			solvable := true
+			for _, v := range c.y {
+				w := v
+				for _, b := range basis {
+					if w^b < w {
+						w ^= b
+					}
+				}
+				if w != 0 {
+					solvable = false
+					break
+				}
+			}
+			if solvable {
+				fmt.Printf("case %d: reported impossible but solution exists\n", idx+1)
+				os.Exit(1)
+			}
+			continue
 		}
 		m, err := strconv.Atoi(tok)
 		if err != nil {

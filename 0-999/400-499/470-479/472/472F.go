@@ -1,159 +1,227 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
 )
 
+func GetOperationsToBuildT(T [][]int, n int) [][2]int {
+	opsReduce := [][2]int{}
+	M := make([][]int, n)
+	for i := 0; i < n; i++ {
+		M[i] = make([]int, n)
+		copy(M[i], T[i])
+	}
+
+	r := 0
+	pivots := []int{}
+	for c := 0; c < n; c++ {
+		pivot := -1
+		for i := r; i < n; i++ {
+			if M[i][c] == 1 {
+				pivot = i
+				break
+			}
+		}
+		if pivot != -1 {
+			if pivot != r {
+				opsReduce = append(opsReduce, [2]int{r, pivot})
+				opsReduce = append(opsReduce, [2]int{pivot, r})
+				opsReduce = append(opsReduce, [2]int{r, pivot})
+				M[r], M[pivot] = M[pivot], M[r]
+			}
+			for k := 0; k < n; k++ {
+				if k != r && M[k][c] == 1 {
+					opsReduce = append(opsReduce, [2]int{k, r})
+					for j := 0; j < n; j++ {
+						M[k][j] ^= M[r][j]
+					}
+				}
+			}
+			pivots = append(pivots, c)
+			r++
+		}
+	}
+
+	opsBuild := [][2]int{}
+	rowContains := make([]int, n)
+	for i := 0; i < n; i++ {
+		rowContains[i] = i
+	}
+
+	for i := 0; i < r; i++ {
+		targetCol := pivots[i]
+		k := i
+		for ; k < n; k++ {
+			if rowContains[k] == targetCol {
+				break
+			}
+		}
+		if k != i {
+			opsBuild = append(opsBuild, [2]int{i, k})
+			opsBuild = append(opsBuild, [2]int{k, i})
+			opsBuild = append(opsBuild, [2]int{i, k})
+			rowContains[i], rowContains[k] = rowContains[k], rowContains[i]
+		}
+	}
+
+	pos := make([]int, n)
+	for i := 0; i < n; i++ {
+		pos[rowContains[i]] = i
+	}
+
+	isPivot := make([]bool, n)
+	for _, p := range pivots {
+		isPivot[p] = true
+	}
+	S := []int{}
+	for i := 0; i < n; i++ {
+		if !isPivot[i] {
+			S = append(S, i)
+		}
+	}
+
+	for i := 0; i < r; i++ {
+		for _, j := range S {
+			if M[i][j] == 1 {
+				opsBuild = append(opsBuild, [2]int{i, pos[j]})
+			}
+		}
+	}
+
+	for k := r; k < n; k++ {
+		opsBuild = append(opsBuild, [2]int{k, k})
+	}
+
+	for i := len(opsReduce) - 1; i >= 0; i-- {
+		opsBuild = append(opsBuild, opsReduce[i])
+	}
+
+	return opsBuild
+}
+
 func main() {
-   reader := bufio.NewReader(os.Stdin)
-   writer := bufio.NewWriter(os.Stdout)
-   defer writer.Flush()
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
+	if !scanner.Scan() {
+		return
+	}
+	n, _ := strconv.Atoi(scanner.Text())
 
-   var n int
-   if _, err := fmt.Fscan(reader, &n); err != nil {
-       return
-   }
-   x := make([]uint32, n)
-   y := make([]uint32, n)
-   for i := 0; i < n; i++ {
-       var v uint32
-       fmt.Fscan(reader, &v)
-       x[i] = v
-   }
-   for i := 0; i < n; i++ {
-       var v uint32
-       fmt.Fscan(reader, &v)
-       y[i] = v
-   }
+	X := make([]int, n)
+	for i := 0; i < n; i++ {
+		scanner.Scan()
+		X[i], _ = strconv.Atoi(scanner.Text())
+	}
 
-   const W = 32
-   baseid := make([]int, W)
-   basex := make([]uint32, W)
-   base := make([]uint32, W)
-   for i := 0; i < W; i++ {
-       baseid[i] = -1
-   }
-   yy := make([]uint32, n)
-   nosol := false
+	Y := make([]int, n)
+	for i := 0; i < n; i++ {
+		scanner.Scan()
+		Y[i], _ = strconv.Atoi(scanner.Text())
+	}
 
-   // build basis for x
-   for i := 0; i < n; i++ {
-       p := x[i]
-       var tmp uint32
-       for j := 0; j < W; j++ {
-           if (p>>j)&1 == 0 {
-               continue
-           }
-           if baseid[j] != -1 {
-               p ^= basex[j]
-               tmp ^= base[j]
-           } else {
-               baseid[j] = i
-               base[j] = tmp | (1 << uint(j))
-               basex[j] = p
-               break
-           }
-       }
-   }
-   // represent y in basis
-   for i := 0; i < n; i++ {
-       p := y[i]
-       for j := 0; j < W; j++ {
-           if (p>>j)&1 == 0 {
-               continue
-           }
-           if baseid[j] != -1 {
-               p ^= basex[j]
-               yy[i] ^= base[j]
-           } else {
-               nosol = true
-               break
-           }
-       }
-   }
-   if nosol {
-       writer.WriteString("-1\n")
-       return
-   }
+	ops := [][2]int{}
+	basisIdx := make([]int, 30)
+	for i := 0; i < 30; i++ {
+		basisIdx[i] = -1
+	}
+	isBasis := make([]bool, n)
 
-   type op struct{ u, v int }
-   var ans, ans2 []op
-   // non-basis vectors
-   for i := 0; i < n; i++ {
-       fl := true
-       for j := 0; j < W; j++ {
-           if baseid[j] == i {
-               fl = false
-               break
-           }
-       }
-       if fl {
-           ans = append(ans, op{i, i})
-           for j := 0; j < W; j++ {
-               if (yy[i]>>j)&1 == 1 {
-                   ans = append(ans, op{i, baseid[j]})
-               }
-           }
-       }
-   }
-   // basis vectors
-   csl := make([]int, W)
-   cpos := make([]int, W)
-   cc := make([]uint32, W)
-   ccn := 0
-   for j := 0; j < W; j++ {
-       if baseid[j] != -1 {
-           csl[ccn] = j
-           cpos[ccn] = baseid[j]
-           cc[ccn] = yy[baseid[j]]
-           ccn++
-       }
-   }
-   for i := 0; i < ccn; i++ {
-       // find pivot
-       r := -1
-       for j := i; j < ccn; j++ {
-           if (cc[j]>>csl[i])&1 == 1 {
-               r = j
-               break
-           }
-       }
-       if r == -1 {
-           continue
-       }
-       if r != i {
-           ans2 = append(ans2, op{cpos[r], cpos[i]})
-           ans2 = append(ans2, op{cpos[i], cpos[r]})
-           ans2 = append(ans2, op{cpos[r], cpos[i]})
-           cc[i], cc[r] = cc[r], cc[i]
-       }
-       for j := 0; j < ccn; j++ {
-           if j != i && (cc[j]>>csl[i])&1 == 1 {
-               ans2 = append(ans2, op{cpos[j], cpos[i]})
-               cc[j] ^= cc[i]
-           }
-       }
-   }
-   // fix missing pivots
-   for i := 0; i < ccn; i++ {
-       if (cc[i]>>csl[i])&1 == 0 {
-           for j := 0; j < i; j++ {
-               if (cc[j]>>csl[i])&1 == 1 {
-                   ans = append(ans, op{cpos[j], cpos[i]})
-               }
-           }
-           ans = append(ans, op{cpos[i], cpos[i]})
-       }
-   }
-   total := len(ans) + len(ans2)
-   fmt.Fprintln(writer, total)
-   for _, p := range ans {
-       fmt.Fprintf(writer, "%d %d\n", p.u+1, p.v+1)
-   }
-   for i := len(ans2) - 1; i >= 0; i-- {
-       p := ans2[i]
-       fmt.Fprintf(writer, "%d %d\n", p.u+1, p.v+1)
-   }
+	for b := 29; b >= 0; b-- {
+		pivot := -1
+		for i := 0; i < n; i++ {
+			if !isBasis[i] && ((X[i]>>b)&1) == 1 {
+				pivot = i
+				break
+			}
+		}
+		if pivot != -1 {
+			basisIdx[b] = pivot
+			isBasis[pivot] = true
+			for i := 0; i < n; i++ {
+				if i != pivot && ((X[i]>>b)&1) == 1 {
+					ops = append(ops, [2]int{i, pivot})
+					X[i] ^= X[pivot]
+				}
+			}
+		}
+	}
+
+	for i := 0; i < n; i++ {
+		temp := Y[i]
+		for b := 29; b >= 0; b-- {
+			if ((temp>>b)&1) == 1 {
+				if basisIdx[b] != -1 {
+					temp ^= X[basisIdx[b]]
+				}
+			}
+		}
+		if temp != 0 {
+			fmt.Println("-1")
+			return
+		}
+	}
+
+	for i := 0; i < n; i++ {
+		if !isBasis[i] {
+			temp := Y[i]
+			for b := 29; b >= 0; b-- {
+				if ((temp>>b)&1) == 1 {
+					ops = append(ops, [2]int{i, basisIdx[b]})
+					temp ^= X[basisIdx[b]]
+				}
+			}
+		}
+	}
+
+	B := []int{}
+	BBit := []int{}
+	for i := 0; i < n; i++ {
+		if isBasis[i] {
+			B = append(B, i)
+			for b := 29; b >= 0; b-- {
+				if basisIdx[b] == i {
+					BBit = append(BBit, b)
+					break
+				}
+			}
+		}
+	}
+
+	k := len(B)
+	for i := 0; i < k; i++ {
+		for j := i + 1; j < k; j++ {
+			if BBit[i] < BBit[j] {
+				BBit[i], BBit[j] = BBit[j], BBit[i]
+				B[i], B[j] = B[j], B[i]
+			}
+		}
+	}
+
+	TB := make([][]int, k)
+	for i := 0; i < k; i++ {
+		TB[i] = make([]int, k)
+		temp := Y[B[i]]
+		for j := 0; j < k; j++ {
+			bit := BBit[j]
+			if ((temp>>bit)&1) == 1 {
+				TB[i][j] = 1
+				temp ^= X[B[j]]
+			}
+		}
+	}
+
+	opsMatrix := GetOperationsToBuildT(TB, k)
+	for _, op := range opsMatrix {
+		ops = append(ops, [2]int{B[op[0]], B[op[1]]})
+	}
+
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	fmt.Fprintln(out, len(ops))
+	for _, op := range ops {
+		fmt.Fprintf(out, "%d %d\n", op[0]+1, op[1]+1)
+	}
 }

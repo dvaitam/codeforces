@@ -253,7 +253,7 @@ func main() {
 		}
 	}
 
-	hasPair := make([]bool, n+1)
+	hasPair := make([]bool, 605)
 	for i := 0; i < n-1; i++ {
 		if a[i] == a[i+1] && a[i] > 0 {
 			hasPair[a[i]] = true

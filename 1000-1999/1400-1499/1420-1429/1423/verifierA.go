@@ -161,7 +161,17 @@ func refSolve(input string) string {
 					if in_path[p] != -1 {
 						cycle := seq[in_path[p]:]
 						for _, u := range cycle {
-							sec := pref[u][next_val[u][head[u]]]
+							if head[u] == -1 {
+								return "-1"
+							}
+							nh := next_val[u][head[u]]
+							if nh == -1 {
+								return "-1"
+							}
+							sec := pref[u][nh]
+							if tail[sec] == -1 {
+								return "-1"
+							}
 							nxt := pref[sec][tail[sec]]
 
 							remove(nxt, rank[nxt][sec])
@@ -174,6 +184,9 @@ func refSolve(input string) string {
 								return "-1"
 							}
 
+							if tail[sec] == -1 {
+								return "-1"
+							}
 							match[sec] = pref[sec][tail[sec]]
 							Q = append(Q, nxt)
 						}
@@ -185,7 +198,17 @@ func refSolve(input string) string {
 					in_path[p] = len(seq)
 					seq = append(seq, p)
 
-					sec := pref[p][next_val[p][head[p]]]
+					if head[p] == -1 {
+						return "-1"
+					}
+					nh2 := next_val[p][head[p]]
+					if nh2 == -1 {
+						return "-1"
+					}
+					sec := pref[p][nh2]
+					if tail[sec] == -1 {
+						return "-1"
+					}
 					nxt := pref[sec][tail[sec]]
 					p = nxt
 				}

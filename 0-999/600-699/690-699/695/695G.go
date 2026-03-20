@@ -4,204 +4,179 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"sort"
 )
 
-type state struct {
-	next [26]int
-	link int
-	len  int
-	pos  []int
+type SegNode struct {
+	l, r int32
 }
 
-type SAM struct {
-	st   []state
-	last int
+var seg []SegNode
+
+func newNode() int32 {
+	seg = append(seg, SegNode{})
+	return int32(len(seg) - 1)
 }
 
-func NewSAM(maxLen int) *SAM {
-	st := make([]state, 2*maxLen+5)
-	for i := range st {
-		for j := 0; j < 26; j++ {
-			st[i].next[j] = -1
-		}
-		st[i].link = -1
+func insert(l, r, val int32) int32 {
+	z := newNode()
+	if l == r {
+		return z
 	}
-	return &SAM{st: st, last: 0}
+	mid := (l + r) / 2
+	if val <= mid {
+		seg[z].l = insert(l, mid, val)
+	} else {
+		seg[z].r = insert(mid+1, r, val)
+	}
+	return z
 }
 
-func (sam *SAM) extend(c int, pos int) {
-	cur := sam.nextIndex()
-	sam.st[cur].len = sam.st[sam.last].len + 1
-	sam.st[cur].pos = append(sam.st[cur].pos, pos)
-	p := sam.last
-	for p >= 0 && sam.st[p].next[c] == -1 {
-		sam.st[p].next[c] = cur
-		p = sam.st[p].link
+func merge(x, y, l, r int32) int32 {
+	if x == 0 || y == 0 {
+		return x ^ y
 	}
+	z := newNode()
+	if l == r {
+		return z
+	}
+	mid := (l + r) / 2
+	seg[z].l = merge(seg[x].l, seg[y].l, l, mid)
+	seg[z].r = merge(seg[x].r, seg[y].r, mid+1, r)
+	return z
+}
+
+func query(rt, l, r, ql, qr int32) bool {
+	if rt == 0 || ql > r || qr < l {
+		return false
+	}
+	if ql <= l && r <= qr {
+		return true
+	}
+	mid := (l + r) / 2
+	return query(seg[rt].l, l, mid, ql, qr) || query(seg[rt].r, mid+1, r, ql, qr)
+}
+
+type State struct {
+	len, link int32
+	next      [26]int32
+	pos       int32
+}
+
+var st []State
+var sz, last int32
+var root []int32
+
+func samInit(n int32) {
+	st = make([]State, 1, 2*n+1)
+	st[0].len = 0
+	st[0].link = -1
+	sz = 1
+	last = 0
+	root = make([]int32, 2*n+1)
+}
+
+func samExtend(c int32, pos int32, n int32) {
+	cur := sz
+	sz++
+	st = append(st, State{})
+	st[cur].len = st[last].len + 1
+	st[cur].pos = pos
+	root[cur] = insert(1, n, pos)
+
+	p := last
+	for p != -1 && st[p].next[c] == 0 {
+		st[p].next[c] = cur
+		p = st[p].link
+	}
+
 	if p == -1 {
-		sam.st[cur].link = 0
+		st[cur].link = 0
 	} else {
-		q := sam.st[p].next[c]
-		if sam.st[p].len+1 == sam.st[q].len {
-			sam.st[cur].link = q
+		q := st[p].next[c]
+		if st[p].len+1 == st[q].len {
+			st[cur].link = q
 		} else {
-			clone := sam.nextIndex()
-			sam.st[clone] = sam.st[q]
-			sam.st[clone].len = sam.st[p].len + 1
-			sam.st[clone].pos = nil
-			for p >= 0 && sam.st[p].next[c] == q {
-				sam.st[p].next[c] = clone
-				p = sam.st[p].link
-			}
-			sam.st[q].link = clone
-			sam.st[cur].link = clone
-		}
-	}
-	sam.last = cur
-}
+			clone := sz
+			sz++
+			st = append(st, State{})
+			st[clone].len = st[p].len + 1
+			st[clone].next = st[q].next
+			st[clone].link = st[q].link
+			st[clone].pos = st[q].pos
 
-func (sam *SAM) nextIndex() int {
-	idx := 0
-	for idx < len(sam.st) && sam.st[idx].len != 0 || idx == 0 {
-		if sam.st[idx].len == 0 && idx != 0 {
-			break
+			for p != -1 && st[p].next[c] == q {
+				st[p].next[c] = clone
+				p = st[p].link
+			}
+			st[q].link = clone
+			st[cur].link = clone
 		}
-		idx++
 	}
-	if idx >= len(sam.st) {
-		sam.st = append(sam.st, state{})
-		for j := 0; j < 26; j++ {
-			sam.st[idx].next[j] = -1
-		}
-		sam.st[idx].link = -1
-	} else {
-		for j := 0; j < 26; j++ {
-			sam.st[idx].next[j] = -1
-		}
-		sam.st[idx].link = -1
-	}
-	return idx
+	last = cur
 }
 
 func main() {
 	reader := bufio.NewReader(os.Stdin)
 	var n int
-	var w string
 	fmt.Fscan(reader, &n)
+	var w string
 	fmt.Fscan(reader, &w)
-	sam := NewSAM(n)
-	pref := make([]int, n+1)
-	sam.st[0].len = 0
-	sam.st[0].link = -1
+
+	n32 := int32(n)
+
+	seg = make([]SegNode, 1, 10000000)
+	samInit(n32)
+
 	for i := 0; i < n; i++ {
-		sam.extend(int(w[i]-'a'), i+1)
-		pref[i+1] = sam.last
+		samExtend(int32(w[i]-'a'), int32(i+1), n32)
 	}
 
-	size := 0
-	for i := range sam.st {
-		if sam.st[i].len != 0 || i == 0 {
-			size = i + 1
-		}
+	order := make([]int32, sz)
+	cnt := make([]int32, n+1)
+	for i := int32(0); i < sz; i++ {
+		cnt[st[i].len]++
 	}
-	sam.st = sam.st[:size]
-
-	maxLen := 0
-	for i := 0; i < size; i++ {
-		if sam.st[i].len > maxLen {
-			maxLen = sam.st[i].len
-		}
-	}
-	cnt := make([]int, maxLen+1)
-	for i := 0; i < size; i++ {
-		cnt[sam.st[i].len]++
-	}
-	for i := 1; i <= maxLen; i++ {
+	for i := 1; i <= n; i++ {
 		cnt[i] += cnt[i-1]
 	}
-	order := make([]int, size)
-	for i := size - 1; i >= 0; i-- {
-		l := sam.st[i].len
-		cnt[l]--
-		order[cnt[l]] = i
+	for i := sz - 1; i >= 0; i-- {
+		cnt[st[i].len]--
+		order[cnt[st[i].len]] = i
 	}
 
-	gap := make([]int, size)
-	first := make([]int, size)
-	const INF = int(1e9)
-	for i := 0; i < size; i++ {
-		gap[i] = INF
-		first[i] = -1
-	}
-
-	for _, v := range order {
-		if len(sam.st[v].pos) > 1 {
-			sort.Ints(sam.st[v].pos)
-			best := INF
-			idx := 0
-			for i := 1; i < len(sam.st[v].pos); i++ {
-				d := sam.st[v].pos[i] - sam.st[v].pos[i-1]
-				if d < best {
-					best = d
-					idx = i - 1
-				}
-			}
-			gap[v] = best
-			first[v] = sam.st[v].pos[idx]
-		}
-		if sam.st[v].link >= 0 {
-			p := sam.st[v].link
-			if len(sam.st[p].pos) < len(sam.st[v].pos) {
-				sam.st[p].pos, sam.st[v].pos = sam.st[v].pos, sam.st[p].pos
-			}
-			sam.st[p].pos = append(sam.st[p].pos, sam.st[v].pos...)
+	for i := sz - 1; i > 0; i-- {
+		u := order[i]
+		p := st[u].link
+		if p != -1 {
+			root[p] = merge(root[p], root[u], 1, n32)
 		}
 	}
 
-	dp := make([]int, size)
-	visited := make([]bool, size)
+	dp := make([]int32, sz)
+	top := make([]int32, sz)
+	ans := int32(1)
 
-	var dfs func(int) int
-	dfs = func(v int) int {
-		if visited[v] {
-			return dp[v]
-		}
-		visited[v] = true
-		res := 1
-		if gap[v] != INF {
-			L := 1
-			if sam.st[v].link >= 0 {
-				L = sam.st[sam.st[v].link].len + 1
-			}
-			start := first[v] - L + 1
-			end := first[v] + gap[v]
-			if start >= 1 && end <= n {
-				u := substringState(pref, sam.st, start, end)
-				res = 1 + dfs(u)
+	for i := int32(1); i < sz; i++ {
+		u := order[i]
+		p := st[u].link
+		if p == 0 {
+			dp[u] = 1
+			top[u] = u
+		} else {
+			v := top[p]
+			pos := st[u].pos
+			if query(root[v], 1, n32, pos-st[u].len+st[v].len, pos-1) {
+				dp[u] = dp[p] + 1
+				top[u] = u
+			} else {
+				dp[u] = dp[p]
+				top[u] = top[p]
 			}
 		}
-		dp[v] = res
-		return res
+		if dp[u] > ans {
+			ans = dp[u]
+		}
 	}
 
-	ans := 1
-	for i := 1; i < size; i++ {
-		if sam.st[i].len > 0 {
-			val := dfs(i)
-			if val > ans {
-				ans = val
-			}
-		}
-	}
 	fmt.Println(ans)
-}
-
-func substringState(pref []int, st []state, l, r int) int {
-	v := pref[r]
-	length := r - l + 1
-	for st[st[v].link].len >= length {
-		v = st[v].link
-	}
-	return v
 }

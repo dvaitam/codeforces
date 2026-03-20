@@ -4,149 +4,303 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"sort"
 )
 
-var perms [][4]int
-var corners = [4][2]int{{0, 0}, {1, 0}, {0, 1}, {1, 1}}
+const BIG int64 = 2000000000000000000
+const INF int64 = 8000000000000000000
 
-func init() {
-	used := [4]bool{}
-	var p [4]int
-	var dfs func(int)
-	dfs = func(pos int) {
-		if pos == 4 {
-			var pp [4]int
-			copy(pp[:], p[:])
-			perms = append(perms, pp)
-			return
+type Point struct {
+	x, y int64
+}
+
+type Side struct {
+	fixed bool
+	f     int64
+	has   bool
+	l, r  int64
+}
+
+type Sol struct {
+	u, d, s int64
+	lab     [4]int
+}
+
+var perms [][4]int
+var xside = [4]int{0, 1, 0, 1}
+var yside = [4]int{0, 0, 1, 1}
+
+func max64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func min64(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func gen(idx int, used [4]bool, cur [4]int) {
+	if idx == 4 {
+		perms = append(perms, cur)
+		return
+	}
+	for i := 0; i < 4; i++ {
+		if !used[i] {
+			used[i] = true
+			cur[idx] = i
+			gen(idx+1, used, cur)
+			used[i] = false
 		}
-		for i := 0; i < 4; i++ {
-			if !used[i] {
-				used[i] = true
-				p[pos] = i
-				dfs(pos + 1)
-				used[i] = false
+	}
+}
+
+func addFix(s *Side, v int64) bool {
+	if s.fixed && s.f != v {
+		return false
+	}
+	s.fixed = true
+	s.f = v
+	return true
+}
+
+func addInter(s *Side, l, r int64) bool {
+	if !s.has {
+		s.has = true
+		s.l = l
+		s.r = r
+	} else {
+		if l > s.l {
+			s.l = l
+		}
+		if r < s.r {
+			s.r = r
+		}
+	}
+	return s.l <= s.r
+}
+
+func sRange(a, b Side) (bool, int64, int64) {
+	if (a.has && a.l > a.r) || (b.has && b.l > b.r) {
+		return false, 0, 0
+	}
+	if a.fixed {
+		if a.has && (a.f < a.l || a.f > a.r) {
+			return false, 0, 0
+		}
+		if b.fixed {
+			if b.has && (b.f < b.l || b.f > b.r) {
+				return false, 0, 0
+			}
+			s := b.f - a.f
+			return true, s, s
+		}
+		if b.has {
+			return true, b.l - a.f, b.r - a.f
+		}
+		return true, -INF, INF
+	}
+	if b.fixed {
+		if b.has && (b.f < b.l || b.f > b.r) {
+			return false, 0, 0
+		}
+		if a.has {
+			return true, b.f - a.r, b.f - a.l
+		}
+		return true, -INF, INF
+	}
+	if a.has && b.has {
+		return true, b.l - a.r, b.r - a.l
+	}
+	return true, -INF, INF
+}
+
+func chooseSide(s int64, a, b Side) (bool, int64) {
+	lo, hi := int64(-INF), int64(INF)
+	if a.has {
+		if a.l > lo {
+			lo = a.l
+		}
+		if a.r < hi {
+			hi = a.r
+		}
+	}
+	if a.fixed {
+		if a.f > lo {
+			lo = a.f
+		}
+		if a.f < hi {
+			hi = a.f
+		}
+	}
+	if b.has {
+		l := b.l - s
+		r := b.r - s
+		if l > lo {
+			lo = l
+		}
+		if r < hi {
+			hi = r
+		}
+	}
+	if b.fixed {
+		v := b.f - s
+		if v > lo {
+			lo = v
+		}
+		if v < hi {
+			hi = v
+		}
+	}
+	if lo > hi {
+		return false, 0
+	}
+	if lo <= 0 && 0 <= hi {
+		return true, 0
+	}
+	if lo > 0 {
+		return true, lo
+	}
+	return true, hi
+}
+
+func caseFeasible(p [4]Point, perm [4]int, mask int, L int64) (bool, int64, int64, int64) {
+	var u, v, d, e Side
+	for i := 0; i < 4; i++ {
+		j := perm[i]
+		if ((mask >> i) & 1) == 1 {
+			if xside[j] == 0 {
+				if !addFix(&u, p[i].x) {
+					return false, 0, 0, 0
+				}
+			} else {
+				if !addFix(&v, p[i].x) {
+					return false, 0, 0, 0
+				}
+			}
+			l := p[i].y - L
+			r := p[i].y + L
+			if yside[j] == 0 {
+				if !addInter(&d, l, r) {
+					return false, 0, 0, 0
+				}
+			} else {
+				if !addInter(&e, l, r) {
+					return false, 0, 0, 0
+				}
+			}
+		} else {
+			if yside[j] == 0 {
+				if !addFix(&d, p[i].y) {
+					return false, 0, 0, 0
+				}
+			} else {
+				if !addFix(&e, p[i].y) {
+					return false, 0, 0, 0
+				}
+			}
+			l := p[i].x - L
+			r := p[i].x + L
+			if xside[j] == 0 {
+				if !addInter(&u, l, r) {
+					return false, 0, 0, 0
+				}
+			} else {
+				if !addInter(&v, l, r) {
+					return false, 0, 0, 0
+				}
 			}
 		}
 	}
-	dfs(0)
-}
 
-func abs(x int) int {
-	if x < 0 {
-		return -x
+	okx, xl, xr := sRange(u, v)
+	if !okx {
+		return false, 0, 0, 0
 	}
-	return x
+	oky, yl, yr := sRange(d, e)
+	if !oky {
+		return false, 0, 0, 0
+	}
+
+	lo := max64(max64(xl, yl), 1)
+	hi := min64(xr, yr)
+	if lo > hi {
+		return false, 0, 0, 0
+	}
+	s := lo
+
+	oku, uu := chooseSide(s, u, v)
+	if !oku {
+		return false, 0, 0, 0
+	}
+	okd, dd := chooseSide(s, d, e)
+	if !okd {
+		return false, 0, 0, 0
+	}
+
+	return true, uu, dd, s
 }
 
-// uniqueInts sorts and deduplicates slice
-func uniqueInts(a []int) []int {
-	sort.Ints(a)
-	j := 0
-	for i := 0; i < len(a); i++ {
-		if i == 0 || a[i] != a[i-1] {
-			a[j] = a[i]
-			j++
+func feasible(p [4]Point, L int64) (bool, Sol) {
+	for _, perm := range perms {
+		for mask := 0; mask < 16; mask++ {
+			ok, u, d, s := caseFeasible(p, perm, mask, L)
+			if ok {
+				return true, Sol{u, d, s, perm}
+			}
 		}
 	}
-	return a[:j]
+	return false, Sol{}
 }
 
 func main() {
-	reader := bufio.NewReader(os.Stdin)
-	writer := bufio.NewWriter(os.Stdout)
-	defer writer.Flush()
-	var t int
-	if _, err := fmt.Fscan(reader, &t); err != nil {
-		return
-	}
-	const INF = 1000000000
-	for ; t > 0; t-- {
-		var A [4][2]int
-		for i := 0; i < 4; i++ {
-			fmt.Fscan(reader, &A[i][0], &A[i][1])
-		}
-		// collect candidate side lengths
-		D := make([]int, 0, 12)
-		for i := 0; i < 4; i++ {
-			for j := i + 1; j < 4; j++ {
-				D = append(D, abs(A[i][0]-A[j][0]), abs(A[i][1]-A[j][1]))
-			}
-		}
-		D = uniqueInts(D)
-		ans := INF
-		var finalPos [4][2]int
+	gen(0, [4]bool{}, [4]int{})
 
-		// try each side length
-		for _, d := range D {
-			// candidates for x and y
-			X := make([]int, 0, 40)
-			Y := make([]int, 0, 40)
-			for j := 0; j < 4; j++ {
-				X = append(X, A[j][0], A[j][0]-d, A[j][0]+d)
-				Y = append(Y, A[j][1], A[j][1]-d, A[j][1]+d)
-			}
-			// midpoints from permutations
-			for _, p := range perms {
-				lx, rx := INF, -INF
-				ly, ry := INF, -INF
-				for k := 0; k < 4; k++ {
-					xx := A[k][0] - corners[p[k]][0]*d
-					yy := A[k][1] - corners[p[k]][1]*d
-					if xx < lx {
-						lx = xx
-					}
-					if xx > rx {
-						rx = xx
-					}
-					if yy < ly {
-						ly = yy
-					}
-					if yy > ry {
-						ry = yy
-					}
-				}
-				X = append(X, (lx+rx)/2)
-				Y = append(Y, (ly+ry)/2)
-			}
-			X = uniqueInts(X)
-			Y = uniqueInts(Y)
-			// try each placement
-			for _, x := range X {
-				for _, y := range Y {
-					for _, p := range perms {
-						tmax := 0
-						ok := true
-						var tmp [4][2]int
-						for j := 0; j < 4; j++ {
-							xx := x + corners[p[j]][0]*d
-							yy := y + corners[p[j]][1]*d
-							if xx != A[j][0] && yy != A[j][1] {
-								ok = false
-								break
-							}
-							move := abs(xx-A[j][0]) + abs(yy-A[j][1])
-							if move > tmax {
-								tmax = move
-							}
-							tmp[j][0], tmp[j][1] = xx, yy
-						}
-						if ok && tmax < ans {
-							ans = tmax
-							finalPos = tmp
-						}
-					}
-				}
+	in := bufio.NewReaderSize(os.Stdin, 1<<20)
+	out := bufio.NewWriterSize(os.Stdout, 1<<20)
+	defer out.Flush()
+
+	var t int
+	fmt.Fscan(in, &t)
+	for ; t > 0; t-- {
+		var p [4]Point
+		for i := 0; i < 4; i++ {
+			fmt.Fscan(in, &p[i].x, &p[i].y)
+		}
+
+		ok, _ := feasible(p, BIG)
+		if !ok {
+			fmt.Fprintln(out, -1)
+			continue
+		}
+
+		lo, hi := int64(-1), BIG
+		for hi-lo > 1 {
+			mid := lo + (hi-lo)/2
+			ok, _ := feasible(p, mid)
+			if ok {
+				hi = mid
+			} else {
+				lo = mid
 			}
 		}
-		if ans < INF {
-			fmt.Fprintln(writer, ans)
-			for i := 0; i < 4; i++ {
-				fmt.Fprintln(writer, finalPos[i][0], finalPos[i][1])
+
+		_, sol := feasible(p, hi)
+		fmt.Fprintln(out, hi)
+		for i := 0; i < 4; i++ {
+			j := sol.lab[i]
+			x := sol.u
+			y := sol.d
+			if xside[j] == 1 {
+				x += sol.s
 			}
-		} else {
-			fmt.Fprintln(writer, -1)
+			if yside[j] == 1 {
+				y += sol.s
+			}
+			fmt.Fprintln(out, x, y)
 		}
 	}
 }
