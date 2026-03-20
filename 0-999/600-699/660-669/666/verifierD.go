@@ -82,6 +82,9 @@ func solve(tc testCase) string {
 	ans := INF
 	var final [4][2]int
 	for _, d := range Ds {
+		if d == 0 {
+			continue
+		}
 		X := make([]int, 0, 40)
 		Y := make([]int, 0, 40)
 		for j := 0; j < 4; j++ {

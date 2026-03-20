@@ -1,37 +1,76 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
 
-func runProg(path, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	} else {
-		cmd = exec.Command(path)
+// ===== Embedded reference solver for 683F =====
+
+func isLetter(c byte) bool {
+	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
+}
+
+func refSolve(input string) string {
+	s := strings.TrimRight(input, "\r\n")
+
+	var b strings.Builder
+	firstWord := true
+	capNext := true
+
+	for i := 0; i < len(s); {
+		for i < len(s) && s[i] == ' ' {
+			i++
+		}
+		if i >= len(s) {
+			break
+		}
+
+		if isLetter(s[i]) {
+			start := i
+			for i < len(s) && isLetter(s[i]) {
+				i++
+			}
+			word := []byte(strings.ToLower(s[start:i]))
+			if capNext && len(word) > 0 && 'a' <= word[0] && word[0] <= 'z' {
+				word[0] = word[0] - 'a' + 'A'
+			}
+			if !firstWord {
+				b.WriteByte(' ')
+			}
+			b.Write(word)
+			firstWord = false
+			capNext = false
+		} else if s[i] == '.' || s[i] == ',' {
+			if !firstWord {
+				b.WriteByte(s[i])
+			}
+			if s[i] == '.' {
+				capNext = true
+			}
+			i++
+		} else {
+			i++
+		}
 	}
+
+	return b.String()
+}
+
+// ===== Verifier infrastructure =====
+
+func runProg(path, input string) (string, error) {
+	cmd := exec.Command(path)
 	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
+	var out strings.Builder
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	err := cmd.Run()
 	return strings.TrimSpace(out.String()), err
-}
-
-func runRef(input string) (string, error) {
-	_, self, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(self)
-	ref := filepath.Join(dir, "683F.go")
-	return runProg(ref, input)
 }
 
 func randWord() string {
@@ -85,11 +124,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 	for i := 0; i < 100; i++ {
 		in := genCase()
-		expect, err := runRef(in)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
+		expect := refSolve(in)
 		got, err := runProg(bin, in)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "candidate failed on test %d: %v\n", i+1, err)

@@ -115,271 +115,182 @@ const embeddedTestcases = `7 7 .#.###. #....## .#....# ....... ...##.# ##..#.# #
 const oracleSource = `package main
 
 import (
-	"bufio"
-	"io"
-	"os"
+   "bufio"
+   "fmt"
+   "os"
 )
 
 type Query struct {
-	r1, c1, r2, c2 int
+   x1, y1, x2, y2 int
+   idx            int
+   Pbits          []uint64
+   ans            bool
 }
 
 var (
-	buffer  []byte
-	cursor  int
-	queries []Query
-	answers []bool
-	grid    []string
-	mask1   [505][505][8]uint64
-	mask2   [505][505][8]uint64
+   n, m int
+   grid [][]byte
+   rowWalls [][]int
+   answers []bool
+   mWords   int
 )
 
-func nextInt() int {
-	for cursor < len(buffer) && (buffer[cursor] < '0' || buffer[cursor] > '9') {
-		cursor++
-	}
-	if cursor >= len(buffer) {
-		return 0
-	}
-	res := 0
-	for cursor < len(buffer) && buffer[cursor] >= '0' && buffer[cursor] <= '9' {
-		res = res*10 + int(buffer[cursor]-'0')
-		cursor++
-	}
-	return res
-}
-
-func nextString() string {
-	for cursor < len(buffer) && buffer[cursor] <= ' ' {
-		cursor++
-	}
-	if cursor >= len(buffer) {
-		return ""
-	}
-	start := cursor
-	for cursor < len(buffer) && buffer[cursor] > ' ' {
-		cursor++
-	}
-	return string(buffer[start:cursor])
-}
-
-func solve(r1, r2, c1, c2 int, qIdx []int) {
-	if len(qIdx) == 0 {
-		return
-	}
-	if r1 == r2 && c1 == c2 {
-		for _, id := range qIdx {
-			answers[id] = true
-		}
-		return
-	}
-
-	if r2-r1 > c2-c1 {
-		mid := (r1 + r2) / 2
-		var qCross, qTop, qBot []int
-		for _, id := range qIdx {
-			q := queries[id]
-			if q.r1 <= mid && q.r2 >= mid {
-				qCross = append(qCross, id)
-			} else if q.r2 < mid {
-				qTop = append(qTop, id)
-			} else {
-				qBot = append(qBot, id)
-			}
-		}
-
-		if len(qCross) > 0 {
-			numWords := (c2 - c1 + 1 + 63) / 64
-
-			for r := mid; r >= r1; r-- {
-				for c := c2; c >= c1; c-- {
-					for w := 0; w < numWords; w++ {
-						mask1[r][c][w] = 0
-					}
-					if grid[r][c] == '#' {
-						continue
-					}
-					if r == mid {
-						bitIdx := c - c1
-						mask1[r][c][bitIdx/64] |= 1 << (bitIdx % 64)
-					}
-					if r < mid && grid[r+1][c] == '.' {
-						for w := 0; w < numWords; w++ {
-							mask1[r][c][w] |= mask1[r+1][c][w]
-						}
-					}
-					if c < c2 && grid[r][c+1] == '.' {
-						for w := 0; w < numWords; w++ {
-							mask1[r][c][w] |= mask1[r][c+1][w]
-						}
-					}
-				}
-			}
-
-			for r := mid; r <= r2; r++ {
-				for c := c1; c <= c2; c++ {
-					for w := 0; w < numWords; w++ {
-						mask2[r][c][w] = 0
-					}
-					if grid[r][c] == '#' {
-						continue
-					}
-					if r == mid {
-						bitIdx := c - c1
-						mask2[r][c][bitIdx/64] |= 1 << (bitIdx % 64)
-					}
-					if r > mid && grid[r-1][c] == '.' {
-						for w := 0; w < numWords; w++ {
-							mask2[r][c][w] |= mask2[r-1][c][w]
-						}
-					}
-					if c > c1 && grid[r][c-1] == '.' {
-						for w := 0; w < numWords; w++ {
-							mask2[r][c][w] |= mask2[r][c-1][w]
-						}
-					}
-				}
-			}
-
-			for _, id := range qCross {
-				q := queries[id]
-				ans := false
-				for w := 0; w < numWords; w++ {
-					if (mask1[q.r1][q.c1][w] & mask2[q.r2][q.c2][w]) != 0 {
-						ans = true
-						break
-					}
-				}
-				answers[id] = ans
-			}
-		}
-
-		solve(r1, mid-1, c1, c2, qTop)
-		solve(mid+1, r2, c1, c2, qBot)
-
-	} else {
-		mid := (c1 + c2) / 2
-		var qCross, qLeft, qRight []int
-		for _, id := range qIdx {
-			q := queries[id]
-			if q.c1 <= mid && q.c2 >= mid {
-				qCross = append(qCross, id)
-			} else if q.c2 < mid {
-				qLeft = append(qLeft, id)
-			} else {
-				qRight = append(qRight, id)
-			}
-		}
-
-		if len(qCross) > 0 {
-			numWords := (r2 - r1 + 1 + 63) / 64
-
-			for c := mid; c >= c1; c-- {
-				for r := r2; r >= r1; r-- {
-					for w := 0; w < numWords; w++ {
-						mask1[r][c][w] = 0
-					}
-					if grid[r][c] == '#' {
-						continue
-					}
-					if c == mid {
-						bitIdx := r - r1
-						mask1[r][c][bitIdx/64] |= 1 << (bitIdx % 64)
-					}
-					if c < mid && grid[r][c+1] == '.' {
-						for w := 0; w < numWords; w++ {
-							mask1[r][c][w] |= mask1[r][c+1][w]
-						}
-					}
-					if r < r2 && grid[r+1][c] == '.' {
-						for w := 0; w < numWords; w++ {
-							mask1[r][c][w] |= mask1[r+1][c][w]
-						}
-					}
-				}
-			}
-
-			for c := mid; c <= c2; c++ {
-				for r := r1; r <= r2; r++ {
-					for w := 0; w < numWords; w++ {
-						mask2[r][c][w] = 0
-					}
-					if grid[r][c] == '#' {
-						continue
-					}
-					if c == mid {
-						bitIdx := r - r1
-						mask2[r][c][bitIdx/64] |= 1 << (bitIdx % 64)
-					}
-					if c > mid && grid[r][c-1] == '.' {
-						for w := 0; w < numWords; w++ {
-							mask2[r][c][w] |= mask2[r][c-1][w]
-						}
-					}
-					if r > r1 && grid[r-1][c] == '.' {
-						for w := 0; w < numWords; w++ {
-							mask2[r][c][w] |= mask2[r-1][c][w]
-						}
-					}
-				}
-			}
-
-			for _, id := range qCross {
-				q := queries[id]
-				ans := false
-				for w := 0; w < numWords; w++ {
-					if (mask1[q.r1][q.c1][w] & mask2[q.r2][q.c2][w]) != 0 {
-						ans = true
-						break
-					}
-				}
-				answers[id] = ans
-			}
-		}
-
-		solve(r1, r2, c1, mid-1, qLeft)
-		solve(r1, r2, mid+1, c2, qRight)
-	}
+func solve(l, r int, qs []*Query) {
+   if len(qs) == 0 {
+       return
+   }
+   if l == r {
+       for _, q := range qs {
+           if rowWalls[l][q.y2] - rowWalls[l][q.y1-1] == 0 {
+               answers[q.idx] = true
+           } else {
+               answers[q.idx] = false
+           }
+       }
+       return
+   }
+   mid := (l + r) >> 1
+   startBuckets := make([][]*Query, mid-l+1)
+   endBuckets := make([][]*Query, r-mid+1)
+   var leftQ, rightQ []*Query
+   for _, q := range qs {
+       if q.x2 < mid {
+           leftQ = append(leftQ, q)
+       } else if q.x1 > mid {
+           rightQ = append(rightQ, q)
+       } else {
+           startBuckets[q.x1-l] = append(startBuckets[q.x1-l], q)
+           endBuckets[q.x2-mid] = append(endBuckets[q.x2-mid], q)
+       }
+   }
+   dpNext := make([][]uint64, m+2)
+   dpRow := make([][]uint64, m+2)
+   for j := 0; j <= m+1; j++ {
+       dpNext[j] = make([]uint64, mWords)
+       dpRow[j] = make([]uint64, mWords)
+   }
+   for j := 1; j <= m; j++ {
+       if grid[mid][j] == '.' {
+           bit := uint(j - 1)
+           dpNext[j][bit/64] |= 1 << (bit % 64)
+       }
+   }
+   for i := mid; i >= l; i-- {
+       if i < mid {
+           for j := m; j >= 1; j-- {
+               if grid[i][j] == '.' {
+                   for d := 0; d < mWords; d++ {
+                       dpRow[j][d] = dpNext[j][d] | dpRow[j+1][d]
+                   }
+               } else {
+                   for d := 0; d < mWords; d++ {
+                       dpRow[j][d] = 0
+                   }
+               }
+           }
+           for j := 1; j <= m; j++ {
+               copy(dpNext[j], dpRow[j])
+           }
+       }
+       for _, q := range startBuckets[i-l] {
+           q.Pbits = make([]uint64, mWords)
+           copy(q.Pbits, dpNext[q.y1])
+       }
+   }
+   for j := 0; j <= m+1; j++ {
+       for d := 0; d < mWords; d++ {
+           dpNext[j][d] = 0
+           dpRow[j][d] = 0
+       }
+   }
+   for j := 1; j <= m; j++ {
+       if grid[mid][j] == '.' {
+           bit := uint(j - 1)
+           dpNext[j][bit/64] |= 1 << (bit % 64)
+       }
+   }
+   for i := mid; i <= r; i++ {
+       if i > mid {
+           for j := 1; j <= m; j++ {
+               if grid[i][j] == '.' {
+                   for d := 0; d < mWords; d++ {
+                       dpRow[j][d] = dpNext[j][d] | dpRow[j-1][d]
+                   }
+               } else {
+                   for d := 0; d < mWords; d++ {
+                       dpRow[j][d] = 0
+                   }
+               }
+           }
+           for j := 1; j <= m; j++ {
+               copy(dpNext[j], dpRow[j])
+           }
+       }
+       for _, q := range endBuckets[i-mid] {
+           lbit := q.y1 - 1
+           rbit := q.y2 - 1
+           w1 := lbit / 64
+           w2 := rbit / 64
+           ok := false
+           for w := w1; w <= w2; w++ {
+               mask := ^uint64(0)
+               if w == w1 {
+                   mask &= ^((1 << (lbit % 64)) - 1)
+               }
+               if w == w2 {
+                   mask &= (1 << ((rbit % 64) + 1)) - 1
+               }
+               if q.Pbits[w]&dpNext[q.y2][w]&mask != 0 {
+                   ok = true
+                   break
+               }
+           }
+           answers[q.idx] = ok
+       }
+   }
+   solve(l, mid-1, leftQ)
+   solve(mid+1, r, rightQ)
 }
 
 func main() {
-	buffer, _ = io.ReadAll(os.Stdin)
-
-	n := nextInt()
-	m := nextInt()
-	if n == 0 || m == 0 {
-		return
-	}
-
-	grid = make([]string, n+1)
-	for i := 1; i <= n; i++ {
-		grid[i] = " " + nextString()
-	}
-
-	q := nextInt()
-	queries = make([]Query, q)
-	answers = make([]bool, q)
-	qIdx := make([]int, q)
-
-	for i := 0; i < q; i++ {
-		queries[i].r1 = nextInt()
-		queries[i].c1 = nextInt()
-		queries[i].r2 = nextInt()
-		queries[i].c2 = nextInt()
-		qIdx[i] = i
-	}
-
-	solve(1, n, 1, m, qIdx)
-
-	out := bufio.NewWriter(os.Stdout)
-	for i := 0; i < q; i++ {
-		if answers[i] {
-			out.WriteString("Yes\n")
-		} else {
-			out.WriteString("No\n")
-		}
-	}
-	out.Flush()
+   in := bufio.NewReader(os.Stdin)
+   out := bufio.NewWriter(os.Stdout)
+   defer out.Flush()
+   fmt.Fscan(in, &n, &m)
+   grid = make([][]byte, n+1)
+   var line string
+   for i := 1; i <= n; i++ {
+       fmt.Fscan(in, &line)
+       grid[i] = []byte(" " + line)
+   }
+   rowWalls = make([][]int, n+1)
+   for i := 1; i <= n; i++ {
+       rowWalls[i] = make([]int, m+1)
+       for j := 1; j <= m; j++ {
+           rowWalls[i][j] = rowWalls[i][j-1]
+           if grid[i][j] == '#' {
+               rowWalls[i][j]++
+           }
+       }
+   }
+   var q int
+   fmt.Fscan(in, &q)
+   queries := make([]*Query, q)
+   answers = make([]bool, q)
+   mWords = (m + 63) / 64
+   for i := 0; i < q; i++ {
+       var x1, y1, x2, y2 int
+       fmt.Fscan(in, &x1, &y1, &x2, &y2)
+       queries[i] = &Query{x1: x1, y1: y1, x2: x2, y2: y2, idx: i}
+   }
+   solve(1, n, queries)
+   for i := 0; i < q; i++ {
+       if answers[i] {
+           fmt.Fprintln(out, "Yes")
+       } else {
+           fmt.Fprintln(out, "No")
+       }
+   }
 }
 `
 

@@ -2,28 +2,274 @@ package main
 
 import (
 	"bufio"
-	"bytes"
+	"container/heap"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	src := filepath.Join(dir, "1025E.go")
-	bin := filepath.Join(os.TempDir(), "oracle1025E.bin")
-	cmd := exec.Command("go", "build", "-o", bin, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return bin, nil
+// ===== Embedded reference solver for 1025E =====
+
+type refPoint struct{ x, y int }
+
+type refMove struct {
+	x1, y1, x2, y2 int
 }
+
+type refItem struct {
+	p refPoint
+	d int
+	i int
+}
+
+type refPQ []*refItem
+
+func (pq refPQ) Len() int           { return len(pq) }
+func (pq refPQ) Less(i, j int) bool { return pq[i].d < pq[j].d }
+func (pq refPQ) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+	pq[i].i = i
+	pq[j].i = j
+}
+func (pq *refPQ) Push(x interface{}) {
+	n := len(*pq)
+	item := x.(*refItem)
+	item.i = n
+	*pq = append(*pq, item)
+}
+func (pq *refPQ) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	item.i = -1
+	*pq = old[0 : n-1]
+	return item
+}
+
+func refGetPathP(start, target refPoint, fixed [][]bool, grid [][]int, n int) []refPoint {
+	dist := make([][]int, n+1)
+	parent := make([][]refPoint, n+1)
+	for i := 1; i <= n; i++ {
+		dist[i] = make([]int, n+1)
+		parent[i] = make([]refPoint, n+1)
+		for j := 1; j <= n; j++ {
+			dist[i][j] = 1e9
+		}
+	}
+
+	pq := make(refPQ, 0)
+	heap.Init(&pq)
+
+	dist[start.x][start.y] = 0
+	heap.Push(&pq, &refItem{p: start, d: 0})
+
+	dx := []int{-1, 1, 0, 0}
+	dy := []int{0, 0, -1, 1}
+
+	for pq.Len() > 0 {
+		curr := heap.Pop(&pq).(*refItem)
+		u := curr.p
+		if curr.d > dist[u.x][u.y] {
+			continue
+		}
+		if u == target {
+			break
+		}
+
+		for k := 0; k < 4; k++ {
+			nx, ny := u.x+dx[k], u.y+dy[k]
+			if nx >= 1 && nx <= n && ny >= 1 && ny <= n {
+				if fixed[nx][ny] {
+					continue
+				}
+				cost := 1
+				if grid[nx][ny] != 0 {
+					cost = 100
+				}
+				if dist[u.x][u.y]+cost < dist[nx][ny] {
+					dist[nx][ny] = dist[u.x][u.y] + cost
+					parent[nx][ny] = u
+					heap.Push(&pq, &refItem{p: refPoint{nx, ny}, d: dist[nx][ny]})
+				}
+			}
+		}
+	}
+
+	var path []refPoint
+	curr := target
+	for curr != start {
+		path = append(path, curr)
+		curr = parent[curr.x][curr.y]
+	}
+
+	for i := 0; i < len(path)/2; i++ {
+		j := len(path) - 1 - i
+		path[i], path[j] = path[j], path[i]
+	}
+	return path
+}
+
+func refGetPathQ(start refPoint, fixed [][]bool, grid [][]int, pos_c refPoint, n int) []refPoint {
+	visited := make([][]bool, n+1)
+	for i := 1; i <= n; i++ {
+		visited[i] = make([]bool, n+1)
+	}
+	parent := make([][]refPoint, n+1)
+	for i := 1; i <= n; i++ {
+		parent[i] = make([]refPoint, n+1)
+	}
+
+	queue := []refPoint{start}
+	visited[start.x][start.y] = true
+
+	dx := []int{-1, 1, 0, 0}
+	dy := []int{0, 0, -1, 1}
+
+	var emptyCell refPoint
+
+	for len(queue) > 0 {
+		u := queue[0]
+		queue = queue[1:]
+
+		if grid[u.x][u.y] == 0 {
+			emptyCell = u
+			break
+		}
+
+		for k := 0; k < 4; k++ {
+			nx, ny := u.x+dx[k], u.y+dy[k]
+			if nx >= 1 && nx <= n && ny >= 1 && ny <= n {
+				if fixed[nx][ny] {
+					continue
+				}
+				if nx == pos_c.x && ny == pos_c.y {
+					continue
+				}
+				if !visited[nx][ny] {
+					visited[nx][ny] = true
+					parent[nx][ny] = u
+					queue = append(queue, refPoint{nx, ny})
+				}
+			}
+		}
+	}
+
+	var path []refPoint
+	curr := emptyCell
+	for {
+		path = append(path, curr)
+		if curr == start {
+			break
+		}
+		curr = parent[curr.x][curr.y]
+	}
+	for i := 0; i < len(path)/2; i++ {
+		j := len(path) - 1 - i
+		path[i], path[j] = path[j], path[i]
+	}
+	return path
+}
+
+func refSolveInternal(initialPos []refPoint, n int, m int) []refMove {
+	grid := make([][]int, n+1)
+	fixed := make([][]bool, n+1)
+	for i := 1; i <= n; i++ {
+		grid[i] = make([]int, n+1)
+		fixed[i] = make([]bool, n+1)
+	}
+
+	pos := make([]refPoint, m+1)
+	for i := 1; i <= m; i++ {
+		p := initialPos[i]
+		grid[p.x][p.y] = i
+		pos[i] = p
+	}
+
+	moves := []refMove{}
+
+	for c := 1; c <= m; c++ {
+		target := refPoint{1, c}
+		if pos[c] == target {
+			fixed[target.x][target.y] = true
+			continue
+		}
+
+		P := refGetPathP(pos[c], target, fixed, grid, n)
+		for _, p_next := range P {
+			if grid[p_next.x][p_next.y] == 0 {
+				grid[pos[c].x][pos[c].y] = 0
+				grid[p_next.x][p_next.y] = c
+				moves = append(moves, refMove{pos[c].x, pos[c].y, p_next.x, p_next.y})
+				pos[c] = p_next
+			} else {
+				Q := refGetPathQ(p_next, fixed, grid, pos[c], n)
+				for j := len(Q) - 2; j >= 0; j-- {
+					q_curr := Q[j]
+					q_next := Q[j+1]
+					cube_id := grid[q_curr.x][q_curr.y]
+					grid[q_curr.x][q_curr.y] = 0
+					grid[q_next.x][q_next.y] = cube_id
+					pos[cube_id] = q_next
+					moves = append(moves, refMove{q_curr.x, q_curr.y, q_next.x, q_next.y})
+				}
+				grid[pos[c].x][pos[c].y] = 0
+				grid[p_next.x][p_next.y] = c
+				moves = append(moves, refMove{pos[c].x, pos[c].y, p_next.x, p_next.y})
+				pos[c] = p_next
+			}
+		}
+		fixed[target.x][target.y] = true
+	}
+	return moves
+}
+
+func refSolve(input string) string {
+	sc := bufio.NewScanner(strings.NewReader(input))
+	sc.Split(bufio.ScanWords)
+	nextInt := func() int {
+		sc.Scan()
+		v, _ := strconv.Atoi(sc.Text())
+		return v
+	}
+
+	n := nextInt()
+	m := nextInt()
+
+	initial := make([]refPoint, m+1)
+	for i := 1; i <= m; i++ {
+		initial[i] = refPoint{nextInt(), nextInt()}
+	}
+
+	final := make([]refPoint, m+1)
+	for i := 1; i <= m; i++ {
+		final[i] = refPoint{nextInt(), nextInt()}
+	}
+
+	moves1 := refSolveInternal(initial, n, m)
+	moves2 := refSolveInternal(final, n, m)
+
+	for i := 0; i < len(moves2)/2; i++ {
+		j := len(moves2) - 1 - i
+		moves2[i], moves2[j] = moves2[j], moves2[i]
+	}
+	for i := range moves2 {
+		moves2[i] = refMove{moves2[i].x2, moves2[i].y2, moves2[i].x1, moves2[i].y1}
+	}
+
+	totalMoves := append(moves1, moves2...)
+
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d\n", len(totalMoves))
+	for _, mv := range totalMoves {
+		fmt.Fprintf(&sb, "%d %d %d %d\n", mv.x1, mv.y1, mv.x2, mv.y2)
+	}
+	return strings.TrimSpace(sb.String())
+}
+
+// ===== Verifier infrastructure =====
 
 func run(bin, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -33,8 +279,8 @@ func run(bin, input string) (string, error) {
 		cmd = exec.Command(bin)
 	}
 	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
+	var out strings.Builder
+	var errBuf strings.Builder
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
@@ -43,48 +289,14 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func genCase(r *rand.Rand) string {
-	n := r.Intn(5) + 4 // Generates n in [4, 8]
-	m := r.Intn(n) + 1
-	type cell struct{ x, y int }
-	used := make(map[[2]int]bool)
-	cells := make([]cell, 0, n*n)
-	for x := 1; x <= n; x++ {
-		for y := 1; y <= n; y++ {
-			cells = append(cells, cell{x, y})
-		}
+func abs(x int) int {
+	if x < 0 {
+		return -x
 	}
-	r.Shuffle(len(cells), func(i, j int) { cells[i], cells[j] = cells[j], cells[i] })
-	start := make([]cell, m)
-	target := make([]cell, m)
-	idx := 0
-	for i := 0; i < m; i++ {
-		start[i] = cells[idx]
-		used[[2]int{cells[idx].x, cells[idx].y}] = true
-		idx++
-	}
-	for i := 0; i < m; i++ {
-		// choose unused cell for target
-		for used[[2]int{cells[idx].x, cells[idx].y}] {
-			idx++
-		}
-		target[i] = cells[idx]
-		used[[2]int{cells[idx].x, cells[idx].y}] = true
-		idx++
-	}
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "%d %d\n", n, m)
-	for _, c := range start {
-		fmt.Fprintf(&sb, "%d %d\n", c.x, c.y)
-	}
-	for _, c := range target {
-		fmt.Fprintf(&sb, "%d %d\n", c.x, c.y)
-	}
-	return sb.String()
+	return x
 }
 
 func checkSolution(input, output string) error {
-	// Parse input
 	scanner := bufio.NewScanner(strings.NewReader(input))
 	scanner.Split(bufio.ScanWords)
 	nextInt := func() int {
@@ -104,7 +316,6 @@ func checkSolution(input, output string) error {
 		target[i] = Point{nextInt(), nextInt()}
 	}
 
-	// Parse output
 	outScanner := bufio.NewScanner(strings.NewReader(output))
 	outScanner.Split(bufio.ScanWords)
 	if !outScanner.Scan() {
@@ -118,7 +329,6 @@ func checkSolution(input, output string) error {
 		return fmt.Errorf("too many moves: %d > 10800", k)
 	}
 
-	// Simulate
 	grid := make([][]int, n+1)
 	for i := range grid {
 		grid[i] = make([]int, n+1)
@@ -132,11 +342,17 @@ func checkSolution(input, output string) error {
 			return fmt.Errorf("expected more moves")
 		}
 		x1, _ := strconv.Atoi(outScanner.Text())
-		if !outScanner.Scan() { return fmt.Errorf("incomplete move") }
+		if !outScanner.Scan() {
+			return fmt.Errorf("incomplete move")
+		}
 		y1, _ := strconv.Atoi(outScanner.Text())
-		if !outScanner.Scan() { return fmt.Errorf("incomplete move") }
+		if !outScanner.Scan() {
+			return fmt.Errorf("incomplete move")
+		}
 		x2, _ := strconv.Atoi(outScanner.Text())
-		if !outScanner.Scan() { return fmt.Errorf("incomplete move") }
+		if !outScanner.Scan() {
+			return fmt.Errorf("incomplete move")
+		}
 		y2, _ := strconv.Atoi(outScanner.Text())
 
 		if x1 < 1 || x1 > n || y1 < 1 || y1 > n {
@@ -158,19 +374,10 @@ func checkSolution(input, output string) error {
 		grid[x1][y1] = 0
 	}
 
-	// Check final state
 	for i, p := range target {
 		if grid[p.x][p.y] == 0 {
 			return fmt.Errorf("target (%d,%d) empty", p.x, p.y)
 		}
-		// Note: The problem states "place each cube on its place", implying identity of cubes matters.
-		// However, the input says "all cubes have distinct colors", but doesn't explicitly link start[i] to target[i].
-		// Wait, "Each of the next m lines contains... initial positions... The next m lines describe the designated places... in the same format and order."
-		// This implies start[i] must move to target[i].
-		// BUT, usually in such problems if cubes are "colored" and "distinct", then yes, cube i starts at start[i] and must end at target[i].
-		// Let's verify the oracle actually respects this.
-		// The oracle logic is hidden, but the problem statement says "all cubes have distinct colors".
-		// Let's assume cube at start[i] must end at target[i].
 		if grid[p.x][p.y] != i+1 {
 			return fmt.Errorf("target (%d,%d) has cube %d, expected %d", p.x, p.y, grid[p.x][p.y], i+1)
 		}
@@ -178,11 +385,41 @@ func checkSolution(input, output string) error {
 	return nil
 }
 
-func abs(x int) int {
-	if x < 0 {
-		return -x
+func genCase(r *rand.Rand) string {
+	n := r.Intn(5) + 4
+	maxM := n - 1 // ensure enough free cells
+	if maxM < 1 {
+		maxM = 1
 	}
-	return x
+	m := r.Intn(maxM) + 1
+
+	type cell struct{ x, y int }
+	cells := make([]cell, 0, n*n)
+	for x := 1; x <= n; x++ {
+		for y := 1; y <= n; y++ {
+			cells = append(cells, cell{x, y})
+		}
+	}
+	r.Shuffle(len(cells), func(i, j int) { cells[i], cells[j] = cells[j], cells[i] })
+
+	start := make([]cell, m)
+	target := make([]cell, m)
+	for i := 0; i < m; i++ {
+		start[i] = cells[i]
+	}
+	for i := 0; i < m; i++ {
+		target[i] = cells[m+i]
+	}
+
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d %d\n", n, m)
+	for _, c := range start {
+		fmt.Fprintf(&sb, "%d %d\n", c.x, c.y)
+	}
+	for _, c := range target {
+		fmt.Fprintf(&sb, "%d %d\n", c.x, c.y)
+	}
+	return sb.String()
 }
 
 func main() {
@@ -191,11 +428,7 @@ func main() {
 		os.Exit(1)
 	}
 	userBin := os.Args[1]
-	
-	// We don't need the oracle if we verify validity directly.
-	// The oracle was used to check string equality, which is wrong for problems with multiple solutions.
-	// The verifier itself was flawed because it compared exact output string with oracle.
-	
+
 	r := rand.New(rand.NewSource(1))
 	for i := 0; i < 100; i++ {
 		input := genCase(r)
