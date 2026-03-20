@@ -127,11 +127,25 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
+		if !tokensEqual(expect, got) {
 			fmt.Fprintf(os.Stderr, "case %d mismatch\nexpected: %s\ngot: %s\ninput:\n%s", i+1, expect, got, input)
 			os.Exit(1)
 		}
 		passed++
 	}
 	fmt.Println("All tests passed")
+}
+
+func tokensEqual(a, b string) bool {
+	ta := strings.Fields(strings.TrimSpace(a))
+	tb := strings.Fields(strings.TrimSpace(b))
+	if len(ta) != len(tb) {
+		return false
+	}
+	for i := range ta {
+		if ta[i] != tb[i] {
+			return false
+		}
+	}
+	return true
 }
