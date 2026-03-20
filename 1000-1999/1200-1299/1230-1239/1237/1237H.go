@@ -3,138 +3,176 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"math/rand"
 	"os"
-	"time"
 )
 
-func main() {
-	rand.Seed(time.Now().UnixNano())
-	reader := bufio.NewReader(os.Stdin)
-	writer := bufio.NewWriter(os.Stdout)
-	defer writer.Flush()
-	var TC int
-	if _, err := fmt.Fscan(reader, &TC); err != nil {
-		return
+func sw(x int) int {
+	if x == 1 {
+		return 2
 	}
-	for tc := 0; tc < TC; tc++ {
-		var s, tstr string
-		fmt.Fscan(reader, &s, &tstr)
-		n2 := len(s)
-		N := n2 / 2
-		cnt := [4]int{}
-		A0 := make([]int, N)
-		B0 := make([]int, N)
-		for i := 0; i < N; i++ {
-			A0[i] = int(s[2*i]-'0')*2 + int(s[2*i+1]-'0')
-			B0[i] = int(tstr[2*i]-'0')*2 + int(tstr[2*i+1]-'0')
-			cnt[A0[i]]++
-			cnt[B0[i]]--
+	if x == 2 {
+		return 1
+	}
+	return x
+}
+
+func pairCode(a, b byte) int {
+	if a == '0' {
+		if b == '0' {
+			return 0
 		}
-		if cnt[0] != 0 || cnt[3] != 0 || cnt[1]+cnt[2] != 0 {
-			fmt.Fprintln(writer, -1)
+		return 1
+	}
+	if b == '0' {
+		return 2
+	}
+	return 3
+}
+
+func parsePairs(s string) []int {
+	m := len(s) / 2
+	res := make([]int, m)
+	for i := 0; i < m; i++ {
+		res[i] = pairCode(s[2*i], s[2*i+1])
+	}
+	return res
+}
+
+func main() {
+	in := bufio.NewReaderSize(os.Stdin, 1<<20)
+	out := bufio.NewWriterSize(os.Stdout, 1<<20)
+	defer out.Flush()
+
+	var t int
+	fmt.Fscan(in, &t)
+	for ; t > 0; t-- {
+		var a, b string
+		fmt.Fscan(in, &a, &b)
+
+		n := len(a)
+		m := n / 2
+
+		pa := parsePairs(a)
+		pb := parsePairs(b)
+
+		ca := [3]int{}
+		cb := [3]int{}
+		for i := 0; i < m; i++ {
+			switch pa[i] {
+			case 0:
+				ca[0]++
+			case 3:
+				ca[2]++
+			default:
+				ca[1]++
+			}
+			switch pb[i] {
+			case 0:
+				cb[0]++
+			case 3:
+				cb[2]++
+			default:
+				cb[1]++
+			}
+		}
+
+		if ca != cb {
+			fmt.Fprintln(out, -1)
 			continue
 		}
-		var ops []int
-		var A, B []int
-		for {
-			ops = ops[:0]
-			// reset arrays
-			A = make([]int, N)
-			B = make([]int, N)
-			copy(A, A0)
-			copy(B, B0)
-			r := N
-			// define doit inline
-			doit := func(k int) {
-				ops = append(ops, k)
-				// reverse A[0:k]
-				for i, j := 0, k-1; i < j; i, j = i+1, j-1 {
-					A[i], A[j] = A[j], A[i]
-				}
-				// complement 1<->2
-				for i := 0; i < k; i++ {
-					if A[i] == 1 {
-						A[i] = 2
-					} else if A[i] == 2 {
-						A[i] = 1
-					}
-				}
+
+		ans := make([]int, 0, n+1)
+
+		flip := func(r int) {
+			for l, rr := 0, r-1; l < rr; l, rr = l+1, rr-1 {
+				pa[l], pa[rr] = sw(pa[rr]), sw(pa[l])
 			}
-			for r > 0 {
-				if A[r-1] == B[r-1] {
-					r--
-					continue
-				}
-				if A[0] == B[r-1] {
-					if A[0] == 1 || A[0] == 2 {
-						doit(1)
+			if r%2 == 1 {
+				pa[r/2] = sw(pa[r/2])
+			}
+			ans = append(ans, 2*r)
+		}
+
+		ok := true
+
+		for i := m; i >= 1 && ok; i-- {
+			tgt := pb[i-1]
+
+			if tgt == 0 || tgt == 3 {
+				k := 0
+				for j := i; j >= 1; j-- {
+					if pa[j-1] == tgt {
+						k = j
+						break
 					}
-					doit(r)
-					continue
 				}
-				if (A[0] == 1 && B[r-1] == 2) || (A[0] == 2 && B[r-1] == 1) {
-					doit(r)
-					continue
+				if k == 0 {
+					ok = false
+					break
 				}
-				// search patterns
-				var fn []int
-				if r >= 2 {
-					for i := 1; i < r; i++ {
-						if A[i-1] == B[r-2] && A[i] == B[r-1] {
-							fn = append(fn, i)
+				if k < i {
+					if k == 1 {
+						flip(i)
+					} else {
+						flip(k)
+						flip(i)
+					}
+				}
+			} else {
+				k := 0
+				for j := i; j >= 1; j-- {
+					if pa[j-1] == tgt {
+						k = j
+						break
+					}
+				}
+				if k != 0 {
+					if k < i {
+						flip(k)
+						flip(i)
+					}
+				} else {
+					opp := sw(tgt)
+					k = 0
+					for j := 1; j <= i; j++ {
+						if pa[j-1] == opp {
+							k = j
+							break
 						}
 					}
-				}
-				if len(fn) > 0 {
-					i := fn[rand.Intn(len(fn))]
-					doit(i + 1)
-					doit(r)
-					continue
-				}
-				fn = fn[:0]
-				for i := 0; i < r; i++ {
-					if A[i] == B[r-1] {
-						fn = append(fn, i)
+					if k == 0 {
+						ok = false
+						break
+					}
+					if k == 1 {
+						flip(i)
+					} else {
+						flip(k)
+						flip(1)
+						flip(i)
 					}
 				}
-				if len(fn) > 0 {
-					i := fn[rand.Intn(len(fn))]
-					doit(i + 1)
-					doit(r)
-					continue
-				}
-				fn = fn[:0]
-				for i := 0; i < r; i++ {
-					if A[i] == 3-B[r-1] {
-						fn = append(fn, i)
-					}
-				}
-				if len(fn) > 0 {
-					i := fn[rand.Intn(len(fn))]
-					doit(i + 1)
-					doit(1)
-					doit(r)
-					continue
-				}
-			}
-			if len(ops) <= 2*N+1 {
-				break
 			}
 		}
-		// output
-		m := len(ops)
-		fmt.Fprintln(writer, m)
-		if m > 0 {
-			for i, v := range ops {
-				if i > 0 {
-					writer.WriteByte(' ')
+
+		if ok {
+			for i := 0; i < m; i++ {
+				if pa[i] != pb[i] {
+					ok = false
+					break
 				}
-				fmt.Fprint(writer, v*2)
 			}
-			writer.WriteByte('\n')
-		} else {
-			writer.WriteByte('\n')
 		}
+
+		if !ok || len(ans) > n+1 {
+			fmt.Fprintln(out, -1)
+			continue
+		}
+
+		fmt.Fprint(out, len(ans))
+		for _, x := range ans {
+			fmt.Fprint(out, " ", x)
+		}
+		fmt.Fprintln(out)
 	}
 }

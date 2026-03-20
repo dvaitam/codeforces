@@ -1,71 +1,59 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 )
 
 func isLetter(c byte) bool {
-	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
 }
 
 func main() {
-	reader := bufio.NewReader(os.Stdin)
-	line, _ := reader.ReadString('\n')
-	line = strings.TrimRight(line, "\n\r")
+	data, _ := io.ReadAll(os.Stdin)
+	s := strings.TrimRight(string(data), "\r\n")
 
-	var tokens []string
-	for i := 0; i < len(line); {
-		switch line[i] {
-		case ' ':
+	var b strings.Builder
+	firstWord := true
+	capNext := true
+
+	for i := 0; i < len(s); {
+		for i < len(s) && s[i] == ' ' {
 			i++
-		case '.', ',':
-			tokens = append(tokens, line[i:i+1])
-			i++
-		default:
-			if isLetter(line[i]) {
-				j := i
-				for j < len(line) && isLetter(line[j]) {
-					j++
-				}
-				tokens = append(tokens, line[i:j])
-				i = j
-			} else {
+		}
+		if i >= len(s) {
+			break
+		}
+
+		if isLetter(s[i]) {
+			start := i
+			for i < len(s) && isLetter(s[i]) {
 				i++
 			}
-		}
-	}
-
-	var sb strings.Builder
-	capNext := true
-	for idx, tok := range tokens {
-		if tok == "." || tok == "," {
-			sb.WriteString(tok)
-			if idx < len(tokens)-1 {
-				sb.WriteByte(' ')
+			word := []byte(strings.ToLower(s[start:i]))
+			if capNext && len(word) > 0 && 'a' <= word[0] && word[0] <= 'z' {
+				word[0] = word[0] - 'a' + 'A'
 			}
-			if tok == "." {
+			if !firstWord {
+				b.WriteByte(' ')
+			}
+			b.Write(word)
+			firstWord = false
+			capNext = false
+		} else if s[i] == '.' || s[i] == ',' {
+			if !firstWord {
+				b.WriteByte(s[i])
+			}
+			if s[i] == '.' {
 				capNext = true
 			}
-			continue
-		}
-
-		word := strings.ToLower(tok)
-		if capNext && len(word) > 0 {
-			sb.WriteString(strings.ToUpper(string(word[0])))
-			if len(word) > 1 {
-				sb.WriteString(word[1:])
-			}
-			capNext = false
+			i++
 		} else {
-			sb.WriteString(word)
-		}
-		if idx < len(tokens)-1 && tokens[idx+1] != "." && tokens[idx+1] != "," {
-			sb.WriteByte(' ')
+			i++
 		}
 	}
 
-	fmt.Println(sb.String())
+	fmt.Print(b.String())
 }

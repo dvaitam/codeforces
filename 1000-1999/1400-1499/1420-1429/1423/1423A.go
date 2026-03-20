@@ -1,178 +1,223 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
-   "sort"
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
 )
 
+type Cost struct {
+	city int
+	cost int
+}
+
 func main() {
-   reader := bufio.NewReader(os.Stdin)
-   var n int
-   if _, err := fmt.Fscan(reader, &n); err != nil {
-       return
-   }
-   // odd number cannot be fully paired
-   if n%2 == 1 {
-       outNo()
-       return
-   }
-   // read cost matrix
-   cost := make([][]int64, n)
-   for i := 0; i < n; i++ {
-       cost[i] = make([]int64, n)
-   }
-   for i := 0; i < n; i++ {
-       for cnt, j := 0, 0; j < n; j++ {
-           if j == i {
-               continue
-           }
-           var c int64
-           fmt.Fscan(reader, &c)
-           cost[i][j] = c
-           cnt++
-       }
-   }
-   // build preference lists
-   prefs := make([][]int, n)
-   invRank := make([][]int, n)
-   for i := 0; i < n; i++ {
-       arr := make([]int, 0, n-1)
-       for j := 0; j < n; j++ {
-           if j != i {
-               arr = append(arr, j)
-           }
-       }
-       sort.Slice(arr, func(a, b int) bool {
-           return cost[i][arr[a]] < cost[i][arr[b]]
-       })
-       prefs[i] = arr
-       inv := make([]int, n)
-       for idx, j := range arr {
-           inv[j] = idx
-       }
-       invRank[i] = inv
-   }
-   // Phase 1: proposal and list reduction
-   queue := make([]int, 0, n)
-   inQueue := make([]bool, n)
-   for i := 0; i < n; i++ {
-       queue = append(queue, i)
-       inQueue[i] = true
-   }
-   for len(queue) > 0 {
-       i := queue[0]
-       queue = queue[1:]
-       inQueue[i] = false
-       if len(prefs[i]) == 0 {
-           outNo()
-           return
-       }
-       j := prefs[i][0]
-       // find position of i in prefs[j]
-       r := invRank[j][i]
-       // eliminate all k worse than i in j's list
-       for idx := r + 1; idx < len(prefs[j]); idx++ {
-           k := prefs[j][idx]
-           // remove j from prefs[k]; if head removed, requeue k
-           removedHead := removePref(&prefs, &invRank, k, j)
-           if len(prefs[k]) == 0 {
-               outNo()
-               return
-           }
-           if removedHead && !inQueue[k] {
-               queue = append(queue, k)
-               inQueue[k] = true
-           }
-       }
-       // trim prefs[j]
-       prefs[j] = prefs[j][:r+1]
-       // no need to update invRank[j] for kept elements
-   }
-   // Phase 2: eliminate rotations
-   for {
-       // find person with list length >1
-       s := -1
-       for i := 0; i < n; i++ {
-           if len(prefs[i]) > 1 {
-               s = i
-               break
-           }
-       }
-       if s == -1 {
-           break
-       }
-       // find rotation
-       P := []int{}
-       Q := []int{}
-       p := s
-       for {
-           P = append(P, p)
-           q := prefs[p][1]
-           Q = append(Q, q)
-           // find next p
-           pos := invRank[q][p]
-           p = prefs[q][pos+1]
-           if p == s {
-               break
-           }
-       }
-       r := len(P)
-       // eliminate rotation
-       for k := 0; k < r; k++ {
-           pk := P[k]
-           qk := Q[k]
-           pk1 := P[(k+1)%r]
-           removePref(&prefs, &invRank, pk, qk)
-           if len(prefs[pk]) == 0 {
-               outNo()
-               return
-           }
-           removePref(&prefs, &invRank, qk, pk1)
-           if len(prefs[qk]) == 0 {
-               outNo()
-               return
-           }
-       }
-   }
-   // output matching
-   out := make([]int, n)
-   for i := 0; i < n; i++ {
-       if len(prefs[i]) == 0 {
-           outNo()
-           return
-       }
-       out[i] = prefs[i][0] + 1
-   }
-   w := bufio.NewWriter(os.Stdout)
-   defer w.Flush()
-   for i, v := range out {
-       if i > 0 {
-           fmt.Fprint(w, " ")
-       }
-       fmt.Fprint(w, v)
-   }
-   fmt.Fprintln(w)
-}
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
+	buf := make([]byte, 1024*1024)
+	scanner.Buffer(buf, 10*1024*1024)
 
-func outNo() {
-   fmt.Println(-1)
-}
+	if !scanner.Scan() {
+		return
+	}
 
-// removePref removes j from prefs[i] and updates invRank; if removing head, person is enqueued by caller if needed
-// removePref removes j from prefs[i], updates invRank, and returns true if head was removed
-func removePref(prefs *[][]int, invRank *[][]int, i, j int) bool {
-   arr := (*prefs)[i]
-   pos := (*invRank)[i][j]
-   headRemoved := (pos == 0)
-   // remove element at pos
-   copy(arr[pos:], arr[pos+1:])
-   arr = arr[:len(arr)-1]
-   (*prefs)[i] = arr
-   // update invRank for shifted elements
-   for k := pos; k < len(arr); k++ {
-       (*invRank)[i][arr[k]] = k
-   }
-   return headRemoved
+	n := 0
+	for _, v := range scanner.Bytes() {
+		n = n*10 + int(v-'0')
+	}
+
+	if n%2 != 0 {
+		fmt.Println("-1")
+		return
+	}
+
+	pref := make([][]int, n+1)
+	rank := make([][]int, n+1)
+
+	for i := 1; i <= n; i++ {
+		pref[i] = make([]int, n-1)
+		rank[i] = make([]int, n+1)
+
+		costs := make([]Cost, n-1)
+		idx := 0
+		for j := 1; j <= n; j++ {
+			if i == j {
+				continue
+			}
+			scanner.Scan()
+			c := 0
+			for _, v := range scanner.Bytes() {
+				c = c*10 + int(v-'0')
+			}
+			costs[idx] = Cost{city: j, cost: c}
+			idx++
+		}
+
+		sort.Slice(costs, func(a, b int) bool {
+			return costs[a].cost < costs[b].cost
+		})
+
+		for j := 0; j < n-1; j++ {
+			pref[i][j] = costs[j].city
+			rank[i][costs[j].city] = j
+		}
+	}
+
+	head := make([]int, n+1)
+	tail := make([]int, n+1)
+	next_val := make([][]int, n+1)
+	prev_val := make([][]int, n+1)
+	match := make([]int, n+1)
+
+	for i := 1; i <= n; i++ {
+		head[i] = 0
+		tail[i] = n - 2
+		next_val[i] = make([]int, n-1)
+		prev_val[i] = make([]int, n-1)
+		for j := 0; j < n-1; j++ {
+			next_val[i][j] = j + 1
+			prev_val[i][j] = j - 1
+		}
+		next_val[i][n-2] = -1
+	}
+
+	remove := func(i, idx int) {
+		p := prev_val[i][idx]
+		nx := next_val[i][idx]
+		if p != -1 {
+			next_val[i][p] = nx
+		} else {
+			head[i] = nx
+		}
+		if nx != -1 {
+			prev_val[i][nx] = p
+		} else {
+			tail[i] = p
+		}
+	}
+
+	Q := make([]int, 0, n*n)
+	for i := 1; i <= n; i++ {
+		Q = append(Q, i)
+	}
+
+	processQ := func() bool {
+		for len(Q) > 0 {
+			x := Q[0]
+			Q = Q[1:]
+
+			if head[x] == -1 {
+				return false
+			}
+
+			y := pref[x][head[x]]
+			idx_y := rank[y][x]
+
+			curr := next_val[y][idx_y]
+			for curr != -1 {
+				w := pref[y][curr]
+				remove(w, rank[w][y])
+				if head[w] == -1 {
+					return false
+				}
+				if match[y] == w {
+					match[y] = 0
+					Q = append(Q, w)
+				}
+				curr = next_val[y][curr]
+			}
+
+			tail[y] = idx_y
+			next_val[y][idx_y] = -1
+			match[y] = x
+		}
+		return true
+	}
+
+	if !processQ() {
+		fmt.Println("-1")
+		return
+	}
+
+	in_path := make([]int, n+1)
+	for i := 0; i <= n; i++ {
+		in_path[i] = -1
+	}
+
+	for {
+		found_cycle := false
+		for i := 1; i <= n; i++ {
+			if head[i] != -1 && head[i] != tail[i] {
+				found_cycle = true
+
+				seq := []int{}
+				p := i
+				for {
+					if in_path[p] != -1 {
+						cycle := seq[in_path[p]:]
+						for _, u := range cycle {
+							sec := pref[u][next_val[u][head[u]]]
+							nxt := pref[sec][tail[sec]]
+
+							remove(nxt, rank[nxt][sec])
+							if head[nxt] == -1 {
+								fmt.Println("-1")
+								return
+							}
+
+							remove(sec, rank[sec][nxt])
+							if head[sec] == -1 {
+								fmt.Println("-1")
+								return
+							}
+
+							match[sec] = pref[sec][tail[sec]]
+							Q = append(Q, nxt)
+						}
+						for _, node := range seq {
+							in_path[node] = -1
+						}
+						break
+					}
+					in_path[p] = len(seq)
+					seq = append(seq, p)
+
+					sec := pref[p][next_val[p][head[p]]]
+					nxt := pref[sec][tail[sec]]
+					p = nxt
+				}
+				break
+			}
+		}
+
+		if !found_cycle {
+			break
+		}
+
+		if !processQ() {
+			fmt.Println("-1")
+			return
+		}
+	}
+
+	for i := 1; i <= n; i++ {
+		if head[i] == -1 || head[i] != tail[i] {
+			fmt.Println("-1")
+			return
+		}
+	}
+
+	ans := make([]int, n+1)
+	for i := 1; i <= n; i++ {
+		ans[i] = pref[i][head[i]]
+	}
+
+	for i := 1; i <= n; i++ {
+		if i > 1 {
+			fmt.Print(" ")
+		}
+		fmt.Print(ans[i])
+	}
+	fmt.Println()
 }

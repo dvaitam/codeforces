@@ -356,27 +356,129 @@ func parseTestcases() ([]testCase, error) {
 	return cases, nil
 }
 
-// solve mirrors 1185E.go.
-func solve(tc testCase) string {
+// validateAnswer checks a candidate's answer for a single test case.
+// The answer must reproduce the grid when the snake operations are applied in order.
+func validateAnswer(tc testCase, answer string) error {
+	n, m := tc.n, tc.m
+	lines := strings.Split(strings.TrimSpace(answer), "\n")
+	if len(lines) == 0 {
+		return fmt.Errorf("empty answer")
+	}
+	first := strings.TrimSpace(lines[0])
+	if strings.ToUpper(first) == "NO" {
+		// Check if NO is actually correct by running our own check
+		if isValidGrid(tc) {
+			return fmt.Errorf("candidate said NO but answer should be YES")
+		}
+		return nil
+	}
+	if strings.ToUpper(first) != "YES" {
+		return fmt.Errorf("expected YES or NO, got %q", first)
+	}
+
+	if len(lines) < 2 {
+		return fmt.Errorf("missing k line after YES")
+	}
+	k, err := strconv.Atoi(strings.TrimSpace(lines[1]))
+	if err != nil {
+		return fmt.Errorf("invalid k: %v", err)
+	}
+	if k < 0 || k > 26 {
+		return fmt.Errorf("k=%d out of range [0,26]", k)
+	}
+	if len(lines) < 2+k {
+		return fmt.Errorf("expected %d snake lines, got %d", k, len(lines)-2)
+	}
+
+	// Simulate drawing snakes
+	sheet := make([][]byte, n)
+	for i := range sheet {
+		sheet[i] = make([]byte, m)
+		for j := range sheet[i] {
+			sheet[i][j] = '.'
+		}
+	}
+
+	for si := 0; si < k; si++ {
+		parts := strings.Fields(strings.TrimSpace(lines[2+si]))
+		if len(parts) != 4 {
+			return fmt.Errorf("snake %d: expected 4 numbers, got %d", si+1, len(parts))
+		}
+		r1, _ := strconv.Atoi(parts[0])
+		c1, _ := strconv.Atoi(parts[1])
+		r2, _ := strconv.Atoi(parts[2])
+		c2, _ := strconv.Atoi(parts[3])
+		r1--; c1--; r2--; c2--
+
+		if r1 < 0 || r1 >= n || r2 < 0 || r2 >= n || c1 < 0 || c1 >= m || c2 < 0 || c2 >= m {
+			return fmt.Errorf("snake %d: coordinates out of bounds", si+1)
+		}
+		if r1 != r2 && c1 != c2 {
+			return fmt.Errorf("snake %d: not a straight line", si+1)
+		}
+
+		ch := byte('a' + si)
+		if r1 == r2 {
+			// Horizontal
+			minC, maxC := c1, c2
+			if minC > maxC {
+				minC, maxC = maxC, minC
+			}
+			for c := minC; c <= maxC; c++ {
+				sheet[r1][c] = ch
+			}
+		} else {
+			// Vertical
+			minR, maxR := r1, r2
+			if minR > maxR {
+				minR, maxR = maxR, minR
+			}
+			for r := minR; r <= maxR; r++ {
+				sheet[r][c1] = ch
+			}
+		}
+	}
+
+	// Compare with expected grid
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			if sheet[i][j] != tc.grid[i][j] {
+				return fmt.Errorf("cell (%d,%d): expected '%c', got '%c'", i+1, j+1, tc.grid[i][j], sheet[i][j])
+			}
+		}
+	}
+
+	return nil
+}
+
+// isValidGrid checks if a grid can be produced by snake operations (quick check).
+func isValidGrid(tc testCase) bool {
 	n, m := tc.n, tc.m
 	grid := make([][]int, n)
 	for i := 0; i < n; i++ {
 		grid[i] = make([]int, m)
 		for j := 0; j < m; j++ {
-			grid[i][j] = int(tc.grid[i][j] - 'a')
+			if tc.grid[i][j] == '.' {
+				grid[i][j] = -1
+			} else {
+				grid[i][j] = int(tc.grid[i][j] - 'a')
+			}
 		}
 	}
+
 	const INF = 1000000000
 	mx := -1
-	lastR, lastC := 0, 0
 	for i := 0; i < n; i++ {
 		for j := 0; j < m; j++ {
 			if grid[i][j] > mx {
 				mx = grid[i][j]
-				lastR, lastC = i, j
 			}
 		}
 	}
+	if mx == -1 {
+		return true // all dots
+	}
+
 	row := make([]int, mx+1)
 	col := make([]int, mx+1)
 	mnr := make([]int, mx+1)
@@ -394,6 +496,9 @@ func solve(tc testCase) string {
 	for i := 0; i < n; i++ {
 		for j := 0; j < m; j++ {
 			c := grid[i][j]
+			if c < 0 {
+				continue
+			}
 			if row[c] == -1 {
 				row[c] = i
 			} else if row[c] != i {
@@ -418,6 +523,7 @@ func solve(tc testCase) string {
 			}
 		}
 	}
+
 	b := make([][]int, n)
 	for i := range b {
 		b[i] = make([]int, m)
@@ -425,50 +531,33 @@ func solve(tc testCase) string {
 			b[i][j] = -1
 		}
 	}
-	ops := make([][4]int, mx+1)
-	ok := true
 	for c := 0; c <= mx; c++ {
 		if row[c] == -1 {
-			ops[c] = [4]int{lastR, lastC, lastR, lastC}
-		} else if row[c] == INF && col[c] == INF {
-			ok = false
-			break
-		} else if row[c] != INF {
+			continue // absent
+		}
+		if row[c] == INF && col[c] == INF {
+			return false
+		}
+		if row[c] != INF {
 			r := row[c]
-			ops[c] = [4]int{r, mnc[c], r, mxc[c]}
 			for x := mnc[c]; x <= mxc[c]; x++ {
 				b[r][x] = c
 			}
 		} else {
 			cc := col[c]
-			ops[c] = [4]int{mnr[c], cc, mxr[c], cc}
 			for i := mnr[c]; i <= mxr[c]; i++ {
 				b[i][cc] = c
 			}
 		}
 	}
-	if ok {
-		for i := 0; i < n && ok; i++ {
-			for j := 0; j < m; j++ {
-				if b[i][j] != grid[i][j] {
-					ok = false
-					break
-				}
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			if b[i][j] != grid[i][j] {
+				return false
 			}
 		}
 	}
-	if !ok {
-		return "NO"
-	}
-	var sb strings.Builder
-	sb.WriteString("YES\n")
-	sb.WriteString(strconv.Itoa(mx + 1))
-	sb.WriteByte('\n')
-	for c := 0; c <= mx; c++ {
-		r1, c1, r2, c2 := ops[c][0]+1, ops[c][1]+1, ops[c][2]+1, ops[c][3]+1
-		sb.WriteString(fmt.Sprintf("%d %d %d %d\n", r1, c1, r2, c2))
-	}
-	return strings.TrimSpace(sb.String())
+	return true
 }
 
 func run(bin, input string) (string, error) {
@@ -509,14 +598,13 @@ func main() {
 
 	for idx, tc := range testcases {
 		input := buildInput(tc)
-		expect := solve(tc)
 		got, err := run(bin, fmt.Sprintf("1\n%s", input))
 		if err != nil {
 			fmt.Printf("candidate runtime error on case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != expect {
-			fmt.Printf("case %d failed\nexpected:\n%s\n\ngot:\n%s\n", idx+1, expect, got)
+		if err := validateAnswer(tc, got); err != nil {
+			fmt.Printf("case %d failed: %v\ngot:\n%s\n", idx+1, err, got)
 			os.Exit(1)
 		}
 	}

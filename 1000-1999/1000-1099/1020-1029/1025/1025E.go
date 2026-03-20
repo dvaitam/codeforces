@@ -1,175 +1,256 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
-   "sort"
+	"bufio"
+	"container/heap"
+	"fmt"
+	"os"
 )
 
-// Move represents a token move from (r1,c1) to (r2,c2)
-type Move struct{ r1, c1, r2, c2 int }
+type Point struct{ x, y int }
 
-func solve(n, m int, R, C, TR, TC []int, A [][]int) []Move {
-   res := make([]Move, 0, 4*m*n)
-   // directions: up, down, left, right
-   dr := []int{-1, 1, 0, 0}
-   dc := []int{0, 0, -1, 1}
-   // move token id to (r,c) in straight line
-   var move func(id, r, c int)
-   move = func(id, r, c int) {
-       if R[id] != r && C[id] != c {
-           panic("invalid move")
-       }
-       dir := -1
-       switch {
-       case R[id] > r:
-           dir = 0
-       case R[id] < r:
-           dir = 1
-       case C[id] > c:
-           dir = 2
-       case C[id] < c:
-           dir = 3
-       }
-       if dir < 0 {
-           return
-       }
-       for R[id] != r || C[id] != c {
-           pr, pc := R[id], C[id]
-           A[pr][pc] = -1
-           R[id] += dr[dir]
-           C[id] += dc[dir]
-           A[R[id]][C[id]] = id
-           res = append(res, Move{pr, pc, R[id], C[id]})
-       }
-   }
-   // initial sort phase
-   type item struct{ key1, key2, id int }
-   v := make([]item, m)
-   for i := 0; i < m; i++ {
-       k1 := R[i]
-       k2 := R[i]
-       if R[i] == 0 {
-           k2 = C[i]
-       } else {
-           k2 = -C[i]
-       }
-       v[i] = item{k1, k2, i}
-   }
-   sort.Slice(v, func(i, j int) bool {
-       if v[i].key1 != v[j].key1 {
-           return v[i].key1 < v[j].key1
-       }
-       return v[i].key2 < v[j].key2
-   })
-   for i := 0; i < m; i++ {
-       id := v[i].id
-       tr, tc := 0, i
-       if C[id] < tc {
-           move(id, R[id], tc)
-       }
-       move(id, tr, C[id])
-       move(id, tr, tc)
-   }
-   // middle sort phase
-   v2 := make([]item, m)
-   for i := 0; i < m; i++ {
-       v2[i] = item{TR[i], TC[i], i}
-   }
-   sort.Slice(v2, func(i, j int) bool {
-       if v2[i].key1 != v2[j].key1 {
-           return v2[i].key1 < v2[j].key1
-       }
-       return v2[i].key2 < v2[j].key2
-   })
-   for idx := m - 1; idx >= 0; idx-- {
-       if v2[idx].key1 > 1 {
-           id := v2[idx].id
-           move(id, 1, C[id])
-           move(id, R[id], TC[id])
-           move(id, TR[id], TC[id])
-       }
-   }
-   // final adjustments on row 0
-   var v3 []item
-   for i := 0; i < m; i++ {
-       if TR[i] <= 1 {
-           k2 := TC[i]
-           if TR[i] != 0 {
-               k2 = -TC[i]
-           }
-           v3 = append(v3, item{TR[i], k2, i})
-       }
-   }
-   sort.Slice(v3, func(i, j int) bool {
-       if v3[i].key1 != v3[j].key1 {
-           return v3[i].key1 < v3[j].key1
-       }
-       return v3[i].key2 < v3[j].key2
-   })
-   am := len(v3)
-   for i := 0; i < am; i++ {
-       id := v3[i].id
-       for C[id] != i {
-           if A[0][C[id]-1] == -1 {
-               move(id, 0, C[id]-1)
-           } else {
-               id2 := A[0][C[id]-1]
-               move(id2, 1, C[id2])
-               move(id, 0, C[id]-1)
-               move(id2, 1, C[id2]+1)
-               move(id2, 0, C[id2])
-           }
-       }
-   }
-   for idx := am - 1; idx >= 0; idx-- {
-       id := v3[idx].id
-       if TR[id] != 0 {
-           move(id, 0, n-1)
-           move(id, 1, n-1)
-       }
-       move(id, TR[id], TC[id])
-   }
-   return res
+type Move struct {
+	x1, y1, x2, y2 int
+}
+
+type Item struct {
+	p Point
+	d int
+	i int
+}
+
+type PQ []*Item
+
+func (pq PQ) Len() int           { return len(pq) }
+func (pq PQ) Less(i, j int) bool { return pq[i].d < pq[j].d }
+func (pq PQ) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+	pq[i].i = i
+	pq[j].i = j
+}
+func (pq *PQ) Push(x interface{}) {
+	n := len(*pq)
+	item := x.(*Item)
+	item.i = n
+	*pq = append(*pq, item)
+}
+func (pq *PQ) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	item.i = -1
+	*pq = old[0 : n-1]
+	return item
+}
+
+func getPathP(start, target Point, fixed [][]bool, grid [][]int, n int) []Point {
+	dist := make([][]int, n+1)
+	parent := make([][]Point, n+1)
+	for i := 1; i <= n; i++ {
+		dist[i] = make([]int, n+1)
+		parent[i] = make([]Point, n+1)
+		for j := 1; j <= n; j++ {
+			dist[i][j] = 1e9
+		}
+	}
+
+	pq := make(PQ, 0)
+	heap.Init(&pq)
+
+	dist[start.x][start.y] = 0
+	heap.Push(&pq, &Item{p: start, d: 0})
+
+	dx := []int{-1, 1, 0, 0}
+	dy := []int{0, 0, -1, 1}
+
+	for pq.Len() > 0 {
+		curr := heap.Pop(&pq).(*Item)
+		u := curr.p
+		if curr.d > dist[u.x][u.y] {
+			continue
+		}
+		if u == target {
+			break
+		}
+
+		for k := 0; k < 4; k++ {
+			nx, ny := u.x+dx[k], u.y+dy[k]
+			if nx >= 1 && nx <= n && ny >= 1 && ny <= n {
+				if fixed[nx][ny] {
+					continue
+				}
+				cost := 1
+				if grid[nx][ny] != 0 {
+					cost = 100
+				}
+				if dist[u.x][u.y]+cost < dist[nx][ny] {
+					dist[nx][ny] = dist[u.x][u.y] + cost
+					parent[nx][ny] = u
+					heap.Push(&pq, &Item{p: Point{nx, ny}, d: dist[nx][ny]})
+				}
+			}
+		}
+	}
+
+	var path []Point
+	curr := target
+	for curr != start {
+		path = append(path, curr)
+		curr = parent[curr.x][curr.y]
+	}
+
+	for i := 0; i < len(path)/2; i++ {
+		j := len(path) - 1 - i
+		path[i], path[j] = path[j], path[i]
+	}
+	return path
+}
+
+func getPathQ(start Point, fixed [][]bool, grid [][]int, pos_c Point, n int) []Point {
+	visited := make([][]bool, n+1)
+	for i := 1; i <= n; i++ {
+		visited[i] = make([]bool, n+1)
+	}
+	parent := make([][]Point, n+1)
+
+	queue := []Point{start}
+	visited[start.x][start.y] = true
+
+	dx := []int{-1, 1, 0, 0}
+	dy := []int{0, 0, -1, 1}
+
+	var emptyCell Point
+
+	for len(queue) > 0 {
+		u := queue[0]
+		queue = queue[1:]
+
+		if grid[u.x][u.y] == 0 {
+			emptyCell = u
+			break
+		}
+
+		for k := 0; k < 4; k++ {
+			nx, ny := u.x+dx[k], u.y+dy[k]
+			if nx >= 1 && nx <= n && ny >= 1 && ny <= n {
+				if fixed[nx][ny] {
+					continue
+				}
+				if nx == pos_c.x && ny == pos_c.y {
+					continue
+				}
+				if !visited[nx][ny] {
+					visited[nx][ny] = true
+					parent[nx][ny] = u
+					queue = append(queue, Point{nx, ny})
+				}
+			}
+		}
+	}
+
+	var path []Point
+	curr := emptyCell
+	for {
+		path = append(path, curr)
+		if curr == start {
+			break
+		}
+		curr = parent[curr.x][curr.y]
+	}
+	for i := 0; i < len(path)/2; i++ {
+		j := len(path) - 1 - i
+		path[i], path[j] = path[j], path[i]
+	}
+	return path
+}
+
+func solve(initialPos []Point, n int, m int) []Move {
+	grid := make([][]int, n+1)
+	fixed := make([][]bool, n+1)
+	for i := 1; i <= n; i++ {
+		grid[i] = make([]int, n+1)
+		fixed[i] = make([]bool, n+1)
+	}
+
+	pos := make([]Point, m+1)
+	for i := 1; i <= m; i++ {
+		p := initialPos[i]
+		grid[p.x][p.y] = i
+		pos[i] = p
+	}
+
+	moves := []Move{}
+
+	for c := 1; c <= m; c++ {
+		target := Point{1, c}
+		if pos[c] == target {
+			fixed[target.x][target.y] = true
+			continue
+		}
+
+		P := getPathP(pos[c], target, fixed, grid, n)
+		for _, p_next := range P {
+			if grid[p_next.x][p_next.y] == 0 {
+				grid[pos[c].x][pos[c].y] = 0
+				grid[p_next.x][p_next.y] = c
+				moves = append(moves, Move{pos[c].x, pos[c].y, p_next.x, p_next.y})
+				pos[c] = p_next
+			} else {
+				Q := getPathQ(p_next, fixed, grid, pos[c], n)
+				for j := len(Q) - 2; j >= 0; j-- {
+					q_curr := Q[j]
+					q_next := Q[j+1]
+					cube_id := grid[q_curr.x][q_curr.y]
+					grid[q_curr.x][q_curr.y] = 0
+					grid[q_next.x][q_next.y] = cube_id
+					pos[cube_id] = q_next
+					moves = append(moves, Move{q_curr.x, q_curr.y, q_next.x, q_next.y})
+				}
+				grid[pos[c].x][pos[c].y] = 0
+				grid[p_next.x][p_next.y] = c
+				moves = append(moves, Move{pos[c].x, pos[c].y, p_next.x, p_next.y})
+				pos[c] = p_next
+			}
+		}
+		fixed[target.x][target.y] = true
+	}
+	return moves
 }
 
 func main() {
-   in := bufio.NewReader(os.Stdin)
-   var n, m int
-   if _, err := fmt.Fscan(in, &n, &m); err != nil {
-       return
-   }
-   R := make([]int, m)
-   C := make([]int, m)
-   TR := make([]int, m)
-   TC := make([]int, m)
-   A := make([][]int, n)
-   for i := 0; i < n; i++ {
-       row := make([]int, n)
-       for j := 0; j < n; j++ {
-           row[j] = -1
-       }
-       A[i] = row
-   }
-   for i := 0; i < m; i++ {
-       var r, c int
-       fmt.Fscan(in, &r, &c)
-       r--
-       c--
-       R[i], C[i] = r, c
-       A[r][c] = i
-   }
-   for i := 0; i < m; i++ {
-       var r, c int
-       fmt.Fscan(in, &r, &c)
-       TR[i], TC[i] = r-1, c-1
-   }
-   moves := solve(n, m, R, C, TR, TC, A)
-   w := bufio.NewWriter(os.Stdout)
-   defer w.Flush()
-   fmt.Fprintln(w, len(moves))
-   for _, mv := range moves {
-       fmt.Fprintf(w, "%d %d %d %d\n", mv.r1+1, mv.c1+1, mv.r2+1, mv.c2+1)
-   }
+	reader := bufio.NewReader(os.Stdin)
+	var n, m int
+	if _, err := fmt.Fscan(reader, &n, &m); err != nil {
+		return
+	}
+
+	initial := make([]Point, m+1)
+	for i := 1; i <= m; i++ {
+		fmt.Fscan(reader, &initial[i].x, &initial[i].y)
+	}
+
+	final := make([]Point, m+1)
+	for i := 1; i <= m; i++ {
+		fmt.Fscan(reader, &final[i].x, &final[i].y)
+	}
+
+	moves1 := solve(initial, n, m)
+	moves2 := solve(final, n, m)
+
+	for i := 0; i < len(moves2)/2; i++ {
+		j := len(moves2) - 1 - i
+		moves2[i], moves2[j] = moves2[j], moves2[i]
+	}
+	for i := range moves2 {
+		moves2[i] = Move{moves2[i].x2, moves2[i].y2, moves2[i].x1, moves2[i].y1}
+	}
+
+	totalMoves := append(moves1, moves2...)
+
+	fmt.Println(len(totalMoves))
+	writer := bufio.NewWriter(os.Stdout)
+	for _, mv := range totalMoves {
+		fmt.Fprintf(writer, "%d %d %d %d\n", mv.x1, mv.y1, mv.x2, mv.y2)
+	}
+	writer.Flush()
 }

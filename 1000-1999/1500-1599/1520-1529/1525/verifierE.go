@@ -194,7 +194,8 @@ func parseTestcases() ([]testCase, error) {
 		return nil, fmt.Errorf("no embedded testcases")
 	}
 	res := make([]testCase, 0, 100)
-	idx := 0
+	// First field is the number of test cases; skip it.
+	idx := 1
 	caseIdx := 0
 	for idx < len(fields) {
 		if idx+1 >= len(fields) {

@@ -122,52 +122,51 @@ func solve(input string) string {
 	}
 
 	// r and c are both odd
+	// Use the same approach as the accepted solution:
+	// DSU on bipartite graph (rows + columns), edges from '?' cells
 	dsu := newVDSU(r + c)
+	numEdges := 0
 	for _, e := range edges {
 		i, j := e[0], e[1]
 		dsu.Union(i, r+j)
+		numEdges++
 	}
-	compVerts := make(map[int][]int)
-	for v := 0; v < r+c; v++ {
-		root := dsu.Find(v)
-		compVerts[root] = append(compVerts[root], v)
+	comps := 0
+	for i := 0; i < r+c; i++ {
+		if dsu.Find(i) == i {
+			comps++
+		}
 	}
-	compEdgeCnt := make(map[int]int)
-	for _, e := range edges {
-		root := dsu.Find(e[0])
-		compEdgeCnt[root]++
-	}
+
 	ans := 0
-	for p := 0; p < 2; p++ {
-		rank := 0
-		ok := true
-		for root, verts := range compVerts {
-			xor := 0
-			for _, v := range verts {
-				if v < r {
-					xor ^= p ^ rowFixed[v]
-				} else {
-					xor ^= p ^ colFixed[v-r]
-				}
-			}
-			if compEdgeCnt[root] == 0 {
-				if xor%2 == 1 {
-					ok = false
-					break
-				}
-				rank++
-			} else {
-				if xor%2 == 1 {
-					ok = false
-					break
-				}
-				rank += len(verts) - 1
+	for S := 0; S <= 1; S++ {
+		req := make([]int, r+c)
+		for i := 0; i < r; i++ {
+			sum := rowFixed[i] // already computed as XOR of 1-bits
+			req[i] = (S - sum%2 + 2) % 2
+		}
+		for j := 0; j < c; j++ {
+			sum := colFixed[j]
+			req[r+j] = (S - sum%2 + 2) % 2
+		}
+
+		compSum := make([]int, r+c)
+		for i := 0; i < r+c; i++ {
+			compSum[dsu.Find(i)] += req[i]
+		}
+
+		valid := true
+		for i := 0; i < r+c; i++ {
+			if dsu.Find(i) == i && compSum[i]%2 != 0 {
+				valid = false
+				break
 			}
 		}
-		if ok {
-			free := k - rank
-			if free >= 0 {
-				ans = (ans + pow[free]) % vMOD
+
+		if valid {
+			exp := numEdges - (r + c - comps)
+			if exp >= 0 {
+				ans = (ans + pow[exp]) % vMOD
 			}
 		}
 	}
