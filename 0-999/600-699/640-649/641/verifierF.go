@@ -11,13 +11,315 @@ import (
 	"strings"
 )
 
+const refSourceF = `package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
+)
+
+var buffer []byte
+var pos int
+
+func nextInt() int {
+	for pos < len(buffer) && buffer[pos] <= ' ' {
+		pos++
+	}
+	if pos >= len(buffer) {
+		return 0
+	}
+	sign := 1
+	if buffer[pos] == '-' {
+		sign = -1
+		pos++
+	}
+	res := 0
+	for pos < len(buffer) && buffer[pos] > ' ' {
+		res = res*10 + int(buffer[pos]-'0')
+		pos++
+	}
+	return res * sign
+}
+
+func lit(x int) int {
+	if x > 0 {
+		return 2 * (x - 1)
+	}
+	return 2*(-x-1) + 1
+}
+
+func neg(u int) int {
+	return u ^ 1
+}
+
+func solve2SAT(n int, edges [][]int, force []int) (bool, []int) {
+	adj := make([][]int, 2*n)
+	for _, e := range edges {
+		u, v := e[0], e[1]
+		adj[neg(u)] = append(adj[neg(u)], v)
+		adj[neg(v)] = append(adj[neg(v)], u)
+	}
+	for _, u := range force {
+		adj[neg(u)] = append(adj[neg(u)], u)
+	}
+
+	dfn := make([]int, 2*n)
+	for i := range dfn {
+		dfn[i] = -1
+	}
+	low := make([]int, 2*n)
+	comp := make([]int, 2*n)
+	inStk := make([]bool, 2*n)
+	stk := make([]int, 0, 2*n)
+	timer := 0
+	sccCnt := 0
+
+	var dfs func(int)
+	dfs = func(u int) {
+		dfn[u] = timer
+		low[u] = timer
+		timer++
+		stk = append(stk, u)
+		inStk[u] = true
+		for _, v := range adj[u] {
+			if dfn[v] == -1 {
+				dfs(v)
+				if low[v] < low[u] {
+					low[u] = low[v]
+				}
+			} else if inStk[v] {
+				if dfn[v] < low[u] {
+					low[u] = dfn[v]
+				}
+			}
+		}
+		if low[u] == dfn[u] {
+			for {
+				v := stk[len(stk)-1]
+				stk = stk[:len(stk)-1]
+				inStk[v] = false
+				comp[v] = sccCnt
+				if v == u {
+					break
+				}
+			}
+			sccCnt++
+		}
+	}
+
+	for i := 0; i < 2*n; i++ {
+		if dfn[i] == -1 {
+			dfs(i)
+		}
+	}
+
+	for i := 0; i < n; i++ {
+		if comp[2*i] == comp[2*i+1] {
+			return false, nil
+		}
+	}
+
+	ass := make([]int, n)
+	for i := 0; i < n; i++ {
+		if comp[2*i] < comp[2*i+1] {
+			ass[i] = 1
+		} else {
+			ass[i] = 0
+		}
+	}
+	return true, ass
+}
+
+func buildReach(n int, edges [][]int) ([][]uint64, []int) {
+	adj := make([][]int, 2*n)
+	for _, e := range edges {
+		u, v := e[0], e[1]
+		adj[neg(u)] = append(adj[neg(u)], v)
+		adj[neg(v)] = append(adj[neg(v)], u)
+	}
+
+	dfn := make([]int, 2*n)
+	for i := range dfn {
+		dfn[i] = -1
+	}
+	low := make([]int, 2*n)
+	comp := make([]int, 2*n)
+	inStk := make([]bool, 2*n)
+	stk := make([]int, 0, 2*n)
+	timer := 0
+	sccCnt := 0
+
+	var dfs func(int)
+	dfs = func(u int) {
+		dfn[u] = timer
+		low[u] = timer
+		timer++
+		stk = append(stk, u)
+		inStk[u] = true
+		for _, v := range adj[u] {
+			if dfn[v] == -1 {
+				dfs(v)
+				if low[v] < low[u] {
+					low[u] = low[v]
+				}
+			} else if inStk[v] {
+				if dfn[v] < low[u] {
+					low[u] = dfn[v]
+				}
+			}
+		}
+		if low[u] == dfn[u] {
+			for {
+				v := stk[len(stk)-1]
+				stk = stk[:len(stk)-1]
+				inStk[v] = false
+				comp[v] = sccCnt
+				if v == u {
+					break
+				}
+			}
+			sccCnt++
+		}
+	}
+
+	for i := 0; i < 2*n; i++ {
+		if dfn[i] == -1 {
+			dfs(i)
+		}
+	}
+
+	reachSCC := make([][]uint64, sccCnt)
+	for i := 0; i < sccCnt; i++ {
+		reachSCC[i] = make([]uint64, (sccCnt+63)/64)
+		reachSCC[i][i/64] |= 1 << (i % 64)
+	}
+
+	sccNodes := make([][]int, sccCnt)
+	for u := 0; u < 2*n; u++ {
+		sccNodes[comp[u]] = append(sccNodes[comp[u]], u)
+	}
+
+	dag := make([][]int, sccCnt)
+	seen := make([]int, sccCnt)
+	for i := range seen {
+		seen[i] = -1
+	}
+
+	for c := 0; c < sccCnt; c++ {
+		seen[c] = c
+		for _, u := range sccNodes[c] {
+			for _, v := range adj[u] {
+				cv := comp[v]
+				if seen[cv] != c {
+					seen[cv] = c
+					dag[c] = append(dag[c], cv)
+				}
+			}
+		}
+	}
+
+	for c := 0; c < sccCnt; c++ {
+		for _, nxt := range dag[c] {
+			for k := 0; k < len(reachSCC[c]); k++ {
+				reachSCC[c][k] |= reachSCC[nxt][k]
+			}
+		}
+	}
+
+	return reachSCC, comp
+}
+
+func canReach(u, v int, reachSCC [][]uint64, comp []int) bool {
+	cu, cv := comp[u], comp[v]
+	return (reachSCC[cu][cv/64] & (1 << (cv % 64))) != 0
+}
+
+func printAss(ass []int) {
+	strs := make([]string, len(ass))
+	for i, v := range ass {
+		strs[i] = string('0' + byte(v))
+	}
+	fmt.Println(strings.Join(strs, " "))
+}
+
+func main() {
+	buffer, _ = ioutil.ReadAll(os.Stdin)
+	n := nextInt()
+	if n == 0 {
+		return
+	}
+	m1 := nextInt()
+	m2 := nextInt()
+
+	edgesF := make([][]int, m1)
+	for i := 0; i < m1; i++ {
+		u, v := nextInt(), nextInt()
+		edgesF[i] = []int{lit(u), lit(v)}
+	}
+
+	edgesG := make([][]int, m2)
+	for i := 0; i < m2; i++ {
+		u, v := nextInt(), nextInt()
+		edgesG[i] = []int{lit(u), lit(v)}
+	}
+
+	satF, assF := solve2SAT(n, edgesF, nil)
+	satG, assG := solve2SAT(n, edgesG, nil)
+
+	if !satF && !satG {
+		fmt.Println("SIMILAR")
+		return
+	}
+	if !satF && satG {
+		printAss(assG)
+		return
+	}
+	if satF && !satG {
+		printAss(assF)
+		return
+	}
+
+	reachF, compF := buildReach(n, edgesF)
+	for _, clause := range edgesG {
+		A, B := clause[0], clause[1]
+		if canReach(neg(A), B, reachF, compF) || canReach(neg(A), A, reachF, compF) || canReach(neg(B), B, reachF, compF) {
+			continue
+		}
+		_, ass := solve2SAT(n, edgesF, []int{neg(A), neg(B)})
+		printAss(ass)
+		return
+	}
+
+	reachG, compG := buildReach(n, edgesG)
+	for _, clause := range edgesF {
+		A, B := clause[0], clause[1]
+		if canReach(neg(A), B, reachG, compG) || canReach(neg(A), A, reachG, compG) || canReach(neg(B), B, reachG, compG) {
+			continue
+		}
+		_, ass := solve2SAT(n, edgesG, []int{neg(A), neg(B)})
+		printAss(ass)
+		return
+	}
+
+	fmt.Println("SIMILAR")
+}
+`
+
 func buildOracle() (string, error) {
-	dir, err := os.Getwd()
+	tmp, err := os.CreateTemp("", "oracleF_*.go")
 	if err != nil {
 		return "", err
 	}
-	oracle := filepath.Join(dir, "oracleF")
-	cmd := exec.Command("go", "build", "-o", oracle, "641F.go")
+	if _, err := tmp.WriteString(refSourceF); err != nil {
+		tmp.Close()
+		return "", err
+	}
+	tmp.Close()
+	defer os.Remove(tmp.Name())
+	oracle := filepath.Join(os.TempDir(), "oracleF")
+	cmd := exec.Command("go", "build", "-o", oracle, tmp.Name())
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}

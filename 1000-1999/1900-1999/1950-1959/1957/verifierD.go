@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -112,6 +113,91 @@ const testcasesRaw = `
 6 1 10 5 14 12 6
 `
 
+const refSource = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"math/bits"
+	"os"
+)
+
+func main() {
+	data, _ := io.ReadAll(os.Stdin)
+	idx := 0
+	nextInt := func() int {
+		for idx < len(data) && (data[idx] < '0' || data[idx] > '9') && data[idx] != '-' {
+			idx++
+		}
+		sign := 1
+		if data[idx] == '-' {
+			sign = -1
+			idx++
+		}
+		val := 0
+		for idx < len(data) && data[idx] >= '0' && data[idx] <= '9' {
+			val = val*10 + int(data[idx]-'0')
+			idx++
+		}
+		return sign * val
+	}
+
+	t := nextInt()
+	out := bufio.NewWriterSize(os.Stdout, 1<<20)
+	defer out.Flush()
+
+	for ; t > 0; t-- {
+		n := nextInt()
+		a := make([]int, n+1)
+		top := make([]int, n+1)
+		for i := 1; i <= n; i++ {
+			a[i] = nextInt()
+			top[i] = bits.Len(uint(a[i])) - 1
+		}
+
+		q := make([]byte, n+1)
+		suf0 := make([]int64, n+2)
+		suf1 := make([]int64, n+2)
+
+		var ans int64
+		for b := 0; b < 30; b++ {
+			q[0] = 0
+			for i := 1; i <= n; i++ {
+				q[i] = q[i-1] ^ byte((a[i]>>b)&1)
+			}
+
+			suf0[n+1] = 0
+			suf1[n+1] = 0
+			for i := n; i >= 0; i-- {
+				suf0[i] = suf0[i+1]
+				suf1[i] = suf1[i+1]
+				if q[i] == 0 {
+					suf0[i]++
+				} else {
+					suf1[i]++
+				}
+			}
+
+			var left0 int64 = 1
+			var left1 int64 = 0
+			for i := 1; i <= n; i++ {
+				if top[i] == b {
+					ans += left0*suf0[i] + left1*suf1[i]
+				}
+				if q[i] == 0 {
+					left0++
+				} else {
+					left1++
+				}
+			}
+		}
+
+		fmt.Fprintln(out, ans)
+	}
+}
+`
+
 type testCase struct {
 	n   int
 	arr []int
@@ -146,46 +232,6 @@ func parseTests(raw string) ([]testCase, error) {
 	return tests, nil
 }
 
-func solve(tc testCase) int64 {
-	n := tc.n
-	a := tc.arr
-	p := make([]int, n+1)
-	for i := 1; i <= n; i++ {
-		p[i] = p[i-1] ^ a[i-1]
-	}
-	const maxB = 30
-	count := make([][]int, maxB)
-	for b := 0; b < maxB; b++ {
-		count[b] = make([]int, n+1)
-	}
-	for i := 1; i <= n; i++ {
-		x := p[i]
-		for b := 0; b < maxB; b++ {
-			count[b][i] = count[b][i-1]
-			if (x>>b)&1 == 1 {
-				count[b][i]++
-			}
-		}
-	}
-	var ans int64
-	for y := 1; y <= n; y++ {
-		ay := a[y-1]
-		k := 0
-		for b := maxB - 1; b >= 0; b-- {
-			if (ay>>b)&1 == 1 {
-				k = b
-				break
-			}
-		}
-		leftOne := count[k][y-1]
-		leftZero := y - leftOne
-		rightOne := count[k][n] - count[k][y-1]
-		rightZero := (n - y + 1) - rightOne
-		ans += int64(leftZero*rightZero + leftOne*rightOne)
-	}
-	return ans
-}
-
 func buildInput(tc testCase) string {
 	var sb strings.Builder
 	sb.WriteString("1\n")
@@ -214,12 +260,32 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func buildRef() (string, func()) {
+	tmpDir, err := os.MkdirTemp("", "ref1957D")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	srcPath := filepath.Join(tmpDir, "ref.go")
+	os.WriteFile(srcPath, []byte(refSource), 0644)
+	binPath := filepath.Join(tmpDir, "ref")
+	cmd := exec.Command("go", "build", "-o", binPath, srcPath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to build ref: %v\n%s\n", err, string(out))
+		os.Exit(1)
+	}
+	return binPath, func() { os.RemoveAll(tmpDir) }
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierD.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+
+	refBin, cleanup := buildRef()
+	defer cleanup()
 
 	tests, err := parseTests(testcasesRaw)
 	if err != nil {
@@ -228,15 +294,19 @@ func main() {
 	}
 
 	for idx, tc := range tests {
-		expected := solve(tc)
 		input := buildInput(tc)
+		expected, err := run(refBin, input)
+		if err != nil {
+			fmt.Printf("reference failed on case %d: %v\n", idx+1, err)
+			os.Exit(1)
+		}
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Printf("case %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strconv.FormatInt(expected, 10) {
-			fmt.Printf("case %d failed: expected %d got %s\n", idx+1, expected, got)
+		if strings.TrimSpace(got) != strings.TrimSpace(expected) {
+			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, expected, got)
 			os.Exit(1)
 		}
 	}

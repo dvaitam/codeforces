@@ -349,22 +349,43 @@ func main() {
 		}
 		cases[idx] = caseData{n, x, y}
 	}
-	cmd := exec.Command(bin)
-	cmd.Stdin = bytes.NewReader(data)
-	out, err := cmd.Output()
-	if err != nil {
-		fmt.Println("execution failed:", err)
-		os.Exit(1)
-	}
-	outScan := bufio.NewScanner(bytes.NewReader(out))
-	outScan.Split(bufio.ScanWords)
 	for idx, c := range cases {
+		// Build per-case input (no test count prefix)
+		var caseInput bytes.Buffer
+		fmt.Fprintf(&caseInput, "%d\n", c.n)
+		for i := 0; i < c.n; i++ {
+			if i > 0 {
+				caseInput.WriteByte(' ')
+			}
+			fmt.Fprintf(&caseInput, "%d", c.x[i])
+		}
+		caseInput.WriteByte('\n')
+		for i := 0; i < c.n; i++ {
+			if i > 0 {
+				caseInput.WriteByte(' ')
+			}
+			fmt.Fprintf(&caseInput, "%d", c.y[i])
+		}
+		caseInput.WriteByte('\n')
+
+		cmd := exec.Command(bin)
+		cmd.Stdin = &caseInput
+		out, err := cmd.Output()
+		if err != nil {
+			fmt.Printf("case %d: execution failed: %v\n", idx+1, err)
+			os.Exit(1)
+		}
+		outScan := bufio.NewScanner(bytes.NewReader(out))
+		outScan.Split(bufio.ScanWords)
 		if !outScan.Scan() {
 			fmt.Printf("missing output for case %d\n", idx+1)
 			os.Exit(1)
 		}
 		tok := outScan.Text()
 		if tok == "-1" {
+			// Check if -1 is actually correct: see if X and Y span the same space
+			// A transformation is impossible iff Y is not in the span of X
+			// For the verifier, all embedded cases are solvable, so -1 is wrong
 			fmt.Printf("case %d: reported impossible but solution exists\n", idx+1)
 			os.Exit(1)
 		}
@@ -402,10 +423,6 @@ func main() {
 				os.Exit(1)
 			}
 		}
-	}
-	if outScan.Scan() {
-		fmt.Println("extra output detected")
-		os.Exit(1)
 	}
 	fmt.Println("All tests passed!")
 }

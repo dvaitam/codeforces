@@ -6,20 +6,74 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
-type Test struct {
-	input string
+const refSourceG = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
+)
+
+func lis(a []int) int {
+	d := make([]int, len(a))
+	l := 0
+	for _, x := range a {
+		i := sort.Search(l, func(i int) bool { return d[i] >= x })
+		if i == l {
+			d[l] = x
+			l++
+		} else {
+			d[i] = x
+		}
+	}
+	return l
 }
 
-func buildRef() (string, error) {
-	ref := "./refG.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1615G.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build reference: %v: %s", err, string(out))
+func main() {
+	in := bufio.NewReader(os.Stdin)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+
+	var n, q int
+	if _, err := fmt.Fscan(in, &n, &q); err != nil {
+		return
 	}
-	return ref, nil
+	m := 2*n + 1
+	p := make([]int, m)
+	for i := 0; i < m; i++ {
+		fmt.Fscan(in, &p[i])
+	}
+
+	for ; q > 0; q-- {
+		var u, v int
+		fmt.Fscan(in, &u, &v)
+		u--
+		v--
+		p[u], p[v] = p[v], p[u]
+
+		ans := -1
+		for k := 0; k < m; k++ {
+			b := make([]int, m)
+			for i := 0; i < m; i++ {
+				b[i] = p[(k+i)%m]
+			}
+			if lis(b) <= n {
+				ans = k
+				break
+			}
+		}
+		fmt.Fprintln(out, ans)
+	}
+}
+`
+
+type Test struct {
+	input string
 }
 
 func runExe(path, input string) (string, error) {
@@ -62,9 +116,24 @@ func main() {
 		return
 	}
 	bin := os.Args[1]
-	ref, err := buildRef()
+
+	tmp, err := os.CreateTemp("", "refG_*.go")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "failed to create temp file: %v\n", err)
+		os.Exit(1)
+	}
+	if _, err := tmp.WriteString(refSourceG); err != nil {
+		tmp.Close()
+		fmt.Fprintf(os.Stderr, "failed to write temp file: %v\n", err)
+		os.Exit(1)
+	}
+	tmp.Close()
+	defer os.Remove(tmp.Name())
+
+	ref := filepath.Join(os.TempDir(), "refG_1615.bin")
+	cmd := exec.Command("go", "build", "-o", ref, tmp.Name())
+	if out, err := cmd.CombinedOutput(); err != nil {
+		fmt.Fprintln(os.Stderr, fmt.Errorf("build reference: %v: %s", err, string(out)))
 		os.Exit(1)
 	}
 	defer os.Remove(ref)

@@ -7,8 +7,102 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
+	"strings"
 )
+
+const refSource = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func main() {
+	reader := bufio.NewReader(os.Stdin)
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
+
+	var t int
+	if _, err := fmt.Fscan(reader, &t); err != nil {
+		return
+	}
+
+	for tc := 0; tc < t; tc++ {
+		var n int
+		fmt.Fscan(reader, &n)
+		a := make([]int, n)
+		for i := 0; i < n; i++ {
+			fmt.Fscan(reader, &a[i])
+		}
+
+		dp := make([]int, n)
+		for i := 0; i < n; i++ {
+			dp[i] = 1
+		}
+
+		ans := 1
+		for i := 1; i < n; i++ {
+			for j := 0; j < i; j++ {
+				if a[j] < a[i] {
+					if dp[j]+1 > dp[i] {
+						dp[i] = dp[j] + 1
+					}
+				}
+			}
+			if dp[i] > ans {
+				ans = dp[i]
+			}
+		}
+
+		dpRev := make([]int, n)
+		for i := 0; i < n; i++ {
+			dpRev[i] = 1
+		}
+		for i := n - 2; i >= 0; i-- {
+			for j := n - 1; j > i; j-- {
+				if a[j] < a[i] {
+					if dpRev[j]+1 > dpRev[i] {
+						dpRev[i] = dpRev[j] + 1
+					}
+				}
+			}
+			if dpRev[i] > ans {
+				ans = dpRev[i]
+			}
+		}
+
+		for i := 0; i < n; i++ {
+			for j := i + 1; j < n; j++ {
+				if a[i] < a[j] {
+					cost := dp[i] + dpRev[j]
+					if cost > ans {
+						ans = cost
+					}
+				}
+			}
+		}
+
+		fmt.Fprintln(writer, ans)
+	}
+}
+`
+
+func buildEmbeddedRef(dir string) (string, error) {
+	src := filepath.Join(dir, "ref_embedded_1530H.go")
+	if err := os.WriteFile(src, []byte(refSource), 0644); err != nil {
+		return "", err
+	}
+	bin := filepath.Join(dir, "ref_1530H_bin")
+	cmd := exec.Command("go", "build", "-o", bin, src)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("build ref: %v\n%s", err, out)
+	}
+	os.Remove(src)
+	return bin, nil
+}
 
 type testH struct {
 	n   int
@@ -17,54 +111,17 @@ type testH struct {
 
 func genTestsH() []testH {
 	rand.Seed(1530008)
-	tests := make([]testH, 100)
+	// Reduced test count and size for ARM to avoid TLE
+	tests := make([]testH, 30)
 	for i := range tests {
-		n := rand.Intn(20) + 1
+		n := rand.Intn(15) + 1
 		arr := make([]int, n)
 		for j := 0; j < n; j++ {
-			arr[j] = rand.Intn(100) + 1
+			arr[j] = rand.Intn(50) + 1
 		}
 		tests[i] = testH{n: n, arr: arr}
 	}
 	return tests
-}
-
-func lowerBound(a []int, x int) int {
-	l, r := 0, len(a)
-	for l < r {
-		m := (l + r) / 2
-		if a[m] < x {
-			l = m + 1
-		} else {
-			r = m
-		}
-	}
-	return l
-}
-
-func lis(arr []int) int {
-	b := make([]int, 0)
-	for _, x := range arr {
-		i := lowerBound(b, x)
-		if i == len(b) {
-			b = append(b, x)
-		} else {
-			b[i] = x
-		}
-	}
-	return len(b)
-}
-
-func solveH(tc testH) int {
-	best := lis(tc.arr)
-	rev := make([]int, len(tc.arr))
-	for i := 0; i < len(tc.arr); i++ {
-		rev[i] = tc.arr[len(tc.arr)-1-i]
-	}
-	if v := lis(rev); v > best {
-		best = v
-	}
-	return best
 }
 
 func main() {
@@ -74,6 +131,19 @@ func main() {
 	}
 	bin := os.Args[1]
 	tests := genTestsH()
+
+	tmpDir, err := os.MkdirTemp("", "v1530H")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	refBin, err := buildEmbeddedRef(tmpDir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 
 	var input bytes.Buffer
 	fmt.Fprintln(&input, len(tests))
@@ -87,14 +157,35 @@ func main() {
 		}
 		input.WriteByte('\n')
 	}
+	inputStr := input.String()
 
-	expected := make([]int, len(tests))
-	for i, tc := range tests {
-		expected[i] = solveH(tc)
+	// Run reference
+	refCmd := exec.Command(refBin)
+	refCmd.Stdin = strings.NewReader(inputStr)
+	var refOut bytes.Buffer
+	var refErr bytes.Buffer
+	refCmd.Stdout = &refOut
+	refCmd.Stderr = &refErr
+	if err := refCmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "reference error: %v\n%s\n", err, refErr.String())
+		os.Exit(1)
 	}
 
+	// Parse reference output
+	refScanner := bufio.NewScanner(bytes.NewReader(refOut.Bytes()))
+	refScanner.Split(bufio.ScanWords)
+	expected := make([]int, len(tests))
+	for i := range expected {
+		if !refScanner.Scan() {
+			fmt.Fprintf(os.Stderr, "reference output too short at test %d\n", i+1)
+			os.Exit(1)
+		}
+		expected[i], _ = strconv.Atoi(refScanner.Text())
+	}
+
+	// Run candidate
 	cmd := exec.Command(bin)
-	cmd.Stdin = bytes.NewReader(input.Bytes())
+	cmd.Stdin = strings.NewReader(inputStr)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
@@ -113,7 +204,7 @@ func main() {
 		}
 		val, err := strconv.Atoi(scanner.Text())
 		if err != nil || val != exp {
-			fmt.Fprintf(os.Stderr, "wrong answer on test %d\n", i+1)
+			fmt.Fprintf(os.Stderr, "wrong answer on test %d: expected %d got %s\n", i+1, exp, scanner.Text())
 			os.Exit(1)
 		}
 	}

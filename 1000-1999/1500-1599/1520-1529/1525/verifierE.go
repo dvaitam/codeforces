@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -138,46 +137,54 @@ func modPow(a, e int64) int64 {
 func solveCase(tc testCase) int64 {
 	n := tc.n
 	m := tc.m
-	dist := tc.grid
 
 	fact := int64(1)
-	for i := 2; i <= n; i++ {
-		fact *= int64(i)
+	for i := 1; i <= n; i++ {
+		fact = fact * int64(i) % mod
 	}
-	factMod := fact % mod
-	invFact := modPow(factMod, mod-2)
+	invFact := modPow(fact, mod-2)
 
-	sumNot := int64(0)
-	r := make([]int, n)
+	ans := int64(0)
+
 	for j := 0; j < m; j++ {
+		// Count occurrences of each distance value in this column
+		cnt := make([]int, n+2)
 		for i := 0; i < n; i++ {
-			d := dist[i][j]
-			rVal := n - d + 2
-			if rVal < 1 {
-				rVal = 1
+			d := tc.grid[i][j]
+			if d <= n+1 {
+				cnt[d]++
 			}
-			r[i] = rVal
 		}
-		sort.Ints(r)
-		idx := 0
-		prod := int64(1)
-		for pos := 1; pos <= n; pos++ {
-			for idx < n && r[idx] <= pos {
-				idx++
+
+		// Compute number of permutations where all ranks avoid this column
+		// (i.e., for every row i, rank p_i > d_{i,j})
+		// Using the same approach as the accepted solution:
+		// iterate r from n down to 1, accumulating suffix of rows with d >= r+1
+		fail := int64(1)
+		suffix := 0
+		for r := n; r >= 1; r-- {
+			if r+1 <= n+1 {
+				suffix += cnt[r+1]
 			}
-			choices := idx - (pos - 1)
-			if choices <= 0 {
-				prod = 0
+			factor := suffix - (n - r)
+			if factor <= 0 {
+				fail = 0
 				break
 			}
-			prod *= int64(choices)
+			fail *= int64(factor)
 		}
-		sumNot = (sumNot + prod%mod) % mod
+
+		val := int64(1)
+		if fail != 0 {
+			val = (val - (fail%mod)*invFact%mod + mod) % mod
+		}
+
+		ans += val
+		if ans >= mod {
+			ans -= mod
+		}
 	}
 
-	total := (int64(m) % mod * factMod) % mod
-	ans := (total - sumNot + mod) % mod
-	ans = ans * invFact % mod
 	return ans
 }
 

@@ -112,9 +112,8 @@ func runInteraction(bin string, tests []testCase) error {
 
 	writer := bufio.NewWriter(stdin)
 	fmt.Fprintf(writer, "%d\n", len(tests))
-	for _, tc := range tests {
-		fmt.Fprintf(writer, "%d\n", tc.data.n)
-	}
+	// Send first test's n immediately
+	fmt.Fprintf(writer, "%d\n", tests[0].data.n)
 	if err := writer.Flush(); err != nil {
 		return err
 	}
@@ -199,6 +198,13 @@ func runInteraction(bin string, tests []testCase) error {
 			}
 			current++
 			queriesUsed = 0
+			// Send next test's n if there are more tests
+			if current < len(tests) {
+				fmt.Fprintf(writer, "%d\n", tests[current].data.n)
+				if err := writer.Flush(); err != nil {
+					return err
+				}
+			}
 		default:
 			return fmt.Errorf("unexpected output: %s", line)
 		}

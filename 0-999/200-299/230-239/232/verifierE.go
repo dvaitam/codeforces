@@ -111,149 +111,320 @@ const embeddedTestcases = `7 7 .#.###. #....## .#....# ....... ...##.# ##..#.# #
 7 7 .#..#.. ....... ..#.... ..#.#.. .#.#... #..#..# ..#...# 5 3 2 6 5 3 4 4 7 3 1 5 6 3 4 3 4 1 1 4 4
 4 2 .. .. .# .# 2 2 1 4 1 3 1 3 1`
 
-// Embedded solution (from 232E.go).
+// Embedded correct oracle source for 232E.
+const oracleSource = `package main
+
+import (
+	"bufio"
+	"io"
+	"os"
+)
+
 type Query struct {
-	x1, y1, x2, y2 int
-	idx            int
-	Pbits          []uint64
-	ans            bool
+	r1, c1, r2, c2 int
 }
 
 var (
-	n, m int
-	grid [][]byte
-	rowWalls [][]int
+	buffer  []byte
+	cursor  int
+	queries []Query
 	answers []bool
-	mWords int
+	grid    []string
+	mask1   [505][505][8]uint64
+	mask2   [505][505][8]uint64
 )
 
-func solve(l, r int, qs []*Query) {
-	if len(qs) == 0 {
-		return
+func nextInt() int {
+	for cursor < len(buffer) && (buffer[cursor] < '0' || buffer[cursor] > '9') {
+		cursor++
 	}
-	if l == r {
-		for _, q := range qs {
-			if rowWalls[l][q.y2]-rowWalls[l][q.y1-1] == 0 {
-				answers[q.idx] = true
-			}
-		}
-		return
+	if cursor >= len(buffer) {
+		return 0
 	}
-	mid := (l + r) >> 1
-	startBuckets := make([][]*Query, mid-l+1)
-	endBuckets := make([][]*Query, r-mid+1)
-	var leftQ, rightQ []*Query
-	for _, q := range qs {
-		if q.x2 < mid {
-			leftQ = append(leftQ, q)
-		} else if q.x1 > mid {
-			rightQ = append(rightQ, q)
-		} else {
-			startBuckets[q.x1-l] = append(startBuckets[q.x1-l], q)
-			endBuckets[q.x2-mid] = append(endBuckets[q.x2-mid], q)
-		}
+	res := 0
+	for cursor < len(buffer) && buffer[cursor] >= '0' && buffer[cursor] <= '9' {
+		res = res*10 + int(buffer[cursor]-'0')
+		cursor++
 	}
-	dpNext := make([][]uint64, m+2)
-	dpRow := make([][]uint64, m+2)
-	for j := 0; j <= m+1; j++ {
-		dpNext[j] = make([]uint64, mWords)
-		dpRow[j] = make([]uint64, mWords)
-	}
-	for j := 1; j <= m; j++ {
-		if grid[mid][j] == '.' {
-			bit := uint(j - 1)
-			dpNext[j][bit/64] |= 1 << (bit % 64)
-		}
-	}
-	for i := mid; i >= l; i-- {
-		if i < mid {
-			for j := m; j >= 1; j-- {
-				if grid[i][j] == '.' {
-					for d := 0; d < mWords; d++ {
-						dpRow[j][d] = dpNext[j][d] | dpRow[j+1][d]
-					}
-				} else {
-					for d := 0; d < mWords; d++ {
-						dpRow[j][d] = 0
-					}
-				}
-			}
-			for j := 1; j <= m; j++ {
-				copy(dpNext[j], dpRow[j])
-			}
-		}
-		for _, q := range startBuckets[i-l] {
-			q.Pbits = make([]uint64, mWords)
-			copy(q.Pbits, dpNext[q.y1])
-		}
-	}
-	for j := 0; j <= m+1; j++ {
-		for d := 0; d < mWords; d++ {
-			dpNext[j][d] = 0
-			dpRow[j][d] = 0
-		}
-	}
-	for j := 1; j <= m; j++ {
-		if grid[mid][j] == '.' {
-			bit := uint(j - 1)
-			dpNext[j][bit/64] |= 1 << (bit % 64)
-		}
-	}
-	for i := mid; i <= r; i++ {
-		if i > mid {
-			for j := 1; j <= m; j++ {
-				if grid[i][j] == '.' {
-					for d := 0; d < mWords; d++ {
-						dpRow[j][d] = dpNext[j][d] | dpRow[j-1][d]
-					}
-				} else {
-					for d := 0; d < mWords; d++ {
-						dpRow[j][d] = 0
-					}
-				}
-			}
-			for j := 1; j <= m; j++ {
-				copy(dpNext[j], dpRow[j])
-			}
-		}
-		for _, q := range endBuckets[i-mid] {
-			lbit := q.y1 - 1
-			rbit := q.y2 - 1
-			w1 := lbit / 64
-			w2 := rbit / 64
-			for w := w1; w <= w2; w++ {
-				mask := ^uint64(0)
-				if w == w1 {
-					mask &= ^((1 << (lbit % 64)) - 1)
-				}
-				if w == w2 {
-					mask &= (1 << ((rbit % 64) + 1)) - 1
-				}
-				if q.Pbits[w]&dpNext[q.y2][w]&mask != 0 {
-					answers[q.idx] = true
-					break
-				}
-			}
-		}
-	}
-	solve(l, mid-1, leftQ)
-	solve(mid+1, r, rightQ)
+	return res
 }
 
-func parseGridCase(fields []string) (string, string, error) {
+func nextString() string {
+	for cursor < len(buffer) && buffer[cursor] <= ' ' {
+		cursor++
+	}
+	if cursor >= len(buffer) {
+		return ""
+	}
+	start := cursor
+	for cursor < len(buffer) && buffer[cursor] > ' ' {
+		cursor++
+	}
+	return string(buffer[start:cursor])
+}
+
+func solve(r1, r2, c1, c2 int, qIdx []int) {
+	if len(qIdx) == 0 {
+		return
+	}
+	if r1 == r2 && c1 == c2 {
+		for _, id := range qIdx {
+			answers[id] = true
+		}
+		return
+	}
+
+	if r2-r1 > c2-c1 {
+		mid := (r1 + r2) / 2
+		var qCross, qTop, qBot []int
+		for _, id := range qIdx {
+			q := queries[id]
+			if q.r1 <= mid && q.r2 >= mid {
+				qCross = append(qCross, id)
+			} else if q.r2 < mid {
+				qTop = append(qTop, id)
+			} else {
+				qBot = append(qBot, id)
+			}
+		}
+
+		if len(qCross) > 0 {
+			numWords := (c2 - c1 + 1 + 63) / 64
+
+			for r := mid; r >= r1; r-- {
+				for c := c2; c >= c1; c-- {
+					for w := 0; w < numWords; w++ {
+						mask1[r][c][w] = 0
+					}
+					if grid[r][c] == '#' {
+						continue
+					}
+					if r == mid {
+						bitIdx := c - c1
+						mask1[r][c][bitIdx/64] |= 1 << (bitIdx % 64)
+					}
+					if r < mid && grid[r+1][c] == '.' {
+						for w := 0; w < numWords; w++ {
+							mask1[r][c][w] |= mask1[r+1][c][w]
+						}
+					}
+					if c < c2 && grid[r][c+1] == '.' {
+						for w := 0; w < numWords; w++ {
+							mask1[r][c][w] |= mask1[r][c+1][w]
+						}
+					}
+				}
+			}
+
+			for r := mid; r <= r2; r++ {
+				for c := c1; c <= c2; c++ {
+					for w := 0; w < numWords; w++ {
+						mask2[r][c][w] = 0
+					}
+					if grid[r][c] == '#' {
+						continue
+					}
+					if r == mid {
+						bitIdx := c - c1
+						mask2[r][c][bitIdx/64] |= 1 << (bitIdx % 64)
+					}
+					if r > mid && grid[r-1][c] == '.' {
+						for w := 0; w < numWords; w++ {
+							mask2[r][c][w] |= mask2[r-1][c][w]
+						}
+					}
+					if c > c1 && grid[r][c-1] == '.' {
+						for w := 0; w < numWords; w++ {
+							mask2[r][c][w] |= mask2[r][c-1][w]
+						}
+					}
+				}
+			}
+
+			for _, id := range qCross {
+				q := queries[id]
+				ans := false
+				for w := 0; w < numWords; w++ {
+					if (mask1[q.r1][q.c1][w] & mask2[q.r2][q.c2][w]) != 0 {
+						ans = true
+						break
+					}
+				}
+				answers[id] = ans
+			}
+		}
+
+		solve(r1, mid-1, c1, c2, qTop)
+		solve(mid+1, r2, c1, c2, qBot)
+
+	} else {
+		mid := (c1 + c2) / 2
+		var qCross, qLeft, qRight []int
+		for _, id := range qIdx {
+			q := queries[id]
+			if q.c1 <= mid && q.c2 >= mid {
+				qCross = append(qCross, id)
+			} else if q.c2 < mid {
+				qLeft = append(qLeft, id)
+			} else {
+				qRight = append(qRight, id)
+			}
+		}
+
+		if len(qCross) > 0 {
+			numWords := (r2 - r1 + 1 + 63) / 64
+
+			for c := mid; c >= c1; c-- {
+				for r := r2; r >= r1; r-- {
+					for w := 0; w < numWords; w++ {
+						mask1[r][c][w] = 0
+					}
+					if grid[r][c] == '#' {
+						continue
+					}
+					if c == mid {
+						bitIdx := r - r1
+						mask1[r][c][bitIdx/64] |= 1 << (bitIdx % 64)
+					}
+					if c < mid && grid[r][c+1] == '.' {
+						for w := 0; w < numWords; w++ {
+							mask1[r][c][w] |= mask1[r][c+1][w]
+						}
+					}
+					if r < r2 && grid[r+1][c] == '.' {
+						for w := 0; w < numWords; w++ {
+							mask1[r][c][w] |= mask1[r+1][c][w]
+						}
+					}
+				}
+			}
+
+			for c := mid; c <= c2; c++ {
+				for r := r1; r <= r2; r++ {
+					for w := 0; w < numWords; w++ {
+						mask2[r][c][w] = 0
+					}
+					if grid[r][c] == '#' {
+						continue
+					}
+					if c == mid {
+						bitIdx := r - r1
+						mask2[r][c][bitIdx/64] |= 1 << (bitIdx % 64)
+					}
+					if c > mid && grid[r][c-1] == '.' {
+						for w := 0; w < numWords; w++ {
+							mask2[r][c][w] |= mask2[r][c-1][w]
+						}
+					}
+					if r > r1 && grid[r-1][c] == '.' {
+						for w := 0; w < numWords; w++ {
+							mask2[r][c][w] |= mask2[r-1][c][w]
+						}
+					}
+				}
+			}
+
+			for _, id := range qCross {
+				q := queries[id]
+				ans := false
+				for w := 0; w < numWords; w++ {
+					if (mask1[q.r1][q.c1][w] & mask2[q.r2][q.c2][w]) != 0 {
+						ans = true
+						break
+					}
+				}
+				answers[id] = ans
+			}
+		}
+
+		solve(r1, r2, c1, mid-1, qLeft)
+		solve(r1, r2, mid+1, c2, qRight)
+	}
+}
+
+func main() {
+	buffer, _ = io.ReadAll(os.Stdin)
+
+	n := nextInt()
+	m := nextInt()
+	if n == 0 || m == 0 {
+		return
+	}
+
+	grid = make([]string, n+1)
+	for i := 1; i <= n; i++ {
+		grid[i] = " " + nextString()
+	}
+
+	q := nextInt()
+	queries = make([]Query, q)
+	answers = make([]bool, q)
+	qIdx := make([]int, q)
+
+	for i := 0; i < q; i++ {
+		queries[i].r1 = nextInt()
+		queries[i].c1 = nextInt()
+		queries[i].r2 = nextInt()
+		queries[i].c2 = nextInt()
+		qIdx[i] = i
+	}
+
+	solve(1, n, 1, m, qIdx)
+
+	out := bufio.NewWriter(os.Stdout)
+	for i := 0; i < q; i++ {
+		if answers[i] {
+			out.WriteString("Yes\n")
+		} else {
+			out.WriteString("No\n")
+		}
+	}
+	out.Flush()
+}
+`
+
+func buildOracle() (string, func(), error) {
+	tmpSrc, err := os.CreateTemp("", "oracle-232E-*.go")
+	if err != nil {
+		return "", nil, err
+	}
+	if _, err := tmpSrc.WriteString(oracleSource); err != nil {
+		tmpSrc.Close()
+		os.Remove(tmpSrc.Name())
+		return "", nil, err
+	}
+	tmpSrc.Close()
+
+	tmpBin, err := os.CreateTemp("", "oracle-232E-bin-*")
+	if err != nil {
+		os.Remove(tmpSrc.Name())
+		return "", nil, err
+	}
+	tmpBin.Close()
+
+	if out, err := exec.Command("go", "build", "-o", tmpBin.Name(), tmpSrc.Name()).CombinedOutput(); err != nil {
+		os.Remove(tmpSrc.Name())
+		os.Remove(tmpBin.Name())
+		return "", nil, fmt.Errorf("build oracle: %v\n%s", err, out)
+	}
+	os.Remove(tmpSrc.Name())
+	return tmpBin.Name(), func() { os.Remove(tmpBin.Name()) }, nil
+}
+
+func parseInput(fields []string) (string, error) {
 	if len(fields) < 3 {
-		return "", "", fmt.Errorf("invalid testcase line")
+		return "", fmt.Errorf("invalid testcase line")
 	}
 	nVal, err := strconv.Atoi(fields[0])
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	mVal, err := strconv.Atoi(fields[1])
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	if len(fields) < 2+nVal+1 {
-		return "", "", fmt.Errorf("too few fields")
+		return "", fmt.Errorf("too few fields")
 	}
 	idx := 2
 	var input strings.Builder
@@ -265,59 +436,21 @@ func parseGridCase(fields []string) (string, string, error) {
 	}
 	qVal, err := strconv.Atoi(fields[idx])
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	idx++
 	if len(fields) != 2+nVal+1+4*qVal {
-		return "", "", fmt.Errorf("field count mismatch")
+		return "", fmt.Errorf("field count mismatch")
 	}
 	input.WriteString(fmt.Sprintf("%d\n", qVal))
-	queries := make([]*Query, qVal)
 	for i := 0; i < qVal; i++ {
-		x1, _ := strconv.Atoi(fields[idx])
-		y1, _ := strconv.Atoi(fields[idx+1])
-		x2, _ := strconv.Atoi(fields[idx+2])
-		y2, _ := strconv.Atoi(fields[idx+3])
-		input.WriteString(fmt.Sprintf("%d %d %d %d\n", x1, y1, x2, y2))
-		queries[i] = &Query{x1: x1, y1: y1, x2: x2, y2: y2, idx: i}
+		input.WriteString(fmt.Sprintf("%s %s %s %s\n", fields[idx], fields[idx+1], fields[idx+2], fields[idx+3]))
 		idx += 4
 	}
-	return input.String(), func() string {
-		n = nVal
-		m = mVal
-		grid = make([][]byte, n+1)
-		rowWalls = make([][]int, n+1)
-		answers = make([]bool, qVal)
-		mWords = (m + 63) / 64
-		// grids
-		lineIdx := 2
-		for i := 1; i <= n; i++ {
-			grid[i] = []byte(" " + fields[lineIdx])
-			lineIdx++
-		}
-		for i := 1; i <= n; i++ {
-			rowWalls[i] = make([]int, m+1)
-			for j := 1; j <= m; j++ {
-				rowWalls[i][j] = rowWalls[i][j-1]
-				if grid[i][j] == '#' {
-					rowWalls[i][j]++
-				}
-			}
-		}
-		solve(1, n, queries)
-		var out strings.Builder
-		for i := 0; i < qVal; i++ {
-			if answers[i] {
-				out.WriteString("Yes\n")
-			} else {
-				out.WriteString("No\n")
-			}
-		}
-		return out.String()
-	}(), nil
+	return input.String(), nil
 }
 
-func runCandidate(bin, input string) (string, error) {
+func runBinary(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
@@ -336,24 +469,37 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+
+	oracle, cleanup, err := buildOracle()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to build oracle: %v\n", err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
 	lines := strings.Split(strings.TrimSpace(embeddedTestcases), "\n")
 	for idx, line := range lines {
 		fields := strings.Fields(strings.TrimSpace(line))
 		if len(fields) == 0 {
 			continue
 		}
-		input, expect, err := parseGridCase(fields)
+		input, err := parseInput(fields)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "bad testcase %d: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		got, err := runCandidate(bin, input)
+		expect, err := runBinary(oracle, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "oracle failed on test %d: %v\n", idx+1, err)
+			os.Exit(1)
+		}
+		got, err := runBinary(bin, input)
 		if err != nil {
 			fmt.Printf("test %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if got != strings.TrimSpace(expect) {
-			fmt.Printf("test %d failed\nexpected:\n%s\ngot:\n%s\n", idx+1, strings.TrimSpace(expect), got)
+		if got != expect {
+			fmt.Printf("test %d failed\nexpected:\n%s\ngot:\n%s\n", idx+1, expect, got)
 			os.Exit(1)
 		}
 	}

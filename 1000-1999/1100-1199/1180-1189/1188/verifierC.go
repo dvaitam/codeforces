@@ -6,27 +6,89 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+// Embedded oracle solver from the correct CF-accepted solution.
+func oracleSolve(input string) string {
+	// Parse input
+	words := strings.Fields(input)
+	idx := 0
+	nextInt := func() int {
+		v := 0
+		s := words[idx]
+		idx++
+		for _, ch := range s {
+			v = v*10 + int(ch-'0')
+		}
+		return v
 	}
-	oracle := filepath.Join(dir, "oracleC")
-	cmd := exec.Command("go", "build", "-o", oracle, "1188C.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	n := nextInt()
+	k := nextInt()
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		a[i] = nextInt()
 	}
-	return oracle, nil
+	sort.Ints(a)
+
+	MOD := 998244353
+	if k == 1 {
+		// beauty is undefined for k=1 (n>1 required for beauty)
+		// but problem says k >= 2, so this shouldn't happen
+		return "0"
+	}
+	MaxV := (a[n-1] - a[0]) / (k - 1)
+
+	ans := 0
+	dp := make([]int, n)
+	new_dp := make([]int, n)
+
+	for v := 1; v <= MaxV; v++ {
+		for i := 0; i < n; i++ {
+			dp[i] = 1
+		}
+		for j := 2; j <= k; j++ {
+			sum := 0
+			p := 0
+			allZero := true
+			for i := 0; i < n; i++ {
+				for p < i && a[i]-a[p] >= v {
+					sum += dp[p]
+					if sum >= MOD {
+						sum -= MOD
+					}
+					p++
+				}
+				new_dp[i] = sum
+				if sum > 0 {
+					allZero = false
+				}
+			}
+			for i := 0; i < n; i++ {
+				dp[i] = new_dp[i]
+			}
+			if allZero {
+				break
+			}
+		}
+		for i := 0; i < n; i++ {
+			ans += dp[i]
+			if ans >= MOD {
+				ans -= MOD
+			}
+		}
+	}
+	return fmt.Sprint(ans)
 }
 
 func generateCase(rng *rand.Rand) string {
 	n := rng.Intn(8) + 2 // at least 2
-	k := rng.Intn(n-1) + 1
+	k := rng.Intn(n-1) + 2 // k in [2, n], matching problem constraint k >= 2
+	if k > n {
+		k = n
+	}
 	arr := make([]int, n)
 	for i := 0; i < n; i++ {
 		arr[i] = rng.Intn(100)
@@ -43,36 +105,17 @@ func generateCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
-func runCase(bin, oracle, input string) error {
-	run := func(exe string) (string, error) {
-		var cmd *exec.Cmd
-		if strings.HasSuffix(exe, ".go") {
-			cmd = exec.Command("go", "run", exe)
-		} else {
-			cmd = exec.Command(exe)
-		}
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		if err := cmd.Run(); err != nil {
-			return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
-		}
-		return strings.TrimSpace(out.String()), nil
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
 	}
-	exp, err := run(oracle)
-	if err != nil {
-		return fmt.Errorf("oracle: %v", err)
-	}
-	got, err := run(bin)
-	if err != nil {
-		return err
-	}
-	if got != exp {
-		return fmt.Errorf("expected:\n%s\n\ngot:\n%s", exp, got)
-	}
-	return nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
@@ -81,17 +124,17 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		in := generateCase(rng)
-		if err := runCase(bin, oracle, in); err != nil {
+		exp := oracleSolve(in)
+		got, err := run(bin, in)
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
+			os.Exit(1)
+		}
+		if got != exp {
+			fmt.Fprintf(os.Stderr, "case %d failed:\nexpected:\n%s\n\ngot:\n%s\ninput:\n%s", i+1, exp, got, in)
 			os.Exit(1)
 		}
 	}

@@ -189,6 +189,101 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func parseOutput(s string) (int, [4][2]int, bool) {
+	fields := strings.Fields(s)
+	if len(fields) == 0 {
+		return 0, [4][2]int{}, false
+	}
+	if fields[0] == "-1" {
+		return -1, [4][2]int{}, true
+	}
+	cost, err := strconv.Atoi(fields[0])
+	if err != nil || len(fields) != 9 {
+		return 0, [4][2]int{}, false
+	}
+	var pos [4][2]int
+	for i := 0; i < 4; i++ {
+		x, err1 := strconv.Atoi(fields[1+2*i])
+		y, err2 := strconv.Atoi(fields[2+2*i])
+		if err1 != nil || err2 != nil {
+			return 0, [4][2]int{}, false
+		}
+		pos[i][0] = x
+		pos[i][1] = y
+	}
+	return cost, pos, true
+}
+
+func validateOutput(tc testCase, cost int, pos [4][2]int) error {
+	if cost < 0 {
+		return fmt.Errorf("negative cost")
+	}
+	// Check that the 4 positions form an axis-aligned square with side > 0
+	// Collect all x and y coords
+	xs := map[int]bool{pos[0][0]: true, pos[1][0]: true, pos[2][0]: true, pos[3][0]: true}
+	ys := map[int]bool{pos[0][1]: true, pos[1][1]: true, pos[2][1]: true, pos[3][1]: true}
+	if len(xs) != 2 || len(ys) != 2 {
+		return fmt.Errorf("positions do not form a square: need exactly 2 distinct x and 2 distinct y")
+	}
+	xvals := make([]int, 0, 2)
+	for v := range xs {
+		xvals = append(xvals, v)
+	}
+	yvals := make([]int, 0, 2)
+	for v := range ys {
+		yvals = append(yvals, v)
+	}
+	if xvals[0] > xvals[1] {
+		xvals[0], xvals[1] = xvals[1], xvals[0]
+	}
+	if yvals[0] > yvals[1] {
+		yvals[0], yvals[1] = yvals[1], yvals[0]
+	}
+	side := xvals[1] - xvals[0]
+	if side <= 0 {
+		return fmt.Errorf("side length must be positive")
+	}
+	if yvals[1]-yvals[0] != side {
+		return fmt.Errorf("not a square: x-side=%d y-side=%d", side, yvals[1]-yvals[0])
+	}
+	// Each of the 4 corners must be present
+	corners := map[[2]int]bool{
+		{xvals[0], yvals[0]}: false,
+		{xvals[0], yvals[1]}: false,
+		{xvals[1], yvals[0]}: false,
+		{xvals[1], yvals[1]}: false,
+	}
+	for i := 0; i < 4; i++ {
+		key := [2]int{pos[i][0], pos[i][1]}
+		if _, ok := corners[key]; !ok {
+			return fmt.Errorf("position %d (%d,%d) is not a corner of the square", i, pos[i][0], pos[i][1])
+		}
+		corners[key] = true
+	}
+	for k, v := range corners {
+		if !v {
+			return fmt.Errorf("corner (%d,%d) not assigned to any bot", k[0], k[1])
+		}
+	}
+	// Check movement costs: each bot must move via L1 along one axis (share x or y with original)
+	maxMove := 0
+	for i := 0; i < 4; i++ {
+		ox, oy := tc.bots[i][0], tc.bots[i][1]
+		nx, ny := pos[i][0], pos[i][1]
+		if ox != nx && oy != ny {
+			return fmt.Errorf("bot %d moves diagonally from (%d,%d) to (%d,%d): must share x or y", i, ox, oy, nx, ny)
+		}
+		move := abs(ox-nx) + abs(oy-ny)
+		if move > maxMove {
+			maxMove = move
+		}
+	}
+	if maxMove != cost {
+		return fmt.Errorf("claimed cost %d but actual max move is %d", cost, maxMove)
+	}
+	return nil
+}
+
 func main() {
 	if len(os.Args) == 3 && os.Args[1] == "--" {
 		os.Args = append([]string{os.Args[0]}, os.Args[2])
@@ -202,14 +297,41 @@ func main() {
 	for i := 0; i < 100; i++ {
 		tc := genCase(rng)
 		input := buildInput(tc)
-		exp := solve(tc)
+		expStr := solve(tc)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != exp {
-			fmt.Fprintf(os.Stderr, "case %d failed\ninput:\n%s\nexp:\n%s\n---\ngot:\n%s\n", i+1, input, exp, got)
+		// Parse expected to get optimal cost
+		expCost, _, expOk := parseOutput(expStr)
+		if !expOk {
+			fmt.Fprintf(os.Stderr, "case %d: cannot parse reference output: %s\n", i+1, expStr)
+			os.Exit(1)
+		}
+		// Parse candidate output
+		gotCost, gotPos, gotOk := parseOutput(strings.TrimSpace(got))
+		if !gotOk {
+			fmt.Fprintf(os.Stderr, "case %d failed: cannot parse output\ninput:\n%s\ngot:\n%s\n", i+1, input, got)
+			os.Exit(1)
+		}
+		if expCost == -1 {
+			if gotCost != -1 {
+				fmt.Fprintf(os.Stderr, "case %d failed: expected -1 got cost %d\ninput:\n%s\n", i+1, gotCost, input)
+				os.Exit(1)
+			}
+			continue
+		}
+		if gotCost == -1 {
+			fmt.Fprintf(os.Stderr, "case %d failed: candidate says -1 but solution exists with cost %d\ninput:\n%s\n", i+1, expCost, input)
+			os.Exit(1)
+		}
+		if gotCost != expCost {
+			fmt.Fprintf(os.Stderr, "case %d failed: optimal cost is %d but candidate claims %d\ninput:\n%s\ngot:\n%s\n", i+1, expCost, gotCost, input, got)
+			os.Exit(1)
+		}
+		if err := validateOutput(tc, gotCost, gotPos); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: invalid output: %v\ninput:\n%s\ngot:\n%s\n", i+1, err, input, got)
 			os.Exit(1)
 		}
 	}

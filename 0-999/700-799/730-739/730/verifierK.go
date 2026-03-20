@@ -7,16 +7,230 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
 
+const refSourceK = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
+	"runtime/debug"
+)
+
+func init() {
+	debug.SetMaxStack(1 << 28)
+}
+
+type Scanner struct {
+	buf []byte
+	pos int
+}
+
+func NewScanner() *Scanner {
+	b, _ := io.ReadAll(os.Stdin)
+	return &Scanner{buf: b, pos: 0}
+}
+
+func (s *Scanner) NextInt() int {
+	for s.pos < len(s.buf) && s.buf[s.pos] <= ' ' {
+		s.pos++
+	}
+	if s.pos >= len(s.buf) {
+		return 0
+	}
+	res := 0
+	for s.pos < len(s.buf) && s.buf[s.pos] > ' ' {
+		res = res*10 + int(s.buf[s.pos]-'0')
+		s.pos++
+	}
+	return res
+}
+
+type Edge struct {
+	to, id int
+}
+
+func main() {
+	sc := NewScanner()
+	if sc.pos >= len(sc.buf) {
+		return
+	}
+	T := sc.NextInt()
+	if T == 0 {
+		return
+	}
+
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+
+	for tCase := 0; tCase < T; tCase++ {
+		n := sc.NextInt()
+		m := sc.NextInt()
+		s := sc.NextInt()
+		t := sc.NextInt()
+
+		U := make([]int, m+1)
+		V := make([]int, m+1)
+		adj := make([][]Edge, n+1)
+
+		adj[s] = append(adj[s], Edge{t, 0})
+		adj[t] = append(adj[t], Edge{s, 0})
+
+		for i := 1; i <= m; i++ {
+			U[i] = sc.NextInt()
+			V[i] = sc.NextInt()
+			adj[U[i]] = append(adj[U[i]], Edge{V[i], i})
+			adj[V[i]] = append(adj[V[i]], Edge{U[i], i})
+		}
+
+		for i := 0; i < len(adj[s]); i++ {
+			if adj[s][i].id == 0 {
+				adj[s][0], adj[s][i] = adj[s][i], adj[s][0]
+				break
+			}
+		}
+
+		timer := 0
+		dfn := make([]int, n+1)
+		low := make([]int, n+1)
+		parent := make([]int, n+1)
+
+		var dfs func(u, edgeID int)
+		dfs = func(u, edgeID int) {
+			timer++
+			dfn[u] = timer
+			low[u] = timer
+			for _, e := range adj[u] {
+				if e.id == edgeID {
+					continue
+				}
+				v := e.to
+				if dfn[v] == 0 {
+					parent[v] = u
+					dfs(v, e.id)
+					if low[v] < low[u] {
+						low[u] = low[v]
+					}
+				} else {
+					if dfn[v] < low[u] {
+						low[u] = dfn[v]
+					}
+				}
+			}
+		}
+
+		dfs(s, -1)
+
+		isBi := true
+		if timer < n {
+			isBi = false
+		} else {
+			childrenOfS := 0
+			for _, e := range adj[s] {
+				if parent[e.to] == s {
+					childrenOfS++
+				}
+			}
+			if childrenOfS > 1 {
+				isBi = false
+			}
+
+			for i := 1; i <= n; i++ {
+				if i == s {
+					continue
+				}
+				for _, e := range adj[i] {
+					if parent[e.to] == i {
+						if low[e.to] >= dfn[i] {
+							isBi = false
+						}
+					}
+				}
+			}
+		}
+
+		if !isBi {
+			fmt.Fprintln(out, "No")
+			continue
+		}
+
+		nodeAt := make([]int, n+1)
+		for i := 1; i <= n; i++ {
+			nodeAt[dfn[i]] = i
+		}
+
+		prev := make([]int, n+1)
+		next := make([]int, n+1)
+
+		prev[t] = s
+		next[s] = t
+		sign := make([]int, n+1)
+		sign[s] = -1
+
+		for i := 3; i <= n; i++ {
+			v := nodeAt[i]
+			p := parent[v]
+			l := nodeAt[low[v]]
+
+			if sign[l] == -1 {
+				pr := prev[p]
+				prev[v] = pr
+				next[v] = p
+				if pr != 0 {
+					next[pr] = v
+				}
+				prev[p] = v
+				sign[p] = 1
+			} else {
+				nx := next[p]
+				next[v] = nx
+				prev[v] = p
+				if nx != 0 {
+					prev[nx] = v
+				}
+				next[p] = v
+				sign[p] = -1
+			}
+		}
+
+		rank := make([]int, n+1)
+		r := 0
+		for curr := s; curr != 0; curr = next[curr] {
+			r++
+			rank[curr] = r
+		}
+
+		fmt.Fprintln(out, "Yes")
+		for i := 1; i <= m; i++ {
+			u := U[i]
+			v := V[i]
+			if rank[u] < rank[v] {
+				fmt.Fprintln(out, u, v)
+			} else {
+				fmt.Fprintln(out, v, u)
+			}
+		}
+	}
+}
+`
+
 func buildRef() (string, error) {
-	_, self, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(self)
-	ref := filepath.Join(dir, "refK.bin")
-	cmd := exec.Command("go", "build", "-o", ref, filepath.Join(dir, "730K.go"))
+	tmp, err := os.CreateTemp("", "refK_*.go")
+	if err != nil {
+		return "", err
+	}
+	if _, err := tmp.WriteString(refSourceK); err != nil {
+		tmp.Close()
+		return "", err
+	}
+	tmp.Close()
+	defer os.Remove(tmp.Name())
+	ref := filepath.Join(os.TempDir(), "refK.bin")
+	cmd := exec.Command("go", "build", "-o", ref, tmp.Name())
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
 	}
@@ -51,11 +265,13 @@ func genCases() []Case {
 		fmt.Fprintf(&sb, "%d\n", T)
 		for t := 0; t < T; t++ {
 			n := rng.Intn(4) + 2
-			m := rng.Intn(n*(n-1)/2-n+1) + n - 1
-			s := 1
-			if n > 1 {
-				s = rng.Intn(n) + 1
+			maxEdges := n * (n - 1) / 2
+			minEdges := n - 1
+			m := minEdges
+			if maxEdges > minEdges {
+				m = rng.Intn(maxEdges-minEdges+1) + minEdges
 			}
+			s := rng.Intn(n) + 1
 			tdest := rng.Intn(n) + 1
 			for tdest == s {
 				tdest = rng.Intn(n) + 1

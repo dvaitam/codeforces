@@ -7,47 +7,166 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
-type Node struct{ r, c int }
+const refSource = `package main
 
-func reachable(s1, s2 string) bool {
-	n := len(s1)
-	grid := [][]byte{[]byte(s1), []byte(s2)}
-	visited := make([][]bool, 2)
-	for i := 0; i < 2; i++ {
-		visited[i] = make([]bool, n)
+import (
+	"bufio"
+	"io"
+	"os"
+)
+
+type FastScanner struct {
+	data []byte
+	idx  int
+	n    int
+}
+
+func NewFastScanner() *FastScanner {
+	data, _ := io.ReadAll(os.Stdin)
+	return &FastScanner{data: data, n: len(data)}
+}
+
+func (fs *FastScanner) skip() {
+	for fs.idx < fs.n {
+		b := fs.data[fs.idx]
+		if b > ' ' {
+			break
+		}
+		fs.idx++
 	}
-	q := []Node{{0, 0}}
-	visited[0][0] = true
-	dirs := [][2]int{{0, 1}, {0, -1}, {1, 0}, {-1, 0}}
-	for len(q) > 0 {
-		cur := q[0]
-		q = q[1:]
-		if cur.r == 1 && cur.c == n-1 {
+}
+
+func (fs *FastScanner) NextInt() int {
+	fs.skip()
+	val := 0
+	for fs.idx < fs.n {
+		b := fs.data[fs.idx]
+		if b < '0' || b > '9' {
+			break
+		}
+		val = val*10 + int(b-'0')
+		fs.idx++
+	}
+	return val
+}
+
+func (fs *FastScanner) NextBytes() []byte {
+	fs.skip()
+	start := fs.idx
+	for fs.idx < fs.n && fs.data[fs.idx] > ' ' {
+		fs.idx++
+	}
+	return fs.data[start:fs.idx]
+}
+
+func solve(n int, a, b []byte) bool {
+	rows := [2][]byte{a, b}
+	off := 2 * n
+	total := 4 * n
+
+	vis := make([]bool, total)
+	q := make([]int, total)
+	head, tail := 0, 0
+
+	vis[0] = true
+	q[tail] = 0
+	tail++
+
+	for head < tail {
+		id := q[head]
+		head++
+
+		phase := 0
+		if id >= off {
+			phase = 1
+			id -= off
+		}
+
+		row := id / n
+		col := id % n
+
+		if row == 1 && col == n-1 {
 			return true
 		}
-		for _, d := range dirs {
-			nr, nc := cur.r+d[0], cur.c+d[1]
-			if nr < 0 || nr >= 2 || nc < 0 || nc >= n {
-				continue
+
+		if phase == 0 {
+			if col > 0 {
+				nid := off + row*n + col - 1
+				if !vis[nid] {
+					vis[nid] = true
+					q[tail] = nid
+					tail++
+				}
 			}
-			tr, tc := nr, nc
-			if grid[nr][nc] == '>' {
-				tc++
-			} else {
-				tc--
+			if col+1 < n {
+				nid := off + row*n + col + 1
+				if !vis[nid] {
+					vis[nid] = true
+					q[tail] = nid
+					tail++
+				}
 			}
-			if tr < 0 || tr >= 2 || tc < 0 || tc >= n {
-				continue
+			nid := off + (1-row)*n + col
+			if !vis[nid] {
+				vis[nid] = true
+				q[tail] = nid
+				tail++
 			}
-			if !visited[tr][tc] {
-				visited[tr][tc] = true
-				q = append(q, Node{tr, tc})
+		} else {
+			nc := col - 1
+			if rows[row][col] == '>' {
+				nc = col + 1
+			}
+			nid := row*n + nc
+			if !vis[nid] {
+				vis[nid] = true
+				q[tail] = nid
+				tail++
 			}
 		}
 	}
+
 	return false
+}
+
+func main() {
+	fs := NewFastScanner()
+	out := bufio.NewWriterSize(os.Stdout, 1<<20)
+	defer out.Flush()
+
+	t := fs.NextInt()
+	for ; t > 0; t-- {
+		n := fs.NextInt()
+		a := fs.NextBytes()
+		b := fs.NextBytes()
+		if solve(n, a, b) {
+			out.WriteString("YES\n")
+		} else {
+			out.WriteString("NO\n")
+		}
+	}
+}
+`
+
+func buildRef() (string, func()) {
+	tmpDir, err := os.MkdirTemp("", "ref1948C")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	srcPath := filepath.Join(tmpDir, "ref.go")
+	os.WriteFile(srcPath, []byte(refSource), 0644)
+	binPath := filepath.Join(tmpDir, "ref")
+	cmd := exec.Command("go", "build", "-o", binPath, srcPath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to build ref: %v\n%s\n", err, string(out))
+		os.Exit(1)
+	}
+	return binPath, func() { os.RemoveAll(tmpDir) }
 }
 
 func main() {
@@ -56,6 +175,9 @@ func main() {
 		return
 	}
 	bin := os.Args[1]
+
+	refBin, cleanup := buildRef()
+	defer cleanup()
 
 	rand.Seed(42)
 	const t = 100
@@ -89,6 +211,17 @@ func main() {
 		fmt.Fprintf(&input, "%d\n%s\n%s\n", ns[i], rows1[i], rows2[i])
 	}
 
+	// Run reference
+	refCmd := exec.Command(refBin)
+	refCmd.Stdin = bytes.NewReader(input.Bytes())
+	var refOut bytes.Buffer
+	refCmd.Stdout = &refOut
+	if err := refCmd.Run(); err != nil {
+		fmt.Println("failed to run reference:", err)
+		os.Exit(1)
+	}
+
+	// Run candidate
 	cmd := exec.Command(bin)
 	cmd.Stdin = bytes.NewReader(input.Bytes())
 	var out bytes.Buffer
@@ -98,24 +231,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	refScanner := bufio.NewScanner(bytes.NewReader(refOut.Bytes()))
 	scanner := bufio.NewScanner(bytes.NewReader(out.Bytes()))
 	for i := 0; i < t; i++ {
+		if !refScanner.Scan() {
+			fmt.Printf("reference missing output for case %d\n", i+1)
+			os.Exit(1)
+		}
 		if !scanner.Scan() {
 			fmt.Printf("missing output for case %d\n", i+1)
 			os.Exit(1)
 		}
-		got := scanner.Text()
-		want := "NO"
-		if reachable(rows1[i], rows2[i]) {
-			want = "YES"
-		}
+		want := strings.TrimSpace(refScanner.Text())
+		got := strings.TrimSpace(scanner.Text())
 		if got != want {
 			fmt.Printf("case %d: expected %s, got %s\n", i+1, want, got)
 			os.Exit(1)
 		}
-	}
-	if scanner.Scan() {
-		fmt.Println("warning: extra output detected")
 	}
 	fmt.Println("All tests passed!")
 }
