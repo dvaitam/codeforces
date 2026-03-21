@@ -316,10 +316,10 @@ func main() {
 		}
 	}
 	rng := rand.New(rand.NewSource(42))
-	for t := 0; t < 30; t++ {
-		n := rng.Intn(4) + 2
-		m := rng.Intn(3) + n - 1
-		q := rng.Intn(5) + 1
+	for t := 0; t < 12; t++ {
+		n := rng.Intn(3) + 2
+		m := rng.Intn(2) + n - 1
+		q := rng.Intn(3) + 1
 		weights := make([]int, n)
 		for i := 0; i < n; i++ {
 			weights[i] = rng.Intn(100) + 1

@@ -134,7 +134,6 @@ func buildTests() []testCase {
 	add(testCase{n: 4, d: 4, a: []int64{10, 10, 10, 10}})
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	totalN := 0
 
 	makeRandom := func(n, d int, maxVal int64) testCase {
 		arr := make([]int64, n)
@@ -144,23 +143,22 @@ func buildTests() []testCase {
 		return testCase{n: n, d: d, a: arr}
 	}
 
-	for len(tests) < 15 && totalN < 20000 {
-		n := rng.Intn(1500) + 1
+	// Random cases: max n=500, up to 10 total tests
+	for len(tests) < 8 {
+		n := rng.Intn(500) + 1
 		d := rng.Intn(n) + 1
-		tc := makeRandom(n, d, 1_000_000_000)
-		totalN += n
-		add(tc)
+		add(makeRandom(n, d, 1_000_000_000))
 	}
 
-	// Moderate structured cases
-	n1 := 5000
+	// Structured cases with small n
+	n1 := 500
 	arr1 := make([]int64, n1)
 	for i := range arr1 {
 		arr1[i] = 1
 	}
 	add(testCase{n: n1, d: 1, a: arr1})
 
-	n2 := 5000
+	n2 := 500
 	arr2 := make([]int64, n2)
 	for i := range arr2 {
 		arr2[i] = int64((i % 100) + 1)

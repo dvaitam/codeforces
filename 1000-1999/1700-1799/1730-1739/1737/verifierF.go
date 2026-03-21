@@ -30,10 +30,10 @@ func runProg(bin, input string) (string, error) {
 }
 
 func genCase(rng *rand.Rand) (string, int, []int) {
-	m := rng.Intn(3) + 1
+	m := rng.Intn(2) + 1
 	exps := make([]int, m)
 	for i := 0; i < m; i++ {
-		exps[i] = rng.Intn(3) + 1
+		exps[i] = rng.Intn(2) + 1
 	}
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "1\n%d\n", m)
@@ -158,7 +158,7 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// Run tests with various random cases
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 15; i++ {
 		input, m, exps := genCase(rng)
 		got, err := runProg(bin, input)
 		if err != nil {

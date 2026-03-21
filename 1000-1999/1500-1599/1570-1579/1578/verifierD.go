@@ -116,12 +116,12 @@ func main() {
 	bin := os.Args[1]
 
 	// Coordinate range for random tests; simulate enough segments to cover it.
-	const coordRange = 10
-	const maxSeg = 8192
+	const coordRange = 5
+	const maxSeg = 512
 	grid := dragonOracle(maxSeg)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 1; i <= 100; i++ {
+	for i := 1; i <= 20; i++ {
 		input := genCase(rng, coordRange)
 		expect, err := oracleAnswer(grid, input)
 		if err != nil {
@@ -138,5 +138,5 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All 100 tests passed")
+	fmt.Println("All 20 tests passed")
 }

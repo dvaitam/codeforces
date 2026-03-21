@@ -64,6 +64,15 @@ func solveCase(x, y, z, k int64) int64 {
 			L = 1
 		}
 		R_max := (q+1)*k - 1
+		if R_max < L {
+			// No valid D in this range; only evaluate at L
+			pL := (Rq + L - 1) / L
+			costL := getCost(x, y, L, q+pL)
+			if costL < ans {
+				ans = costL
+			}
+			continue
+		}
 
 		pL := (Rq + L - 1) / L
 		costL := getCost(x, y, L, q+pL)

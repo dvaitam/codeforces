@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
-	"io"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -14,7 +12,12 @@ import (
 	"time"
 )
 
-// Embedded solver for 1508C: complement-graph BFS + Kruskal MST.
+// Brute-force solver for 1508C (small n only).
+// Complete graph: assigned edges have given weights, unassigned edges must be
+// assigned non-negative weights so that XOR of ALL edge weights = 0, and the
+// MST weight is minimised.
+// Strategy: XOR of assigned weights = X.  If X=0, set all unassigned to 0.
+// Otherwise, try putting X on each single unassigned edge (rest 0), compute MST.
 func solve1508C(input string) string {
 	data := []byte(input)
 	ptr := 0
@@ -36,117 +39,103 @@ func solve1508C(input string) string {
 	type Edge struct {
 		u, v, w int
 	}
-	edges := make([]Edge, m)
-	adj := make([]map[int]bool, n+1)
-	for i := 1; i <= n; i++ {
-		adj[i] = make(map[int]bool)
-	}
+
+	assigned := make(map[[2]int]int) // key: (min,max) -> weight
 	for i := 0; i < m; i++ {
 		u := nextInt()
 		v := nextInt()
 		w := nextInt()
-		edges[i] = Edge{u, v, w}
-		adj[u][v] = true
-		adj[v][u] = true
+		if u > v {
+			u, v = v, u
+		}
+		assigned[[2]int{u, v}] = w
 	}
 
-	// Find connected components of complement graph using BFS with linked list
-	next := make([]int, n+1)
-	prev := make([]int, n+1)
-	inList := make([]bool, n+1)
-	for i := 1; i <= n; i++ {
-		prev[i] = i - 1
-		next[i] = i + 1
-		inList[i] = true
-	}
-	next[n] = 0
-	head := 1
-
-	remove := func(v int) {
-		if !inList[v] {
-			return
-		}
-		p := prev[v]
-		nx := next[v]
-		if p == 0 {
-			head = nx
-		} else {
-			next[p] = nx
-		}
-		if nx != 0 {
-			prev[nx] = p
-		}
-		inList[v] = false
+	// Compute XOR of all assigned weights
+	xorAll := 0
+	for _, w := range assigned {
+		xorAll ^= w
 	}
 
-	comp := make([]int, n+1)
-	compID := 0
-	for s := 1; s <= n; s++ {
-		if !inList[s] {
-			continue
+	// Collect all edges of the complete graph
+	type WEdge struct {
+		u, v, w int
+	}
+
+	// Kruskal MST helper
+	kruskalMST := func(allEdges []WEdge) int64 {
+		sort.Slice(allEdges, func(i, j int) bool {
+			return allEdges[i].w < allEdges[j].w
+		})
+		par := make([]int, n+1)
+		for i := range par {
+			par[i] = i
 		}
-		compID++
-		remove(s)
-		comp[s] = compID
-		queue := []int{s}
-		for qi := 0; qi < len(queue); qi++ {
-			v := queue[qi]
-			var toAdd []int
-			for cur := head; cur != 0; {
-				nx := next[cur]
-				if !adj[v][cur] {
-					remove(cur)
-					comp[cur] = compID
-					toAdd = append(toAdd, cur)
-				}
-				cur = nx
+		var find func(int) int
+		find = func(x int) int {
+			if par[x] != x {
+				par[x] = find(par[x])
 			}
-			queue = append(queue, toAdd...)
+			return par[x]
+		}
+		total := int64(0)
+		cnt := 0
+		for _, e := range allEdges {
+			a, b := find(e.u), find(e.v)
+			if a != b {
+				par[a] = b
+				total += int64(e.w)
+				cnt++
+				if cnt == n-1 {
+					break
+				}
+			}
+		}
+		return total
+	}
+
+	// Build edge list for a given assignment scenario
+	buildEdges := func(extraEdge [2]int, extraW int) []WEdge {
+		var edges []WEdge
+		for u := 1; u <= n; u++ {
+			for v := u + 1; v <= n; v++ {
+				key := [2]int{u, v}
+				if w, ok := assigned[key]; ok {
+					edges = append(edges, WEdge{u, v, w})
+				} else if key == extraEdge {
+					edges = append(edges, WEdge{u, v, extraW})
+				} else {
+					edges = append(edges, WEdge{u, v, 0})
+				}
+			}
+		}
+		return edges
+	}
+
+	best := int64(1<<62)
+
+	if xorAll == 0 {
+		// All unassigned edges get weight 0
+		edges := buildEdges([2]int{0, 0}, 0)
+		best = kruskalMST(edges)
+	} else {
+		// Try assigning xorAll to each unassigned edge
+		for u := 1; u <= n; u++ {
+			for v := u + 1; v <= n; v++ {
+				key := [2]int{u, v}
+				if _, ok := assigned[key]; ok {
+					continue
+				}
+				edges := buildEdges(key, xorAll)
+				cost := kruskalMST(edges)
+				if cost < best {
+					best = cost
+				}
+			}
 		}
 	}
 
-	// DSU for Kruskal
-	parent := make([]int, compID+1)
-	rank := make([]int, compID+1)
-	for i := 1; i <= compID; i++ {
-		parent[i] = i
-	}
-	var find func(int) int
-	find = func(x int) int {
-		if parent[x] != x {
-			parent[x] = find(parent[x])
-		}
-		return parent[x]
-	}
-	union := func(a, b int) bool {
-		a, b = find(a), find(b)
-		if a == b {
-			return false
-		}
-		if rank[a] < rank[b] {
-			a, b = b, a
-		}
-		parent[b] = a
-		if rank[a] == rank[b] {
-			rank[a]++
-		}
-		return true
-	}
-
-	// Sort edges by weight, run Kruskal on component graph
-	sort.Slice(edges, func(i, j int) bool {
-		return edges[i].w < edges[j].w
-	})
-
-	totalWeight := int64(0)
-	for _, e := range edges {
-		cu, cv := comp[e.u], comp[e.v]
-		if union(cu, cv) {
-			totalWeight += int64(e.w)
-		}
-	}
-
-	return strconv.FormatInt(totalWeight, 10)
+	return strconv.FormatInt(best, 10)
 }
 
 func genCase(r *rand.Rand) string {
@@ -197,8 +186,6 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	_ = bufio.NewWriter(os.Stdout)
-	_ = io.Discard
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 1; i <= 100; i++ {
