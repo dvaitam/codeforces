@@ -81,14 +81,18 @@ func generateTests() []testCase {
 	tests = append(tests, testCase{input: "1\n5\n", output: "6"})
 	for len(tests) < 120 {
 		n := rand.Intn(10) + 1
-		arr := rand.Perm(n*3 + 5)[:n]
+		perm := rand.Perm(n*3 + 5)[:n]
+		arr := make([]int, n)
+		for i, v := range perm {
+			arr[i] = v + 1
+		}
 		var b strings.Builder
 		b.WriteString(fmt.Sprintf("%d\n", n))
 		for i, v := range arr {
 			if i > 0 {
 				b.WriteByte(' ')
 			}
-			fmt.Fprintf(&b, "%d", v+1)
+			fmt.Fprintf(&b, "%d", v)
 		}
 		b.WriteString("\n")
 		tests = append(tests, testCase{input: b.String(), output: solve(arr)})

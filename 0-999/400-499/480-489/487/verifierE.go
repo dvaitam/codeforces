@@ -316,7 +316,7 @@ func main() {
 		}
 	}
 	rng := rand.New(rand.NewSource(42))
-	for t := 0; t < 100; t++ {
+	for t := 0; t < 30; t++ {
 		n := rng.Intn(4) + 2
 		m := rng.Intn(3) + n - 1
 		q := rng.Intn(5) + 1

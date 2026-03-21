@@ -124,22 +124,24 @@ func checkAnswer(output string, m int, b []int) error {
 		seen[key] = true
 
 		// Check consecutive GCD is prime:
-		// Two divisors' GCD is prime iff they differ in exactly one coordinate by exactly 1.
+		// GCD of two divisors (in exponent form) is min of each coordinate.
+		// GCD is prime iff exactly one coordinate j has min(prev[j], cur[j]) == 1,
+		// and for all other coordinates i, min(prev[i], cur[i]) == 0.
 		if rowIdx > 0 {
-			diffCount := 0
+			primeCoords := 0
 			for j := 0; j < m; j++ {
-				d := cur[j] - prev[j]
-				if d < 0 {
-					d = -d
+				mn := prev[j]
+				if cur[j] < mn {
+					mn = cur[j]
 				}
-				if d == 1 {
-					diffCount++
-				} else if d > 1 {
-					return fmt.Errorf("row %d: coordinate %d differs by %d from previous (need exactly 1 diff of 1)", rowIdx+1, j+1, d)
+				if mn == 1 {
+					primeCoords++
+				} else if mn > 1 {
+					return fmt.Errorf("row %d: coordinate %d has min(%d,%d)=%d > 1 (GCD not prime)", rowIdx+1, j+1, prev[j], cur[j], mn)
 				}
 			}
-			if diffCount != 1 {
-				return fmt.Errorf("row %d: %d coordinates differ by 1 from previous (need exactly 1)", rowIdx+1, diffCount)
+			if primeCoords != 1 {
+				return fmt.Errorf("row %d: %d coordinates have min >= 1 (need exactly 1 with min=1 for prime GCD)", rowIdx+1, primeCoords)
 			}
 		}
 		copy(prev, cur)

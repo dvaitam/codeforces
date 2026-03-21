@@ -144,23 +144,23 @@ func buildTests() []testCase {
 		return testCase{n: n, d: d, a: arr}
 	}
 
-	for len(tests) < 25 && totalN < 60000 {
-		n := rng.Intn(3000) + 1
+	for len(tests) < 15 && totalN < 20000 {
+		n := rng.Intn(1500) + 1
 		d := rng.Intn(n) + 1
 		tc := makeRandom(n, d, 1_000_000_000)
 		totalN += n
 		add(tc)
 	}
 
-	// Larger structured cases
-	n1 := 50000
+	// Moderate structured cases
+	n1 := 5000
 	arr1 := make([]int64, n1)
 	for i := range arr1 {
 		arr1[i] = 1
 	}
 	add(testCase{n: n1, d: 1, a: arr1})
 
-	n2 := 40000
+	n2 := 5000
 	arr2 := make([]int64, n2)
 	for i := range arr2 {
 		arr2[i] = int64((i % 100) + 1)

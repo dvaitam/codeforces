@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"math/bits"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -14,14 +15,16 @@ import (
 
 const mod = 1000000007
 
-func expected(n int, d int, x int64) []int {
-	// Generate permutation a[0..n-1] of 1..n using Fisher-Yates with x = (x*37+10007)%mod
+// oracleSolve computes the expected output for a given (n, d, x) input
+// by replicating the logic from the reference solution.
+func oracleSolve(n, d int, xIn int64) []int {
+	x := xIn
 	a := make([]int, n)
 	pos := make([]int, n+1)
 	for i := 0; i < n; i++ {
 		a[i] = i + 1
 		pos[i+1] = i
-		x = (x*37 + 10007) % mod
+		x = (x*37 + 10007) % int64(mod)
 		j := int(x % int64(i+1))
 		if i != j {
 			vi, vj := a[i], a[j]
@@ -30,30 +33,87 @@ func expected(n int, d int, x int64) []int {
 		}
 	}
 
-	// Generate binary array b[0..n-1] with d ones, then shuffle
 	bArr := make([]byte, n)
 	for i := 0; i < d; i++ {
 		bArr[i] = 1
 	}
 	for i := 0; i < n; i++ {
-		x = (x*37 + 10007) % mod
+		x = (x*37 + 10007) % int64(mod)
 		j := int(x % int64(i+1))
 		bArr[i], bArr[j] = bArr[j], bArr[i]
 	}
 
-	// Brute-force compute c[i] = max over j=0..i of a[j]*b[i-j]
-	c := make([]int, n)
+	m := (n + 63) >> 6
+	B := make([]uint64, m)
+	minOne := n
 	for i := 0; i < n; i++ {
-		mx := 0
-		for j := 0; j <= i; j++ {
-			val := a[j] * int(bArr[i-j])
-			if val > mx {
-				mx = val
+		if bArr[i] != 0 {
+			B[i>>6] |= uint64(1) << uint(i&63)
+			if minOne == n {
+				minOne = i
 			}
 		}
-		c[i] = mx
 	}
-	return c
+
+	ans := make([]int, n)
+	for i := 0; i < n; i++ {
+		ans[i] = -1
+	}
+
+	if minOne < n {
+		U := make([]uint64, m)
+		for i := minOne; i < n; i++ {
+			U[i>>6] |= uint64(1) << uint(i&63)
+		}
+		remaining := n - minOne
+
+		for v := n; v >= 1 && remaining > 0; v-- {
+			p := pos[v]
+			ws := p >> 6
+			bs := uint(p & 63)
+
+			if bs == 0 {
+				src := 0
+				for w := ws; w < m; w++ {
+					inter := U[w] & B[src]
+					if inter != 0 {
+						U[w] &^= inter
+						remaining -= bits.OnesCount64(inter)
+						base := w << 6
+						for inter != 0 {
+							tz := bits.TrailingZeros64(inter)
+							ans[base+tz] = v - 1
+							inter &= inter - 1
+						}
+					}
+					src++
+				}
+			} else {
+				rsh := 64 - bs
+				var prev uint64
+				src := 0
+				for w := ws; w < m; w++ {
+					cur := B[src]
+					shifted := (cur << bs) | prev
+					prev = cur >> rsh
+					inter := U[w] & shifted
+					if inter != 0 {
+						U[w] &^= inter
+						remaining -= bits.OnesCount64(inter)
+						base := w << 6
+						for inter != 0 {
+							tz := bits.TrailingZeros64(inter)
+							ans[base+tz] = v - 1
+							inter &= inter - 1
+						}
+					}
+					src++
+				}
+			}
+		}
+	}
+
+	return ans
 }
 
 func generateCase(rng *rand.Rand) (string, []int) {
@@ -63,9 +123,8 @@ func generateCase(rng *rand.Rand) (string, []int) {
 	if x == 27777500 {
 		x++
 	}
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d %d %d\n", n, d, x))
-	return sb.String(), expected(n, d, x)
+	input := fmt.Sprintf("%d %d %d\n", n, d, x)
+	return input, oracleSolve(n, d, x)
 }
 
 func runCase(bin string, input string, expect []int) error {

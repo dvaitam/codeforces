@@ -81,20 +81,23 @@ func expected(n int, l, r float64, px, py, a []float64) float64 {
 
 func generateCase(rng *rand.Rand) (string, float64) {
 	n := rng.Intn(4) + 1
-	l := rng.Float64()*20 - 10
-	r := l + rng.Float64()*10 + 1e-3
+	l := rng.Intn(20) - 10
+	r := l + rng.Intn(10) + 1
 	px := make([]float64, n)
 	py := make([]float64, n)
 	ang := make([]float64, n)
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d %.6f %.6f\n", n, l, r))
+	sb.WriteString(fmt.Sprintf("%d %d %d\n", n, l, r))
 	for i := 0; i < n; i++ {
-		px[i] = rng.Float64()*20 - 10
-		py[i] = rng.Float64()*10 + 1
-		ang[i] = rng.Float64()*89 + 1
-		sb.WriteString(fmt.Sprintf("%.6f %.6f %.6f\n", px[i], py[i], ang[i]))
+		xi := rng.Intn(20) - 10
+		yi := rng.Intn(10) + 1
+		ai := rng.Intn(89) + 1
+		px[i] = float64(xi)
+		py[i] = float64(yi)
+		ang[i] = float64(ai)
+		sb.WriteString(fmt.Sprintf("%d %d %d\n", xi, yi, ai))
 	}
-	return sb.String(), expected(n, l, r, px, py, ang)
+	return sb.String(), expected(n, float64(l), float64(r), px, py, ang)
 }
 
 func runCase(bin, input string, expected float64) error {

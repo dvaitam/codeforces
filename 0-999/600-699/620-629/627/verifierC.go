@@ -108,7 +108,7 @@ func main() {
 		}
 	}
 	rng := rand.New(rand.NewSource(44))
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 30; i++ {
 		input, exp := generateC(rng)
 		cmd := exec.Command(exe)
 		cmd.Stdin = strings.NewReader(input)

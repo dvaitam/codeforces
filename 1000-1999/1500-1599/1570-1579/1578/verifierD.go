@@ -3,45 +3,85 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math/bits"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("failed to locate verifier path")
+// dragonOracle builds a lookup table mapping (x,y) -> "curve pos" by simulating
+// the four infinite-order dragon curves for the first maxSeg segments each.
+func dragonOracle(maxSeg int) map[[2]int][2]int {
+	// Directions: 0=NE(+1,+1), 1=NW(-1,+1), 2=SW(-1,-1), 3=SE(+1,-1)
+	dx := [4]int{1, -1, -1, 1}
+	dy := [4]int{1, 1, -1, -1}
+
+	grid := make(map[[2]int][2]int) // (x,y) -> [curve, position]
+
+	for curve := 0; curve < 4; curve++ {
+		cx, cy := 0, 0
+		dir := curve
+		for seg := 1; seg <= maxSeg; seg++ {
+			nx, ny := cx+dx[dir], cy+dy[dir]
+			sx := cx
+			if dx[dir] < 0 {
+				sx = nx
+			}
+			sy := cy
+			if dy[dir] < 0 {
+				sy = ny
+			}
+			k := [2]int{sx, sy}
+			if _, ok := grid[k]; !ok {
+				grid[k] = [2]int{curve + 1, seg}
+			}
+			cx, cy = nx, ny
+			if seg < maxSeg {
+				tz := bits.TrailingZeros(uint(seg))
+				bit := (seg >> (tz + 1)) & 1
+				if bit == 0 {
+					dir = (dir + 1) % 4 // left
+				} else {
+					dir = (dir + 3) % 4 // right
+				}
+			}
+		}
 	}
-	dir := filepath.Dir(file)
-	srcPath := filepath.Join(dir, "1578D.go")
-	tmp, err := os.CreateTemp("", "oracle_1578D_*.bin")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp file: %v", err)
-	}
-	tmp.Close()
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), srcPath)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return tmp.Name(), nil
+
+	return grid
 }
 
-func genCase(r *rand.Rand) string {
+func genCase(r *rand.Rand, coordRange int) string {
 	n := r.Intn(10) + 1
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", n))
 	for i := 0; i < n; i++ {
-		x := r.Intn(21) - 10
-		y := r.Intn(21) - 10
+		x := r.Intn(2*coordRange+1) - coordRange
+		y := r.Intn(2*coordRange+1) - coordRange
 		sb.WriteString(fmt.Sprintf("%d %d\n", x, y))
 	}
 	return sb.String()
+}
+
+func oracleAnswer(grid map[[2]int][2]int, input string) (string, error) {
+	fields := strings.Fields(input)
+	n, _ := strconv.Atoi(fields[0])
+	var results []string
+	idx := 1
+	for i := 0; i < n; i++ {
+		x, _ := strconv.Atoi(fields[idx])
+		y, _ := strconv.Atoi(fields[idx+1])
+		idx += 2
+		v, ok := grid[[2]int{x, y}]
+		if !ok {
+			return "", fmt.Errorf("coordinate (%d,%d) not in oracle table", x, y)
+		}
+		results = append(results, fmt.Sprintf("%d %d", v[0], v[1]))
+	}
+	return strings.Join(results, "\n"), nil
 }
 
 func run(bin, input string) (string, error) {
@@ -56,23 +96,34 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func normalizeOutput(s string) string {
+	lines := strings.Split(s, "\n")
+	var out []string
+	for _, l := range lines {
+		l = strings.TrimSpace(l)
+		if l != "" {
+			out = append(out, l)
+		}
+	}
+	return strings.Join(out, "\n")
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierD.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
+
+	// Coordinate range for random tests; simulate enough segments to cover it.
+	const coordRange = 10
+	const maxSeg = 8192
+	grid := dragonOracle(maxSeg)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 1; i <= 100; i++ {
-		input := genCase(rng)
-		expect, err := run(oracle, input)
+		input := genCase(rng, coordRange)
+		expect, err := oracleAnswer(grid, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", i, err)
 			os.Exit(1)
@@ -82,8 +133,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i, err, input)
 			os.Exit(1)
 		}
-		if got != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i, expect, got, input)
+		if normalizeOutput(got) != normalizeOutput(expect) {
+			fmt.Fprintf(os.Stderr, "case %d failed:\nexpected:\n%s\ngot:\n%s\ninput:\n%s", i, expect, got, input)
 			os.Exit(1)
 		}
 	}

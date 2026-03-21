@@ -52,6 +52,8 @@ func solve(n int, edges [][2]int, init, goal []int) int {
 }
 
 // Verify that flipping the given set of nodes transforms init into goal.
+// Flipping node u toggles all nodes in u's subtree at even distance from u
+// (i.e., u itself, u's grandchildren, great-great-grandchildren, etc.).
 func verify(n int, edges [][2]int, init, goal []int, flips []int) error {
 	adj := make([][]int, n+1)
 	for _, e := range edges {
@@ -61,19 +63,20 @@ func verify(n int, edges [][2]int, init, goal []int, flips []int) error {
 	}
 
 	depth := make([]int, n+1)
-	var dfs func(u, p int)
-	dfs = func(u, p int) {
+	parent := make([]int, n+1)
+	order := make([]int, 0, n)
+	var buildDFS func(u, p int)
+	buildDFS = func(u, p int) {
+		parent[u] = p
+		order = append(order, u)
 		for _, v := range adj[u] {
 			if v != p {
 				depth[v] = depth[u] + 1
-				dfs(v, u)
+				buildDFS(v, u)
 			}
 		}
 	}
-	dfs(1, 0)
-
-	cur := make([]int, n+1)
-	copy(cur, init)
+	buildDFS(1, 0)
 
 	flipSet := make(map[int]bool)
 	for _, f := range flips {
@@ -86,32 +89,33 @@ func verify(n int, edges [][2]int, init, goal []int, flips []int) error {
 		flipSet[f] = true
 	}
 
-	// For each flip node, it flips itself and all nodes at even distance from it in the subtree.
-	// Actually, flipping node u flips all nodes v such that depth[v] and depth[u] have the same parity.
-	// Wait, need to understand the problem properly.
-	// Problem 429A: Each operation selects a node u, and flips all nodes at even distance from u.
-	// "even distance" in the tree means same parity of depth.
-	// So flipping u flips all nodes with depth%2 == depth[u]%2.
+	// Simulate flips using DFS propagation.
+	// For each node, track cumulative even-depth and odd-depth flip counts
+	// inherited from ancestors. A flip at node u (depth d) affects all
+	// descendants v where (depth[v]-depth[u]) is even, i.e., same depth parity.
+	evenF := make([]int, n+1) // cumulative flips from even-depth ancestors
+	oddF := make([]int, n+1)  // cumulative flips from odd-depth ancestors
 
-	// Count flips affecting even-depth and odd-depth nodes
-	evenFlips := 0
-	oddFlips := 0
-	for _, f := range flips {
-		if depth[f]%2 == 0 {
-			evenFlips++
-		} else {
-			oddFlips++
+	for _, u := range order {
+		p := parent[u]
+		evenF[u] = evenF[p]
+		oddF[u] = oddF[p]
+		if flipSet[u] {
+			if depth[u]%2 == 0 {
+				evenF[u]++
+			} else {
+				oddF[u]++
+			}
 		}
 	}
 
-	// Each even-depth flip toggles all even-depth nodes
-	// Each odd-depth flip toggles all odd-depth nodes
 	for i := 1; i <= n; i++ {
 		val := init[i]
+		// Node i is toggled by flips at ancestors (and self) with same depth parity
 		if depth[i]%2 == 0 {
-			val ^= evenFlips % 2
+			val ^= evenF[i] % 2
 		} else {
-			val ^= oddFlips % 2
+			val ^= oddF[i] % 2
 		}
 		if val != goal[i] {
 			return fmt.Errorf("node %d: expected %d got %d after flips", i, goal[i], val)
