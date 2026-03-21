@@ -18,30 +18,25 @@ type testCase struct {
 
 func solveTicket(s string) string {
 	n := len(s)
-	a := make([]int, n)
-	for i := 0; i < n; i++ {
-		a[i] = int(s[i] - '0')
-	}
-	for i := 1; i < n; i++ {
-		target := 0
-		for j := 0; j < i; j++ {
-			target += a[j]
+	for i := 0; i < n-1; i++ {
+		sum := 0
+		for k := 0; k <= i; k++ {
+			sum += int(s[k] - '0')
 		}
+
+		possible := true
 		curr := 0
-		cnt := 0
-		ok := true
-		for j := i; j < n; j++ {
-			curr += a[j]
-			if curr > target {
-				ok = false
+		for j := i + 1; j < n; j++ {
+			curr += int(s[j] - '0')
+			if curr == sum {
+				curr = 0
+			} else if curr > sum {
+				possible = false
 				break
 			}
-			if curr == target {
-				curr = 0
-				cnt++
-			}
 		}
-		if ok && curr == 0 && cnt >= 1 {
+
+		if possible && curr == 0 {
 			return "YES\n"
 		}
 	}

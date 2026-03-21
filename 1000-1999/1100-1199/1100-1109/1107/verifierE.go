@@ -6,18 +6,100 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	oracle := filepath.Join(os.TempDir(), "oracleE")
-	cmd := exec.Command("go", "build", "-o", oracle, "1107E.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build oracle: %v\n%s", err, out)
+const embeddedSolverE = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func main() {
+	reader := bufio.NewReader(os.Stdin)
+	var n int
+	fmt.Fscan(reader, &n)
+	var s string
+	fmt.Fscan(reader, &s)
+	a := make([]int64, n+1)
+	for i := 1; i <= n; i++ {
+		fmt.Fscan(reader, &a[i])
 	}
-	return oracle, nil
+
+	for i := 1; i <= n; i++ {
+		for j := 1; j < i; j++ {
+			if a[j]+a[i-j] > a[i] {
+				a[i] = a[j] + a[i-j]
+			}
+		}
+	}
+
+	dp := make([][][]int64, n)
+	for i := 0; i < n; i++ {
+		dp[i] = make([][]int64, n)
+		for j := 0; j < n; j++ {
+			dp[i][j] = make([]int64, n)
+			for k := 0; k < n; k++ {
+				dp[i][j][k] = -1
+			}
+		}
+	}
+
+	var solve func(l, r, c int) int64
+	solve = func(l, r, c int) int64 {
+		if l > r {
+			return 0
+		}
+		if dp[l][r][c] != -1 {
+			return dp[l][r][c]
+		}
+		res := solve(l, r-1, 0) + a[c+1]
+		for i := l; i < r; i++ {
+			if s[i] == s[r] {
+				val := solve(i+1, r-1, 0) + solve(l, i, c+1)
+				if val > res {
+					res = val
+				}
+			}
+		}
+		dp[l][r][c] = res
+		return res
+	}
+
+	fmt.Println(solve(0, n-1, 0))
+}
+`
+
+func buildEmbeddedOracle() (string, func(), error) {
+	tmpSrc, err := os.CreateTemp("", "oracle1107E-*.go")
+	if err != nil {
+		return "", nil, err
+	}
+	if _, err := tmpSrc.WriteString(embeddedSolverE); err != nil {
+		tmpSrc.Close()
+		os.Remove(tmpSrc.Name())
+		return "", nil, err
+	}
+	tmpSrc.Close()
+
+	tmpBin, err := os.CreateTemp("", "oracle1107E-bin-*")
+	if err != nil {
+		os.Remove(tmpSrc.Name())
+		return "", nil, err
+	}
+	tmpBin.Close()
+
+	cmd := exec.Command("go", "build", "-o", tmpBin.Name(), tmpSrc.Name())
+	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(tmpSrc.Name())
+		os.Remove(tmpBin.Name())
+		return "", nil, fmt.Errorf("build oracle: %v\n%s", err, out)
+	}
+	os.Remove(tmpSrc.Name())
+	return tmpBin.Name(), func() { os.Remove(tmpBin.Name()) }, nil
 }
 
 func run(bin, input string) (string, error) {
@@ -80,12 +162,12 @@ func main() {
 	}
 	defer cleanup()
 
-	oracle, err := buildOracle()
+	oracle, oracleCleanup, err := buildEmbeddedOracle()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.Remove(oracle)
+	defer oracleCleanup()
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 1; i <= 100; i++ {

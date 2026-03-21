@@ -1,121 +1,195 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
-	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
+	"time"
 )
 
+const embeddedSolverD = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
+)
+
+type Edge struct {
+	u, v, id int
+	w        int64
+}
+
+var (
+	in    []int
+	out   []int
+	adj   [][]int
+	timer int
+)
+
+func dfs(u, p int) {
+	isLeaf := true
+	in[u] = 1e9
+	out[u] = -1e9
+	for _, v := range adj[u] {
+		if v != p {
+			isLeaf = false
+			dfs(v, u)
+			if in[v] < in[u] {
+				in[u] = in[v]
+			}
+			if out[v] > out[u] {
+				out[u] = out[v]
+			}
+		}
+	}
+	if isLeaf && u != 1 {
+		timer++
+		in[u] = timer
+		out[u] = timer
+	}
+}
+
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run verifierD.go /path/to/binary")
-		os.Exit(1)
-	}
-	candidatePath := os.Args[1]
+	reader := bufio.NewReader(os.Stdin)
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
 
-	inputData, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		fail("failed to read input: %v", err)
+	var n int
+	if _, err := fmt.Fscan(reader, &n); err != nil {
+		return
 	}
 
-	n, err := readN(inputData)
-	if err != nil {
-		fail("failed to parse n from input: %v", err)
+	c := make([]int64, n+1)
+	for i := 1; i <= n; i++ {
+		fmt.Fscan(reader, &c[i])
 	}
 
-	refBin, cleanupRef, err := buildReference()
-	if err != nil {
-		fail("failed to build reference: %v", err)
-	}
-	defer cleanupRef()
-
-	candBin, cleanupCand, err := prepareCandidate(candidatePath)
-	if err != nil {
-		fail("failed to prepare candidate: %v", err)
-	}
-	defer cleanupCand()
-
-	refOut, refErr, err := runProgram(refBin, inputData)
-	if err != nil {
-		fail("reference runtime error: %v\n%s", err, refErr)
-	}
-	expCost, expVerts, err := parseOutput(refOut, n)
-	if err != nil {
-		fail("failed to parse reference output: %v\noutput:\n%s", err, refOut)
+	adj = make([][]int, n+1)
+	for i := 0; i < n-1; i++ {
+		var u, v int
+		fmt.Fscan(reader, &u, &v)
+		adj[u] = append(adj[u], v)
+		adj[v] = append(adj[v], u)
 	}
 
-	candOut, candErr, err := runProgram(candBin, inputData)
-	if err != nil {
-		fail("candidate runtime error: %v\n%s", err, candErr)
-	}
-	gotCost, gotVerts, err := parseOutput(candOut, n)
-	if err != nil {
-		fail("invalid candidate output: %v\noutput:\n%s", err, candOut)
-	}
+	in = make([]int, n+1)
+	out = make([]int, n+1)
+	dfs(1, 0)
 
-	if gotCost != expCost {
-		fail("wrong minimum cost: expected %d got %d", expCost, gotCost)
-	}
-	if len(gotVerts) != len(expVerts) {
-		fail("wrong vertex count: expected %d got %d", len(expVerts), len(gotVerts))
-	}
-	for i, v := range expVerts {
-		if gotVerts[i] != v {
-			fail("vertices mismatch at position %d: expected %d got %d", i+1, v, gotVerts[i])
+	edges := make([]Edge, 0, n)
+	for i := 1; i <= n; i++ {
+		if in[i] <= out[i] {
+			edges = append(edges, Edge{
+				u:  in[i],
+				v:  out[i] + 1,
+				w:  c[i],
+				id: i,
+			})
 		}
 	}
 
-	fmt.Println("OK")
-}
+	sort.Slice(edges, func(i, j int) bool {
+		return edges[i].w < edges[j].w
+	})
 
-func fail(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, format+"\n", args...)
-	os.Exit(1)
-}
-
-func readN(data []byte) (int, error) {
-	reader := bufio.NewReader(bytes.NewReader(data))
-	var n int
-	if _, err := fmt.Fscan(reader, &n); err != nil {
-		return 0, err
+	parent := make([]int, timer+2)
+	for i := 1; i <= timer+1; i++ {
+		parent[i] = i
 	}
-	return n, nil
-}
 
-func buildReference() (string, func(), error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", nil, fmt.Errorf("cannot determine verifier directory")
+	var find func(int) int
+	find = func(i int) int {
+		if parent[i] == i {
+			return i
+		}
+		parent[i] = find(parent[i])
+		return parent[i]
 	}
-	dir := filepath.Dir(file)
-	src := filepath.Join(dir, "1120D.go")
 
-	tmp, err := os.CreateTemp("", "1120D-ref-*")
+	union := func(i, j int) {
+		rootI := find(i)
+		rootJ := find(j)
+		if rootI != rootJ {
+			parent[rootI] = rootJ
+		}
+	}
+
+	current_components := timer + 1
+	var total_cost int64
+	var valid_edges []int
+
+	for i := 0; i < len(edges); {
+		j := i
+		for j < len(edges) && edges[j].w == edges[i].w {
+			j++
+		}
+
+		comps_before := current_components
+
+		for k := i; k < j; k++ {
+			if find(edges[k].u) != find(edges[k].v) {
+				valid_edges = append(valid_edges, edges[k].id)
+			}
+		}
+
+		for k := i; k < j; k++ {
+			if find(edges[k].u) != find(edges[k].v) {
+				union(edges[k].u, edges[k].v)
+				current_components--
+			}
+		}
+
+		total_cost += int64(comps_before-current_components) * edges[i].w
+		i = j
+	}
+
+	sort.Ints(valid_edges)
+
+	fmt.Fprintln(writer, total_cost, len(valid_edges))
+	for i, id := range valid_edges {
+		if i > 0 {
+			fmt.Fprint(writer, " ")
+		}
+		fmt.Fprint(writer, id)
+	}
+	fmt.Fprintln(writer)
+}
+`
+
+func buildEmbeddedOracle() (string, func(), error) {
+	tmpSrc, err := os.CreateTemp("", "oracle1120D-*.go")
 	if err != nil {
 		return "", nil, err
 	}
-	tmp.Close()
+	if _, err := tmpSrc.WriteString(embeddedSolverD); err != nil {
+		tmpSrc.Close()
+		os.Remove(tmpSrc.Name())
+		return "", nil, err
+	}
+	tmpSrc.Close()
 
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), src)
-	cmd.Dir = dir
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", nil, fmt.Errorf("%v\n%s", err, out.String())
+	tmpBin, err := os.CreateTemp("", "oracle1120D-bin-*")
+	if err != nil {
+		os.Remove(tmpSrc.Name())
+		return "", nil, err
 	}
-	cleanup := func() {
-		os.Remove(tmp.Name())
+	tmpBin.Close()
+
+	cmd := exec.Command("go", "build", "-o", tmpBin.Name(), tmpSrc.Name())
+	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(tmpSrc.Name())
+		os.Remove(tmpBin.Name())
+		return "", nil, fmt.Errorf("build oracle: %v\n%s", err, out)
 	}
-	return tmp.Name(), cleanup, nil
+	os.Remove(tmpSrc.Name())
+	return tmpBin.Name(), func() { os.Remove(tmpBin.Name()) }, nil
 }
 
 func prepareCandidate(path string) (string, func(), error) {
@@ -190,4 +264,85 @@ func parseOutput(out string, n int) (int64, []int, error) {
 		verts[i] = v
 	}
 	return cost, verts, nil
+}
+
+func generateCase(rng *rand.Rand) (string, int) {
+	n := rng.Intn(8) + 2
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d\n", n))
+	for i := 1; i <= n; i++ {
+		if i > 1 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(fmt.Sprintf("%d", rng.Intn(100)+1))
+	}
+	sb.WriteByte('\n')
+	for i := 2; i <= n; i++ {
+		p := rng.Intn(i-1) + 1
+		sb.WriteString(fmt.Sprintf("%d %d\n", p, i))
+	}
+	return sb.String(), n
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: go run verifierD.go /path/to/binary")
+		os.Exit(1)
+	}
+	candidatePath := os.Args[1]
+
+	candBin, cleanupCand, err := prepareCandidate(candidatePath)
+	if err != nil {
+		fail("failed to prepare candidate: %v", err)
+	}
+	defer cleanupCand()
+
+	refBin, cleanupRef, err := buildEmbeddedOracle()
+	if err != nil {
+		fail("failed to build reference: %v", err)
+	}
+	defer cleanupRef()
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 1; i <= 200; i++ {
+		input, n := generateCase(rng)
+		inputBytes := []byte(input)
+
+		refOut, refErr, err := runProgram(refBin, inputBytes)
+		if err != nil {
+			fail("reference runtime error on case %d: %v\n%s", i, err, refErr)
+		}
+		expCost, expVerts, err := parseOutput(refOut, n)
+		if err != nil {
+			fail("failed to parse reference output on case %d: %v\noutput:\n%s", i, err, refOut)
+		}
+
+		candOut, candErr, err := runProgram(candBin, inputBytes)
+		if err != nil {
+			fail("candidate runtime error on case %d: %v\n%s", i, err, candErr)
+		}
+		gotCost, gotVerts, err := parseOutput(candOut, n)
+		if err != nil {
+			fail("invalid candidate output on case %d: %v\noutput:\n%s", i, err, candOut)
+		}
+
+		if gotCost != expCost {
+			fail("case %d: wrong minimum cost: expected %d got %d\ninput:\n%s", i, expCost, gotCost, input)
+		}
+		if len(gotVerts) != len(expVerts) {
+			fail("case %d: wrong vertex count: expected %d got %d", i, len(expVerts), len(gotVerts))
+		}
+		for j, v := range expVerts {
+			if gotVerts[j] != v {
+				fail("case %d: vertices mismatch at position %d: expected %d got %d", i, j+1, v, gotVerts[j])
+			}
+		}
+	}
+
+	fmt.Println("OK")
+}
+
+func fail(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
+	os.Exit(1)
 }

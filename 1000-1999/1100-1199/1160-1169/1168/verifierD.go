@@ -10,213 +10,346 @@ import (
 	"strings"
 )
 
-type segTree struct {
-	n   int
-	max []int
-	add []int
+// Embedded correct solver (accepted on CF)
+
+type oSegTree struct {
+	tree []int
+	lazy []int
 }
 
-func newSegTree(n int, arr []int) *segTree {
-	size := 1
-	for size < n {
-		size <<= 1
+func oNewSegTree(n int) oSegTree {
+	sz := n
+	if sz < 1 {
+		sz = 1
 	}
-	st := &segTree{n: n, max: make([]int, size<<1), add: make([]int, size<<1)}
-	st.build(1, 0, n-1, arr)
-	return st
+	return oSegTree{
+		tree: make([]int, 4*sz+4),
+		lazy: make([]int, 4*sz+4),
+	}
 }
 
-func (st *segTree) build(idx, l, r int, arr []int) {
-	if l == r {
-		st.max[idx] = arr[l]
+func (st *oSegTree) push(node int) {
+	if st.lazy[node] != 0 {
+		st.tree[2*node] += st.lazy[node]
+		st.lazy[2*node] += st.lazy[node]
+		st.tree[2*node+1] += st.lazy[node]
+		st.lazy[2*node+1] += st.lazy[node]
+		st.lazy[node] = 0
+	}
+}
+
+func (st *oSegTree) add(node, l, r, ql, qr, val int) {
+	if ql > r || qr < l {
 		return
 	}
-	mid := (l + r) >> 1
-	st.build(idx<<1, l, mid, arr)
-	st.build(idx<<1|1, mid+1, r, arr)
-	if st.max[idx<<1] > st.max[idx<<1|1] {
-		st.max[idx] = st.max[idx<<1]
-	} else {
-		st.max[idx] = st.max[idx<<1|1]
-	}
-}
-
-func (st *segTree) apply(idx, v int) {
-	st.max[idx] += v
-	st.add[idx] += v
-}
-
-func (st *segTree) push(idx int) {
-	if st.add[idx] != 0 {
-		st.apply(idx<<1, st.add[idx])
-		st.apply(idx<<1|1, st.add[idx])
-		st.add[idx] = 0
-	}
-}
-
-func (st *segTree) update(idx, l, r, ql, qr, v int) {
 	if ql <= l && r <= qr {
-		st.apply(idx, v)
+		st.tree[node] += val
+		st.lazy[node] += val
 		return
 	}
-	st.push(idx)
-	mid := (l + r) >> 1
-	if ql <= mid {
-		st.update(idx<<1, l, mid, ql, qr, v)
-	}
-	if qr > mid {
-		st.update(idx<<1|1, mid+1, r, ql, qr, v)
-	}
-	if st.max[idx<<1] > st.max[idx<<1|1] {
-		st.max[idx] = st.max[idx<<1]
+	st.push(node)
+	mid := l + (r-l)/2
+	st.add(2*node, l, mid, ql, qr, val)
+	st.add(2*node+1, mid+1, r, ql, qr, val)
+	if st.tree[2*node] > st.tree[2*node+1] {
+		st.tree[node] = st.tree[2*node]
 	} else {
-		st.max[idx] = st.max[idx<<1|1]
+		st.tree[node] = st.tree[2*node+1]
 	}
 }
 
-func (st *segTree) rangeAdd(l, r, v int) {
-	st.update(1, 0, st.n-1, l, r, v)
-}
-
-func (st *segTree) Max() int {
-	return st.max[1]
-}
-
-type solver struct {
-	children [][]int
-	edgeChar []byte
-	lidx     []int
-	ridx     []int
-	leafArr  [][]int
-	leafCnt  int
-	depthBad bool
-	depth    int
-}
-
-func newSolver(n int, parents []int, chars []byte) *solver {
-	s := &solver{
-		children: make([][]int, n+1),
-		edgeChar: make([]byte, n+1),
-		lidx:     make([]int, n+1),
-		ridx:     make([]int, n+1),
-		leafArr:  make([][]int, 26),
+func (st *oSegTree) query(node, l, r, ql, qr int) int {
+	if ql > r || qr < l {
+		return -1000000000
 	}
-	for i := 0; i < 26; i++ {
-		s.leafArr[i] = make([]int, n)
+	if ql <= l && r <= qr {
+		return st.tree[node]
 	}
-	copy(s.edgeChar, chars)
-	for v := 2; v <= n; v++ {
-		p := parents[v]
-		s.children[p] = append(s.children[p], v)
+	st.push(node)
+	mid := l + (r-l)/2
+	left := st.query(2*node, l, mid, ql, qr)
+	right := st.query(2*node+1, mid+1, r, ql, qr)
+	if left > right {
+		return left
 	}
-	return s
+	return right
 }
 
-func (s *solver) dfs(v, d int, counts []int) {
-	if v != 1 {
-		c := s.edgeChar[v]
-		if c != '?' {
-			counts[c-'a']++
+func oracleSolve(input string) string {
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	scanner.Split(bufio.ScanWords)
+	scanner.Buffer(make([]byte, 1024*1024*10), 1024*1024*10)
+
+	scanString := func() string {
+		scanner.Scan()
+		return scanner.Text()
+	}
+	scanInt := func() int {
+		scanner.Scan()
+		res := 0
+		s := scanner.Text()
+		for _, c := range s {
+			res = res*10 + int(c-'0')
 		}
-	}
-	if len(s.children[v]) == 0 {
-		if s.leafCnt == 0 {
-			s.depth = d
-		} else if s.depth != d {
-			s.depthBad = true
-		}
-		s.lidx[v] = s.leafCnt
-		for i := 0; i < 26; i++ {
-			s.leafArr[i][s.leafCnt] = counts[i]
-		}
-		s.leafCnt++
-		s.ridx[v] = s.leafCnt - 1
-	} else {
-		s.lidx[v] = s.leafCnt
-		for _, u := range s.children[v] {
-			s.dfs(u, d+1, counts)
-		}
-		s.ridx[v] = s.leafCnt - 1
-	}
-	if v != 1 {
-		c := s.edgeChar[v]
-		if c != '?' {
-			counts[c-'a']--
-		}
-	}
-}
-
-type query struct {
-	v int
-	c byte
-}
-
-func solveCase(n int, parents []int, chars []byte, qs []query) []string {
-	s := newSolver(n, parents, chars)
-	counts := make([]int, 26)
-	s.dfs(1, 0, counts)
-	outputs := make([]string, 0, len(qs))
-	if s.depthBad {
-		for range qs {
-			outputs = append(outputs, "Fou")
-		}
-		return outputs
+		return res
 	}
 
-	L := s.leafCnt
-	trees := make([]*segTree, 26)
-	mval := make([]int, 26)
-	sumM := 0
-	var sumW int64
-	for i := 0; i < 26; i++ {
-		arr := s.leafArr[i][:L]
-		t := newSegTree(L, arr)
-		trees[i] = t
-		mval[i] = t.Max()
-		sumM += mval[i]
-		sumW += int64(mval[i] * (i + 1))
+	n := scanInt()
+	q := scanInt()
+
+	parent := make([]int, n+1)
+	adj := make([][]int, n+1)
+	initialChar := make([]byte, n+1)
+	edgeChar := make([]byte, n+1)
+
+	for i := 1; i <= n-1; i++ {
+		p := scanInt()
+		cStr := scanString()
+		u := i + 1
+		parent[u] = p
+		adj[p] = append(adj[p], u)
+		initialChar[u] = cStr[0]
+		edgeChar[u] = '?'
 	}
 
-	const totalInd = 351
+	sz := make([]int, n+1)
+	depth := make([]int, n+1)
+	heavyChild := make([]int, n+1)
 
-	for _, q := range qs {
-		v := q.v
-		cb := q.c
-		old := s.edgeChar[v]
-		if old != cb {
-			if old != '?' {
-				ci := int(old - 'a')
-				l, r := s.lidx[v], s.ridx[v]
-				trees[ci].rangeAdd(l, r, -1)
-				newm := trees[ci].Max()
-				if newm != mval[ci] {
-					sumM += newm - mval[ci]
-					sumW += int64((newm - mval[ci]) * (ci + 1))
-					mval[ci] = newm
-				}
+	var dfsSz func(int)
+	dfsSz = func(u int) {
+		sz[u] = 1
+		maxSub := 0
+		for _, v := range adj[u] {
+			depth[v] = depth[u] + 1
+			dfsSz(v)
+			sz[u] += sz[v]
+			if sz[v] > maxSub {
+				maxSub = sz[v]
+				heavyChild[u] = v
 			}
-			if cb != '?' {
-				ci := int(cb - 'a')
-				l, r := s.lidx[v], s.ridx[v]
-				trees[ci].rangeAdd(l, r, 1)
-				newm := trees[ci].Max()
-				if newm != mval[ci] {
-					sumM += newm - mval[ci]
-					sumW += int64((newm - mval[ci]) * (ci + 1))
-					mval[ci] = newm
-				}
-			}
-			s.edgeChar[v] = cb
 		}
-		if sumM > s.depth {
-			outputs = append(outputs, "Fou")
+	}
+	dfsSz(1)
+
+	hldHead := make([]int, n+1)
+	hldPos := make([]int, n+1)
+	hldNode := make([]int, n+1)
+	hldPosIn := make([]int, n+1)
+	hldPosOut := make([]int, n+1)
+	hldTimer := 0
+
+	var dfsHld func(int, int)
+	dfsHld = func(u, h int) {
+		hldHead[u] = h
+		hldTimer++
+		hldPos[u] = hldTimer
+		hldNode[hldTimer] = u
+		hldPosIn[u] = hldTimer
+		if heavyChild[u] != 0 {
+			dfsHld(heavyChild[u], h)
+		}
+		for _, v := range adj[u] {
+			if v != heavyChild[u] {
+				dfsHld(v, v)
+			}
+		}
+		hldPosOut[u] = hldTimer
+	}
+	dfsHld(1, 1)
+
+	leafIn := make([]int, n+1)
+	leafOut := make([]int, n+1)
+	leafTimer := 0
+	possible := true
+	D := -1
+
+	var dfsLeaves func(int)
+	dfsLeaves = func(u int) {
+		isLeaf := true
+		leafIn[u] = leafTimer
+		for _, v := range adj[u] {
+			isLeaf = false
+			dfsLeaves(v)
+		}
+		if isLeaf {
+			if D == -1 {
+				D = depth[u]
+			} else if D != depth[u] {
+				possible = false
+			}
+			leafTimer++
+		}
+		leafOut[u] = leafTimer - 1
+	}
+	dfsLeaves(1)
+
+	numLeaves := leafTimer
+	if numLeaves < 1 {
+		numLeaves = 1
+	}
+	var leafST [26]oSegTree
+	for i := 0; i < 26; i++ {
+		leafST[i] = oNewSegTree(numLeaves)
+	}
+	globalST := oNewSegTree(n)
+
+	for i := 1; i <= n; i++ {
+		v := hldNode[i]
+		globalST.add(1, 1, n, i, i, depth[v]-D)
+	}
+
+	updateEdge := func(u int, newC byte) {
+		oldC := edgeChar[u]
+		if oldC == newC {
+			return
+		}
+		if oldC == '?' {
+			globalST.add(1, 1, n, hldPosIn[u], hldPosOut[u], -1)
 		} else {
-			ans := sumW + int64(s.depth-sumM)*totalInd
-			outputs = append(outputs, fmt.Sprintf("Shi %d", ans))
+			c := int(oldC - 'a')
+			leafST[c].add(1, 0, numLeaves-1, leafIn[u], leafOut[u], -1)
+			target := leafST[c].query(1, 0, numLeaves-1, leafIn[u], leafOut[u])
+
+			topNode := u
+			curr := parent[u]
+			for curr > 0 {
+				if leafST[c].query(1, 0, numLeaves-1, leafIn[curr], leafOut[curr]) != target {
+					break
+				}
+				head := hldHead[curr]
+				if leafST[c].query(1, 0, numLeaves-1, leafIn[head], leafOut[head]) == target {
+					topNode = head
+					curr = parent[head]
+				} else {
+					low := hldPos[head]
+					high := hldPos[curr]
+					ansPos := high
+					for low <= high {
+						mid := low + (high-low)/2
+						node := hldNode[mid]
+						if leafST[c].query(1, 0, numLeaves-1, leafIn[node], leafOut[node]) == target {
+							ansPos = mid
+							high = mid - 1
+						} else {
+							low = mid + 1
+						}
+					}
+					topNode = hldNode[ansPos]
+					break
+				}
+			}
+
+			globalST.add(1, 1, n, hldPosIn[u], hldPosOut[u], -1)
+			if topNode != u {
+				curr = parent[u]
+				for depth[curr] >= depth[topNode] {
+					head := hldHead[curr]
+					if depth[head] < depth[topNode] {
+						head = topNode
+					}
+					globalST.add(1, 1, n, hldPos[head], hldPos[curr], -1)
+					curr = parent[head]
+					if curr == 0 {
+						break
+					}
+				}
+			}
+		}
+
+		if newC == '?' {
+			globalST.add(1, 1, n, hldPosIn[u], hldPosOut[u], 1)
+		} else {
+			c := int(newC - 'a')
+			target := leafST[c].query(1, 0, numLeaves-1, leafIn[u], leafOut[u])
+
+			topNode := u
+			curr := parent[u]
+			for curr > 0 {
+				if leafST[c].query(1, 0, numLeaves-1, leafIn[curr], leafOut[curr]) != target {
+					break
+				}
+				head := hldHead[curr]
+				if leafST[c].query(1, 0, numLeaves-1, leafIn[head], leafOut[head]) == target {
+					topNode = head
+					curr = parent[head]
+				} else {
+					low := hldPos[head]
+					high := hldPos[curr]
+					ansPos := high
+					for low <= high {
+						mid := low + (high-low)/2
+						node := hldNode[mid]
+						if leafST[c].query(1, 0, numLeaves-1, leafIn[node], leafOut[node]) == target {
+							ansPos = mid
+							high = mid - 1
+						} else {
+							low = mid + 1
+						}
+					}
+					topNode = hldNode[ansPos]
+					break
+				}
+			}
+
+			leafST[c].add(1, 0, numLeaves-1, leafIn[u], leafOut[u], 1)
+
+			globalST.add(1, 1, n, hldPosIn[u], hldPosOut[u], 1)
+			if topNode != u {
+				curr = parent[u]
+				for depth[curr] >= depth[topNode] {
+					head := hldHead[curr]
+					if depth[head] < depth[topNode] {
+						head = topNode
+					}
+					globalST.add(1, 1, n, hldPos[head], hldPos[curr], 1)
+					curr = parent[head]
+					if curr == 0 {
+						break
+					}
+				}
+			}
+		}
+		edgeChar[u] = newC
+	}
+
+	for i := 2; i <= n; i++ {
+		if initialChar[i] != '?' {
+			updateEdge(i, initialChar[i])
 		}
 	}
-	return outputs
+
+	var results []string
+	for i := 0; i < q; i++ {
+		v := scanInt()
+		cStr := scanString()
+		c := cStr[0]
+
+		updateEdge(v, c)
+
+		if !possible {
+			results = append(results, "Fou")
+		} else if globalST.query(1, 1, n, 1, n) > 0 {
+			results = append(results, "Fou")
+		} else {
+			S := 0
+			var maxC [26]int
+			for j := 0; j < 26; j++ {
+				maxC[j] = leafST[j].query(1, 0, numLeaves-1, 0, numLeaves-1)
+				S += maxC[j]
+			}
+			ans := 0
+			for j := 0; j < 26; j++ {
+				f := maxC[j] + D - S
+				ans += f * (j + 1)
+			}
+			results = append(results, fmt.Sprintf("Shi %d", ans))
+		}
+	}
+	return strings.Join(results, "\n")
 }
+
+// End of embedded solver
 
 const testcasesRaw = `100
 3 5 1 c 2 a 2 ? 3 b 2 ? 3 ? 2 b
@@ -320,28 +453,29 @@ const testcasesRaw = `100
 5 3 1 b 2 c 3 b 3 b 3 b 4 c 4 a
 2 2 1 b 2 c 2 c`
 
-var testcases = mustParseTestcases(testcasesRaw)
-
-func mustParseTestcases(raw string) []struct {
+type testcase struct {
 	n   int
 	q   int
 	par []int
 	ch  []byte
-	qs  []query
-} {
+	qs  []tquery
+}
+
+type tquery struct {
+	v int
+	c byte
+}
+
+var testcases = mustParseTestcases(testcasesRaw)
+
+func mustParseTestcases(raw string) []testcase {
 	lines := strings.Split(strings.TrimSpace(raw), "\n")
 	start := 0
 	firstFields := strings.Fields(lines[0])
 	if len(firstFields) == 1 {
 		start = 1
 	}
-	res := make([]struct {
-		n   int
-		q   int
-		par []int
-		ch  []byte
-		qs  []query
-	}, 0, len(lines)-start)
+	res := make([]testcase, 0, len(lines)-start)
 	for idx := start; idx < len(lines); idx++ {
 		line := lines[idx]
 		line = strings.TrimSpace(line)
@@ -378,7 +512,7 @@ func mustParseTestcases(raw string) []struct {
 			chars[v] = cf[0]
 			pos++
 		}
-		qs := make([]query, q)
+		qs := make([]tquery, q)
 		for i := 0; i < q; i++ {
 			v, _ := strconv.Atoi(fields[pos])
 			pos++
@@ -387,15 +521,9 @@ func mustParseTestcases(raw string) []struct {
 				panic(fmt.Sprintf("line %d: invalid query char %q", idx+1, cf))
 			}
 			pos++
-			qs[i] = query{v: v, c: cf[0]}
+			qs[i] = tquery{v: v, c: cf[0]}
 		}
-		res = append(res, struct {
-			n   int
-			q   int
-			par []int
-			ch  []byte
-			qs  []query
-		}{n: n, q: q, par: parents, ch: chars, qs: qs})
+		res = append(res, testcase{n: n, q: q, par: parents, ch: chars, qs: qs})
 	}
 	return res
 }
@@ -424,33 +552,22 @@ func parseCandidateOutput(out string) []string {
 	return lines
 }
 
-func buildInput(tc struct {
-	n   int
-	q   int
-	par []int
-	ch  []byte
-	qs  []query
-}) string {
+func buildInput(tc testcase) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.q))
 	for v := 2; v <= tc.n; v++ {
-		sb.WriteString(fmt.Sprintf("%d %d\n", tc.par[v], int(tc.ch[v])))
+		sb.WriteString(fmt.Sprintf("%d %c\n", tc.par[v], tc.ch[v]))
 	}
 	for _, q := range tc.qs {
-		sb.WriteString(fmt.Sprintf("%d %d\n", q.v, int(q.c)))
+		sb.WriteString(fmt.Sprintf("%d %c\n", q.v, q.c))
 	}
 	return sb.String()
 }
 
-func checkCase(bin string, idx int, tc struct {
-	n   int
-	q   int
-	par []int
-	ch  []byte
-	qs  []query
-}) error {
+func checkCase(bin string, idx int, tc testcase) error {
 	input := buildInput(tc)
-	expected := solveCase(tc.n, tc.par, tc.ch, tc.qs)
+	expectedStr := oracleSolve(input)
+	expected := parseCandidateOutput(expectedStr)
 	out, err := runCandidate(bin, input)
 	if err != nil {
 		return err

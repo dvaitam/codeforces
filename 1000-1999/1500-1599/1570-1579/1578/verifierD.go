@@ -7,21 +7,29 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
 
 func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", fmt.Errorf("failed to locate verifier path")
 	}
-	oracle := filepath.Join(dir, "oracleD")
-	cmd := exec.Command("go", "build", "-o", oracle, "1578D.go")
+	dir := filepath.Dir(file)
+	srcPath := filepath.Join(dir, "1578D.go")
+	tmp, err := os.CreateTemp("", "oracle_1578D_*.bin")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %v", err)
+	}
+	tmp.Close()
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), srcPath)
 	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(tmp.Name())
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}
-	return oracle, nil
+	return tmp.Name(), nil
 }
 
 func genCase(r *rand.Rand) string {

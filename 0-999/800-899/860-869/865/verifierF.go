@@ -61,19 +61,49 @@ func probability(order []byte, R, C int) float64 {
 
 func solve(R, C int, S string) int64 {
 	n := R + C
-	best := 1e9
+	L := 2 * n
+
+	// First pass: find global minimum unfairness across ALL valid orderings
+	globalBest := 1e9
+	allQ := make([]byte, L)
+	for i := range allQ {
+		allQ[i] = '?'
+	}
+	allQStr := string(allQ)
+	seqAll := make([]byte, L)
+	var dfsAll func(int, int, int)
+	dfsAll = func(pos, a, b int) {
+		if pos == L {
+			if a == n && b == n {
+				pA := probability(seqAll, R, C)
+				diff := math.Abs(pA - (1 - pA))
+				if diff < globalBest-1e-12 {
+					globalBest = diff
+				}
+			}
+			return
+		}
+		if (allQStr[pos] == 'A' || allQStr[pos] == '?') && a < n {
+			seqAll[pos] = 'A'
+			dfsAll(pos+1, a+1, b)
+		}
+		if (allQStr[pos] == 'B' || allQStr[pos] == '?') && b < n {
+			seqAll[pos] = 'B'
+			dfsAll(pos+1, a, b+1)
+		}
+	}
+	dfsAll(0, 0, 0)
+
+	// Second pass: count orderings matching S that achieve globalBest
 	count := int64(0)
-	seq := make([]byte, len(S))
+	seq := make([]byte, L)
 	var dfs func(int, int, int)
 	dfs = func(pos, a, b int) {
-		if pos == len(S) {
+		if pos == L {
 			if a == n && b == n {
 				pA := probability(seq, R, C)
 				diff := math.Abs(pA - (1 - pA))
-				if diff < best-1e-12 {
-					best = diff
-					count = 1
-				} else if math.Abs(diff-best) <= 1e-12 {
+				if math.Abs(diff-globalBest) <= 1e-12 {
 					count++
 				}
 			}

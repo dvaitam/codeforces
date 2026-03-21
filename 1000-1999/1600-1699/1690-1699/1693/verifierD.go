@@ -80,14 +80,13 @@ func main() {
 	bin := os.Args[1]
 	rand.Seed(45)
 	const t = 100
-	var sb strings.Builder
-	var exp strings.Builder
 	for i := 0; i < t; i++ {
 		n := rand.Intn(6) + 1
 		perm := rand.Perm(n)
 		for j := range perm {
 			perm[j]++
 		}
+		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d\n", n))
 		for j, v := range perm {
 			if j > 0 {
@@ -96,24 +95,25 @@ func main() {
 			sb.WriteString(fmt.Sprintf("%d", v))
 		}
 		sb.WriteByte('\n')
-		exp.WriteString(fmt.Sprintf("%d\n", solveD(perm)))
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, bin)
-	cmd.Stdin = strings.NewReader(sb.String())
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "error running binary: %v\noutput:\n%s", err, out.String())
-		os.Exit(1)
-	}
-	got := strings.TrimSpace(out.String())
-	want := strings.TrimSpace(exp.String())
-	if got != want {
-		fmt.Fprintf(os.Stderr, "wrong answer\nexpected:\n%s\ngot:\n%s\n", want, got)
-		os.Exit(1)
+		want := fmt.Sprintf("%d", solveD(perm))
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		cmd := exec.CommandContext(ctx, bin)
+		cmd.Stdin = strings.NewReader(sb.String())
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		err := cmd.Run()
+		cancel()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error running binary on case %d: %v\noutput:\n%s", i+1, err, out.String())
+			os.Exit(1)
+		}
+		got := strings.TrimSpace(out.String())
+		if got != want {
+			fmt.Fprintf(os.Stderr, "wrong answer on case %d\nexpected:\n%s\ngot:\n%s\n", i+1, want, got)
+			os.Exit(1)
+		}
 	}
 	fmt.Println("all tests passed")
 }

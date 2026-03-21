@@ -118,66 +118,76 @@ type testCase struct {
 	queries [][2]int
 }
 
+// contrib computes the contribution of position i to the answer.
+// a[0] is a sentinel = 0.
+func contrib(a []int64, i, n int) int64 {
+	if i <= 0 || i > n {
+		return 0
+	}
+	if i == 1 {
+		return a[1]
+	}
+	if a[i] > a[i-1] {
+		return a[i] - a[i-1]
+	}
+	return 0
+}
+
 func solveCase(tc testCase) string {
-	a := make([]int, tc.n+2)
-	a[0] = 0
-	copy(a[1:], tc.arr)
-	var ans int64
-	for i := 1; i <= tc.n; i++ {
-		d := a[i] - a[i-1]
-		if d > 0 {
-			ans += int64(d)
+	a := make([]int64, tc.n+1)
+	for i := 0; i < tc.n; i++ {
+		a[i+1] = int64(tc.arr[i])
+	}
+
+	var ans int64 = a[1]
+	for i := 2; i <= tc.n; i++ {
+		if a[i] > a[i-1] {
+			ans += a[i] - a[i-1]
 		}
 	}
+
 	var out strings.Builder
 	out.WriteString(strconv.FormatInt(ans, 10))
-	out.WriteByte('\n')
-
-	adjust := func(idx int, delta *int64) {
-		if idx < 1 || idx > tc.n {
-			return
-		}
-		d := a[idx] - a[idx-1]
-		if d > 0 {
-			*delta += int64(d)
-		}
-	}
 
 	for _, qr := range tc.queries {
 		l, r := qr[0], qr[1]
-		idxs := [4]int{l, l + 1, r, r + 1}
-		seen := make(map[int]struct{}, 4)
-		var delta int64
-		for _, idx := range idxs {
-			if idx < 1 || idx > tc.n {
-				continue
+
+		// Collect unique affected positions (always include 1)
+		var pos [5]int
+		cnt := 0
+		add := func(x int) {
+			if x < 1 || x > tc.n {
+				return
 			}
-			if _, ok := seen[idx]; ok {
-				continue
+			for i := 0; i < cnt; i++ {
+				if pos[i] == x {
+					return
+				}
 			}
-			seen[idx] = struct{}{}
-			adjust(idx, &delta)
+			pos[cnt] = x
+			cnt++
 		}
-		ans -= delta
-		// swap
+		add(1)
+		add(l)
+		add(l + 1)
+		add(r)
+		add(r + 1)
+
+		for i := 0; i < cnt; i++ {
+			ans -= contrib(a, pos[i], tc.n)
+		}
+
 		a[l], a[r] = a[r], a[l]
-		seen = make(map[int]struct{}, 4)
-		delta = 0
-		for _, idx := range idxs {
-			if idx < 1 || idx > tc.n {
-				continue
-			}
-			if _, ok := seen[idx]; ok {
-				continue
-			}
-			seen[idx] = struct{}{}
-			adjust(idx, &delta)
+
+		for i := 0; i < cnt; i++ {
+			ans += contrib(a, pos[i], tc.n)
 		}
-		ans += delta
+
+		out.WriteByte(' ')
 		out.WriteString(strconv.FormatInt(ans, 10))
-		out.WriteByte('\n')
 	}
-	return strings.TrimSpace(out.String())
+
+	return out.String()
 }
 
 func parseTestcases() ([]testCase, error) {
@@ -307,9 +317,21 @@ func main() {
 		expected.WriteString(solveCase(tc))
 	}
 
-	if strings.TrimSpace(got) != strings.TrimSpace(expected.String()) {
-		fmt.Printf("output mismatch\nexpected:\n%s\n\ngot:\n%s\n", expected.String(), got)
+	// Normalize: compare token-by-token to be format-agnostic
+	expectTokens := strings.Fields(expected.String())
+	gotTokens := strings.Fields(got)
+
+	if len(expectTokens) != len(gotTokens) {
+		fmt.Printf("output mismatch: expected %d tokens, got %d tokens\nexpected:\n%s\n\ngot:\n%s\n",
+			len(expectTokens), len(gotTokens), expected.String(), got)
 		os.Exit(1)
 	}
+	for i := range expectTokens {
+		if expectTokens[i] != gotTokens[i] {
+			fmt.Printf("output mismatch at token %d: expected %s got %s\n", i+1, expectTokens[i], gotTokens[i])
+			os.Exit(1)
+		}
+	}
+
 	fmt.Printf("All %d tests passed\n", len(cases))
 }

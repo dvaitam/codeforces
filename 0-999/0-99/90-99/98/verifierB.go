@@ -1,9 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
-	"math/bits"
+	"math/big"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -11,25 +12,61 @@ import (
 	"time"
 )
 
-func gcd(a, b int) int {
-	for b != 0 {
-		a, b = b, a%b
-	}
-	return a
-}
-
 func solve(n int) string {
 	if n == 1 {
 		return "0/1"
 	}
-	k := bits.Len(uint(n)) - 1
-	m := (1 << (k + 1)) - n
-	num := n*(k+1) - m
-	den := n
-	g := gcd(num, den)
-	num /= g
-	den /= g
-	return fmt.Sprintf("%d/%d", num, den)
+
+	a := 0
+	m := n
+	for m%2 == 0 {
+		a++
+		m /= 2
+	}
+
+	if m == 1 {
+		return fmt.Sprintf("%d/1", a)
+	}
+
+	var b big.Int
+	var tmp big.Int
+
+	r := 1
+	l := 0
+	for {
+		b.Lsh(&b, 1)
+		tmp.SetInt64(int64(r))
+		b.Add(&b, &tmp)
+		r = (r * 2) % m
+		l++
+		if r == 1 {
+			break
+		}
+	}
+
+	one := big.NewInt(1)
+
+	var den big.Int
+	den.SetInt64(1)
+	den.Lsh(&den, uint(l))
+	den.Sub(&den, one)
+
+	var num big.Int
+	num.Lsh(&b, 1)
+
+	if a > 0 {
+		var add big.Int
+		add.SetInt64(int64(a))
+		add.Mul(&add, &den)
+		num.Add(&num, &add)
+	}
+
+	var g big.Int
+	g.GCD(nil, nil, &num, &den)
+	num.Quo(&num, &g)
+	den.Quo(&den, &g)
+
+	return fmt.Sprintf("%s/%s", num.String(), den.String())
 }
 
 func genCase(rng *rand.Rand) string {
@@ -60,6 +97,19 @@ func main() {
 	}
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	// Also test small fixed cases
+	for n := 1; n <= 20; n++ {
+		input := fmt.Sprintf("%d\n", n)
+		expected := solve(n)
+		if err := runCase(bin, input, expected); err != nil {
+			fmt.Fprintf(os.Stderr, "case n=%d failed: %v\ninput:%s", n, err, input)
+			os.Exit(1)
+		}
+	}
+
+	w := bufio.NewWriter(os.Stderr)
+	_ = w
 	for i := 0; i < 100; i++ {
 		input := genCase(rng)
 		var n int

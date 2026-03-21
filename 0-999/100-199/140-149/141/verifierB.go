@@ -118,49 +118,38 @@ type testCase struct {
 }
 
 func solveCase(tc testCase) int64 {
-	a2 := 2 * tc.a
-	x2 := 2 * tc.x
-	y2 := 2 * tc.y
-	if y2 <= 0 || y2%a2 == 0 {
+	a := tc.a
+	x := tc.x
+	y := tc.y
+	if y%a == 0 {
 		return -1
 	}
-	row := y2/a2 + 1
-	var w int64
-	if row == 1 || row%2 == 0 {
-		w = 1
+	r := y / a
+	if r == 0 {
+		if absI(x)*2 < a {
+			return 1
+		}
+		return -1
+	} else if r%2 == 1 {
+		if absI(x)*2 < a {
+			return int64(2 + (r-1)/2*3)
+		}
+		return -1
 	} else {
-		w = 2
-	}
-	var pos int64
-	switch w {
-	case 1:
-		if x2 <= -tc.a || x2 >= tc.a {
-			return -1
+		if x > 0 && x < a {
+			return int64(4 + (r-2)/2*3)
+		} else if x < 0 && x > -a {
+			return int64(3 + (r-2)/2*3)
 		}
-		pos = 1
-	case 2:
-		if x2 <= -a2 || x2 >= a2 || x2 == 0 {
-			return -1
-		}
-		if x2 < 0 {
-			pos = 1
-		} else {
-			pos = 2
-		}
+		return -1
 	}
-	L := row - 1
-	var sumPrev int64
-	switch {
-	case L <= 0:
-		sumPrev = 0
-	case L == 1:
-		sumPrev = 1
-	default:
-		countEven := L / 2
-		countOdd := (L+1)/2 - 1
-		sumPrev = 1 + countEven + countOdd*2
+}
+
+func absI(v int64) int64 {
+	if v < 0 {
+		return -v
 	}
-	return sumPrev + pos
+	return v
 }
 
 func parseTestcases() ([]testCase, error) {

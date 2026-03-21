@@ -583,372 +583,209 @@ func parseCases() []testcase {
 	return cases
 }
 
-// --- begin solution from 403E.go adapted as function ---
-type SegMax struct {
-	n    int
-	tree []int
+// --- Correct solver from accepted solution, adapted as function ---
+
+type Edge struct {
+	to, id int
 }
 
-func NewSegMax(n int) *SegMax {
-	size := 1
-	for size < n {
-		size <<= 1
-	}
-	return &SegMax{n: size, tree: make([]int, 2*size)}
+type Tree struct {
+	n          int
+	adj        [][]Edge
+	parent     []int
+	depth      []int
+	heavy      []int
+	head       []int
+	pos        []int
+	edgeNode   []int
+	currentPos int
+	seg        [][]int
 }
-func (st *SegMax) Update(pos, val int) {
-	i := pos + st.n - 1
-	st.tree[i] = val
-	for i >>= 1; i > 0; i >>= 1 {
-		if st.tree[2*i] > st.tree[2*i+1] {
-			st.tree[i] = st.tree[2*i]
-		} else {
-			st.tree[i] = st.tree[2*i+1]
+
+func newTree(n int) *Tree {
+	return &Tree{
+		n:        n,
+		adj:      make([][]Edge, n+1),
+		parent:   make([]int, n+1),
+		depth:    make([]int, n+1),
+		heavy:    make([]int, n+1),
+		head:     make([]int, n+1),
+		pos:      make([]int, n+1),
+		edgeNode: make([]int, n),
+		seg:      make([][]int, 4*n+1),
+	}
+}
+
+func (t *Tree) dfs1(u, p, d int) int {
+	t.parent[u] = p
+	t.depth[u] = d
+	size := 1
+	maxSub := 0
+	for _, edge := range t.adj[u] {
+		v := edge.to
+		if v != p {
+			t.edgeNode[edge.id] = v
+			sub := t.dfs1(v, u, d+1)
+			size += sub
+			if sub > maxSub {
+				maxSub = sub
+				t.heavy[u] = v
+			}
+		}
+	}
+	return size
+}
+
+func (t *Tree) dfs2(u, h int) {
+	t.head[u] = h
+	t.currentPos++
+	t.pos[u] = t.currentPos
+	if t.heavy[u] != 0 {
+		t.dfs2(t.heavy[u], h)
+	}
+	for _, edge := range t.adj[u] {
+		v := edge.to
+		if v != t.parent[u] && v != t.heavy[u] {
+			t.dfs2(v, v)
 		}
 	}
 }
-func (st *SegMax) QueryFirst(l, r, thr int) int { return st.query(1, 1, st.n, l, r, thr) }
-func (st *SegMax) query(idx, lo, hi, l, r, thr int) int {
-	if lo > r || hi < l || st.tree[idx] <= thr {
-		return 0
+
+func (t *Tree) addSeg(node, L, R, ql, qr, id int) {
+	if ql <= L && R <= qr {
+		t.seg[node] = append(t.seg[node], id)
+		return
 	}
-	if lo == hi {
-		return lo
+	mid := (L + R) / 2
+	if ql <= mid {
+		t.addSeg(node*2, L, mid, ql, qr, id)
 	}
-	mid := (lo + hi) >> 1
-	if res := st.query(2*idx, lo, mid, l, r, thr); res != 0 {
-		return res
+	if qr > mid {
+		t.addSeg(node*2+1, mid+1, R, ql, qr, id)
 	}
-	return st.query(2*idx+1, mid+1, hi, l, r, thr)
 }
 
-type SegMin struct {
-	n    int
-	tree []int
-}
-
-func NewSegMin(n int) *SegMin {
-	size := 1
-	for size < n {
-		size <<= 1
-	}
-	inf := int(1e9)
-	tree := make([]int, 2*size)
-	for i := range tree {
-		tree[i] = inf
-	}
-	return &SegMin{n: size, tree: tree}
-}
-func (st *SegMin) Update(pos, val int) {
-	i := pos + st.n - 1
-	st.tree[i] = val
-	for i >>= 1; i > 0; i >>= 1 {
-		if st.tree[2*i] < st.tree[2*i+1] {
-			st.tree[i] = st.tree[2*i]
-		} else {
-			st.tree[i] = st.tree[2*i+1]
+func (t *Tree) addPath(u, v, id int) {
+	for t.head[u] != t.head[v] {
+		if t.depth[t.head[u]] < t.depth[t.head[v]] {
+			u, v = v, u
 		}
+		t.addSeg(1, 1, t.n, t.pos[t.head[u]], t.pos[u], id)
+		u = t.parent[t.head[u]]
 	}
-}
-func (st *SegMin) QueryFirst(l, r, thr int) int { return st.query(1, 1, st.n, l, r, thr) }
-func (st *SegMin) query(idx, lo, hi, l, r, thr int) int {
-	if lo > r || hi < l || st.tree[idx] >= thr {
-		return 0
+	if t.depth[u] > t.depth[v] {
+		u, v = v, u
 	}
-	if lo == hi {
-		return lo
+	if t.pos[u]+1 <= t.pos[v] {
+		t.addSeg(1, 1, t.n, t.pos[u]+1, t.pos[v], id)
 	}
-	mid := (lo + hi) >> 1
-	if res := st.query(2*idx, lo, mid, l, r, thr); res != 0 {
-		return res
-	}
-	return st.query(2*idx+1, mid+1, hi, l, r, thr)
 }
 
-func solve(n int, a, b []int, idx0 int) string {
+func (t *Tree) queryAndClear(node, L, R, p int, result *[]int, isDeleted []bool) {
+	if len(t.seg[node]) > 0 {
+		for _, id := range t.seg[node] {
+			if !isDeleted[id] {
+				isDeleted[id] = true
+				*result = append(*result, id)
+			}
+		}
+		t.seg[node] = nil
+	}
+	if L == R {
+		return
+	}
+	mid := (L + R) / 2
+	if p <= mid {
+		t.queryAndClear(node*2, L, mid, p, result, isDeleted)
+	} else {
+		t.queryAndClear(node*2+1, mid+1, R, p, result, isDeleted)
+	}
+}
+
+func solve(n int, a, b []int, idx int) string {
 	var out bytes.Buffer
-	blueAdj := make([][]int, n+1)
-	for i := 2; i <= n; i++ {
-		blueAdj[a[i]] = append(blueAdj[a[i]], i)
+
+	blueTree := newTree(n)
+	for i := 1; i < n; i++ {
+		u := i + 1
+		v := a[i]
+		blueTree.adj[u] = append(blueTree.adj[u], Edge{v, i})
+		blueTree.adj[v] = append(blueTree.adj[v], Edge{u, i})
 	}
-	blueTin := make([]int, n+1)
-	blueTout := make([]int, n+1)
-	timer := 0
-	var dfsBlue func(int)
-	dfsBlue = func(u int) {
-		timer++
-		blueTin[u] = timer
-		for _, v := range blueAdj[u] {
-			dfsBlue(v)
-		}
-		blueTout[u] = timer
+
+	redTree := newTree(n)
+	for i := 1; i < n; i++ {
+		u := i + 1
+		v := b[i]
+		redTree.adj[u] = append(redTree.adj[u], Edge{v, i})
+		redTree.adj[v] = append(redTree.adj[v], Edge{u, i})
 	}
-	dfsBlue(1)
-	redAdj := make([][]int, n+1)
-	for i := 2; i <= n; i++ {
-		redAdj[b[i]] = append(redAdj[b[i]], i)
+
+	blueTree.dfs1(1, 0, 0)
+	blueTree.dfs2(1, 1)
+
+	redTree.dfs1(1, 0, 0)
+	redTree.dfs2(1, 1)
+
+	for i := 1; i < n; i++ {
+		u := i + 1
+		v := b[i]
+		blueTree.addPath(u, v, i)
 	}
-	redTin := make([]int, n+1)
-	redTout := make([]int, n+1)
-	timer = 0
-	var dfsRed func(int)
-	dfsRed = func(u int) {
-		timer++
-		redTin[u] = timer
-		for _, v := range redAdj[u] {
-			dfsRed(v)
-		}
-		redTout[u] = timer
+
+	for i := 1; i < n; i++ {
+		u := i + 1
+		v := a[i]
+		redTree.addPath(u, v, i)
 	}
-	dfsRed(1)
-	aaR := make([]int, n)
-	bbR := make([]int, n)
-	listARA := make([][]int, n+2)
-	listARB := make([][]int, n+2)
-	for ei := 1; ei < n; ei++ {
-		u := b[ei+1]
-		v := ei + 1
-		t1 := blueTin[u]
-		t2 := blueTin[v]
-		if t1 < t2 {
-			aaR[ei] = t1
-			bbR[ei] = t2
-		} else {
-			aaR[ei] = t2
-			bbR[ei] = t1
-		}
-		listARA[aaR[ei]] = append(listARA[aaR[ei]], ei)
-		listARB[bbR[ei]] = append(listARB[bbR[ei]], ei)
-	}
-	for i := 1; i <= n; i++ {
-		if len(listARA[i]) > 1 {
-			sort.Slice(listARA[i], func(x, y int) bool { return bbR[listARA[i][x]] > bbR[listARA[i][y]] })
-		}
-		if len(listARB[i]) > 1 {
-			sort.Slice(listARB[i], func(x, y int) bool { return aaR[listARB[i][x]] < aaR[listARB[i][y]] })
-		}
-	}
-	segRA := NewSegMax(n)
-	segRB := NewSegMin(n)
-	ptrRA := make([]int, n+2)
-	ptrRB := make([]int, n+2)
-	const INF = int(1e9)
-	for i := 1; i <= n; i++ {
-		if ptrRA[i] < len(listARA[i]) {
-			eid := listARA[i][ptrRA[i]]
-			segRA.Update(i, bbR[eid])
-		}
-		if ptrRB[i] < len(listARB[i]) {
-			eid := listARB[i][ptrRB[i]]
-			segRB.Update(i, aaR[eid])
-		}
-	}
-	aaB := make([]int, n)
-	bbB := make([]int, n)
-	listBAA := make([][]int, n+2)
-	listBAB := make([][]int, n+2)
-	for ei := 1; ei < n; ei++ {
-		u := a[ei+1]
-		v := ei + 1
-		t1 := redTin[u]
-		t2 := redTin[v]
-		if t1 < t2 {
-			aaB[ei] = t1
-			bbB[ei] = t2
-		} else {
-			aaB[ei] = t2
-			bbB[ei] = t1
-		}
-		listBAA[aaB[ei]] = append(listBAA[aaB[ei]], ei)
-		listBAB[bbB[ei]] = append(listBAB[bbB[ei]], ei)
-	}
-	for i := 1; i <= n; i++ {
-		if len(listBAA[i]) > 1 {
-			sort.Slice(listBAA[i], func(x, y int) bool { return bbB[listBAA[i][x]] > bbB[listBAA[i][y]] })
-		}
-		if len(listBAB[i]) > 1 {
-			sort.Slice(listBAB[i], func(x, y int) bool { return aaB[listBAB[i][x]] < aaB[listBAB[i][y]] })
-		}
-	}
-	segBA := NewSegMax(n)
-	segBB := NewSegMin(n)
-	ptrBA := make([]int, n+2)
-	ptrBB := make([]int, n+2)
-	for i := 1; i <= n; i++ {
-		if ptrBA[i] < len(listBAA[i]) {
-			eid := listBAA[i][ptrBA[i]]
-			segBA.Update(i, bbB[eid])
-		}
-		if ptrBB[i] < len(listBAB[i]) {
-			eid := listBAB[i][ptrBB[i]]
-			segBB.Update(i, aaB[eid])
-		}
-	}
-	deletedR := make([]bool, n)
-	deletedB := make([]bool, n)
-	type Stage struct {
-		color string
-		edges []int
-	}
-	var stages []Stage
-	blueQ := []int{idx0}
-	for len(blueQ) > 0 {
-		sort.Ints(blueQ)
-		stages = append(stages, Stage{"Blue", append([]int(nil), blueQ...)})
-		redQ := make([]int, 0)
-		for _, be := range blueQ {
-			v := be + 1
-			l, r := blueTin[v], blueTout[v]
-			for {
-				bb := segRB.QueryFirst(l, r, l)
-				if bb == 0 {
-					break
-				}
-				for ptrRB[bb] < len(listARB[bb]) {
-					e := listARB[bb][ptrRB[bb]]
-					if deletedR[e] || aaR[e] >= l {
-						ptrRB[bb]++
-						continue
-					}
-					deletedR[e] = true
-					redQ = append(redQ, e)
-					ptrRB[bb]++
-					if ptrRB[bb] < len(listARB[bb]) {
-						segRB.Update(bb, aaR[listARB[bb][ptrRB[bb]]])
-					} else {
-						segRB.Update(bb, INF)
-					}
-					aa0 := aaR[e]
-					for ptrRA[aa0] < len(listARA[aa0]) && deletedR[listARA[aa0][ptrRA[aa0]]] {
-						ptrRA[aa0]++
-					}
-					if ptrRA[aa0] < len(listARA[aa0]) {
-						segRA.Update(aa0, bbR[listARA[aa0][ptrRA[aa0]]])
-					} else {
-						segRA.Update(aa0, 0)
-					}
-					break
-				}
-			}
-			for {
-				aa := segRA.QueryFirst(l, r, r)
-				if aa == 0 {
-					break
-				}
-				for ptrRA[aa] < len(listARA[aa]) {
-					e := listARA[aa][ptrRA[aa]]
-					if deletedR[e] || bbR[e] <= r {
-						ptrRA[aa]++
-						continue
-					}
-					deletedR[e] = true
-					redQ = append(redQ, e)
-					ptrRA[aa]++
-					if ptrRA[aa] < len(listARA[aa]) {
-						segRA.Update(aa, bbR[listARA[aa][ptrRA[aa]]])
-					} else {
-						segRA.Update(aa, 0)
-					}
-					bb0 := bbR[e]
-					for ptrRB[bb0] < len(listARB[bb0]) && deletedR[listARB[bb0][ptrRB[bb0]]] {
-						ptrRB[bb0]++
-					}
-					if ptrRB[bb0] < len(listARB[bb0]) {
-						segRB.Update(bb0, aaR[listARB[bb0][ptrRB[bb0]]])
-					} else {
-						segRB.Update(bb0, INF)
-					}
-					break
-				}
-			}
-		}
-		if len(redQ) == 0 {
-			break
-		}
-		sort.Ints(redQ)
-		stages = append(stages, Stage{"Red", append([]int(nil), redQ...)})
-		blueQ = make([]int, 0)
-		for _, re := range redQ {
-			v := re + 1
-			l, r := redTin[v], redTout[v]
-			for {
-				bb := segBB.QueryFirst(l, r, l)
-				if bb == 0 {
-					break
-				}
-				for ptrBB[bb] < len(listBAB[bb]) {
-					e := listBAB[bb][ptrBB[bb]]
-					if deletedB[e] || aaB[e] >= l {
-						ptrBB[bb]++
-						continue
-					}
-					deletedB[e] = true
-					blueQ = append(blueQ, e)
-					ptrBB[bb]++
-					if ptrBB[bb] < len(listBAB[bb]) {
-						segBB.Update(bb, aaB[listBAB[bb][ptrBB[bb]]])
-					} else {
-						segBB.Update(bb, INF)
-					}
-					aa0 := aaB[e]
-					for ptrBA[aa0] < len(listBAA[aa0]) && deletedB[listBAA[aa0][ptrBA[aa0]]] {
-						ptrBA[aa0]++
-					}
-					if ptrBA[aa0] < len(listBAA[aa0]) {
-						segBA.Update(aa0, bbB[listBAA[aa0][ptrBA[aa0]]])
-					} else {
-						segBA.Update(aa0, 0)
-					}
-					break
-				}
-			}
-			for {
-				aa := segBA.QueryFirst(l, r, r)
-				if aa == 0 {
-					break
-				}
-				for ptrBA[aa] < len(listBAA[aa]) {
-					e := listBAA[aa][ptrBA[aa]]
-					if deletedB[e] || bbB[e] <= r {
-						ptrBA[aa]++
-						continue
-					}
-					deletedB[e] = true
-					blueQ = append(blueQ, e)
-					ptrBA[aa]++
-					if ptrBA[aa] < len(listBAA[aa]) {
-						segBA.Update(aa, bbB[listBAA[aa][ptrBA[aa]]])
-					} else {
-						segBA.Update(aa, 0)
-					}
-					bb0 := bbB[e]
-					for ptrBB[bb0] < len(listBAB[bb0]) && deletedB[listBAB[bb0][ptrBB[bb0]]] {
-						ptrBB[bb0]++
-					}
-					if ptrBB[bb0] < len(listBAB[bb0]) {
-						segBB.Update(bb0, aaB[listBAB[bb0][ptrBB[bb0]]])
-					} else {
-						segBB.Update(bb0, INF)
-					}
-					break
-				}
-			}
-		}
-	}
-	for _, stg := range stages {
-		fmt.Fprintln(&out, stg.color)
-		for i, e := range stg.edges {
+
+	blueDeleted := make([]bool, n)
+	redDeleted := make([]bool, n)
+
+	blueStage := []int{idx}
+	blueDeleted[idx] = true
+	var redStage []int
+
+	printSlice := func(s []int) {
+		for i, v := range s {
 			if i > 0 {
 				out.WriteByte(' ')
 			}
-			fmt.Fprint(&out, e)
+			fmt.Fprint(&out, v)
 		}
 		out.WriteByte('\n')
 	}
+
+	for len(blueStage) > 0 || len(redStage) > 0 {
+		if len(blueStage) > 0 {
+			out.WriteString("Blue\n")
+			sort.Ints(blueStage)
+			printSlice(blueStage)
+
+			redStage = nil
+			for _, id := range blueStage {
+				p := blueTree.pos[blueTree.edgeNode[id]]
+				blueTree.queryAndClear(1, 1, blueTree.n, p, &redStage, redDeleted)
+			}
+			blueStage = nil
+		} else if len(redStage) > 0 {
+			out.WriteString("Red\n")
+			sort.Ints(redStage)
+			printSlice(redStage)
+
+			blueStage = nil
+			for _, id := range redStage {
+				p := redTree.pos[redTree.edgeNode[id]]
+				redTree.queryAndClear(1, 1, redTree.n, p, &blueStage, blueDeleted)
+			}
+			redStage = nil
+		}
+	}
+
 	return strings.TrimSpace(out.String())
 }
 
-// --- end adapted solution ---
+// --- end correct solver ---
 
 func runSolution(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
@@ -970,7 +807,17 @@ func main() {
 	bin := os.Args[1]
 	cases := parseCases()
 	for i, tc := range cases {
-		expected := solve(tc.n, tc.a, tc.b, tc.idx)
+		// Convert a/b arrays to the format solve() expects (1-indexed parent arrays)
+		// solve() expects a[i] = parent of node i+1 for i=1..n-1
+		// tc.a[j] for j=2..n is the parent of node j in blue tree
+		// We need to pass arrays where a[i] = tc.a[i+1] for i=1..n-1
+		aArr := make([]int, tc.n)
+		bArr := make([]int, tc.n)
+		for j := 1; j < tc.n; j++ {
+			aArr[j] = tc.a[j+1]
+			bArr[j] = tc.b[j+1]
+		}
+		expected := solve(tc.n, aArr, bArr, tc.idx)
 		got, err := runSolution(bin, tc.input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)

@@ -1,183 +1,137 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 )
 
-// Embedded copy of testcasesE.txt so the verifier is self-contained.
-const testcasesRaw = `6
-6
-5
-8
-6
-4
-3
-8
-3
-6
-4
-8
-3
-2
-9
-10
-10
-8
-6
-3
-9
-9
-5
-6
-7
-4
-2
-6
-4
-6
-3
-6
-10
-2
-10
-10
-7
-5
-9
-10
-7
-2
-8
-7
-9
-4
-6
-9
-8
-2
-2
-8
-5
-8
-8
-6
-9
-2
-3
-7
-10
-10
-7
-10
-8
-8
-4
-3
-5
-8
-7
-3
-7
-10
-2
-2
-7
-4
-9
-5
-6
-3
-8
-9
-3
-7
-4
-8
-5
-4
-9
-8
-8
-10
-9
-5
-10
-7
-10
-6
-5
-5
-9
-10
-5
-7
-4
-9`
-
-type testcase struct {
-	n int
+// Generate a random permutation of 0..n-1.
+func randPerm(rng *rand.Rand, n int) []int {
+	p := make([]int, n)
+	for i := range p {
+		p[i] = i
+	}
+	rng.Shuffle(n, func(i, j int) { p[i], p[j] = p[j], p[i] })
+	return p
 }
 
-// solve mirrors 1364E.go logic: output identity permutation 0..n-1.
-func solve(tc testcase) string {
-	var sb strings.Builder
-	for i := 0; i < tc.n; i++ {
-		if i > 0 {
-			sb.WriteByte(' ')
-		}
-		sb.WriteString(strconv.Itoa(i))
+// runInteractive spawns the candidate binary, feeds it n, answers "? i j"
+// queries with (perm[i-1] | perm[j-1]), and verifies the "! p0 p1 ... pn-1"
+// answer line.
+func runInteractive(exe string, n int, perm []int) error {
+	cmd := exec.Command(exe)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
 	}
-	return sb.String()
-}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Start(); err != nil {
+		return err
+	}
 
-func parseTestcases() ([]testcase, error) {
-	fields := strings.Fields(testcasesRaw)
-	if len(fields) == 0 {
-		return nil, fmt.Errorf("no embedded testcases")
+	// Send n
+	if _, err := fmt.Fprintf(stdin, "%d\n", n); err != nil {
+		return fmt.Errorf("failed to write n: %v", err)
 	}
-	cases := make([]testcase, 0, len(fields))
-	for i, f := range fields {
-		n, err := strconv.Atoi(f)
-		if err != nil {
-			return nil, fmt.Errorf("line %d: %v", i+1, err)
-		}
-		cases = append(cases, testcase{n: n})
-	}
-	return cases, nil
-}
 
-func buildIfGo(path string) (string, func(), error) {
-	if strings.HasSuffix(path, ".go") {
-		tmp, err := os.CreateTemp("", "solbin*")
-		if err != nil {
-			return "", nil, err
-		}
-		tmp.Close()
-		out, err := exec.Command("go", "build", "-o", tmp.Name(), path).CombinedOutput()
-		if err != nil {
-			os.Remove(tmp.Name())
-			return "", nil, fmt.Errorf("build failed: %v\n%s", err, out)
-		}
-		return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
-	}
-	return path, func() {}, nil
-}
+	queries := 0
+	maxQueries := 4269
+	var answerLine string
+	var parseErr error
 
-func runCandidate(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		scanner := bufio.NewScanner(stdout)
+		scanner.Buffer(make([]byte, 0, 64*1024), 1<<20)
+		for scanner.Scan() {
+			ln := strings.TrimSpace(scanner.Text())
+			if ln == "" {
+				continue
+			}
+			if strings.HasPrefix(ln, "?") {
+				parts := strings.Fields(ln)
+				if len(parts) != 3 {
+					fmt.Fprintf(stdin, "-1\n")
+					continue
+				}
+				i, e1 := strconv.Atoi(parts[1])
+				j, e2 := strconv.Atoi(parts[2])
+				if e1 != nil || e2 != nil || i < 1 || i > n || j < 1 || j > n || i == j {
+					fmt.Fprintf(stdin, "-1\n")
+					continue
+				}
+				queries++
+				if queries > maxQueries {
+					fmt.Fprintf(stdin, "-1\n")
+					continue
+				}
+				ans := perm[i-1] | perm[j-1]
+				fmt.Fprintf(stdin, "%d\n", ans)
+			} else if strings.HasPrefix(ln, "!") {
+				answerLine = ln
+				stdin.Close()
+				return
+			}
+		}
+	}()
+
+	wg.Wait()
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
 	}
-	return strings.TrimSpace(out.String()), nil
+	if parseErr != nil {
+		return parseErr
+	}
+
+	if answerLine == "" {
+		return fmt.Errorf("no answer line received")
+	}
+	if queries > maxQueries {
+		return fmt.Errorf("too many queries: %d > %d", queries, maxQueries)
+	}
+
+	// Parse answer: "! p0 p1 ... pn-1"
+	parts := strings.Fields(answerLine)
+	if len(parts) != n+1 || parts[0] != "!" {
+		return fmt.Errorf("bad answer format: %q", answerLine)
+	}
+	got := make([]int, n)
+	seen := make([]bool, n)
+	for i := 0; i < n; i++ {
+		v, err := strconv.Atoi(parts[i+1])
+		if err != nil || v < 0 || v >= n {
+			return fmt.Errorf("bad value in answer: %q", parts[i+1])
+		}
+		if seen[v] {
+			return fmt.Errorf("duplicate value %d in answer", v)
+		}
+		seen[v] = true
+		got[i] = v
+	}
+
+	// Verify: for all pairs i,j: (got[i] | got[j]) must equal (perm[i] | perm[j]).
+	// Equivalently, got must equal perm (the permutation is unique given
+	// the OR structure). Just check equality.
+	for i := 0; i < n; i++ {
+		if got[i] != perm[i] {
+			return fmt.Errorf("mismatch at position %d: expected %d got %d", i+1, perm[i], got[i])
+		}
+	}
+	return nil
 }
 
 func main() {
@@ -185,32 +139,17 @@ func main() {
 		fmt.Println("usage: go run verifierE.go /path/to/binary")
 		os.Exit(1)
 	}
+	exe := os.Args[1]
+	rng := rand.New(rand.NewSource(42))
 
-	cases, err := parseTestcases()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	bin, cleanup, err := buildIfGo(os.Args[1])
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
-	for idx, tc := range cases {
-		input := fmt.Sprintf("%d\n", tc.n)
-		expect := solve(tc)
-		got, err := runCandidate(bin, input)
-		if err != nil {
-			fmt.Printf("case %d: %v\n", idx+1, err)
-			os.Exit(1)
-		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
-			fmt.Printf("case %d failed\ninput:\n%s\nexpected:\n%s\ngot:\n%s\n", idx+1, input, expect, got)
+	// Test sizes: small cases and some medium ones
+	sizes := []int{3, 3, 4, 4, 5, 5, 6, 7, 8, 10, 16, 32, 64, 128, 256, 512}
+	for _, n := range sizes {
+		perm := randPerm(rng, n)
+		if err := runInteractive(exe, n, perm); err != nil {
+			fmt.Fprintf(os.Stderr, "n=%d failed: %v\n", n, err)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(cases))
+	fmt.Printf("All %d tests passed\n", len(sizes))
 }

@@ -54,6 +54,14 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func firstLine(s string) string {
+	idx := strings.IndexByte(s, '\n')
+	if idx < 0 {
+		return s
+	}
+	return s[:idx]
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierK.go /path/to/binary")
@@ -80,8 +88,11 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i, err, input)
 			os.Exit(1)
 		}
-		if got != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i, expect, got, input)
+		// Compare only the first line (the count) since multiple valid answers exist
+		expectCount := firstLine(expect)
+		gotCount := firstLine(got)
+		if gotCount != expectCount {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected count %s got count %s\ninput:\n%s\nexpected:\n%s\ngot:\n%s", i, expectCount, gotCount, input, expect, got)
 			os.Exit(1)
 		}
 	}

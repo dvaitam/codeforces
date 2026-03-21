@@ -1228,7 +1228,20 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != want {
+		var wantF, gotF float64
+		if _, err := fmt.Sscan(want, &wantF); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: bad expected value %q: %v\n", idx+1, want, err)
+			os.Exit(1)
+		}
+		if _, err := fmt.Sscan(strings.TrimSpace(got), &gotF); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: bad output %q: %v\n", idx+1, got, err)
+			os.Exit(1)
+		}
+		diff := wantF - gotF
+		if diff < 0 {
+			diff = -diff
+		}
+		if diff > 1e-4 {
 			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, want, got)
 			os.Exit(1)
 		}

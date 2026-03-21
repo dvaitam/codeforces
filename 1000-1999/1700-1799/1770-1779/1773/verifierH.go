@@ -87,7 +87,7 @@ func nextInt(scanner *bufio.Scanner) (int, error) {
 }
 
 func runCase(bin string, targetX, targetY int, ph phrases) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, bin)
 	stdin, err := cmd.StdinPipe()

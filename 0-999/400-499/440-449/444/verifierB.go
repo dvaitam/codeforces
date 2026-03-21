@@ -15,27 +15,38 @@ import (
 const mod = 1000000007
 
 func expected(n int, d int, x int64) []int {
+	// Generate permutation a[0..n-1] of 1..n using Fisher-Yates with x = (x*37+10007)%mod
 	a := make([]int, n)
+	pos := make([]int, n+1)
 	for i := 0; i < n; i++ {
 		a[i] = i + 1
-	}
-	for i := 0; i < n; i++ {
-		x = (x*7 + 13) % mod
+		pos[i+1] = i
+		x = (x*37 + 10007) % mod
 		j := int(x % int64(i+1))
-		a[i], a[j] = a[j], a[i]
-	}
-	b := make([]int, n)
-	for i := 0; i < n; i++ {
-		x = (x*7 + 13) % mod
-		if x&1 == 1 {
-			b[i] = 1
+		if i != j {
+			vi, vj := a[i], a[j]
+			a[i], a[j] = vj, vi
+			pos[vi], pos[vj] = j, i
 		}
 	}
+
+	// Generate binary array b[0..n-1] with d ones, then shuffle
+	bArr := make([]byte, n)
+	for i := 0; i < d; i++ {
+		bArr[i] = 1
+	}
+	for i := 0; i < n; i++ {
+		x = (x*37 + 10007) % mod
+		j := int(x % int64(i+1))
+		bArr[i], bArr[j] = bArr[j], bArr[i]
+	}
+
+	// Brute-force compute c[i] = max over j=0..i of a[j]*b[i-j]
 	c := make([]int, n)
 	for i := 0; i < n; i++ {
 		mx := 0
 		for j := 0; j <= i; j++ {
-			val := a[j] * b[i-j]
+			val := a[j] * int(bArr[i-j])
 			if val > mx {
 				mx = val
 			}

@@ -824,17 +824,20 @@ func main() {
 			u := path[i]
 			v := path[i+1]
 			found := false
+			minX := -1
 			for _, e := range adj[u] {
 				if e.to == v {
-					cost.Add(cost, new(big.Int).Lsh(big.NewInt(1), uint(e.x)))
+					if !found || e.x < minX {
+						minX = e.x
+					}
 					found = true
-					break
 				}
 			}
 			if !found {
 				fmt.Fprintf(os.Stderr, "case %d: invalid path\n", idx+1)
 				os.Exit(1)
 			}
+			cost.Add(cost, new(big.Int).Lsh(big.NewInt(1), uint(minX)))
 		}
 		if cost.Cmp(dist) != 0 {
 			fmt.Fprintf(os.Stderr, "case %d: path is not shortest\n", idx+1)

@@ -72,7 +72,7 @@ func main() {
 	defer writer.Flush()
 	var t int
 	fmt.Fscan(reader, &t)
-	for ; t > 0; t++ {
+	for ; t > 0; t-- {
 		solve(reader, writer)
 	}
 }

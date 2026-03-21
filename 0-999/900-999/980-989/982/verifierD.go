@@ -27,71 +27,47 @@ func solve(arr []int) string {
 		ps[i] = pair{arr[i], i}
 	}
 	sort.Slice(ps, func(i, j int) bool { return ps[i].val < ps[j].val })
-	parent := make([]int, n)
-	sz := make([]int, n)
+
 	active := make([]bool, n)
-	cnt := map[int]int{}
-	segments := 0
-	bestSeg := 0
+	L := make([]int, n)
+	counts := make([]int, n+1)
+
+	numSegments := 0
+	maxLoc := 0
 	bestK := 0
 
-	var find func(int) int
-	find = func(x int) int {
-		if parent[x] != x {
-			parent[x] = find(parent[x])
+	for i := 0; i < n; i++ {
+		idx := ps[i].idx
+		leftLen := 0
+		if idx > 0 && active[idx-1] {
+			leftLen = L[idx-1]
 		}
-		return parent[x]
-	}
-	union := func(a, b int) {
-		ra := find(a)
-		rb := find(b)
-		if ra == rb {
-			return
+		rightLen := 0
+		if idx < n-1 && active[idx+1] {
+			rightLen = L[idx+1]
 		}
-		la := sz[ra]
-		lb := sz[rb]
-		cnt[la]--
-		if cnt[la] == 0 {
-			delete(cnt, la)
-		}
-		cnt[lb]--
-		if cnt[lb] == 0 {
-			delete(cnt, lb)
-		}
-		segments--
-		if la < lb {
-			ra, rb = rb, ra
-			la, lb = lb, la
-		}
-		parent[rb] = ra
-		sz[ra] = la + lb
-		cnt[la+lb]++
-	}
 
-	for _, p := range ps {
-		i := p.idx
-		active[i] = true
-		parent[i] = i
-		sz[i] = 1
-		cnt[1]++
-		segments++
-		if i > 0 && active[i-1] {
-			union(i, i-1)
+		if leftLen > 0 {
+			counts[leftLen]--
+			numSegments--
 		}
-		if i+1 < n && active[i+1] {
-			union(i, i+1)
+		if rightLen > 0 {
+			counts[rightLen]--
+			numSegments--
 		}
-		if len(cnt) == 1 {
-			length := 0
-			for k := range cnt {
-				length = k
-			}
-			if cnt[length] == segments {
-				k := p.val + 1
-				if segments > bestSeg || (segments == bestSeg && k < bestK) {
-					bestSeg = segments
-					bestK = k
-				}
+
+		newLen := leftLen + rightLen + 1
+		counts[newLen]++
+		numSegments++
+
+		active[idx] = true
+		L[idx-leftLen] = newLen
+		L[idx+rightLen] = newLen
+
+		if counts[newLen] == numSegments {
+			if numSegments > maxLoc {
+				maxLoc = numSegments
+				bestK = ps[i].val + 1
 			}
 		}
 	}

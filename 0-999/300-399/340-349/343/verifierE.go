@@ -170,7 +170,11 @@ func generateCases(rng *rand.Rand) []testCase {
 	for len(cases) < 100 {
 		n := rng.Intn(5) + 2
 		maxEdges := n * (n - 1) / 2
-		m := rng.Intn(maxEdges-n+1) + n - 1
+		mRange := maxEdges - n + 2 // maxEdges - (n-1) + 1
+		if mRange <= 0 {
+			mRange = 1
+		}
+		m := rng.Intn(mRange) + n - 1
 		// start with a tree to ensure connectivity
 		edges := make([]edge, 0, m)
 		for i := 2; i <= n; i++ {

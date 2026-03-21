@@ -12,42 +12,71 @@ import (
 )
 
 func expected(n int, l, r float64, px, py, a []float64) float64 {
-	cosA := make([]float64, n)
-	sinA := make([]float64, n)
-	for i := 0; i < n; i++ {
-		rad := a[i] * math.Pi / 180.0
-		cosA[i] = math.Cos(rad)
-		sinA[i] = math.Sin(rad)
+	m := 1 << uint(n)
+	dp := make([]float64, m)
+	negInf := -1e300
+	for i := 1; i < m; i++ {
+		dp[i] = negInf
 	}
-	size := 1 << uint(n)
-	dp := make([]float64, size)
-	for i := range dp {
-		dp[i] = l
-	}
-	for mask := 0; mask < size; mask++ {
-		base := dp[mask]
+	dp[0] = l
+
+	ans := l
+
+	for mask := 0; mask < m; mask++ {
+		p := dp[mask]
+		if p == negInf {
+			continue
+		}
+		if p > ans {
+			ans = p
+		}
+		if p >= r {
+			continue
+		}
+
 		for i := 0; i < n; i++ {
-			if mask>>i&1 == 0 {
-				dx0 := base - px[i]
-				dy0 := -py[i]
-				dirX := dx0*cosA[i] - dy0*sinA[i]
-				dirY := dx0*sinA[i] + dy0*cosA[i]
-				np := r
-				if dirY < 0 {
-					t := -py[i] / dirY
-					np = px[i] + dirX*t
-					if np > r {
-						np = r
+			if mask&(1<<uint(i)) != 0 {
+				continue
+			}
+
+			var v float64
+			isA90 := math.Abs(a[i]-90.0) < 1e-9
+
+			if isA90 {
+				if p >= px[i] {
+					v = r
+				} else {
+					v = px[i] - py[i]*py[i]/(p-px[i])
+					if v > r {
+						v = r
 					}
 				}
-				next := mask | (1 << i)
-				if np > dp[next] {
-					dp[next] = np
+			} else {
+				q := math.Tan(a[i] * math.Pi / 180.0)
+				t := (p - px[i]) / py[i]
+				den := 1.0 - t*q
+				if den <= 0 {
+					v = r
+				} else {
+					v = px[i] + py[i]*(t+q)/den
+					if v > r {
+						v = r
+					}
 				}
+			}
+
+			nmask := mask | (1 << uint(i))
+			if v > dp[nmask] {
+				dp[nmask] = v
 			}
 		}
 	}
-	return dp[size-1] - l
+
+	if ans > r {
+		ans = r
+	}
+
+	return ans - l
 }
 
 func generateCase(rng *rand.Rand) (string, float64) {
