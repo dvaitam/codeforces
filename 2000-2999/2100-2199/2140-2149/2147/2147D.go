@@ -8,44 +8,47 @@ import (
 )
 
 func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
+	in := bufio.NewReaderSize(os.Stdin, 1<<20)
+	out := bufio.NewWriterSize(os.Stdout, 1<<20)
 	defer out.Flush()
 
 	var t int
-	if _, err := fmt.Fscan(in, &t); err != nil {
-		return
-	}
+	fmt.Fscan(in, &t)
 	for ; t > 0; t-- {
 		var n int
 		fmt.Fscan(in, &n)
-
-		freq := make(map[int64]int64)
-		var totalSum, adjustedSum int64
+		a := make([]int64, n)
+		var sum int64
 		for i := 0; i < n; i++ {
-			var x int64
-			fmt.Fscan(in, &x)
-			totalSum += x
-			if x%2 == 0 {
-				adjustedSum += x
+			fmt.Fscan(in, &a[i])
+			sum += a[i]
+		}
+
+		sort.Slice(a, func(i, j int) bool { return a[i] < a[j] })
+
+		oddCounts := make([]int64, 0)
+		for i := 0; i < n; {
+			j := i + 1
+			for j < n && a[j] == a[i] {
+				j++
+			}
+			if a[i]&1 == 1 {
+				oddCounts = append(oddCounts, int64(j-i))
+			}
+			i = j
+		}
+
+		var diff int64
+		for i := len(oddCounts) - 1; i >= 0; i-- {
+			if oddCounts[i] >= diff {
+				diff = oddCounts[i] - diff
 			} else {
-				adjustedSum += x - 1
-				freq[x]++
+				diff = diff - oddCounts[i]
 			}
 		}
 
-		alice := adjustedSum / 2
-
-		counts := make([]int64, 0, len(freq))
-		for _, c := range freq {
-			counts = append(counts, c)
-		}
-		sort.Slice(counts, func(i, j int) bool { return counts[i] > counts[j] })
-		for i := 0; i < len(counts); i += 2 {
-			alice += counts[i]
-		}
-
-		fmt.Fprintln(out, alice, totalSum-alice)
+		alice := (sum + diff) / 2
+		bob := sum - alice
+		fmt.Fprintln(out, alice, bob)
 	}
 }
-

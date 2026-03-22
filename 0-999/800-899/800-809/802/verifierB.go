@@ -2,25 +2,86 @@ package main
 
 import (
 	"bytes"
+	"container/heap"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
-func compileRef() (string, error) {
-	exe, err := os.CreateTemp("", "refB*")
-	if err != nil {
-		return "", err
+type RefItem struct {
+	next int
+	book int
+}
+
+type RefMaxHeap []RefItem
+
+func (h RefMaxHeap) Len() int            { return len(h) }
+func (h RefMaxHeap) Less(i, j int) bool  { return h[i].next > h[j].next }
+func (h RefMaxHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *RefMaxHeap) Push(x interface{}) { *h = append(*h, x.(RefItem)) }
+func (h *RefMaxHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[:n-1]
+	return x
+}
+
+func solveReference(input string) string {
+	fields := strings.Fields(input)
+	if len(fields) < 2 {
+		return ""
 	}
-	exe.Close()
-	os.Remove(exe.Name())
-	cmd := exec.Command("go", "build", "-o", exe.Name(), "802B.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("compile reference: %v\n%s", err, string(out))
+	n, _ := strconv.Atoi(fields[0])
+	k, _ := strconv.Atoi(fields[1])
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		a[i], _ = strconv.Atoi(fields[2+i])
 	}
-	return exe.Name(), nil
+
+	next := make([]int, n)
+	last := make(map[int]int)
+	for i := 0; i < n; i++ {
+		last[a[i]] = n
+	}
+	for i := n - 1; i >= 0; i-- {
+		next[i] = last[a[i]]
+		last[a[i]] = i
+	}
+
+	library := make(map[int]int)
+	pq := &RefMaxHeap{}
+	heap.Init(pq)
+	cost := 0
+
+	for i := 0; i < n; i++ {
+		b := a[i]
+		nxt := next[i]
+		if _, ok := library[b]; ok {
+			library[b] = nxt
+			heap.Push(pq, RefItem{nxt, b})
+			continue
+		}
+		cost++
+		if len(library) >= k {
+			for pq.Len() > 0 {
+				item := heap.Pop(pq).(RefItem)
+				if cur, ok := library[item.book]; ok && cur == item.next {
+					delete(library, item.book)
+					break
+				}
+			}
+		}
+		if k > 0 {
+			library[b] = nxt
+			heap.Push(pq, RefItem{nxt, b})
+		}
+	}
+
+	return strconv.Itoa(cost)
 }
 
 func runProg(exe, input string) (string, error) {
@@ -69,20 +130,10 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	ref, err := compileRef()
-	if err != nil {
-		fmt.Println("reference compile failed:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 
 	tests := genTests()
 	for i, in := range tests {
-		exp, err := runProg(ref, in)
-		if err != nil {
-			fmt.Printf("reference failed on test %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
+		exp := solveReference(strings.TrimSpace(in))
 		got, err := runProg(bin, in)
 		if err != nil {
 			fmt.Printf("test %d runtime error: %v\n", i+1, err)

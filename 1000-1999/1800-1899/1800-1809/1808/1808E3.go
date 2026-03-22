@@ -1,76 +1,75 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 )
 
-func powmod(a, b, mod int64) int64 {
-	a %= mod
-	res := int64(1)
-	for b > 0 {
-		if b&1 == 1 {
-			res = res * a % mod
+func abs(x int64) int64 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func gcd(a, b int64) int64 {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return a
+}
+
+func power(base, exp, mod int64) int64 {
+	base %= mod
+	if base < 0 {
+		base += mod
+	}
+	if base == 0 {
+		if exp == 0 {
+			return 1
 		}
-		a = a * a % mod
-		b >>= 1
+		return 0
+	}
+	res := int64(1)
+	for exp > 0 {
+		if exp%2 == 1 {
+			res = (res * base) % mod
+		}
+		base = (base * base) % mod
+		exp /= 2
 	}
 	return res
 }
 
 func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
-	defer out.Flush()
-
 	var n, k, m int64
-	if _, err := fmt.Fscan(in, &n, &k, &m); err != nil {
+	if _, err := fmt.Scan(&n, &k, &m); err != nil {
 		return
 	}
 
-	invK := powmod(k, m-2, m)
-
-	if k%2 == 1 { // k is odd
-		powK1 := powmod(k, n-1, m)
-		powKMinus1 := powmod(k-1, n, m)
-		minus1 := int64(1)
-		if n%2 == 1 {
-			minus1 = m - 1
+	if k%2 == 1 {
+		d := gcd(abs(n-2), k)
+		term1 := power(k, n, m)
+		term2 := power(k-1, n, m)
+		ans := (term1 - term2 + m) % m
+		diff := (d - 1) % m
+		if n%2 == 0 {
+			ans = (ans - diff + m) % m
+		} else {
+			ans = (ans + diff) % m
 		}
-		ans := int64(0)
-		for x := int64(0); x < k; x++ {
-			var nod int64
-			if ((n-2)*x)%k == 0 {
-				nod = (powKMinus1 + minus1*(k-1)%m) % m
-			} else {
-				nod = (powKMinus1 - minus1 + m) % m
-			}
-			nod = nod * invK % m
-			lucky := (powK1 - nod + m) % m
-			ans = (ans + lucky) % m
+		fmt.Println(ans)
+	} else {
+		d := gcd(abs(n-2), k/2)
+		half := (m + 1) / 2
+		term1 := (power(k, n, m) * half) % m
+		term2 := (power(k-2, n, m) * half) % m
+		ans := (term1 - term2 + m) % m
+		term3 := (power(2, n-1, m) * ((d - 1) % m)) % m
+		if n%2 == 0 {
+			ans = (ans - term3 + m) % m
+		} else {
+			ans = (ans + term3) % m
 		}
-		fmt.Fprintln(out, ans)
-	} else { // k is even
-		powK1 := powmod(k, n-1, m)
-		powKMinus2 := powmod(k-2, n, m)
-		pow2n := powmod(2, n, m)
-		minus1 := int64(1)
-		if n%2 == 1 {
-			minus1 = m - 1
-		}
-		half := k / 2
-		ans := int64(0)
-		for r := int64(0); r < k; r += 2 {
-			var C int64 = -1
-			if (r*(n-2))%k == 0 {
-				C = half - 1
-			}
-			nod := (powKMinus2 + (minus1*pow2n%m)*C%m + m) % m
-			nod = nod * invK % m
-			lucky := (powK1 - nod + m) % m
-			ans = (ans + lucky) % m
-		}
-		fmt.Fprintln(out, ans)
+		fmt.Println(ans)
 	}
 }

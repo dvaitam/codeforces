@@ -343,7 +343,7 @@ func solveCase(rows []string, nums []int) (string, error) {
 	var out strings.Builder
 	fmt.Fprintln(&out, T)
 	for i := 0; i < 13; i++ {
-		out.Write(s[i][:15])
+		out.Write(S[i][:15])
 		out.WriteByte('\n')
 	}
 	return strings.TrimSpace(out.String()), nil

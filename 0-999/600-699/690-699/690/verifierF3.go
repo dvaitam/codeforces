@@ -8,8 +8,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -42,14 +40,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	baseDir := currentDir()
-	refBin, err := buildReference(baseDir)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
 	tests := generateTests()
 	executed := 0
 	for _, tc := range tests {
@@ -58,19 +48,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "failed to parse generated input for %s: %v\ninput:\n%s", tc.id, err, tc.input)
 			os.Exit(1)
 		}
-		refOut, err := runProgram(refBin, tc.input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference runtime error on %s: %v\ninput:\n%s", tc.id, err, tc.input)
-			os.Exit(1)
-		}
-		refVerdicts, err := parseReferenceOutputs(refOut, cases)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to parse reference output on %s: %v\noutput:\n%s", tc.id, err, refOut)
-			os.Exit(1)
-		}
-		if err := verifyCandidateOutput(refOut, cases, refVerdicts); err != nil {
-			fmt.Fprintf(os.Stderr, "skipping test %s due to reference self-check failure: %v\n", tc.id, err)
-			continue
+		refVerdicts := make([]bool, len(cases))
+		for i, cs := range cases {
+			refVerdicts[i] = solveCase(cs)
 		}
 		candOut, err := runProgram(target, tc.input)
 		if err != nil {
@@ -89,23 +69,83 @@ func main() {
 	fmt.Printf("All %d tests passed.\n", executed)
 }
 
-func currentDir() string {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		panic("cannot determine current file path")
+// solveCase determines if a valid tree of size n exists whose vertex-removal
+// forests match all given drawings (using canonical forest isomorphism).
+func solveCase(cs caseInfo) bool {
+	can := newCanonizer()
+	// For each drawing, try adding a new node connected to each existing node,
+	// then check if removing some vertex from the resulting tree produces
+	// forests matching all other drawings.
+	drawingHashes := make([]int, len(cs.drawings))
+	for i, d := range cs.drawings {
+		drawingHashes[i] = can.canonizeForest(cloneEdges(d))
 	}
-	return filepath.Dir(file)
+	// Try: for each drawing as the "base" (the one missing a leaf),
+	// add a new node to it and check all other drawings.
+	for baseIdx, base := range cs.drawings {
+		m := 0
+		for _, p := range base {
+			if p[0]+1 > m {
+				m = p[0] + 1
+			}
+			if p[1]+1 > m {
+				m = p[1] + 1
+			}
+		}
+		newNode := m
+		// The base drawing has n-2 edges (tree of n-1 nodes minus nothing,
+		// it's a forest). We need n-1 edges total for a tree of n nodes.
+		// So we add one edge connecting newNode to some existing node.
+		for attach := 0; attach < m; attach++ {
+			candidate := make([][2]int, len(base)+1)
+			copy(candidate, base)
+			candidate[len(base)] = [2]int{attach, newNode}
+			// Check: is this a tree with n nodes?
+			nNodes := newNode + 1
+			if nNodes != cs.n {
+				continue
+			}
+			// For each vertex v in 0..nNodes-1, compute the forest obtained
+			// by removing v, and check that every drawing hash appears.
+			available := make(map[int]struct{})
+			for v := 0; v < nNodes; v++ {
+				var forest [][2]int
+				for _, e := range candidate {
+					if e[0] != v && e[1] != v {
+						forest = append(forest, e)
+					}
+				}
+				h := can.canonizeForest(forest)
+				available[h] = struct{}{}
+			}
+			allMatch := true
+			for i := 0; i < len(cs.drawings); i++ {
+				if i == baseIdx {
+					continue
+				}
+				if _, ok := available[drawingHashes[i]]; !ok {
+					allMatch = false
+					break
+				}
+			}
+			if !allMatch {
+				continue
+			}
+			// Also check baseIdx drawing itself
+			if _, ok := available[drawingHashes[baseIdx]]; !ok {
+				continue
+			}
+			return true
+		}
+		// Also try: base drawing IS already n-1 nodes (tree minus a leaf = forest
+		// that is still a tree). The missing vertex was a leaf.
+		// In that case we added a leaf above already. But also consider:
+		// base could be n-1 nodes as a forest (not connected).
+		// The attach loop above covers adding one edge. That should suffice.
+	}
+	return false
 }
 
-func buildReference(dir string) (string, error) {
-	out := filepath.Join(dir, "ref690F3.bin")
-	cmd := exec.Command("go", "build", "-o", out, "690F3.go")
-	cmd.Dir = dir
-	if data, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("go build failed: %v\n%s", err, data)
-	}
-	return out, nil
-}
 
 func runProgram(target, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -156,37 +196,6 @@ func parseInputCases(input string) ([]caseInfo, error) {
 	return cases, nil
 }
 
-func parseReferenceOutputs(output string, cases []caseInfo) ([]bool, error) {
-	ts := newTokenStream(output)
-	verdicts := make([]bool, len(cases))
-	for i, cs := range cases {
-		token, err := ts.nextToken()
-		if err != nil {
-			return nil, fmt.Errorf("missing verdict for case %d: %v", i+1, err)
-		}
-		switch strings.ToLower(token) {
-		case "no":
-			verdicts[i] = false
-		case "yes":
-			verdicts[i] = true
-			required := cs.n - 1
-			for e := 0; e < required; e++ {
-				if _, err := ts.nextInt(); err != nil {
-					return nil, fmt.Errorf("reference case %d missing edge endpoint: %v", i+1, err)
-				}
-				if _, err := ts.nextInt(); err != nil {
-					return nil, fmt.Errorf("reference case %d missing edge endpoint: %v", i+1, err)
-				}
-			}
-		default:
-			return nil, fmt.Errorf("reference case %d invalid verdict token %q", i+1, token)
-		}
-	}
-	if token, err := ts.nextToken(); err == nil {
-		return nil, fmt.Errorf("reference output has extra token %q", token)
-	}
-	return verdicts, nil
-}
 
 func verifyCandidateOutput(output string, cases []caseInfo, refVerdicts []bool) error {
 	ts := newTokenStream(output)

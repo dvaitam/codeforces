@@ -6,22 +6,106 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+// Embedded correct solver for 1403A.
+func solveCase(input string) string {
+	r := strings.NewReader(input)
+	var N, D, U, Q int
+	fmt.Fscan(r, &N, &D, &U, &Q)
+	H := make([]int, N)
+	for i := 0; i < N; i++ {
+		fmt.Fscan(r, &H[i])
 	}
-	oracle := filepath.Join(dir, "oracleA")
-	cmd := exec.Command("go", "build", "-o", oracle, "1403A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	upU := make([][2]int, U)
+	for i := 0; i < U; i++ {
+		fmt.Fscan(r, &upU[i][0], &upU[i][1])
 	}
-	return oracle, nil
+	type Query struct{ x, y, v, idx int }
+	qs := make([]Query, Q)
+	for i := 0; i < Q; i++ {
+		fmt.Fscan(r, &qs[i].x, &qs[i].y, &qs[i].v)
+		qs[i].idx = i
+	}
+	ord := make([]int, Q)
+	for i := range ord {
+		ord[i] = i
+	}
+	sort.Slice(ord, func(i, j int) bool {
+		return qs[ord[i]].v < qs[ord[j]].v
+	})
+	adj := make([]map[int]struct{}, N)
+	for i := 0; i < N; i++ {
+		adj[i] = make(map[int]struct{})
+	}
+	ans := make([]int, Q)
+
+	queryAns := func(x, y int) int {
+		Nx := adj[x]
+		Ny := adj[y]
+		if len(Nx) == 0 || len(Ny) == 0 {
+			return 1000000000
+		}
+		sx := make([]int, 0, len(Nx))
+		for u := range Nx {
+			sx = append(sx, H[u])
+		}
+		sy := make([]int, 0, len(Ny))
+		for v := range Ny {
+			sy = append(sy, H[v])
+		}
+		sort.Ints(sx)
+		sort.Ints(sy)
+		i, j, best := 0, 0, int(1e18)
+		for i < len(sx) && j < len(sy) {
+			a, b := sx[i], sy[j]
+			d := a - b
+			if d < 0 {
+				d = -d
+			}
+			if d < best {
+				best = d
+			}
+			if sx[i] < sy[j] {
+				i++
+			} else {
+				j++
+			}
+		}
+		return best
+	}
+
+	qi := 0
+	for qi < Q && qs[ord[qi]].v == 0 {
+		q := qs[ord[qi]]
+		ans[q.idx] = queryAns(q.x, q.y)
+		qi++
+	}
+	for day := 1; day <= U; day++ {
+		a := upU[day-1][0]
+		b := upU[day-1][1]
+		if _, ok := adj[a][b]; ok {
+			delete(adj[a], b)
+			delete(adj[b], a)
+		} else {
+			adj[a][b] = struct{}{}
+			adj[b][a] = struct{}{}
+		}
+		for qi < Q && qs[ord[qi]].v == day {
+			q := qs[ord[qi]]
+			ans[q.idx] = queryAns(q.x, q.y)
+			qi++
+		}
+	}
+
+	var sb strings.Builder
+	for i := 0; i < Q; i++ {
+		fmt.Fprintln(&sb, ans[i])
+	}
+	return strings.TrimSpace(sb.String())
 }
 
 func runProg(exe, input string) (string, error) {
@@ -75,21 +159,11 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input := generateCase(rng)
-		exp, err := runProg(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle runtime error on case %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
+		exp := solveCase(input)
 		got, err := runProg(bin, input)
 		if err != nil {
 			fmt.Printf("case %d: runtime error: %v\n%s", i+1, err, got)

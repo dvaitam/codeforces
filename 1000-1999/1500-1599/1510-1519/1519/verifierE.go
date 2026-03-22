@@ -1,12 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -337,9 +336,16 @@ const testcasesRaw = `100
 1
 5 5 5 5`
 
-type frac struct {
-	num int64
-	den int64
+type Frac struct {
+	n int64
+	d int64
+}
+
+type Frame struct {
+	v     int
+	pEdge int
+	idx   int
+	pool  []int
 }
 
 func gcd(a, b int64) int64 {
@@ -349,134 +355,134 @@ func gcd(a, b int64) int64 {
 	return a
 }
 
-func abs(x int64) int64 {
+func absInt64(x int64) int64 {
 	if x < 0 {
 		return -x
 	}
 	return x
 }
 
-func reduce(a, b int64) frac {
-	if a == 0 && b == 0 {
-		return frac{0, 1}
-	}
-	if b == 0 {
-		return frac{1, 0}
-	}
-	if a == 0 {
-		return frac{0, 1}
-	}
-	g := gcd(abs(a), abs(b))
-	a /= g
-	b /= g
-	if b < 0 {
-		a = -a
-		b = -b
-	}
-	return frac{a, b}
-}
-
+// computeExpected uses the correct iterative solver from the accepted solution.
 func computeExpected() (string, error) {
-	in := bufio.NewReader(strings.NewReader(testcasesRaw))
-	var out bytes.Buffer
-
-	var n int
-	fmt.Fscan(in, &n)
-	A := make([]int64, n)
-	B := make([]int64, n)
-	C := make([]int64, n)
-	D := make([]int64, n)
-	for i := 0; i < n; i++ {
-		fmt.Fscan(in, &A[i], &B[i], &C[i], &D[i])
+	fields := strings.Fields(testcasesRaw)
+	pos := 0
+	nextInt := func() int64 {
+		v, _ := strconv.ParseInt(fields[pos], 10, 64)
+		pos++
+		return v
 	}
 
-	f1 := make([]frac, n)
-	f2 := make([]frac, n)
-	list := make([]frac, 0, 2*n)
-	for i := 0; i < n; i++ {
-		a1 := (A[i] + B[i]) * D[i]
-		b1 := B[i] * C[i]
-		f1[i] = reduce(a1, b1)
-		list = append(list, f1[i])
-		a2 := A[i] * D[i]
-		b2 := B[i] * (C[i] + D[i])
-		f2[i] = reduce(a2, b2)
-		list = append(list, f2[i])
-	}
+	n := int(nextInt())
 
-	sort.Slice(list, func(i, j int) bool {
-		if list[i].num != list[j].num {
-			return list[i].num < list[j].num
+	idMap := make(map[Frac]int, 2*n)
+	adj := make([][]int, 0, 2*n)
+
+	getID := func(f Frac) int {
+		if id, ok := idMap[f]; ok {
+			return id
 		}
-		return list[i].den < list[j].den
-	})
-	uniq := make([]frac, 0, len(list))
-	for i, v := range list {
-		if i == 0 || v != list[i-1] {
-			uniq = append(uniq, v)
+		id := len(adj)
+		idMap[f] = id
+		adj = append(adj, nil)
+		return id
+	}
+
+	eu := make([]int, n+1)
+	ev := make([]int, n+1)
+
+	for i := 1; i <= n; i++ {
+		a := nextInt()
+		b := nextInt()
+		c := nextInt()
+		d := nextInt()
+
+		num1 := c * b
+		den1 := d * (a + b)
+		g1 := gcd(absInt64(num1), absInt64(den1))
+		if g1 == 0 {
+			g1 = 1
 		}
-	}
-	idxMap := make(map[frac]int, len(uniq))
-	for i, v := range uniq {
-		idxMap[v] = i
+		f1 := Frac{num1 / g1, den1 / g1}
+
+		num2 := b * (c + d)
+		den2 := a * d
+		g2 := gcd(absInt64(num2), absInt64(den2))
+		if g2 == 0 {
+			g2 = 1
+		}
+		f2 := Frac{num2 / g2, den2 / g2}
+
+		u := getID(f1)
+		v := getID(f2)
+
+		eu[i] = u
+		ev[i] = v
+		adj[u] = append(adj[u], i)
+		adj[v] = append(adj[v], i)
 	}
 
-	type edge struct{ to, eid int }
-	V := len(uniq)
-	adj := make([][]edge, V)
-	for i := 0; i < n; i++ {
-		u := idxMap[f1[i]]
-		v := idxMap[f2[i]]
-		adj[u] = append(adj[u], edge{v, i})
-		adj[v] = append(adj[v], edge{u, i})
-	}
+	visV := make([]bool, len(adj))
+	visE := make([]bool, n+1)
+	ans := make([][2]int, 0, n/2)
+	stack := make([]Frame, 0, 64)
 
-	vis := make([]bool, V)
-	depth := make([]int, V)
-	res := make([][2]int, 0, n/2)
+	for root := 0; root < len(adj); root++ {
+		if visV[root] {
+			continue
+		}
+		visV[root] = true
+		stack = append(stack[:0], Frame{v: root, pEdge: -1})
 
-	var dfs func(int, int, int) int
-	dfs = func(u, pre, d int) int {
-		vis[u] = true
-		depth[u] = d
-		cur := -1
-		for _, e := range adj[u] {
-			v := e.to
-			tmp := -1
-			if vis[v] {
-				if depth[u] < depth[v] {
-					tmp = e.eid
+		for len(stack) > 0 {
+			top := len(stack) - 1
+			if stack[top].idx < len(adj[stack[top].v]) {
+				eid := adj[stack[top].v][stack[top].idx]
+				stack[top].idx++
+				if visE[eid] {
+					continue
+				}
+				visE[eid] = true
+
+				to := eu[eid]
+				if to == stack[top].v {
+					to = ev[eid]
+				}
+
+				if !visV[to] {
+					visV[to] = true
+					stack = append(stack, Frame{v: to, pEdge: eid})
+				} else {
+					stack[top].pool = append(stack[top].pool, eid)
 				}
 			} else {
-				tmp = dfs(v, e.eid, d+1)
-			}
-			if tmp == -1 {
-				continue
-			}
-			if cur == -1 {
-				cur = tmp
-			} else {
-				res = append(res, [2]int{cur, tmp})
-				cur = -1
+				pool := stack[top].pool
+				for len(pool) >= 2 {
+					e1 := pool[len(pool)-1]
+					e2 := pool[len(pool)-2]
+					pool = pool[:len(pool)-2]
+					ans = append(ans, [2]int{e1, e2})
+				}
+
+				pEdge := stack[top].pEdge
+				usedParent := false
+				if pEdge != -1 && len(pool) == 1 {
+					ans = append(ans, [2]int{pool[0], pEdge})
+					usedParent = true
+				}
+
+				stack = stack[:top]
+				if len(stack) > 0 && pEdge != -1 && !usedParent {
+					parent := len(stack) - 1
+					stack[parent].pool = append(stack[parent].pool, pEdge)
+				}
 			}
 		}
-		if cur >= 0 && pre >= 0 {
-			res = append(res, [2]int{cur, pre})
-			cur = -1
-			pre = -1
-		}
-		return pre
 	}
 
-	for i := 0; i < V; i++ {
-		if !vis[i] {
-			dfs(i, -1, 0)
-		}
-	}
-
-	fmt.Fprintln(&out, len(res))
-	for _, p := range res {
-		fmt.Fprintf(&out, "%d %d\n", p[0]+1, p[1]+1)
+	var out bytes.Buffer
+	fmt.Fprintln(&out, len(ans))
+	for _, p := range ans {
+		fmt.Fprintf(&out, "%d %d\n", p[0], p[1])
 	}
 
 	return strings.TrimSpace(out.String()), nil
@@ -511,6 +517,108 @@ func runCandidate(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+// validateOutput checks that the candidate output is a valid matching.
+// It verifies: correct count, valid pairs, no repeated edges, and each pair is
+// geometrically valid (the two points can be moved onto a line through the origin).
+func validateOutput(expected, got string) bool {
+	// First compare the count line
+	expLines := strings.Split(expected, "\n")
+	gotLines := strings.Split(got, "\n")
+	if len(expLines) == 0 || len(gotLines) == 0 {
+		return false
+	}
+	// The count (first line) must match
+	if strings.TrimSpace(expLines[0]) != strings.TrimSpace(gotLines[0]) {
+		return false
+	}
+	expCount, err := strconv.Atoi(strings.TrimSpace(expLines[0]))
+	if err != nil {
+		return false
+	}
+	if len(gotLines) < expCount+1 {
+		return false
+	}
+
+	// Parse all input data to validate pairs
+	fields := strings.Fields(testcasesRaw)
+	pos := 0
+	nextInt := func() int64 {
+		v, _ := strconv.ParseInt(fields[pos], 10, 64)
+		pos++
+		return v
+	}
+	n := int(nextInt())
+
+	type PointData struct {
+		a, b, c, d int64
+	}
+	points := make([]PointData, n+1)
+	for i := 1; i <= n; i++ {
+		points[i] = PointData{nextInt(), nextInt(), nextInt(), nextInt()}
+	}
+
+	// Check each pair in got
+	used := make([]bool, n+1)
+	for i := 1; i <= expCount; i++ {
+		parts := strings.Fields(gotLines[i])
+		if len(parts) != 2 {
+			return false
+		}
+		p1, err1 := strconv.Atoi(parts[0])
+		p2, err2 := strconv.Atoi(parts[1])
+		if err1 != nil || err2 != nil {
+			return false
+		}
+		if p1 < 1 || p1 > n || p2 < 1 || p2 > n || p1 == p2 {
+			return false
+		}
+		if used[p1] || used[p2] {
+			return false
+		}
+		used[p1] = true
+		used[p2] = true
+
+		// Validate geometric condition:
+		// Point i has coords (a_i/b_i, c_i/d_i).
+		// After moving +1 to either x or y for each point, both must lie on a line through origin.
+		// A point on line through origin satisfies y/x = const (slope).
+		// For point i moved in x: new = (a_i/b_i + 1, c_i/d_i), slope = c_i*b_i / (d_i*(a_i+b_i))
+		// For point i moved in y: new = (a_i/b_i, c_i/d_i + 1), slope = b_i*(c_i+d_i) / (a_i*d_i)
+		// Two points can be paired if they share a slope option.
+		canPair := func(i, j int) bool {
+			pi := points[i]
+			pj := points[j]
+			// slopes for point i
+			// slope_ix = c_i*b_i / (d_i*(a_i+b_i))
+			// slope_iy = b_i*(c_i+d_i) / (a_i*d_i)
+			// slopes for point j similarly
+			// Compare as fractions: a/b == c/d iff a*d == b*c
+			type slope struct{ num, den int64 }
+			slopesI := [2]slope{
+				{pi.c * pi.b, pi.d * (pi.a + pi.b)},
+				{pi.b * (pi.c + pi.d), pi.a * pi.d},
+			}
+			slopesJ := [2]slope{
+				{pj.c * pj.b, pj.d * (pj.a + pj.b)},
+				{pj.b * (pj.c + pj.d), pj.a * pj.d},
+			}
+			for _, si := range slopesI {
+				for _, sj := range slopesJ {
+					if si.num*sj.den == si.den*sj.num {
+						return true
+					}
+				}
+			}
+			return false
+		}
+
+		if !canPair(p1, p2) {
+			return false
+		}
+	}
+	return true
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierE.go /path/to/binary")
@@ -536,9 +644,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	if strings.TrimSpace(got) != expected {
-		fmt.Printf("verification failed\nexpected:\n%s\n\ngot:\n%s\n", expected, got)
-		os.Exit(1)
+	if strings.TrimSpace(got) == expected {
+		fmt.Println("All tests passed")
+		return
 	}
-	fmt.Println("All tests passed")
+
+	// If not exact match, validate the output structurally
+	if validateOutput(expected, got) {
+		fmt.Println("All tests passed")
+		return
+	}
+
+	fmt.Printf("verification failed\nexpected:\n%s\n\ngot:\n%s\n", expected, got)
+	os.Exit(1)
 }

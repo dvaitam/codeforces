@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -596,55 +597,121 @@ func parseTestcases() ([]testCase, error) {
 	return res, nil
 }
 
-// solve mirrors 1503D.go.
+// Embedded correct solver from the accepted solution for 1503D.
+type Card struct {
+	x, y      int
+	origState int
+}
+
 func solve(tc testCase) int {
 	n := tc.n
-	a := tc.a
-	b := tc.b
-	if n > 16 {
-		return -1
+	if n == 0 {
+		return 0
 	}
-	m := 1 << n
-	minFlip := -1
-	for mask := 0; mask < m; mask++ {
-		front := make([]int, n)
-		back := make([]int, n)
-		flips := 0
-		for i := 0; i < n; i++ {
-			if mask>>i&1 == 1 {
-				front[i] = b[i]
-				back[i] = a[i]
-				flips++
-			} else {
-				front[i] = a[i]
-				back[i] = b[i]
-			}
+
+	cards := make([]Card, n)
+	for i := 0; i < n; i++ {
+		u, v := tc.a[i], tc.b[i]
+		x, y := u, v
+		orig := 0
+		if u > v {
+			x, y = v, u
+			orig = 1
 		}
-		idx := make([]int, n)
-		for i := 0; i < n; i++ {
-			idx[i] = i
+		cards[i] = Card{x, y, orig}
+	}
+
+	sort.Slice(cards, func(i, j int) bool {
+		return cards[i].x < cards[j].x
+	})
+
+	for i := 0; i < n; i++ {
+		if cards[i].x != i+1 {
+			return -1
 		}
-		for i := 0; i < n; i++ {
-			for j := i + 1; j < n; j++ {
-				if front[idx[i]] > front[idx[j]] {
-					idx[i], idx[j] = idx[j], idx[i]
+	}
+
+	y := make([]int, n)
+	for i := 0; i < n; i++ {
+		y[i] = cards[i].y
+	}
+
+	pMin := make([]int, n)
+	pMin[0] = y[0]
+	for i := 1; i < n; i++ {
+		if y[i] < pMin[i-1] {
+			pMin[i] = y[i]
+		} else {
+			pMin[i] = pMin[i-1]
+		}
+	}
+
+	sMax := make([]int, n)
+	sMax[n-1] = y[n-1]
+	for i := n - 2; i >= 0; i-- {
+		if y[i] > sMax[i+1] {
+			sMax[i] = y[i]
+		} else {
+			sMax[i] = sMax[i+1]
+		}
+	}
+
+	splits := make([]bool, n)
+	for i := 0; i < n-1; i++ {
+		if pMin[i] > sMax[i+1] {
+			splits[i] = true
+		}
+	}
+
+	totalFlips := 0
+	start := 0
+	for i := 0; i < n; i++ {
+		if i == n-1 || splits[i] {
+			end := i
+			v0 := 1000000000
+			v1 := 1000000000
+			costSame := 0
+			costDiff := 0
+
+			for j := start; j <= end; j++ {
+				val := y[j]
+				color := -1
+				if val < v0 && val < v1 {
+					if v0 < v1 {
+						v0 = val
+						color = 0
+					} else {
+						v1 = val
+						color = 1
+					}
+				} else if val < v0 {
+					v0 = val
+					color = 0
+				} else if val < v1 {
+					v1 = val
+					color = 1
+				} else {
+					return -1
+				}
+
+				if color == cards[j].origState {
+					costSame++
+				} else {
+					costDiff++
 				}
 			}
-		}
-		ok := true
-		for i := 1; i < n; i++ {
-			if back[idx[i-1]] <= back[idx[i]] {
-				ok = false
-				break
+
+			if costSame < costDiff {
+				totalFlips += costSame
+			} else {
+				totalFlips += costDiff
 			}
-		}
-		if ok {
-			if minFlip == -1 || flips < minFlip {
-				minFlip = flips
-			}
+
+			start = i + 1
 		}
 	}
-	return minFlip
+
+	return totalFlips
 }
 
 func runCandidate(bin string, tc testCase) (string, error) {

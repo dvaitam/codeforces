@@ -1,242 +1,245 @@
 package main
 
 import (
-   "bufio"
-   "container/heap"
-   "fmt"
-   "os"
+	"bufio"
+	"container/heap"
+	"fmt"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
 )
 
-// Node holds position p, current power z, and original index n
-type Node struct {
-   p, z, n int
+type Event struct {
+	T    int64
+	Type int
+	i    int
+	j    int
+	v_i  int
+	v_j  int
 }
 
-// Item is an entry in the priority queue
-type Item struct {
-   idx  int // sorted index
-   z    int // time until collision
-   orig int // original index for tie-breaker
+type PQ []Event
+
+func (pq PQ) Len() int { return len(pq) }
+func (pq PQ) Less(i, j int) bool {
+	if pq[i].T != pq[j].T {
+		return pq[i].T < pq[j].T
+	}
+	return pq[i].Type < pq[j].Type
+}
+func (pq PQ) Swap(i, j int) { pq[i], pq[j] = pq[j], pq[i] }
+func (pq *PQ) Push(x interface{}) {
+	*pq = append(*pq, x.(Event))
+}
+func (pq *PQ) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	*pq = old[0 : n-1]
+	return item
 }
 
-// A PriorityQueue implements heap.Interface and holds Items.
-type PriorityQueue []Item
-
-func (pq PriorityQueue) Len() int { return len(pq) }
-func (pq PriorityQueue) Less(i, j int) bool {
-   if pq[i].z != pq[j].z {
-       return pq[i].z < pq[j].z
-   }
-   return pq[i].orig < pq[j].orig
+type Frog struct {
+	id        int64
+	p         int64
+	a         int64
+	C         int64
+	laps      int64
+	next      int
+	prev      int
+	active    bool
+	version   int
+	knockouts int64
+	orig_idx  int
 }
-func (pq PriorityQueue) Swap(i, j int) { pq[i], pq[j] = pq[j], pq[i] }
-func (pq *PriorityQueue) Push(x interface{}) { *pq = append(*pq, x.(Item)) }
-func (pq *PriorityQueue) Pop() interface{} {
-   old := *pq
-   n := len(old)
-   item := old[n-1]
-   *pq = old[0 : n-1]
-   return item
+
+var frogs []Frog
+var n int64
+var m int64
+
+func Jumps(id int64, n int64, T int64) int64 {
+	return (T - id + n) / n
+}
+
+func floorDiv(a, b int64) int64 {
+	if a >= 0 {
+		return a / b
+	}
+	return (a - b + 1) / b
+}
+
+func ceilDiv(a, b int64) int64 {
+	if a >= 0 {
+		return (a + b - 1) / b
+	}
+	return a / b
+}
+
+func catchTime(i, j int, T_curr int64) int64 {
+	if frogs[i].a == 0 {
+		return -1
+	}
+	R_min := floorDiv(T_curr-frogs[i].id, n) + 2
+
+	delta_j := int64(0)
+	if frogs[i].id < frogs[j].id {
+		delta_j = -1
+	}
+
+	Delta := frogs[i].a - frogs[j].a
+	K := frogs[j].C + frogs[i].laps*m - frogs[i].C + delta_j*frogs[j].a
+
+	var R int64
+	if Delta > 0 {
+		R = ceilDiv(K, Delta)
+		if R < R_min {
+			R = R_min
+		}
+	} else {
+		if R_min*Delta >= K {
+			R = R_min
+		} else {
+			return -1
+		}
+	}
+
+	return frogs[i].id + (R-1)*n
+}
+
+func updateState(i int, T int64) {
+	J := Jumps(frogs[i].id, n, T)
+	X := frogs[i].C + J*frogs[i].a
+	frogs[i].a -= frogs[i].knockouts
+	if frogs[i].a < 0 {
+		frogs[i].a = 0
+	}
+	frogs[i].C = X - J*frogs[i].a
+	frogs[i].knockouts = 0
+	frogs[i].version++
 }
 
 func main() {
-   in := bufio.NewReader(os.Stdin)
-   out := bufio.NewWriter(os.Stdout)
-   defer out.Flush()
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
 
-   var n int
-   var m int64
-   fmt.Fscan(in, &n, &m)
-   a := make([]Node, n)
-   for i := 0; i < n; i++ {
-       fmt.Fscan(in, &a[i].p, &a[i].z)
-       a[i].n = i + 1
-   }
-   // sort by p
-   // simple insertion sort for small code; use sort.Slice
-   // but import sort
-   // We'll use sort.Slice
-   // Actually import sort
-   // sort by a[i].p
-   // -----
-   // Import sort
-   //
-   // Do sort
-   importSort(a)
+	scanInt64 := func() int64 {
+		scanner.Scan()
+		val, _ := strconv.ParseInt(scanner.Text(), 10, 64)
+		return val
+	}
 
-   // map original index to sorted index
-   pl := make([]int, n+1)
-   for i := 0; i < n; i++ {
-       pl[a[i].n] = i
-   }
-   nex := make([]int, n)
-   pre := make([]int, n)
-   c := make([]bool, n)
-   add := make([]int64, n)
-   w := make([]int, n)
-   for i := 0; i < n; i++ {
-       c[i] = true
-   }
-   var pq PriorityQueue
-   heap.Init(&pq)
-   // initialize neighbors and queue
-   for j := 1; j <= n; j++ {
-       i := pl[j]
-       k := (i + 1) % n
-       nex[i] = k
-       pre[k] = i
-       z := Find(i, k, a, add, m)
-       if z > 0 {
-           w[i] = z
-           heap.Push(&pq, Item{idx: i, z: z, orig: a[i].n})
-       }
-   }
-   // process collisions
-   for pq.Len() > 0 {
-       item := heap.Pop(&pq).(Item)
-       x, z := item.idx, item.z
-       if !c[x] || w[x] != z {
-           continue
-       }
-       // remove next
-       c[nex[x]] = false
-       nex[x] = nex[nex[x]]
-       num := 1
-       for {
-           vl := Find(x, nex[x], a, add, m)
-           if vl == z {
-               c[nex[x]] = false
-               nex[x] = nex[nex[x]]
-               num++
-           } else {
-               break
-           }
-       }
-       // update current
-       a[x].z -= num
-       if a[x].z < 0 {
-           a[x].z = 0
-       }
-       pre[nex[x]] = x
-       add[x] += int64(num) * int64(z)
-       // re-evaluate x
-       z2 := Find(x, nex[x], a, add, m)
-       if z2 > 0 {
-           w[x] = z2
-           heap.Push(&pq, Item{idx: x, z: z2, orig: a[x].n})
-       } else {
-           w[x] = 0
-       }
-       // re-evaluate previous of x
-       px := pre[x]
-       z3 := Find(px, x, a, add, m)
-       if z3 > 0 {
-           w[px] = z3
-           heap.Push(&pq, Item{idx: px, z: z3, orig: a[px].n})
-       } else {
-           w[px] = 0
-       }
-   }
-   // collect survivors
-   var ans []int
-   for i := 0; i < n; i++ {
-       if c[i] {
-           ans = append(ans, a[i].n)
-       }
-   }
-   // sort answer
-   importSortInts(ans)
-   fmt.Fprintln(out, len(ans))
-   for _, v := range ans {
-       fmt.Fprint(out, v, " ")
-   }
-   fmt.Fprintln(out)
-}
+	if !scanner.Scan() {
+		return
+	}
+	n = 0
+	nStr := scanner.Text()
+	n, _ = strconv.ParseInt(nStr, 10, 64)
+	m = scanInt64()
 
-// Find computes time until collision between x and k
-func Find(x, k int, a []Node, add []int64, m int64) int {
-   if x == k {
-       return 0
-   }
-   // distance in p
-   l := int64(a[k].p - a[x].p)
-   if l <= 0 {
-       l += m
-   }
-   l += add[k] - add[x]
-   t := int64(0)
-   if a[x].n < a[k].n {
-       l -= int64(a[x].z)
-       t = 1
-   }
-   if l <= 0 && add[x] == 0 && add[k] == 0 {
-       return 1
-   }
-   if a[k].z < a[x].z {
-       d := int64(a[x].z - a[k].z)
-       return int((l-1)/d + t + 1)
-   }
-   return 0
-}
+	frogs = make([]Frog, n)
+	for i := int64(0); i < n; i++ {
+		p := scanInt64()
+		a := scanInt64()
+		frogs[i] = Frog{
+			id:        i + 1,
+			p:         p,
+			a:         a,
+			active:    true,
+			orig_idx:  int(i + 1),
+		}
+	}
 
-// sorting helpers
-// import sort via functions below
-func importSort(a []Node) {
-   // simple sort.Slice replacement
-   // using built-in sort
-   // to avoid import cycle in patch, we use closure
-   type byP []Node
-   // sort by p ascending
-   // implement sort.Interface
-   var s byP = a
-   // implement methods
-   sortByP(s)
-}
+	sort.Slice(frogs, func(i, j int) bool {
+		return frogs[i].p < frogs[j].p
+	})
 
-func importSortInts(a []int) {
-   // simple insertion sort for ints
-   for i := 1; i < len(a); i++ {
-       key := a[i]
-       j := i - 1
-       for j >= 0 && a[j] > key {
-           a[j+1] = a[j]
-           j--
-       }
-       a[j+1] = key
-   }
-}
+	for k := 0; k < int(n); k++ {
+		frogs[k].prev = (k - 1 + int(n)) % int(n)
+		frogs[k].next = (k + 1) % int(n)
+		if k == int(n)-1 {
+			frogs[k].laps = 1
+		} else {
+			frogs[k].laps = 0
+		}
+		frogs[k].C = frogs[k].p
+	}
 
-// sort.Interface implementation for Node by p
-// to minimize imports
-var _sortData []Node
-func sortByP(data []Node) {
-   _sortData = data
-   quickSort(0, len(data)-1)
-}
+	pq := &PQ{}
+	heap.Init(pq)
 
-func quickSort(l, r int) {
-   if l >= r {
-       return
-   }
-   mid := _sortData[(l+r)/2].p
-   i, j := l, r
-   for i <= j {
-       for _sortData[i].p < mid {
-           i++
-       }
-       for _sortData[j].p > mid {
-           j--
-       }
-       if i <= j {
-           _sortData[i], _sortData[j] = _sortData[j], _sortData[i]
-           i++
-           j--
-       }
-   }
-   if l < j {
-       quickSort(l, j)
-   }
-   if i < r {
-       quickSort(i, r)
-   }
+	for k := 0; k < int(n); k++ {
+		T := catchTime(k, frogs[k].next, 0)
+		if T != -1 {
+			heap.Push(pq, Event{T, 0, k, frogs[k].next, 0, 0})
+		}
+	}
+
+	activeCount := int(n)
+
+	for pq.Len() > 0 {
+		if activeCount <= 1 {
+			break
+		}
+		ev := heap.Pop(pq).(Event)
+
+		if ev.Type == 0 {
+			i := ev.i
+			j := ev.j
+			if !frogs[i].active || !frogs[j].active || frogs[i].next != j {
+				continue
+			}
+			if frogs[i].version != ev.v_i || frogs[j].version != ev.v_j {
+				continue
+			}
+
+			frogs[j].active = false
+			activeCount--
+			if activeCount <= 1 {
+				break
+			}
+
+			nxt := frogs[j].next
+			frogs[i].next = nxt
+			frogs[nxt].prev = i
+			frogs[i].laps += frogs[j].laps
+			frogs[i].knockouts++
+
+			T_new := catchTime(i, nxt, ev.T-1)
+			if T_new != -1 {
+				heap.Push(pq, Event{T_new, 0, i, nxt, frogs[i].version, frogs[nxt].version})
+			}
+
+			heap.Push(pq, Event{ev.T, 1, i, 0, frogs[i].version, 0})
+		} else {
+			i := ev.i
+			if !frogs[i].active || frogs[i].version != ev.v_i {
+				continue
+			}
+			if frogs[i].knockouts > 0 {
+				updateState(i, ev.T)
+
+				prv := frogs[i].prev
+				T_prv := catchTime(prv, i, ev.T)
+				if T_prv != -1 {
+					heap.Push(pq, Event{T_prv, 0, prv, i, frogs[prv].version, frogs[i].version})
+				}
+
+				nxt := frogs[i].next
+				T_nxt := catchTime(i, nxt, ev.T)
+				if T_nxt != -1 {
+					heap.Push(pq, Event{T_nxt, 0, i, nxt, frogs[i].version, frogs[nxt].version})
+				}
+			}
+		}
+	}
+
+	fmt.Println(activeCount)
+	var out []string
+	for _, f := range frogs {
+		if f.active {
+			out = append(out, strconv.Itoa(f.orig_idx))
+		}
+	}
+	fmt.Println(strings.Join(out, " "))
 }

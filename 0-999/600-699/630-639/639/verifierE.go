@@ -3,10 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -143,7 +145,13 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:%s", i+1, err, in)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != strings.TrimSpace(exp) {
+		expVal, err1 := strconv.ParseFloat(strings.TrimSpace(exp), 64)
+		outVal, err2 := strconv.ParseFloat(strings.TrimSpace(out), 64)
+		if err1 != nil || err2 != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: cannot parse floats: expected %s got %s\ninput:%s", i+1, exp, out, in)
+			os.Exit(1)
+		}
+		if math.Abs(expVal-outVal) > 1e-6 {
 			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:%s", i+1, exp, out, in)
 			os.Exit(1)
 		}

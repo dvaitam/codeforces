@@ -6,19 +6,133 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"sort"
 	"strings"
 )
 
-func buildRef() (string, error) {
-	tmp := filepath.Join(os.TempDir(), "refC")
-	cmd := exec.Command("go", "build", "-o", tmp, "1310C.go")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return "", err
+// Embedded reference solver from the accepted solution.
+func refSolve(input string) string {
+	r := strings.NewReader(input)
+	var n, m int
+	var k int64
+	fmt.Fscan(r, &n, &m, &k)
+	var s string
+	fmt.Fscan(r, &s)
+
+	lcp := make([][]int, n+1)
+	for i := range lcp {
+		lcp[i] = make([]int, n+1)
 	}
-	return tmp, nil
+	for i := n - 1; i >= 0; i-- {
+		for j := n - 1; j >= 0; j-- {
+			if s[i] == s[j] {
+				lcp[i][j] = 1 + lcp[i+1][j+1]
+			} else {
+				lcp[i][j] = 0
+			}
+		}
+	}
+
+	sa := make([]int, n)
+	for i := 0; i < n; i++ {
+		sa[i] = i
+	}
+	sort.Slice(sa, func(i, j int) bool {
+		a, b := sa[i], sa[j]
+		l := lcp[a][b]
+		if a+l == n {
+			return true
+		}
+		if b+l == n {
+			return false
+		}
+		return s[a+l] < s[b+l]
+	})
+
+	adjLcp := make([]int, n)
+	for i := 0; i < n-1; i++ {
+		adjLcp[i] = lcp[sa[i]][sa[i+1]]
+	}
+
+	type Sub struct{ p, l int }
+	var subs []Sub
+	for i := 0; i < n; i++ {
+		start := 0
+		if i > 0 {
+			start = adjLcp[i-1]
+		}
+		for l := start + 1; l <= n-sa[i]; l++ {
+			subs = append(subs, Sub{sa[i], l})
+		}
+	}
+
+	check := func(mid int) bool {
+		xP := subs[mid].p
+		xL := subs[mid].l
+
+		head := make([]int, n)
+		for i := range head {
+			head[i] = -1
+		}
+		next := make([]int, n)
+		for p := 0; p < n; p++ {
+			l := lcp[p][xP]
+			var me int
+			if l >= xL {
+				me = p + xL - 1
+			} else {
+				if p+l >= n {
+					me = n
+				} else if s[p+l] > s[xP+l] {
+					me = p + l
+				} else {
+					me = n
+				}
+			}
+			if me < n {
+				next[p] = head[me]
+				head[me] = p
+			}
+		}
+
+		dp := make([]int64, n+1)
+		dp[0] = 1
+
+		for j := 1; j <= m; j++ {
+			newDp := make([]int64, n+1)
+			sumValid := int64(0)
+			for i := 1; i <= n; i++ {
+				for p := head[i-1]; p != -1; p = next[p] {
+					sumValid += dp[p]
+					if sumValid > k {
+						sumValid = k + 1
+					}
+				}
+				newDp[i] = sumValid
+			}
+			dp = newDp
+		}
+
+		return dp[n] >= k
+	}
+
+	if len(subs) == 0 {
+		return ""
+	}
+
+	left, right := 0, len(subs)-1
+	var ans string
+	for left <= right {
+		mid := (left + right) / 2
+		if check(mid) {
+			ans = s[subs[mid].p : subs[mid].p+subs[mid].l]
+			left = mid + 1
+		} else {
+			right = mid - 1
+		}
+	}
+
+	return ans
 }
 
 func runProg(path, input string) (string, error) {
@@ -55,21 +169,11 @@ func main() {
 		os.Exit(1)
 	}
 	target := os.Args[1]
-	ref, err := buildRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 
 	rng := rand.New(rand.NewSource(42))
 	for i := 0; i < 100; i++ {
 		test := genTest(rng)
-		expected, err := runProg(ref, test)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "reference error:", err)
-			os.Exit(1)
-		}
+		expected := refSolve(test)
 		got, err := runProg(target, test)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "test %d execution error: %v\n", i+1, err)

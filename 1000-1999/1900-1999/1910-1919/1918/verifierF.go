@@ -6,9 +6,58 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
+
+// ── embedded reference solver ──────────────────────────────────────────────
+
+func referenceSolve(n, k int, parent []int) int {
+	children := make([][]int, n+1)
+	for i := 2; i <= n; i++ {
+		children[parent[i-2]] = append(children[parent[i-2]], i)
+	}
+
+	paths := make([]int, 0, n)
+
+	var dfs func(int) int
+	dfs = func(u int) int {
+		maxH := 0
+		for _, v := range children[u] {
+			h := dfs(v) + 1
+			if h > maxH {
+				if maxH > 0 {
+					paths = append(paths, maxH)
+				}
+				maxH = h
+			} else {
+				paths = append(paths, h)
+			}
+		}
+		return maxH
+	}
+
+	maxH := dfs(1)
+	if maxH > 0 {
+		paths = append(paths, maxH)
+	}
+
+	sort.Sort(sort.Reverse(sort.IntSlice(paths)))
+
+	saved := 0
+	limit := k + 1
+	if limit > len(paths) {
+		limit = len(paths)
+	}
+	for i := 0; i < limit; i++ {
+		saved += paths[i]
+	}
+
+	return 2*(n-1) - saved
+}
+
+// ── verifier harness ───────────────────────────────────────────────────────
 
 func generateCase(rng *rand.Rand) (int, int, []int) {
 	n := rng.Intn(10) + 2
@@ -40,8 +89,9 @@ func runCase(bin string, n, k int, parent []int) error {
 		return fmt.Errorf("%v\n%s", err, errBuf.String())
 	}
 	got := strings.TrimSpace(out.String())
-	if got != "0" {
-		return fmt.Errorf("expected 0 got %s", got)
+	expected := fmt.Sprintf("%d", referenceSolve(n, k, parent))
+	if got != expected {
+		return fmt.Errorf("expected %s got %s", expected, got)
 	}
 	return nil
 }

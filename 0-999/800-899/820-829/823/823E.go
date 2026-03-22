@@ -1,53 +1,49 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
+	"fmt"
 )
 
-const mod = 1000000007
-
 func main() {
-   in := bufio.NewReader(os.Stdin)
-   var k int
-   if _, err := fmt.Fscan(in, &k); err != nil {
-       return
-   }
-   // T[d]: number of descending sequences starting at a node with d levels below (empty included)
-   T := make([]int, k)
-   T[0] = 1
-   // precompute powers of 2 up to k
-   pow2 := make([]int, k+2)
-   pow2[0] = 1
-   for i := 1; i < len(pow2); i++ {
-       pow2[i] = pow2[i-1] * 2 % mod
-   }
-   // compute T[d]
-   for d := 1; d < k; d++ {
-       sum := 1 // empty sequence
-       for i := 1; i <= d; i++ {
-           // choose descendant at depth i (2^i nodes) and then sequence in subtree of size d-i
-           sum += pow2[i] * T[d-i] % mod
-           if sum >= mod {
-               sum -= mod
-           }
-       }
-       T[d] = sum
-   }
-   inv2 := (mod + 1) / 2
-   var ans int
-   // sum over d = 0..k-1, level L = k-d, nodes at level = 2^(L-1) = pow2[k-d-1]
-   for d := 0; d < k; d++ {
-       t := T[d]
-       // count of paths with minimal-depth at this node
-       // count = (t^2 + 2*t - 1) / 2 mod mod
-       cnt := (int((int64(t)*int64(t)%mod + int64(2*t)%mod - 1 + mod) % mod) * inv2) % mod
-       nodes := pow2[k-d-1]
-       ans = (ans + int((int64(nodes)*int64(cnt))%mod)) % mod
-   }
-   // output
-   w := bufio.NewWriter(os.Stdout)
-   defer w.Flush()
-   fmt.Fprint(w, ans)
+	var K int
+	fmt.Scan(&K)
+
+	mod := int64(1000000007)
+
+	dp := make([]int64, K+2)
+	dp[0] = 1
+	dp[1] = 1
+
+	for k := 2; k <= K; k++ {
+		limit := K - k + 1
+		t := make([]int64, limit+2)
+
+		for c := 0; c <= limit+1; c++ {
+			var sum int64 = 0
+			for i := 0; i <= c; i++ {
+				val := (dp[i] * dp[c-i]) % mod
+				sum = (sum + val) % mod
+			}
+			t[c] = sum
+		}
+
+		nextDp := make([]int64, limit+1)
+		for c := 0; c <= limit; c++ {
+			var res int64 = 0
+			if c > 0 {
+				res = (res + t[c-1]) % mod
+			}
+			term2 := (int64(2*c+1) * t[c]) % mod
+			res = (res + term2) % mod
+
+			term3 := (int64(c+1) * int64(c)) % mod
+			term3 = (term3 * t[c+1]) % mod
+			res = (res + term3) % mod
+
+			nextDp[c] = res
+		}
+		dp = nextDp
+	}
+
+	fmt.Println(dp[1])
 }

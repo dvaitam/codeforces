@@ -133,7 +133,11 @@ func main() {
 		n := rand.Intn(3) + 1 // complaints
 		p := rand.Intn(3) + 2 // stations
 		M := rand.Intn(4) + 2
+		maxPairs := p * (p - 1) / 2
 		m := rand.Intn(2) + 1
+		if m > maxPairs {
+			m = maxPairs
+		}
 		comps := make([]complaint, n)
 		for i := 0; i < n; i++ {
 			x := rand.Intn(p)
@@ -176,7 +180,7 @@ func main() {
 			inter = append(inter, pair{u, v})
 		}
 		// build input string
-		input := fmt.Sprintf("%d %d %d %d\n", p, n, M, m)
+		input := fmt.Sprintf("%d %d %d %d\n", n, p, M, m)
 		for _, c := range comps {
 			input += fmt.Sprintf("%d %d\n", c.x+1, c.y+1)
 		}

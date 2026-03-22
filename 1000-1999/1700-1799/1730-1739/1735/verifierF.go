@@ -2,13 +2,13 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
-	"time"
 )
 
 func buildRef() (string, error) {
@@ -21,22 +21,12 @@ func buildRef() (string, error) {
 }
 
 func runBinary(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		if ctx.Err() == context.DeadlineExceeded {
-			return "", fmt.Errorf("timeout")
-		}
 		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
 	return strings.TrimSpace(out.String()), nil
@@ -81,6 +71,30 @@ func genCases() []string {
 	return cases
 }
 
+func floatsMatch(exp, got string) bool {
+	expTokens := strings.Fields(exp)
+	gotTokens := strings.Fields(got)
+	if len(expTokens) != len(gotTokens) {
+		return false
+	}
+	for i := range expTokens {
+		a, errA := strconv.ParseFloat(expTokens[i], 64)
+		b, errB := strconv.ParseFloat(gotTokens[i], 64)
+		if errA != nil || errB != nil {
+			if expTokens[i] != gotTokens[i] {
+				return false
+			}
+			continue
+		}
+		diff := math.Abs(a - b)
+		denom := math.Max(1.0, math.Abs(b))
+		if diff/denom > 1e-6 {
+			return false
+		}
+	}
+	return true
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierF.go /path/to/binary")
@@ -106,7 +120,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "candidate failed on case %d: %v\ninput:\n%s", i+1, err, tc)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(exp) {
+		if !floatsMatch(exp, got) {
 			fmt.Fprintf(os.Stderr, "wrong answer on case %d\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, tc, exp, got)
 			os.Exit(1)
 		}

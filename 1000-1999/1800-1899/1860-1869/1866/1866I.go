@@ -1,62 +1,76 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
+	"io"
 	"os"
 )
 
 func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
-	defer out.Flush()
+	buffer, _ := io.ReadAll(os.Stdin)
+	var bpos int
 
-	var n, m, k int
-	if _, err := fmt.Fscan(in, &n, &m, &k); err != nil {
+	readInt := func() int {
+		for bpos < len(buffer) && buffer[bpos] <= ' ' {
+			bpos++
+		}
+		if bpos >= len(buffer) {
+			return 0
+		}
+		res := 0
+		for bpos < len(buffer) && buffer[bpos] > ' ' {
+			res = res*10 + int(buffer[bpos]-'0')
+			bpos++
+		}
+		return res
+	}
+
+	N := readInt()
+	if N == 0 {
 		return
 	}
+	M := readInt()
+	K := readInt()
 
-	rowHas := make([]bool, n+1)
-	colHas := make([]bool, m+1)
+	specials := make([][]int, N+1)
+	for i := 0; i < K; i++ {
+		r := readInt()
+		c := readInt()
+		specials[r] = append(specials[r], c)
+	}
 
-	immediateWin := false
-	for i := 0; i < k; i++ {
-		var x, y int
-		fmt.Fscan(in, &x, &y)
-		if x == 1 || y == 1 {
-			immediateWin = true
+	in_S := make([]bool, M+1)
+	for i := 1; i <= M; i++ {
+		in_S[i] = true
+	}
+
+	max_S := M
+
+	for r := N; r >= 1; r-- {
+		s_1 := 0
+		for _, c := range specials[r] {
+			if c > s_1 {
+				s_1 = c
+			}
 		}
-		if x >= 1 && x <= n {
-			rowHas[x] = true
+
+		for max_S > 0 && !in_S[max_S] {
+			max_S--
 		}
-		if y >= 1 && y <= m {
-			colHas[y] = true
+
+		c := max_S
+		if c > s_1 && c > 0 {
+			in_S[c] = false
+			if r == 1 && c == 1 {
+				fmt.Println("Bhinneka")
+				return
+			}
+		}
+
+		for _, sp := range specials[r] {
+			in_S[sp] = false
 		}
 	}
 
-	if immediateWin {
-		fmt.Fprintln(out, "Chaneka")
-		return
-	}
-
-	rNo := 0
-	for i := 1; i <= n; i++ {
-		if !rowHas[i] {
-			rNo++
-		}
-	}
-	cNo := 0
-	for i := 1; i <= m; i++ {
-		if !colHas[i] {
-			cNo++
-		}
-	}
-
-	rPile := rNo - 1
-	cPile := cNo - 1
-	if rPile^cPile != 0 {
-		fmt.Fprintln(out, "Chaneka")
-	} else {
-		fmt.Fprintln(out, "Bhinneka")
-	}
+	fmt.Println("Chaneka")
 }

@@ -162,6 +162,69 @@ func genCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
+func computeCost(input string, centers []int) (int, error) {
+	parts := strings.Fields(input)
+	idx := 0
+	nn := toInt(parts[idx]); idx++
+	kk := toInt(parts[idx]); idx++
+	ww := make([]int, nn+1)
+	for i := 1; i < nn; i++ {
+		ww[i] = toInt(parts[idx]); idx++
+	}
+	adjLocal := make([][]int, nn+1)
+	for i := 0; i < nn-1; i++ {
+		x := toInt(parts[idx]); idx++
+		y := toInt(parts[idx]); idx++
+		adjLocal[x] = append(adjLocal[x], y)
+		adjLocal[y] = append(adjLocal[y], x)
+	}
+	// BFS for distances
+	dd := make([][]int, nn+1)
+	for u := 1; u <= nn; u++ {
+		dist := make([]int, nn+1)
+		for i := 1; i <= nn; i++ { dist[i] = -1 }
+		dist[u] = 0
+		queue := []int{u}
+		for qi := 0; qi < len(queue); qi++ {
+			v := queue[qi]
+			for _, to := range adjLocal[v] {
+				if dist[to] < 0 {
+					dist[to] = dist[v] + 1
+					queue = append(queue, to)
+				}
+			}
+		}
+		dd[u] = dist
+	}
+	// compute cost
+	// For each node u, cost = w[dist(u, centers[u])] + k if centers[u] != centers[parent[u]]
+	// Actually: build tree rooted at 1, sum up costs
+	parentLocal := make([]int, nn+1)
+	childrenLocal := make([][]int, nn+1)
+	visited := make([]bool, nn+1)
+	visited[1] = true
+	queue := []int{1}
+	for qi := 0; qi < len(queue); qi++ {
+		v := queue[qi]
+		for _, to := range adjLocal[v] {
+			if !visited[to] {
+				visited[to] = true
+				parentLocal[to] = v
+				childrenLocal[v] = append(childrenLocal[v], to)
+				queue = append(queue, to)
+			}
+		}
+	}
+	total := 0
+	for u := 1; u <= nn; u++ {
+		total += ww[dd[u][centers[u]]]
+		if u == 1 || centers[u] != centers[parentLocal[u]] {
+			total += kk
+		}
+	}
+	return total, nil
+}
+
 func runCase(bin string, input, expected string) error {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
@@ -172,8 +235,40 @@ func runCase(bin string, input, expected string) error {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
 	got := strings.TrimSpace(out.String())
-	if got != strings.TrimSpace(expected) {
-		return fmt.Errorf("expected\n%s\nbut got\n%s", expected, got)
+	exp := strings.TrimSpace(expected)
+	// Parse expected cost
+	expParts := strings.Fields(exp)
+	gotParts := strings.Fields(got)
+	if len(expParts) == 0 || len(gotParts) == 0 {
+		if got != exp {
+			return fmt.Errorf("expected\n%s\nbut got\n%s", exp, got)
+		}
+		return nil
+	}
+	expCost := toInt(expParts[0])
+	gotCost := toInt(gotParts[0])
+	if expCost != gotCost {
+		return fmt.Errorf("cost mismatch: expected %d got %d", expCost, gotCost)
+	}
+	// Parse candidate centers and verify cost
+	inputFields := strings.Fields(strings.TrimRight(input, "\n"))
+	nn := toInt(inputFields[0])
+	if len(gotParts) != nn+1 {
+		return fmt.Errorf("expected %d+1 tokens, got %d", nn, len(gotParts))
+	}
+	centers := make([]int, nn+1)
+	for i := 1; i <= nn; i++ {
+		centers[i] = toInt(gotParts[i])
+		if centers[i] < 1 || centers[i] > nn {
+			return fmt.Errorf("center %d for node %d out of range", centers[i], i)
+		}
+	}
+	actualCost, err := computeCost(strings.TrimRight(input, "\n"), centers)
+	if err != nil {
+		return fmt.Errorf("cost verification error: %v", err)
+	}
+	if actualCost != gotCost {
+		return fmt.Errorf("claimed cost %d but actual cost %d", gotCost, actualCost)
 	}
 	return nil
 }

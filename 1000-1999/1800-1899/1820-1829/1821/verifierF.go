@@ -6,86 +6,32 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"sort"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
-const mod = 998244353
-
-func countUnfortunate(n, m, k int) int {
-	positions := make([]int, n)
-	for i := 0; i < n; i++ {
-		positions[i] = i + 1
+func buildOracle() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
 	}
-	var result int
-	var rec func(int, int, []int)
-	rec = func(start, need int, cur []int) {
-		if len(cur) == need {
-			result = (result + countOrientations(cur, k, n)) % mod
-			return
-		}
-		for i := start; i < n; i++ {
-			cur = append(cur, positions[i])
-			rec(i+1, need, cur)
-			cur = cur[:len(cur)-1]
-		}
+	oracle := filepath.Join(dir, "oracleF")
+	cmd := exec.Command("go", "build", "-o", oracle, "1821F.go")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}
-	rec(0, m, []int{})
-	return result
-}
-
-func countOrientations(pos []int, k, n int) int {
-	m := len(pos)
-	total := 0
-	maskMax := 1 << m
-	for mask := 0; mask < maskMax; mask++ {
-		intervals := make([][2]int, m)
-		ok := true
-		for i, p := range pos {
-			if (mask>>i)&1 == 0 { // left
-				l := p - k
-				r := p
-				if l < 1 || r > n {
-					ok = false
-					break
-				}
-				intervals[i] = [2]int{l, r}
-			} else { // right
-				l := p
-				r := p + k
-				if l < 1 || r > n {
-					ok = false
-					break
-				}
-				intervals[i] = [2]int{l, r}
-			}
-		}
-		if !ok {
-			continue
-		}
-		sort.Slice(intervals, func(i, j int) bool { return intervals[i][0] < intervals[j][0] })
-		for i := 1; i < m; i++ {
-			if intervals[i][0] <= intervals[i-1][1] {
-				ok = false
-				break
-			}
-		}
-		if ok {
-			total++
-		}
-	}
-	return total
+	return oracle, nil
 }
 
 func genCaseF(rng *rand.Rand) (int, int, int) {
-	n := rng.Intn(6) + 1
+	n := rng.Intn(20) + 1
 	m := rng.Intn(n) + 1
 	k := rng.Intn(n) + 1
 	return n, m, k
 }
 
-func runCandidate(bin, input string) (string, error) {
+func runBin(bin, input string) (string, error) {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
 		cmd = exec.Command("go", "run", bin)
@@ -94,10 +40,11 @@ func runCandidate(bin, input string) (string, error) {
 	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
+	var stderr bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
 	}
 	return strings.TrimSpace(out.String()), nil
 }
@@ -108,18 +55,28 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+	oracle, err := buildOracle()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer os.Remove(oracle)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		n, m, k := genCaseF(rng)
 		input := fmt.Sprintf("%d %d %d\n", n, m, k)
-		expect := fmt.Sprintf("%d", countUnfortunate(n, m, k))
-		out, err := runCandidate(bin, input)
+		expect, err := runBin(oracle, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d oracle failed: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		out, err := runBin(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
 			os.Exit(1)
 		}
 		if out != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", i+1, expect, out)
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput: %s", i+1, expect, out, input)
 			os.Exit(1)
 		}
 	}

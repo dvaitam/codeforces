@@ -1,141 +1,183 @@
 package main
 
 import (
-   "bufio"
-   "container/heap"
-   "fmt"
-   "os"
-   "sort"
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
 )
 
-type AddBasic struct {
-   typ, id int
-   val int64
-}
-
-type AddOp struct {
-   typ, id int
-   a, b int64
-}
-
-// MulOp represents an operation in the heap
-type MulOp struct {
-   typ, id, idx, addIdx int
-   a, b int64
-}
-
-// MaxHeap implements a max-heap for MulOp by ratio a/b
-type MaxHeap []MulOp
-
-func (h MaxHeap) Len() int { return len(h) }
-func (h MaxHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
-func (h MaxHeap) Less(i, j int) bool {
-   // we want h[i] to be popped first if a/b is larger
-   return h[i].a*h[j].b > h[j].a*h[i].b
-}
-func (h *MaxHeap) Push(x interface{}) {
-   *h = append(*h, x.(MulOp))
-}
-func (h *MaxHeap) Pop() interface{} {
-   old := *h
-   n := len(old)
-   x := old[n-1]
-   *h = old[0 : n-1]
-   return x
-}
-
 func main() {
-   in := bufio.NewReader(os.Stdin)
-   out := bufio.NewWriter(os.Stdout)
-   defer out.Flush()
-   var k, n, m int
-   fmt.Fscan(in, &k, &n, &m)
-   num := make([]int64, k+1)
-   for i := 1; i <= k; i++ {
-       fmt.Fscan(in, &num[i])
-   }
-   assignMx := make([]int64, k+1)
-   assignId := make([]int, k+1)
-   for i := 1; i <= k; i++ {
-       assignMx[i] = num[i]
-   }
-   addsBasic := make([][]AddBasic, k+1)
-   // operations type 3 will be pushed to heap directly
-   var h MaxHeap
-   for j := 1; j <= n; j++ {
-       var typ, idx int
-       var b int64
-       fmt.Fscan(in, &typ, &idx, &b)
-       if typ == 1 {
-           if b > assignMx[idx] {
-               assignMx[idx] = b
-               assignId[idx] = j
-           }
-       } else if typ == 2 {
-           addsBasic[idx] = append(addsBasic[idx], AddBasic{typ, j, b})
-       } else if typ == 3 {
-           // multiply by b => ratio b/1 => a=b-1, b=1
-           h = append(h, MulOp{typ: 3, id: j, a: b - 1, b: 1})
-       }
-   }
-   // prepare additions per skill and initial heap entries
-   addsOps := make([][]AddOp, k+1)
-   for i := 1; i <= k; i++ {
-       // include best assignment as an addition
-       if assignMx[i] > num[i] {
-           addsBasic[i] = append(addsBasic[i], AddBasic{typ: 1, id: assignId[i], val: assignMx[i] - num[i]})
-       }
-       if len(addsBasic[i]) == 0 {
-           continue
-       }
-       // sort descending by val
-       bs := addsBasic[i]
-       sort.Slice(bs, func(a, b int) bool {
-           return bs[a].val > bs[b].val
-       })
-       // build AddOp list with precomputed a, b
-       sum := num[i]
-       for j, it := range bs {
-           addsOps[i] = append(addsOps[i], AddOp{typ: it.typ, id: it.id, a: it.val, b: sum})
-           sum += it.val
-       }
-       // include first addition for this skill in heap
-       first := addsOps[i][0]
-       h = append(h, MulOp{typ: first.typ, id: first.id, idx: i, addIdx: 0, a: first.a, b: first.b})
-   }
-   // initialize heap with all type3 and first-addition ops
-   heap.Init(&h)
-   // select up to m operations
-   K := m
-   var res []struct{ typ, id int }
-   for K > 0 && h.Len() > 0 {
-       cur := heap.Pop(&h).(MulOp)
-       if cur.a <= 0 {
-           break
-       }
-       res = append(res, struct{ typ, id int }{cur.typ, cur.id})
-       if cur.typ < 3 {
-           // schedule next addition for this skill
-           i := cur.idx
-           j := cur.addIdx + 1
-           if j < len(addsOps[i]) {
-               op := addsOps[i][j]
-               heap.Push(&h, MulOp{typ: op.typ, id: op.id, idx: i, addIdx: j, a: op.a, b: op.b})
-           }
-       }
-       K--
-   }
-   // sort selected operations by type (1,2,3)
-   sort.Slice(res, func(i, j int) bool { return res[i].typ < res[j].typ })
-   // output
-   fmt.Fprintln(out, len(res))
-   for i, v := range res {
-       if i > 0 {
-           out.WriteByte(' ')
-       }
-       fmt.Fprint(out, v.id)
-   }
-   if len(res) > 0 {
-       out.WriteByte('\n')
-   }
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
+	scanner.Buffer(make([]byte, 1024*1024), 10*1024*1024)
+
+	scanInt := func() int {
+		if !scanner.Scan() {
+			return 0
+		}
+		s := scanner.Bytes()
+		res := 0
+		for _, b := range s {
+			res = res*10 + int(b-'0')
+		}
+		return res
+	}
+
+	scanInt64 := func() int64 {
+		if !scanner.Scan() {
+			return 0
+		}
+		s := scanner.Bytes()
+		res := int64(0)
+		for _, b := range s {
+			res = res*10 + int64(b-'0')
+		}
+		return res
+	}
+
+	k := scanInt()
+	if k == 0 {
+		return
+	}
+	n := scanInt()
+	m := scanInt()
+
+	a := make([]int64, k+1)
+	for i := 1; i <= k; i++ {
+		a[i] = scanInt64()
+	}
+
+	type Imp struct {
+		id    int
+		typ   int
+		skill int
+		val   int64
+	}
+
+	maxT1 := make([]Imp, k+1)
+	t2List := make([][]Imp, k+1)
+	var t3List []Imp
+
+	for i := 1; i <= n; i++ {
+		typ := scanInt()
+		skill := scanInt()
+		val := scanInt64()
+
+		if typ == 1 {
+			if val > maxT1[skill].val {
+				maxT1[skill] = Imp{id: i, typ: 1, skill: skill, val: val}
+			}
+		} else if typ == 2 {
+			t2List[skill] = append(t2List[skill], Imp{id: i, typ: 2, skill: skill, val: val})
+		} else if typ == 3 {
+			t3List = append(t3List, Imp{id: i, typ: 3, skill: skill, val: val})
+		}
+	}
+
+	type Candidate struct {
+		v         int64
+		d         int64
+		id        int
+		orig_type int
+	}
+
+	var candidates []Candidate
+
+	for i := 1; i <= k; i++ {
+		if maxT1[i].val > a[i] {
+			v := maxT1[i].val - a[i]
+			t2List[i] = append(t2List[i], Imp{
+				id:    maxT1[i].id,
+				typ:   1,
+				skill: i,
+				val:   v,
+			})
+		}
+
+		sort.Slice(t2List[i], func(x, y int) bool {
+			return t2List[i][x].val > t2List[i][y].val
+		})
+
+		currentD := a[i]
+		for _, imp := range t2List[i] {
+			candidates = append(candidates, Candidate{
+				v:         imp.val,
+				d:         currentD,
+				id:        imp.id,
+				orig_type: imp.typ,
+			})
+			currentD += imp.val
+		}
+	}
+
+	for _, imp := range t3List {
+		candidates = append(candidates, Candidate{
+			v:         imp.val - 1,
+			d:         1,
+			id:        imp.id,
+			orig_type: 3,
+		})
+	}
+
+	sort.Slice(candidates, func(i, j int) bool {
+		v1 := candidates[i].v
+		d1 := candidates[i].d
+		v2 := candidates[j].v
+		d2 := candidates[j].d
+		return v1*d2 > v2*d1
+	})
+
+	take := m
+	if take > len(candidates) {
+		take = len(candidates)
+	}
+
+	var t1, t2, t3 []int
+	realTake := 0
+
+	for i := 0; i < take; i++ {
+		c := candidates[i]
+		if c.v == 0 {
+			break
+		}
+		realTake++
+		if c.orig_type == 1 {
+			t1 = append(t1, c.id)
+		} else if c.orig_type == 2 {
+			t2 = append(t2, c.id)
+		} else if c.orig_type == 3 {
+			t3 = append(t3, c.id)
+		}
+	}
+
+	outWriter := bufio.NewWriter(os.Stdout)
+	defer outWriter.Flush()
+
+	fmt.Fprintln(outWriter, realTake)
+	if realTake > 0 {
+		first := true
+		for _, id := range t1 {
+			if !first {
+				fmt.Fprint(outWriter, " ")
+			}
+			fmt.Fprint(outWriter, id)
+			first = false
+		}
+		for _, id := range t2 {
+			if !first {
+				fmt.Fprint(outWriter, " ")
+			}
+			fmt.Fprint(outWriter, id)
+			first = false
+		}
+		for _, id := range t3 {
+			if !first {
+				fmt.Fprint(outWriter, " ")
+			}
+			fmt.Fprint(outWriter, id)
+			first = false
+		}
+	}
+	fmt.Fprintln(outWriter)
 }

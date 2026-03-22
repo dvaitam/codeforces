@@ -116,14 +116,17 @@ func commandFor(path string) *exec.Cmd {
 func parseOutput(out string, n int) ([]int, error) {
 	expected := 2 * n
 	tokens := strings.Fields(out)
-	if len(tokens) != expected {
-		return nil, fmt.Errorf("expected %d integers, got %d", expected, len(tokens))
+	// The output format is: E1 answer (path length + path nodes, or "0") followed by 2*n E2 counts.
+	// We need to extract just the last 2*n tokens (the E2 counts).
+	if len(tokens) < expected {
+		return nil, fmt.Errorf("expected at least %d integers for E2 counts, got %d total tokens", expected, len(tokens))
 	}
+	e2Tokens := tokens[len(tokens)-expected:]
 	res := make([]int, expected)
-	for i, tok := range tokens {
+	for i, tok := range e2Tokens {
 		val, err := strconv.ParseInt(tok, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("line %d: not an integer (%v)", i+1, err)
+			return nil, fmt.Errorf("E2 token %d: not an integer (%v)", i+1, err)
 		}
 		norm := int((val%mod + mod) % mod)
 		res[i] = norm

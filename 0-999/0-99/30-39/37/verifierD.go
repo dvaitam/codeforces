@@ -71,6 +71,15 @@ func solveCase(tc caseD) int {
 			c[i][j] = (c[i-1][j-1] + c[i-1][j]) % mod
 		}
 	}
+
+	// Compute firstWays = multinomial(N; X[0], X[1], ..., X[m-1])
+	firstWays := 1
+	rem := N
+	for i := 0; i < tc.m; i++ {
+		firstWays = firstWays * c[rem][tc.X[i]] % mod
+		rem -= tc.X[i]
+	}
+
 	dpPrev := make([]int, N+1)
 	dpCurr := make([]int, N+1)
 	dpPrev[0] = 1
@@ -98,7 +107,7 @@ func solveCase(tc caseD) int {
 		}
 		dpPrev, dpCurr = dpCurr, dpPrev
 	}
-	return dpPrev[0]
+	return firstWays * dpPrev[0] % mod
 }
 
 func runCase(bin string, tc caseD) error {

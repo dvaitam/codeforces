@@ -1,163 +1,195 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
-   "sort"
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
 )
 
-var reader = bufio.NewReader(os.Stdin)
-var writer = bufio.NewWriter(os.Stdout)
-
-func nextInt() int {
-    var x int
-    fmt.Fscan(reader, &x)
-    return x
-}
-
-type node struct {
-    fi int
-    se int
-}
-
-func solve() (bool, [][2]int) {
-    n := nextInt()
-    c := make([]int, n+2)
-    d := make([]node, n+2)
-    var su int
-    for i := 1; i <= n; i++ {
-        c[i] = nextInt()
-        d[i] = node{fi: c[i], se: i}
-        su += c[i]
-    }
-    if su != 2*n {
-        return false, nil
-    }
-    // sort by fi then se on d[1..n]
-    ds := d[1 : n+1]
-    sort.Slice(ds, func(i, j int) bool {
-        if ds[i].fi != ds[j].fi {
-            return ds[i].fi < ds[j].fi
-        }
-        return ds[i].se < ds[j].se
-    })
-    ans := make([][2]int, 0, 2*n)
-    add := func(x, y int) {
-        ans = append(ans, [2]int{d[x].se, d[y].se})
-        d[x].fi--
-        d[y].fi--
-    }
-    // case cycle
-    if d[1].fi == 2 {
-        for i := 1; i <= n; i++ {
-            u := d[i].se
-            v := d[i%n+1].se
-            ans = append(ans, [2]int{u, v})
-        }
-        return true, ans
-    }
-    if d[2].fi != 1 || d[n-1].fi <= 2 {
-        return false, nil
-    }
-    top, s := 1, 1
-    for top <= n && d[top].fi == 1 {
-        top++
-    }
-    // single big block >2
-    if d[top].fi > 2 {
-        add(top, n)
-        for i := top; i < n; i++ {
-            add(i, i+1)
-        }
-        for i := top; i <= n; i++ {
-            for d[i].fi > 0 {
-                add(s, i)
-                s++
-            }
-        }
-        return true, ans
-    }
-    // complex cases
-    for {
-        if top+1 == n {
-            add(top-2, top)
-            add(top-1, top+1)
-            add(top, top+1)
-            add(top, top+1)
-            for d[top].fi > 0 {
-                add(s, top)
-                s++
-            }
-            for d[top+1].fi > 0 {
-                add(s, top+1)
-                s++
-            }
-            break
-        }
-        if top+2 == n {
-            if c[d[top-1].se] == 1 {
-                return false, nil
-            }
-            if d[top+2].fi <= 3 {
-                return false, nil
-            }
-            add(top, top+2)
-            for d[top].fi > 0 {
-                add(s, top)
-                s++
-            }
-            // swap d[top] and d[top-2]
-            d[top], d[top-2] = d[top-2], d[top]
-            top++
-            continue
-        }
-        if c[d[top-1].se] != 1 && top+4 == n && d[top+2].fi >= 3 {
-            add(top, top+2)
-            for d[top].fi > 0 {
-                add(s, top)
-                s++
-            }
-            add(top-2, top+1)
-            add(top-1, top+2)
-            for d[top+1].fi > 1 {
-                add(s, top+1)
-                s++
-            }
-            for d[top+2].fi > 1 {
-                add(s, top+2)
-                s++
-            }
-            top += 3
-            continue
-        }
-        add(top-2, top)
-        add(top-1, top+1)
-        for d[top].fi > 1 {
-            add(s, top)
-            s++
-        }
-        for d[top+1].fi > 1 {
-            add(s, top+1)
-            s++
-        }
-        top += 2
-    }
-    return true, ans
+type Node struct {
+	id  int
+	deg int
 }
 
 func main() {
-    defer writer.Flush()
-    TT := nextInt()
-    for t := 0; t < TT; t++ {
-        ok, ans := solve()
-        if ok {
-            fmt.Fprintln(writer, "Yes")
-            for _, e := range ans {
-                fmt.Fprintln(writer, e[0], e[1])
-            }
-        } else {
-            fmt.Fprintln(writer, "No")
-        }
-    }
+	reader := bufio.NewReader(os.Stdin)
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
+
+	var t int
+	if _, err := fmt.Fscan(reader, &t); err != nil {
+		return
+	}
+
+	for tc := 0; tc < t; tc++ {
+		var n int
+		fmt.Fscan(reader, &n)
+
+		d := make([]int, n)
+		sumD := 0
+		nodes := make([]Node, n)
+		for i := 0; i < n; i++ {
+			fmt.Fscan(reader, &d[i])
+			sumD += d[i]
+			nodes[i] = Node{id: i + 1, deg: d[i]}
+		}
+
+		if sumD != 2*n {
+			fmt.Fprintln(writer, "No")
+			continue
+		}
+
+		sort.Slice(nodes, func(i, j int) bool {
+			return nodes[i].deg > nodes[j].deg
+		})
+
+		M := 0
+		M3 := 0
+		for i := 0; i < n; i++ {
+			if nodes[i].deg >= 2 {
+				M++
+			}
+			if nodes[i].deg >= 3 {
+				M3++
+			}
+		}
+
+		if M == n {
+			fmt.Fprintln(writer, "Yes")
+			for i := 0; i < n; i++ {
+				fmt.Fprintln(writer, nodes[i].id, nodes[(i+1)%n].id)
+			}
+			continue
+		}
+
+		prefixD := make([]int, M+1)
+		for i := 0; i < M; i++ {
+			prefixD[i+1] = prefixD[i] + nodes[i].deg
+		}
+
+		foundC := -1
+		foundK := -1
+
+		for C := 2; C <= M3; C++ {
+			k := M / C
+			if k == 0 {
+				continue
+			}
+			if k == 1 {
+				if M == C {
+					foundC = C
+					foundK = k
+					break
+				}
+				continue
+			}
+
+			idx := C
+			OPrev := prefixD[C] - 2*C
+			possible := true
+			rem := M - k*C
+
+			for step := 1; step < k; step++ {
+				if OPrev < C {
+					possible = false
+					break
+				}
+				canAdd := OPrev - C
+				add := rem
+				if canAdd < add {
+					add = canAdd
+				}
+				LSize := C + add
+				rem -= add
+
+				OCurr := prefixD[idx+LSize] - prefixD[idx] - LSize
+				OPrev = OCurr
+				idx += LSize
+			}
+
+			if possible && rem == 0 {
+				foundC = C
+				foundK = k
+				break
+			}
+		}
+
+		if foundC == -1 {
+			fmt.Fprintln(writer, "No")
+		} else {
+			fmt.Fprintln(writer, "Yes")
+			LSizes := make([]int, foundK)
+			for i := range LSizes {
+				LSizes[i] = foundC
+			}
+			rem := M - foundK*foundC
+			idx := foundC
+			OPrev := prefixD[foundC] - 2*foundC
+
+			for step := 1; step < foundK; step++ {
+				canAdd := OPrev - foundC
+				add := rem
+				if canAdd < add {
+					add = canAdd
+				}
+				LSizes[step] += add
+				rem -= add
+				OCurr := prefixD[idx+LSizes[step]] - prefixD[idx] - LSizes[step]
+				OPrev = OCurr
+				idx += LSizes[step]
+			}
+
+			outDeg := make([]int, M)
+			for i := 0; i < foundC; i++ {
+				outDeg[i] = nodes[i].deg - 2
+			}
+			for i := foundC; i < M; i++ {
+				outDeg[i] = nodes[i].deg - 1
+			}
+
+			for i := 0; i < foundC; i++ {
+				fmt.Fprintln(writer, nodes[i].id, nodes[(i+1)%foundC].id)
+			}
+
+			layers := make([][]int, foundK)
+			nodeIdx := 0
+			for i, sz := range LSizes {
+				layers[i] = make([]int, sz)
+				for j := 0; j < sz; j++ {
+					layers[i][j] = nodeIdx
+					nodeIdx++
+				}
+			}
+
+			for i := 0; i < foundK-1; i++ {
+				prevLayer := layers[i]
+				currLayer := layers[i+1]
+
+				for j := 0; j < foundC; j++ {
+					fmt.Fprintln(writer, nodes[prevLayer[j]].id, nodes[currLayer[j]].id)
+					outDeg[prevLayer[j]] -= 1
+				}
+
+				parentIdx := 0
+				for j := foundC; j < len(currLayer); j++ {
+					for parentIdx < len(prevLayer) && outDeg[prevLayer[parentIdx]] == 0 {
+						parentIdx++
+					}
+					p := prevLayer[parentIdx]
+					fmt.Fprintln(writer, nodes[p].id, nodes[currLayer[j]].id)
+					outDeg[p] -= 1
+				}
+			}
+
+			leafIdx := M
+			for i := 0; i < M; i++ {
+				for outDeg[i] > 0 {
+					fmt.Fprintln(writer, nodes[i].id, nodes[leafIdx].id)
+					outDeg[i] -= 1
+					leafIdx++
+				}
+			}
+		}
+	}
 }

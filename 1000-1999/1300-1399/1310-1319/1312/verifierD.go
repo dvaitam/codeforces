@@ -130,6 +130,9 @@ func solve(n, m int) int64 {
 	if n < 3 {
 		return 0
 	}
+	if n-1 > m {
+		return 0
+	}
 	fac := make([]int64, m+1)
 	ifac := make([]int64, m+1)
 	fac[0] = 1
@@ -142,9 +145,6 @@ func solve(n, m int) int64 {
 	}
 
 	// Formula: nCr(m, n-1) * (n-2) * 2^(n-3)
-	if n-1 > m {
-		return 0
-	}
 	cmb := fac[m] * ifac[n-1] % mod * ifac[m-(n-1)] % mod
 	term2 := int64(n - 2)
 	pow2 := modpow(2, int64(n-3))
@@ -214,7 +214,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	count := 0
 	for idx, tc := range tests {
+		// CF constraints: 2 <= n <= m
+		if tc.n < 2 || tc.n > tc.m {
+			continue
+		}
+		count++
 		expected := fmt.Sprintf("%d", solve(tc.n, tc.m))
 		input := fmt.Sprintf("%d %d\n", tc.n, tc.m)
 		got, err := run(bin, input)
@@ -227,5 +233,5 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(tests))
+	fmt.Printf("All %d tests passed\n", count)
 }

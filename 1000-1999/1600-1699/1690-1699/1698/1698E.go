@@ -2,72 +2,116 @@ package main
 
 import (
 	"bufio"
-	"fmt"
+	"io"
 	"os"
-	"sort"
+	"strconv"
 )
 
-const mod int64 = 998244353
+const MOD int64 = 998244353
+
+type FastScanner struct {
+	data []byte
+	idx  int
+}
+
+func (fs *FastScanner) NextInt() int {
+	for fs.idx < len(fs.data) {
+		c := fs.data[fs.idx]
+		if c != ' ' && c != '\n' && c != '\r' && c != '\t' {
+			break
+		}
+		fs.idx++
+	}
+	sign := 1
+	if fs.data[fs.idx] == '-' {
+		sign = -1
+		fs.idx++
+	}
+	val := 0
+	for fs.idx < len(fs.data) {
+		c := fs.data[fs.idx]
+		if c < '0' || c > '9' {
+			break
+		}
+		val = val*10 + int(c-'0')
+		fs.idx++
+	}
+	return sign * val
+}
 
 func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
+	data, _ := io.ReadAll(os.Stdin)
+	fs := FastScanner{data: data}
+	out := bufio.NewWriterSize(os.Stdout, 1<<20)
 	defer out.Flush()
 
-	var T int
-	fmt.Fscan(in, &T)
-	for ; T > 0; T-- {
-		var n, s int
-		fmt.Fscan(in, &n, &s)
-		a := make([]int, n)
-		for i := 0; i < n; i++ {
-			fmt.Fscan(in, &a[i])
+	t := fs.NextInt()
+	for ; t > 0; t-- {
+		n := fs.NextInt()
+		s := fs.NextInt()
+
+		a := make([]int, n+1)
+		posA := make([]int, n+1)
+		for i := 1; i <= n; i++ {
+			a[i] = fs.NextInt()
+			posA[a[i]] = i
 		}
-		b := make([]int, n)
+
+		b := make([]int, n+1)
+		for i := 1; i <= n; i++ {
+			b[i] = fs.NextInt()
+		}
+
 		used := make([]bool, n+1)
-		for i := 0; i < n; i++ {
-			fmt.Fscan(in, &b[i])
-			if b[i] != -1 {
-				used[b[i]] = true
-			}
-		}
+		missPos := make([]int, 0, n)
 		ok := true
-		for i := 0; i < n; i++ {
-			if b[i] != -1 {
-				if i+1 > b[i]+s {
+
+		for i := 1; i <= n; i++ {
+			x := b[posA[i]]
+			if x == -1 {
+				missPos = append(missPos, i)
+			} else {
+				if used[x] {
 					ok = false
-					break
+				}
+				used[x] = true
+				if i > x+s {
+					ok = false
 				}
 			}
 		}
+
 		if !ok {
-			fmt.Fprintln(out, 0)
+			out.WriteString("0\n")
 			continue
 		}
-		avail := make([]int, 0, n)
-		for v := 1; v <= n; v++ {
+
+		suf := make([]int, n+2)
+		for v := n; v >= 1; v-- {
+			suf[v] = suf[v+1]
 			if !used[v] {
-				avail = append(avail, v)
+				suf[v]++
 			}
 		}
-		sort.Ints(avail)
-		ans := int64(1)
-		for i := n - 1; i >= 0; i-- {
-			if b[i] == -1 {
-				need := i + 1 - s
-				if need < 1 {
-					need = 1
-				}
-				idx := sort.SearchInts(avail, need)
-				cnt := len(avail) - idx
-				if cnt <= 0 {
-					ans = 0
-					break
-				}
-				ans = ans * int64(cnt) % mod
-				avail = avail[:len(avail)-1]
+
+		var ans int64 = 1
+		assigned := 0
+		for i := len(missPos) - 1; i >= 0; i-- {
+			pos := missPos[i]
+			thr := pos - s
+			if thr < 1 {
+				thr = 1
 			}
+			choices := suf[thr] - assigned
+			if choices <= 0 {
+				ans = 0
+				break
+			}
+			ans = ans * int64(choices) % MOD
+			assigned++
 		}
-		fmt.Fprintln(out, ans%mod)
+
+		out.WriteString(strconv.FormatInt(ans, 10))
+		out.WriteByte('\n')
 	}
 }

@@ -1,13 +1,13 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -24,35 +24,11 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	oracle, cleanup, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build oracle: %v\n", err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
 	tests := generateTests()
-	input := buildInput(tests)
 
-	if err := ensureOracleWorks(oracle, input, len(tests)); err != nil {
-		fmt.Fprintf(os.Stderr, "oracle validation failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	out, stderr, err := runBinary(candidate, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "candidate runtime error: %v\nstderr:\n%s\n", err, stderr)
-		os.Exit(1)
-	}
-	answers, err := parseCandidateOutput(out, len(tests))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to parse candidate output: %v\noutput:\n%s\n", err, out)
-		os.Exit(1)
-	}
-
-	for i, triple := range answers {
-		if err := verifyTriple(tests[i], triple); err != nil {
-			fmt.Fprintf(os.Stderr, "test %d (%s) failed: %v\ninput:\n%s\noutput triple: %v\n", i+1, tests[i].desc, err, singleInput(tests[i]), triple)
+	for i, tc := range tests {
+		if err := runInteractive(candidate, tc); err != nil {
+			fmt.Fprintf(os.Stderr, "test %d (%s) failed: %v\n", i+1, tc.desc, err)
 			os.Exit(1)
 		}
 	}
@@ -60,151 +36,131 @@ func main() {
 	fmt.Printf("All %d tests passed.\n", len(tests))
 }
 
-func buildOracle() (string, func(), error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", nil, fmt.Errorf("cannot determine verifier path")
+// xorOfMissingInRange returns XOR of the missing values (a, b, c) that fall within [l, r].
+func xorOfMissingInRange(l, r int64, missing [3]int64) int64 {
+	var result int64
+	for _, v := range missing {
+		if v >= l && v <= r {
+			result ^= v
+		}
 	}
-	dir := filepath.Dir(file)
-	tmpDir, err := os.MkdirTemp("", "oracle-2036G-")
+	return result
+}
+
+// runInteractive runs the candidate binary with a single test case, simulating
+// the interactive protocol. The candidate sends "xor L R" queries and receives
+// the XOR of the missing values in [L, R]. Then it sends "ans a b c".
+func runInteractive(binPath string, tc testCase) error {
+	cmd := exec.Command(binPath)
+	stdinPipe, err := cmd.StdinPipe()
 	if err != nil {
-		return "", nil, err
+		return fmt.Errorf("stdin pipe: %v", err)
 	}
-	path := filepath.Join(tmpDir, "oracleG")
-	cmd := exec.Command("go", "build", "-o", path, "2036G.go")
-	cmd.Dir = dir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		os.RemoveAll(tmpDir)
-		return "", nil, fmt.Errorf("go build failed: %v\n%s", err, string(out))
-	}
-	cleanup := func() {
-		os.RemoveAll(tmpDir)
-	}
-	return path, cleanup, nil
-}
-
-func runBinary(path, input string) (string, string, error) {
-	cmd := commandFor(path)
-	cmd.Stdin = strings.NewReader(input)
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	return stdout.String(), stderr.String(), err
-}
-
-func commandFor(path string) *exec.Cmd {
-	if strings.HasSuffix(path, ".go") {
-		return exec.Command("go", "run", path)
-	}
-	return exec.Command(path)
-}
-
-func ensureOracleWorks(oracle, input string, t int) error {
-	out, stderr, err := runBinary(oracle, input)
+	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("oracle runtime error: %v\nstderr:\n%s", err, stderr)
+		return fmt.Errorf("stdout pipe: %v", err)
 	}
-	if _, err := parseOracleOutput(out, t); err != nil {
-		return fmt.Errorf("oracle output invalid: %v\noutput:\n%s", err, out)
+	var stderrBuf strings.Builder
+	cmd.Stderr = &stderrBuf
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("start: %v", err)
 	}
+
+	reader := bufio.NewReader(stdoutPipe)
+	writer := bufio.NewWriter(stdinPipe)
+
+	missing := [3]int64{tc.a, tc.b, tc.c}
+
+	// Write: t=1, then n
+	fmt.Fprintf(writer, "1\n%d\n", tc.n)
+	writer.Flush()
+
+	queryCount := 0
+	maxQueries := 200
+	done := false
+
+	for !done {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			_ = cmd.Process.Kill()
+			return fmt.Errorf("read from candidate: %v (stderr: %s)", err, stderrBuf.String())
+		}
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		tokens := strings.Fields(line)
+		if len(tokens) == 0 {
+			continue
+		}
+
+		switch strings.ToLower(tokens[0]) {
+		case "xor":
+			if len(tokens) != 3 {
+				_ = cmd.Process.Kill()
+				return fmt.Errorf("invalid xor query: %q", line)
+			}
+			l, err1 := strconv.ParseInt(tokens[1], 10, 64)
+			r, err2 := strconv.ParseInt(tokens[2], 10, 64)
+			if err1 != nil || err2 != nil {
+				_ = cmd.Process.Kill()
+				return fmt.Errorf("invalid xor args: %q", line)
+			}
+			queryCount++
+			if queryCount > maxQueries {
+				_ = cmd.Process.Kill()
+				return fmt.Errorf("too many queries (%d)", queryCount)
+			}
+
+			// The query returns XOR of the missing values in [l, r].
+			result := xorOfMissingInRange(l, r, missing)
+
+			fmt.Fprintf(writer, "%d\n", result)
+			writer.Flush()
+
+		case "ans":
+			if len(tokens) != 4 {
+				_ = cmd.Process.Kill()
+				return fmt.Errorf("invalid ans line: %q", line)
+			}
+			va, err1 := strconv.ParseInt(tokens[1], 10, 64)
+			vb, err2 := strconv.ParseInt(tokens[2], 10, 64)
+			vc, err3 := strconv.ParseInt(tokens[3], 10, 64)
+			if err1 != nil || err2 != nil || err3 != nil {
+				_ = cmd.Process.Kill()
+				return fmt.Errorf("invalid ans args: %q", line)
+			}
+
+			got := []int64{va, vb, vc}
+			sort.Slice(got, func(i, j int) bool { return got[i] < got[j] })
+			exp := []int64{tc.a, tc.b, tc.c}
+			sort.Slice(exp, func(i, j int) bool { return exp[i] < exp[j] })
+
+			if got[0] != exp[0] || got[1] != exp[1] || got[2] != exp[2] {
+				_ = cmd.Process.Kill()
+				return fmt.Errorf("wrong answer: got %v, expected %v", got, exp)
+			}
+			done = true
+
+		default:
+			_ = cmd.Process.Kill()
+			return fmt.Errorf("unexpected command: %q", line)
+		}
+	}
+
+	stdinPipe.Close()
+	cmd.Wait()
+
+	if !done {
+		return fmt.Errorf("candidate exited without providing answer")
+	}
+
 	return nil
-}
-
-func parseOracleOutput(out string, t int) ([][]int64, error) {
-	tokens := strings.Fields(out)
-	if len(tokens) != t*3 {
-		return nil, fmt.Errorf("expected %d integers, got %d", t*3, len(tokens))
-	}
-	result := make([][]int64, t)
-	pos := 0
-	for i := 0; i < t; i++ {
-		triple := make([]int64, 3)
-		for j := 0; j < 3; j++ {
-			val, err := strconv.ParseInt(tokens[pos], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("token %d is not an integer (%v)", pos+1, err)
-			}
-			triple[j] = val
-			pos++
-		}
-		result[i] = triple
-	}
-	return result, nil
-}
-
-func parseCandidateOutput(out string, t int) ([][]int64, error) {
-	tokens := strings.Fields(out)
-	result := make([][]int64, t)
-	pos := 0
-	for i := 0; i < t; i++ {
-		triple := make([]int64, 0, 3)
-		for len(triple) < 3 {
-			if pos >= len(tokens) {
-				return nil, fmt.Errorf("not enough numbers for test %d", i+1)
-			}
-			tok := tokens[pos]
-			pos++
-			if strings.EqualFold(tok, "ans") {
-				continue
-			}
-			if strings.EqualFold(tok, "xor") {
-				return nil, fmt.Errorf("unexpected token %q (queries are not allowed)", tok)
-			}
-			val, err := strconv.ParseInt(tok, 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("token %d is not an integer (%v)", pos, err)
-			}
-			triple = append(triple, val)
-		}
-		result[i] = triple
-	}
-	if pos != len(tokens) {
-		return nil, fmt.Errorf("extra tokens after reading all answers")
-	}
-	return result, nil
-}
-
-func verifyTriple(tc testCase, triple []int64) error {
-	if len(triple) != 3 {
-		return fmt.Errorf("expected 3 numbers, got %d", len(triple))
-	}
-	seen := make(map[int64]bool)
-	for _, v := range triple {
-		if v < 1 || v > tc.n {
-			return fmt.Errorf("value %d outside [1, %d]", v, tc.n)
-		}
-		if seen[v] {
-			return fmt.Errorf("value %d repeated", v)
-		}
-		seen[v] = true
-	}
-	expected := map[int64]int{
-		tc.a: 1,
-		tc.b: 1,
-		tc.c: 1,
-	}
-	for _, v := range triple {
-		if expected[v] == 0 {
-			return fmt.Errorf("value %d is not one of the missing tomes", v)
-		}
-		expected[v]--
-	}
-	return nil
-}
-
-func buildInput(tests []testCase) string {
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "%d\n", len(tests))
-	for _, tc := range tests {
-		fmt.Fprintf(&sb, "%d %d %d %d\n", tc.n, tc.a, tc.b, tc.c)
-	}
-	return sb.String()
-}
-
-func singleInput(tc testCase) string {
-	return fmt.Sprintf("%d %d %d %d\n", tc.n, tc.a, tc.b, tc.c)
 }
 
 func generateTests() []testCase {
@@ -220,7 +176,7 @@ func generateTests() []testCase {
 
 	rng := rand.New(rand.NewSource(2036))
 	for i := 0; i < 20; i++ {
-		n := randRange(rng, 3, 1_000_000_000_000_000_000) // up to 1e18
+		n := randRange(rng, 3, 1_000_000_000_000_000_000)
 		a, b, c := distinctTriple(rng, n)
 		tests = append(tests, testCase{
 			n:    n,

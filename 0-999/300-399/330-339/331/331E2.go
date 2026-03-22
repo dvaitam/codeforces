@@ -4,149 +4,164 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 )
 
-const mod = 1000000007
-
-type edge struct {
-	to     uint8
-	vision []byte
+type Edge struct {
+	to int
+	V  string
 }
 
-type state struct {
-	cur         uint8
-	pendingType int8
-	pending     string
-}
-
-func nextInt(r *bufio.Reader) int {
-	sign, val := 1, 0
-	c, err := r.ReadByte()
-	for (c < '0' || c > '9') && c != '-' {
-		if err != nil {
-			return 0
-		}
-		c, err = r.ReadByte()
-	}
-	if c == '-' {
-		sign = -1
-		c, _ = r.ReadByte()
-	}
-	for c >= '0' && c <= '9' {
-		val = val*10 + int(c-'0')
-		c, err = r.ReadByte()
-		if err != nil {
-			break
-		}
-	}
-	return sign * val
+type State struct {
+	u   int
+	typ int
+	Q   string
 }
 
 func main() {
-	reader := bufio.NewReader(os.Stdin)
-	n := nextInt(reader)
-	m := nextInt(reader)
-	if n == 0 {
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
+	buf := make([]byte, 1024*1024)
+	scanner.Buffer(buf, 1024*1024)
+
+	nextInt := func() int {
+		scanner.Scan()
+		res := 0
+		for _, b := range scanner.Bytes() {
+			res = res*10 + int(b-'0')
+		}
+		return res
+	}
+
+	scanner.Scan()
+	if len(scanner.Bytes()) == 0 {
 		return
 	}
+	n := 0
+	for _, b := range scanner.Bytes() {
+		n = n*10 + int(b-'0')
+	}
+	m := nextInt()
 
-	graph := make([][]edge, n+1)
+	adj := make([][]Edge, n+1)
 	for i := 0; i < m; i++ {
-		x := nextInt(reader)
-		y := nextInt(reader)
-		k := nextInt(reader)
-		seq := make([]byte, k)
+		u := nextInt()
+		v := nextInt()
+		k := nextInt()
+		visions := make([]byte, k)
 		for j := 0; j < k; j++ {
-			seq[j] = byte(nextInt(reader))
+			visions[j] = byte(nextInt())
 		}
-		graph[x] = append(graph[x], edge{to: byte(y), vision: seq})
+		adj[u] = append(adj[u], Edge{to: v, V: string(visions)})
 	}
 
-	limit := 2 * n
-	ans := make([]int, limit+1)
-	curStates := make(map[state]int)
-	for start := 1; start <= n; start++ {
-		pending := []byte{byte(start)}
-		st := state{cur: byte(start), pendingType: 1, pending: string(pending)}
-		curStates[st] = (curStates[st] + 1) % mod
+	MOD := 1000000007
+
+	curCount := make(map[State]int)
+	curPath := make(map[State][]byte)
+
+	for i := 1; i <= n; i++ {
+		s := State{u: i, typ: 0, Q: string([]byte{byte(i)})}
+		curCount[s] = 1
+		curPath[s] = []byte{byte(i)}
 	}
 
-	for length := 1; length < limit && len(curStates) > 0; length++ {
-		nextStates := make(map[state]int)
-		for st, cnt := range curStates {
-			if cnt == 0 {
-				continue
-			}
-			baseQueue := []byte(st.pending)
-			queueLen := len(baseQueue)
-			lenVision := length
-			switch st.pendingType {
-			case 1:
-				lenVision = length - queueLen
-			case -1:
-				lenVision = length + queueLen
-			}
-			if lenVision < 0 || lenVision > limit {
-				continue
-			}
-			for _, e := range graph[int(st.cur)] {
-				if lenVision+len(e.vision) > limit {
-					continue
-				}
-				queue := append([]byte(nil), baseQueue...)
-				ptype := st.pendingType
-				ok := true
-				for _, val := range e.vision {
-					if ptype == 1 {
-						if len(queue) == 0 || queue[0] != val {
-							ok = false
-							break
+	var e1Path []byte
+	ansE2 := make([]int, 2*n+1)
+
+	for step := 1; step <= 2*n; step++ {
+		nextCount := make(map[State]int)
+		nextPath := make(map[State][]byte)
+
+		for state, count := range curCount {
+			path := curPath[state]
+			if state.typ == 0 {
+				for _, e := range adj[state.u] {
+					T := state.Q + string([]byte{byte(e.to)})
+					Ve := e.V
+
+					var newState State
+					valid := false
+
+					if strings.HasPrefix(T, Ve) {
+						newState = State{u: e.to, typ: 0, Q: T[len(Ve):]}
+						valid = true
+					} else if strings.HasPrefix(Ve, T) {
+						newState = State{u: e.to, typ: 1, Q: Ve[len(T):]}
+						valid = true
+					}
+
+					if valid {
+						if newState.typ == 1 && len(newState.Q) > 2*n-step {
+							continue
 						}
-						queue = queue[1:]
-						if len(queue) == 0 {
-							ptype = 0
+						nextCount[newState] = (nextCount[newState] + count) % MOD
+						if _, exists := nextPath[newState]; !exists {
+							newP := make([]byte, len(path), len(path)+1)
+							copy(newP, path)
+							newP = append(newP, byte(e.to))
+							nextPath[newState] = newP
 						}
-					} else {
-						queue = append(queue, val)
-						ptype = -1
 					}
 				}
-				if !ok {
-					continue
-				}
-				dest := e.to
-				if ptype == -1 {
-					if len(queue) == 0 || queue[0] != dest {
-						continue
-					}
-					queue = queue[1:]
-					if len(queue) == 0 {
-						ptype = 0
-					}
-				} else {
-					queue = append(queue, dest)
-					ptype = 1
-				}
-				newState := state{cur: dest, pendingType: ptype, pending: string(queue)}
-				newCnt := nextStates[newState] + cnt
-				if newCnt >= mod {
-					newCnt -= mod
-				}
-				nextStates[newState] = newCnt
-				if ptype == 0 {
-					ans[length+1] += cnt
-					if ans[length+1] >= mod {
-						ans[length+1] -= mod
+			} else {
+				w := int(state.Q[0])
+				for _, e := range adj[state.u] {
+					if e.to == w {
+						T := state.Q[1:] + e.V
+						var newState State
+						if len(T) == 0 {
+							newState = State{u: w, typ: 0, Q: ""}
+						} else {
+							newState = State{u: w, typ: 1, Q: T}
+						}
+
+						if newState.typ == 1 && len(newState.Q) > 2*n-step {
+							continue
+						}
+
+						nextCount[newState] = (nextCount[newState] + count) % MOD
+						if _, exists := nextPath[newState]; !exists {
+							newP := make([]byte, len(path), len(path)+1)
+							copy(newP, path)
+							newP = append(newP, byte(w))
+							nextPath[newState] = newP
+						}
+						break
 					}
 				}
 			}
 		}
-		curStates = nextStates
+
+		curCount = nextCount
+		curPath = nextPath
+
+		ans := 0
+		for state, count := range curCount {
+			if state.typ == 0 && state.Q == "" {
+				ans = (ans + count) % MOD
+				if e1Path == nil && len(curPath[state]) <= 2*n {
+					e1Path = curPath[state]
+				}
+			}
+		}
+		ansE2[step] = ans
 	}
 
-	writer := bufio.NewWriter(os.Stdout)
-	defer writer.Flush()
-	for i := 1; i <= limit; i++ {
-		fmt.Fprintln(writer, ans[i]%mod)
+	if e1Path == nil {
+		fmt.Println(0)
+	} else {
+		fmt.Println(len(e1Path))
+		for i, v := range e1Path {
+			if i > 0 {
+				fmt.Print(" ")
+			}
+			fmt.Print(v)
+		}
+		fmt.Println()
+	}
+
+	for i := 1; i <= 2*n; i++ {
+		fmt.Println(ansE2[i])
 	}
 }
