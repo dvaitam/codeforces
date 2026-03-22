@@ -10,8 +10,17 @@ import (
 	"time"
 )
 
+// expected computes the number of valid (p, q) pairs for the robot problem.
+// Robot 1 starts from the left, reads a[0], a[1], ... and stops at the first
+// occurrence of p. Robot 2 starts from the right, reads a[n-1], a[n-2], ...
+// and stops at the first occurrence of q. A pair (p, q) is valid if
+// first_occurrence(p) < last_occurrence(q), i.e. robot 1 stops strictly to
+// the left of robot 2.
+//
+// We count pairs of distinct values (p, q) where min_pos[p] < max_pos[q].
 func expected(a []int) int64 {
 	n := len(a)
+	// num[i] = number of distinct values whose last occurrence is >= i
 	num := make([]int, n+1)
 	seen := map[int]bool{}
 	for i := n - 1; i >= 0; i-- {
@@ -33,21 +42,6 @@ func expected(a []int) int64 {
 	return ans
 }
 
-func runCandidate(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
-}
-
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierC.go /path/to/binary")
@@ -59,7 +53,9 @@ func main() {
 	var cases [][]int
 	cases = append(cases, []int{1})
 	cases = append(cases, []int{1, 2, 1})
-	for i := 0; i < 98; i++ {
+	cases = append(cases, []int{1, 5, 4, 1, 3})
+	cases = append(cases, []int{1, 2, 3})
+	for i := 0; i < 196; i++ {
 		n := rng.Intn(20) + 1
 		arr := make([]int, n)
 		for j := 0; j < n; j++ {
@@ -77,13 +73,20 @@ func main() {
 		}
 		input += "\n"
 		want := fmt.Sprintf("%d", expected(arr))
-		got, err := runCandidate(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d runtime error: %v\n", idx+1, err)
+
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(input)
+		var out bytes.Buffer
+		var errBuf bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &errBuf
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d runtime error: %v\n%s", idx+1, err, errBuf.String())
 			os.Exit(1)
 		}
+		got := strings.TrimSpace(out.String())
 		if got != want {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", idx+1, want, got)
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput: %s", idx+1, want, got, input)
 			os.Exit(1)
 		}
 	}

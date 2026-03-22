@@ -40,15 +40,15 @@ func main() {
 		}
 		sb.WriteByte('\n')
 		input := sb.String()
-		expected := solveC1(a)
+		expectedLen := solveC1Len(a)
 		out, err := run(binPath, input)
 		if err != nil {
 			fmt.Printf("test %d: runtime error: %v\n", t, err)
 			os.Exit(1)
 		}
 		out = strings.TrimSpace(out)
-		if out != expected {
-			fmt.Printf("test %d failed\ninput:%sexpected:%s got:%s\n", t, input, expected, out)
+		if err := verifyC1(a, out, expectedLen); err != nil {
+			fmt.Printf("test %d failed: %v\ninput:%s\noutput:%s\n", t, err, input, out)
 			os.Exit(1)
 		}
 	}
@@ -77,35 +77,117 @@ func run(bin, input string) (string, error) {
 	return buf.String(), err
 }
 
-func solveC1(a []int) string {
-	l, r := 0, len(a)-1
-	now := 0
-	res := make([]byte, 0, len(a))
+// solveC1Len computes the optimal (maximum) length using the correct greedy
+// from the accepted solution.
+func solveC1Len(a []int) int {
+	n := len(a)
+	l, r := 0, n-1
+	last := 0
+	count := 0
+
 	for l <= r {
-		if a[l] <= now && a[r] <= now {
+		leftOk := a[l] > last
+		rightOk := a[r] > last
+
+		if !leftOk && !rightOk {
 			break
 		}
-		if a[l] < a[r] {
-			if now < a[l] {
-				res = append(res, 'L')
-				now = a[l]
-				l++
-			} else {
-				res = append(res, 'R')
-				now = a[r]
-				r--
-			}
+
+		if leftOk && !rightOk {
+			last = a[l]
+			l++
+			count++
+		} else if !leftOk && rightOk {
+			last = a[r]
+			r--
+			count++
 		} else {
-			if now < a[r] {
-				res = append(res, 'R')
-				now = a[r]
-				r--
-			} else {
-				res = append(res, 'L')
-				now = a[l]
+			if a[l] < a[r] {
+				last = a[l]
 				l++
+				count++
+			} else if a[r] < a[l] {
+				last = a[r]
+				r--
+				count++
+			} else {
+				// Both equal and > last: simulate both directions, pick longer
+				llast := last
+				i := l
+				cl := 0
+				for i <= r && a[i] > llast {
+					cl++
+					llast = a[i]
+					i++
+				}
+
+				rlast := last
+				i = r
+				cr := 0
+				for i >= l && a[i] > rlast {
+					cr++
+					rlast = a[i]
+					i--
+				}
+
+				if cl >= cr {
+					count += cl
+				} else {
+					count += cr
+				}
+				return count
 			}
 		}
 	}
-	return fmt.Sprintf("%d\n%s", len(res), string(res))
+	return count
+}
+
+// verifyC1 checks that the candidate output is valid and optimal.
+func verifyC1(a []int, out string, expectedLen int) error {
+	lines := strings.Split(out, "\n")
+	if len(lines) < 1 {
+		return fmt.Errorf("no output")
+	}
+	var k int
+	if _, err := fmt.Sscanf(lines[0], "%d", &k); err != nil {
+		return fmt.Errorf("cannot parse length: %v", err)
+	}
+	if k != expectedLen {
+		return fmt.Errorf("length mismatch: expected %d got %d", expectedLen, k)
+	}
+	moves := ""
+	if len(lines) > 1 {
+		moves = strings.TrimSpace(lines[1])
+	}
+	if len(moves) != k {
+		return fmt.Errorf("move string length %d != declared length %d", len(moves), k)
+	}
+
+	n := len(a)
+	l, r := 0, n-1
+	last := 0
+	for i := 0; i < k; i++ {
+		ch := moves[i]
+		var val int
+		if ch == 'L' {
+			if l > r {
+				return fmt.Errorf("move %d: L but deque empty", i+1)
+			}
+			val = a[l]
+			l++
+		} else if ch == 'R' {
+			if l > r {
+				return fmt.Errorf("move %d: R but deque empty", i+1)
+			}
+			val = a[r]
+			r--
+		} else {
+			return fmt.Errorf("move %d: invalid char '%c'", i+1, ch)
+		}
+		if val <= last {
+			return fmt.Errorf("move %d: value %d not strictly greater than previous %d", i+1, val, last)
+		}
+		last = val
+	}
+	return nil
 }

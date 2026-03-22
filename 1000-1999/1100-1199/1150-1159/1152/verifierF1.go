@@ -26,34 +26,221 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+// expected computes the answer using the efficient DP approach embedded
+// directly (matching the accepted solution logic).
 func expected(n, k, m int) int64 {
-	// Bitmask DP: state = (mask of chosen planets, last chosen planet, both 0-indexed)
-	// Movement rule: from planet x (0-indexed), can go to y (0-indexed) if y <= x+m and y not visited.
-	type state struct{ mask, last int }
-	dp := make(map[state]int64, n)
-	for s := 0; s < n; s++ {
-		dp[state{1 << s, s}] = 1
-	}
-	for step := 1; step < k; step++ {
-		ndp := make(map[state]int64, len(dp))
-		for st, ways := range dp {
-			for y := 0; y < n; y++ {
-				if st.mask>>y&1 != 0 {
-					continue
+	const SIZE = 1 << 21
+	dp := make([]int, SIZE)
+	newDp := make([]int, SIZE)
+
+	active := make([]int, 0, 10000)
+	newActive := make([]int, 0, 10000)
+
+	dp[0] = 1
+	active = append(active, 0)
+
+	var c [4]int
+	var nextC [4]int
+
+	for i := 1; i <= n; i++ {
+		newActive = newActive[:0]
+
+		for _, state := range active {
+			ways := dp[state]
+			dp[state] = 0
+			if ways == 0 {
+				continue
+			}
+
+			j := state & 0xF
+			f := (state >> 4) & 1
+			activeComps := 0
+			for d := 0; d < m; d++ {
+				val := (state >> (5 + 4*d)) & 0xF
+				c[d] = val
+				activeComps += val
+			}
+
+			remExp := c[m-1]
+
+			addState := func(nj, nf int, nc *[4]int) {
+				ntotal := nf
+				for d := 0; d < m; d++ {
+					ntotal += nc[d]
 				}
-				if y <= st.last+m {
-					ns := state{st.mask | (1 << y), y}
-					ndp[ns] = (ndp[ns] + ways) % MOD
+				if ntotal > k-nj+1 {
+					return
+				}
+				enc := nj | (nf << 4)
+				for d := 0; d < m; d++ {
+					enc |= (nc[d] << (5 + 4*d))
+				}
+				if newDp[enc] == 0 {
+					newActive = append(newActive, enc)
+				}
+				newDp[enc] = (newDp[enc] + ways) % MOD
+			}
+
+			// Action 1: Skip node i
+			{
+				valid := true
+				nextF := f
+				if remExp > 0 {
+					if remExp > 1 || f == 1 {
+						valid = false
+					} else {
+						nextF = 1
+					}
+				}
+				if valid {
+					for d := 0; d < m-1; d++ {
+						nextC[d+1] = c[d]
+					}
+					nextC[0] = 0
+					addState(j, nextF, &nextC)
+				}
+			}
+
+			if j < k {
+				// Action 2a: Start new component
+				{
+					valid := true
+					nextF := f
+					if remExp > 0 {
+						if remExp > 1 || f == 1 {
+							valid = false
+						} else {
+							nextF = 1
+						}
+					}
+					if valid {
+						for d := 0; d < m-1; d++ {
+							nextC[d+1] = c[d]
+						}
+						nextC[0] = 1
+						addState(j+1, nextF, &nextC)
+					}
+				}
+
+				// Action 2b: Append to existing component
+				for src := 0; src < m; src++ {
+					count := c[src]
+					if count == 0 {
+						continue
+					}
+					currRemExp := remExp
+					if src == m-1 {
+						currRemExp--
+					}
+					valid := true
+					nextF := f
+					if currRemExp > 0 {
+						if currRemExp > 1 || f == 1 {
+							valid = false
+						} else {
+							nextF = 1
+						}
+					}
+					if valid {
+						for d := 0; d < m-1; d++ {
+							cnt := c[d]
+							if d == src {
+								cnt--
+							}
+							nextC[d+1] = cnt
+						}
+						nextC[0] = 1
+						oldWays := ways
+						ways = int((int64(ways) * int64(count)) % int64(MOD))
+						addState(j+1, nextF, &nextC)
+						ways = oldWays
+					}
+				}
+
+				// Action 2c: Prepend to existing component
+				totalComps := activeComps + f
+				if totalComps > 0 {
+					valid := true
+					nextF := f
+					if remExp > 0 {
+						if remExp > 1 || f == 1 {
+							valid = false
+						} else {
+							nextF = 1
+						}
+					}
+					if valid {
+						for d := 0; d < m-1; d++ {
+							nextC[d+1] = c[d]
+						}
+						nextC[0] = 0
+						oldWays := ways
+						ways = int((int64(ways) * int64(totalComps)) % int64(MOD))
+						addState(j+1, nextF, &nextC)
+						ways = oldWays
+					}
+				}
+
+				// Action 2d: Merge two components
+				if totalComps >= 2 {
+					for src := 0; src < m; src++ {
+						count := c[src]
+						if count == 0 {
+							continue
+						}
+						currRemExp := remExp
+						if src == m-1 {
+							currRemExp--
+						}
+						valid := true
+						nextF := f
+						if currRemExp > 0 {
+							if currRemExp > 1 || f == 1 {
+								valid = false
+							} else {
+								nextF = 1
+							}
+						}
+						if valid {
+							for d := 0; d < m-1; d++ {
+								cnt := c[d]
+								if d == src {
+									cnt--
+								}
+								nextC[d+1] = cnt
+							}
+							nextC[0] = 0
+							oldWays := ways
+							mult := int64(count) * int64(totalComps-1)
+							ways = int((int64(ways) * mult) % int64(MOD))
+							addState(j+1, nextF, &nextC)
+							ways = oldWays
+						}
+					}
 				}
 			}
 		}
-		dp = ndp
+
+		dp, newDp = newDp, dp
+		active, newActive = newActive, active
 	}
-	var ans int64
-	for _, ways := range dp {
-		ans = (ans + ways) % MOD
+
+	ans := 0
+	for _, state := range active {
+		j := state & 0xF
+		if j != k {
+			continue
+		}
+		f := (state >> 4) & 1
+		activeComps := 0
+		for d := 0; d < m; d++ {
+			activeComps += (state >> (5 + 4*d)) & 0xF
+		}
+		if activeComps+f == 1 {
+			ans = (ans + dp[state]) % MOD
+		}
 	}
-	return ans
+	return int64(ans)
 }
 
 func generateCase(rng *rand.Rand) (string, int64) {

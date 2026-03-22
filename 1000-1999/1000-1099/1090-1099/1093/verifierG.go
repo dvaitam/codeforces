@@ -10,22 +10,6 @@ import (
 	"time"
 )
 
-func runExe(path, input string) (string, error) {
-	cmd := exec.Command(path)
-	if strings.HasSuffix(path, ".go") {
-		cmd = exec.Command("go", "run", path)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
-	}
-	return strings.TrimSpace(out.String()), nil
-}
-
 type query struct {
 	t    int
 	a1   int
@@ -42,7 +26,10 @@ type caseG struct {
 
 func genCase(r *rand.Rand) caseG {
 	n := r.Intn(4) + 1
-	k := r.Intn(3) + 1
+	k := r.Intn(4) + 1 // k from 1..5
+	if k > 5 {
+		k = 5
+	}
 	points := make([][]int, n)
 	for i := 0; i < n; i++ {
 		p := make([]int, k)
@@ -70,7 +57,7 @@ func genCase(r *rand.Rand) caseG {
 	return caseG{n: n, k: k, points: points, q: q, qs: qs}
 }
 
-func abs(x int) int {
+func absInt(x int) int {
 	if x < 0 {
 		return -x
 	}
@@ -80,14 +67,13 @@ func abs(x int) int {
 func manhattan(a, b []int) int {
 	d := 0
 	for i := range a {
-		d += abs(a[i] - b[i])
+		d += absInt(a[i] - b[i])
 	}
 	return d
 }
 
 // bruteExpected simulates the queries and returns expected answers for type-2 queries.
 func bruteExpected(tc caseG) []int {
-	// deep copy points
 	pts := make([][]int, tc.n)
 	for i, p := range tc.points {
 		cp := make([]int, len(p))
@@ -124,7 +110,7 @@ func main() {
 	bin := os.Args[1]
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 200; i++ {
 		tc := genCase(rng)
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d %d\n", tc.n, tc.k))
@@ -155,13 +141,19 @@ func main() {
 
 		expected := bruteExpected(tc)
 
-		got, err := runExe(bin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "candidate runtime error on case %d: %v\n", i+1, err)
+		cmd := exec.Command(bin)
+		cmd.Stdin = strings.NewReader(input)
+		var out bytes.Buffer
+		var errBuf bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &errBuf
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "candidate runtime error on case %d: %v\n%s", i+1, err, errBuf.String())
 			os.Exit(1)
 		}
 
-		gotLines := strings.Fields(strings.TrimSpace(got))
+		got := strings.TrimSpace(out.String())
+		gotLines := strings.Fields(got)
 		if len(gotLines) != len(expected) {
 			fmt.Fprintf(os.Stderr, "case %d failed: expected %d answers, got %d\ninput:\n%s",
 				i+1, len(expected), len(gotLines), input)

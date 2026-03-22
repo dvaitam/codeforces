@@ -79,63 +79,63 @@ func parseInts(tokens []string) ([]int64, error) {
 	return out, nil
 }
 
+// hasSolution uses the same greedy algorithm as the accepted CF solution
+// to determine if a valid sequence exists for given n and k.
 func hasSolution(n, k int64) bool {
 	if k <= 0 {
 		return false
 	}
-	minSum := k * (k + 1) / 2
-	if n < minSum {
+	if n < k*(k+1)/2 {
 		return false
 	}
-	if k == 1 {
-		return n >= 1
-	}
 
-	var dfs func(pos, prev, rem int64) bool
-	dfs = func(pos, prev, rem int64) bool {
-		if pos == k {
-			return rem == 0
+	var prev int64 = 0
+	currentN := n
+
+	for i := int64(1); i <= k; i++ {
+		remDays := k - i
+
+		sumMinRem := remDays * (remDays + 1) / 2
+		numerator := currentN - sumMinRem
+		if numerator < 0 {
+			return false
 		}
-		remainDays := k - pos
+		limit := numerator / (remDays + 1)
+
+		var minNeeded int64
+		if remDays >= 31 {
+			minNeeded = 1
+		} else {
+			denom := (int64(1) << (remDays + 1)) - 1
+			minNeeded = (currentN + denom - 1) / denom
+		}
+
 		low := prev + 1
-		if low < 1 {
+		if i == 1 {
 			low = 1
 		}
+		if minNeeded > low {
+			low = minNeeded
+		}
+
 		high := prev * 2
-		if pos == 0 {
-			high = rem
+		if i == 1 {
+			high = limit + 1
 		}
-		if high > rem {
-			high = rem
+		if limit < high {
+			high = limit
 		}
+
 		if low > high {
 			return false
 		}
 
-		for x := low; x <= high; x++ {
-			remAfter := rem - x
-			// Prune by achievable sum bounds for the remaining days.
-			nextLow := x + 1
-			minRem := remainDays*nextLow + (remainDays*(remainDays-1))/2
-
-			// For tests here k<=10, this is safe and simple.
-			maxRem := int64(0)
-			cur := x
-			for i := int64(0); i < remainDays; i++ {
-				cur *= 2
-				maxRem += cur
-			}
-			if remAfter < minRem || remAfter > maxRem {
-				continue
-			}
-			if dfs(pos+1, x, remAfter) {
-				return true
-			}
-		}
-		return false
+		val := low
+		currentN -= val
+		prev = val
 	}
 
-	return dfs(0, 0, n)
+	return currentN == 0
 }
 
 func validateOutput(n, k int64, outRaw string) error {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -10,17 +11,128 @@ import (
 	"strings"
 )
 
-type Test struct {
-	input string
+const solveL = 2520
+
+func solve(input string) string {
+	reader := bufio.NewReader(strings.NewReader(input))
+	var out bytes.Buffer
+	writer := bufio.NewWriter(&out)
+
+	var n int
+	fmt.Fscan(reader, &n)
+
+	k := make([]int, n)
+	for i := 0; i < n; i++ {
+		fmt.Fscan(reader, &k[i])
+	}
+
+	m := make([]int, n)
+	adj := make([][]int, n)
+	for i := 0; i < n; i++ {
+		fmt.Fscan(reader, &m[i])
+		adj[i] = make([]int, m[i])
+		for j := 0; j < m[i]; j++ {
+			fmt.Fscan(reader, &adj[i][j])
+			adj[i][j]--
+		}
+	}
+
+	totalStates := n * solveL
+	nextState := make([]int, totalStates)
+
+	for u := 0; u < n; u++ {
+		effK := k[u] % solveL
+		if effK < 0 {
+			effK += solveL
+		}
+		modM := m[u]
+		baseState := u * solveL
+
+		for r := 0; r < solveL; r++ {
+			val := r + effK
+			if val >= solveL {
+				val -= solveL
+			}
+			idx := val % modM
+			v := adj[u][idx]
+			nextState[baseState+r] = v*solveL + val
+		}
+	}
+
+	ans := make([]int, totalStates)
+	vis := make([]byte, totalStates)
+	onStack := make([]int, totalStates)
+	for i := range onStack {
+		onStack[i] = -1
+	}
+
+	path := make([]int, 0, 4096)
+	seen := make([]bool, n)
+	seenList := make([]int, 0, n)
+
+	for i := 0; i < totalStates; i++ {
+		if vis[i] != 0 {
+			continue
+		}
+
+		curr := i
+		path = path[:0]
+
+		for vis[curr] == 0 {
+			vis[curr] = 1
+			onStack[curr] = len(path)
+			path = append(path, curr)
+			curr = nextState[curr]
+		}
+
+		var result int
+		if vis[curr] == 1 {
+			startIdx := onStack[curr]
+			cnt := 0
+			for j := startIdx; j < len(path); j++ {
+				node := path[j]
+				u := node / solveL
+				if !seen[u] {
+					seen[u] = true
+					seenList = append(seenList, u)
+					cnt++
+				}
+			}
+			result = cnt
+			for _, u := range seenList {
+				seen[u] = false
+			}
+			seenList = seenList[:0]
+		} else {
+			result = ans[curr]
+		}
+
+		for _, node := range path {
+			ans[node] = result
+			vis[node] = 2
+			onStack[node] = -1
+		}
+	}
+
+	var q int
+	fmt.Fscan(reader, &q)
+	for i := 0; i < q; i++ {
+		var x, y int
+		fmt.Fscan(reader, &x, &y)
+		u := x - 1
+		r := y % solveL
+		if r < 0 {
+			r += solveL
+		}
+		fmt.Fprintln(writer, ans[u*solveL+r])
+	}
+
+	writer.Flush()
+	return strings.TrimSpace(out.String())
 }
 
-func buildRef() (string, error) {
-	ref := "refF.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "1200F.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build reference failed: %v: %s", err, string(out))
-	}
-	return ref, nil
+type Test struct {
+	input string
 }
 
 func runExe(path, input string) (string, error) {
@@ -88,19 +200,9 @@ func main() {
 		return
 	}
 	bin := os.Args[1]
-	ref, err := buildRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 	tests := genTests()
 	for i, tc := range tests {
-		exp, err := runExe(ref, tc.input)
-		if err != nil {
-			fmt.Printf("reference runtime error on test %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
+		exp := solve(tc.input)
 		got, err := runExe(bin, tc.input)
 		if err != nil {
 			fmt.Printf("candidate runtime error on test %d: %v\n", i+1, err)
