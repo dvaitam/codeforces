@@ -6,22 +6,71 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+const MOD = 998244353
+
+func powMod(a, b int64) int64 {
+	res := int64(1)
+	a %= MOD
+	for b > 0 {
+		if b%2 == 1 {
+			res = (res * a) % MOD
+		}
+		a = (a * a) % MOD
+		b /= 2
 	}
-	oracle := filepath.Join(dir, "oracleF")
-	cmd := exec.Command("go", "build", "-o", oracle, "1821F.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	return res
+}
+
+// Embedded solver for 1821F
+func solveF(n, m, k int64) string {
+	if m*(k+1) > n {
+		return "0"
 	}
-	return oracle, nil
+
+	D := n - m*(k+1)
+
+	fact := make([]int64, n+1)
+	invFact := make([]int64, n+1)
+	fact[0] = 1
+	invFact[0] = 1
+	for i := int64(1); i <= n; i++ {
+		fact[i] = (fact[i-1] * i) % MOD
+	}
+	invFact[n] = powMod(fact[n], MOD-2)
+	for i := n - 1; i >= 1; i-- {
+		invFact[i] = (invFact[i+1] * (i + 1)) % MOD
+	}
+
+	nCr := func(nn, r int64) int64 {
+		if r < 0 || r > nn {
+			return 0
+		}
+		return fact[nn] * invFact[r] % MOD * invFact[nn-r] % MOD
+	}
+
+	ans := int64(0)
+	limit := D / k
+	if m < limit {
+		limit = m
+	}
+
+	for j := int64(0); j <= limit; j++ {
+		term := nCr(m, j)
+		term = (term * powMod(2, m-j)) % MOD
+		term = (term * nCr(D-j*k+m, m)) % MOD
+
+		if j%2 == 1 {
+			ans = (ans - term + MOD) % MOD
+		} else {
+			ans = (ans + term) % MOD
+		}
+	}
+
+	return fmt.Sprintf("%d", ans)
 }
 
 func genCaseF(rng *rand.Rand) (int, int, int) {
@@ -55,21 +104,11 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		n, m, k := genCaseF(rng)
 		input := fmt.Sprintf("%d %d %d\n", n, m, k)
-		expect, err := runBin(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d oracle failed: %v\n", i+1, err)
-			os.Exit(1)
-		}
+		expect := solveF(int64(n), int64(m), int64(k))
 		out, err := runBin(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)

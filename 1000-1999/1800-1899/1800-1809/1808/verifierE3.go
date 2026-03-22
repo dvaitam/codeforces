@@ -6,22 +6,71 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+// Embedded solver for 1808E3
+func solveE3(n, k, m int64) int64 {
+	abs := func(x int64) int64 {
+		if x < 0 {
+			return -x
+		}
+		return x
 	}
-	oracle := filepath.Join(dir, "oracleE3")
-	cmd := exec.Command("go", "build", "-o", oracle, "1808E3.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+	gcd := func(a, b int64) int64 {
+		for b != 0 {
+			a, b = b, a%b
+		}
+		return a
 	}
-	return oracle, nil
+	power := func(base, exp, mod int64) int64 {
+		base %= mod
+		if base < 0 {
+			base += mod
+		}
+		if base == 0 {
+			if exp == 0 {
+				return 1
+			}
+			return 0
+		}
+		res := int64(1)
+		for exp > 0 {
+			if exp%2 == 1 {
+				res = (res * base) % mod
+			}
+			base = (base * base) % mod
+			exp /= 2
+		}
+		return res
+	}
+
+	if k%2 == 1 {
+		d := gcd(abs(n-2), k)
+		term1 := power(k, n, m)
+		term2 := power(k-1, n, m)
+		ans := (term1 - term2 + m) % m
+		diff := (d - 1) % m
+		if n%2 == 0 {
+			ans = (ans - diff + m) % m
+		} else {
+			ans = (ans + diff) % m
+		}
+		return ans
+	}
+	d := gcd(abs(n-2), k/2)
+	half := (m + 1) / 2
+	term1 := (power(k, n, m) * half) % m
+	term2 := (power(k-2, n, m) * half) % m
+	ans := (term1 - term2 + m) % m
+	term3 := (power(2, n-1, m) * ((d - 1) % m)) % m
+	if n%2 == 0 {
+		ans = (ans - term3 + m) % m
+	} else {
+		ans = (ans + term3) % m
+	}
+	return ans
 }
 
 var primes = []int64{3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73}
@@ -33,32 +82,26 @@ func generateCase(rng *rand.Rand) string {
 	return fmt.Sprintf("%d %d %d\n", n, k, m)
 }
 
-func runCase(bin, oracle, input string) error {
-	run := func(exe string) (string, error) {
-		var cmd *exec.Cmd
-		if strings.HasSuffix(exe, ".go") {
-			cmd = exec.Command("go", "run", exe)
-		} else {
-			cmd = exec.Command(exe)
-		}
-		cmd.Stdin = strings.NewReader(input)
-		var out bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		if err := cmd.Run(); err != nil {
-			return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
-		}
-		return strings.TrimSpace(out.String()), nil
+func runCase(bin, input string) error {
+	var n, k, m int64
+	fmt.Sscanf(input, "%d %d %d", &n, &k, &m)
+	exp := fmt.Sprintf("%d", solveE3(n, k, m))
+
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
 	}
-	exp, err := run(oracle)
-	if err != nil {
-		return fmt.Errorf("oracle: %v", err)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
 	}
-	got, err := run(bin)
-	if err != nil {
-		return err
-	}
+	got := strings.TrimSpace(out.String())
 	if got != exp {
 		return fmt.Errorf("expected %s got %s", exp, got)
 	}
@@ -71,16 +114,10 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		in := generateCase(rng)
-		if err := runCase(bin, oracle, in); err != nil {
+		if err := runCase(bin, in); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}

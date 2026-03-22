@@ -696,15 +696,12 @@ func buildDrawing(tree [][2]int, n, removed int, rng *rand.Rand) [][2]int {
 }
 
 func corruptDrawing(edges [][2]int, n int, rng *rand.Rand) [][2]int {
-	if len(edges) == 0 {
-		node := 1
-		if n > 1 {
-			node = rng.Intn(n-1) + 1
-		}
-		return append(edges, [2]int{node, node})
-	}
-	res := make([][2]int, len(edges)+1)
-	copy(res, edges)
-	res[len(edges)] = edges[rng.Intn(len(edges))]
-	return res
+	// Generate a valid but different forest by building a drawing from a
+	// completely different random tree with a random vertex removed.
+	// This produces a structurally valid forest that won't match the
+	// original tree's drawings.
+	nNodes := n
+	diffTree := randomTree(nNodes, rng)
+	removed := rng.Intn(nNodes) + 1
+	return buildDrawing(diffTree, nNodes, removed, rng)
 }

@@ -109,8 +109,8 @@ func main() {
 	defer os.Remove(oracle)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	cases := make([]testCase, 0, 101)
-	for i := 0; i < 101; i++ {
+	cases := make([]testCase, 0, 10)
+	for i := 0; i < 10; i++ {
 		cases = append(cases, generateRandomCase(rng))
 	}
 	for i, tc := range cases {

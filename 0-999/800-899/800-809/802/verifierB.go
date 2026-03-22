@@ -13,13 +13,18 @@ import (
 
 type RefItem struct {
 	next int
-	book int
+	id   int
 }
 
 type RefMaxHeap []RefItem
 
-func (h RefMaxHeap) Len() int            { return len(h) }
-func (h RefMaxHeap) Less(i, j int) bool  { return h[i].next > h[j].next }
+func (h RefMaxHeap) Len() int { return len(h) }
+func (h RefMaxHeap) Less(i, j int) bool {
+	if h[i].next == h[j].next {
+		return h[i].id > h[j].id
+	}
+	return h[i].next > h[j].next
+}
 func (h RefMaxHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
 func (h *RefMaxHeap) Push(x interface{}) { *h = append(*h, x.(RefItem)) }
 func (h *RefMaxHeap) Pop() interface{} {
@@ -37,51 +42,55 @@ func solveReference(input string) string {
 	}
 	n, _ := strconv.Atoi(fields[0])
 	k, _ := strconv.Atoi(fields[1])
-	a := make([]int, n)
-	for i := 0; i < n; i++ {
+	q := n
+	a := make([]int, q)
+	for i := 0; i < q; i++ {
 		a[i], _ = strconv.Atoi(fields[2+i])
 	}
 
-	next := make([]int, n)
-	last := make(map[int]int)
-	for i := 0; i < n; i++ {
-		last[a[i]] = n
-	}
-	for i := n - 1; i >= 0; i-- {
-		next[i] = last[a[i]]
-		last[a[i]] = i
+	inf := q + 1
+	nextPos := make([]int, q)
+	last := make(map[int]int, q*2)
+	for i := q - 1; i >= 0; i-- {
+		x := a[i]
+		if p, ok := last[x]; ok {
+			nextPos[i] = p
+		} else {
+			nextPos[i] = inf
+		}
+		last[x] = i
 	}
 
-	library := make(map[int]int)
-	pq := &RefMaxHeap{}
-	heap.Init(pq)
-	cost := 0
+	cur := make(map[int]int, k*2+1)
+	h := &RefMaxHeap{}
+	heap.Init(h)
+	misses := 0
 
-	for i := 0; i < n; i++ {
-		b := a[i]
-		nxt := next[i]
-		if _, ok := library[b]; ok {
-			library[b] = nxt
-			heap.Push(pq, RefItem{nxt, b})
+	for i, x := range a {
+		nxt := nextPos[i]
+		if _, ok := cur[x]; ok {
+			cur[x] = nxt
+			heap.Push(h, RefItem{next: nxt, id: x})
 			continue
 		}
-		cost++
-		if len(library) >= k {
-			for pq.Len() > 0 {
-				item := heap.Pop(pq).(RefItem)
-				if cur, ok := library[item.book]; ok && cur == item.next {
-					delete(library, item.book)
+
+		misses++
+		if len(cur) == k {
+			for h.Len() > 0 {
+				it := heap.Pop(h).(RefItem)
+				if v, ok := cur[it.id]; ok && v == it.next {
+					delete(cur, it.id)
 					break
 				}
 			}
 		}
 		if k > 0 {
-			library[b] = nxt
-			heap.Push(pq, RefItem{nxt, b})
+			cur[x] = nxt
+			heap.Push(h, RefItem{next: nxt, id: x})
 		}
 	}
 
-	return strconv.Itoa(cost)
+	return strconv.Itoa(misses)
 }
 
 func runProg(exe, input string) (string, error) {

@@ -1,46 +1,61 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+// Embedded solver for 314E
+func solve314E(input string) (string, error) {
+	fields := strings.Fields(input)
+	if len(fields) < 2 {
+		return "", fmt.Errorf("bad input")
 	}
-	outPath := filepath.Join(dir, "oracleE")
-	cmd := exec.Command("go", "build", "-o", outPath, "314E.go")
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build oracle: %v\n%s", err, string(output))
-	}
-	return outPath, nil
-}
+	n, _ := strconv.Atoi(fields[0])
+	s := fields[1]
 
-func runProgram(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+	if n%2 != 0 {
+		return "0", nil
 	}
-	cmd.Stdin = strings.NewReader(input)
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+
+	dp := make([]uint32, n/2+2)
+	dp[0] = 1
+
+	for i := 1; i <= n; i++ {
+		isQ := (s[i-1] == '?')
+		minJ := i % 2
+		maxJ := i
+		if n-i < maxJ {
+			maxJ = n - i
+		}
+
+		j := minJ
+		if j == 0 {
+			if isQ {
+				dp[0] = dp[1]
+			} else {
+				dp[0] = 0
+			}
+			j += 2
+		}
+
+		if isQ {
+			for ; j <= maxJ; j += 2 {
+				dp[j] = dp[j-1]*25 + dp[j+1]
+			}
+		} else {
+			for ; j <= maxJ; j += 2 {
+				dp[j] = dp[j-1]
+			}
+		}
 	}
-	return strings.TrimSpace(stdout.String()), nil
+
+	return fmt.Sprintf("%d", dp[0]), nil
 }
 
 func buildInput(n int, s string) string {
@@ -117,6 +132,24 @@ func parseOutput(out string) (uint64, error) {
 	return val, nil
 }
 
+func runProgram(bin, input string) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(bin, ".go") {
+		cmd = exec.Command("go", "run", bin)
+	} else {
+		cmd = exec.Command(bin)
+	}
+	cmd.Stdin = strings.NewReader(input)
+	var stdout strings.Builder
+	var stderr strings.Builder
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+	}
+	return strings.TrimSpace(stdout.String()), nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierE.go /path/to/binary")
@@ -124,18 +157,11 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
 	tests := deterministicTests()
 	tests = append(tests, randomTests(300)...)
 
 	for idx, input := range tests {
-		expOut, err := runProgram(oracle, input)
+		expOut, err := solve314E(input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d: oracle error: %v\n", idx+1, err)
 			os.Exit(1)

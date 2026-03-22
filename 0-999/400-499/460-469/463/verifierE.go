@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
+
 const testcasesERaw = `
 2 6 10 1 1 2 1 1 2 1 15 1 1 2 1 15 1 1 2 1 11
 3 3 3 13 16 1 2 2 3 2 3 8 2 1 14 1 3
@@ -113,18 +113,156 @@ const testcasesERaw = `
 6 5 8 6 4 3 2 11 1 2 1 3 2 4 4 5 4 6 1 5 1 5 2 5 18 1 6 2 4 12
 `
 
+// solve463E is the embedded reference solver for CF 463E.
+// It reads n, q, values, tree edges, and queries, and returns the output.
+func solve463E(input string) string {
+	data := []byte(input)
+	offset := 0
+	readInt := func() int {
+		for offset < len(data) && (data[offset] < '0' || data[offset] > '9') {
+			offset++
+		}
+		if offset >= len(data) {
+			return 0
+		}
+		res := 0
+		for offset < len(data) && data[offset] >= '0' && data[offset] <= '9' {
+			res = res*10 + int(data[offset]-'0')
+			offset++
+		}
+		return res
+	}
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+	n := readInt()
+	q := readInt()
+	if n == 0 {
+		return ""
 	}
-	oracle := filepath.Join(dir, "oracleE")
-	cmd := exec.Command("go", "build", "-o", oracle, "463E.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+
+	val := make([]int, n+1)
+	for i := 1; i <= n; i++ {
+		val[i] = readInt()
 	}
-	return oracle, nil
+
+	adj := make([][]int, n+1)
+	for i := 0; i < n-1; i++ {
+		u := readInt()
+		v := readInt()
+		adj[u] = append(adj[u], v)
+		adj[v] = append(adj[v], u)
+	}
+
+	const MAXA = 2000005
+	spf := make([]int32, MAXA)
+	for i := 2; i < MAXA; i++ {
+		spf[i] = int32(i)
+	}
+	for i := 2; i*i < MAXA; i++ {
+		if spf[i] == int32(i) {
+			for j := i * i; j < MAXA; j += i {
+				if spf[j] == int32(j) {
+					spf[j] = int32(i)
+				}
+			}
+		}
+	}
+
+	depth := make([]int, n+1)
+	depth[0] = -1
+
+	var initDFS func(u, p, d int)
+	initDFS = func(u, p, d int) {
+		depth[u] = d
+		for _, v := range adj[u] {
+			if v != p {
+				initDFS(v, u, d+1)
+			}
+		}
+	}
+	initDFS(1, 0, 1)
+
+	ans := make([]int, n+1)
+	deepest_node := make([]int, MAXA)
+
+	var dfs func(u, p int)
+	dfs = func(u, p int) {
+		var prs [8]int32
+		var old_nodes [8]int
+		count := 0
+
+		best_node := 0
+		x := val[u]
+		for x > 1 {
+			pr := spf[x]
+			prs[count] = pr
+
+			node := deepest_node[pr]
+			if depth[node] > depth[best_node] {
+				best_node = node
+			}
+
+			old_nodes[count] = node
+			deepest_node[pr] = u
+			count++
+
+			for x%int(pr) == 0 {
+				x /= int(pr)
+			}
+		}
+
+		ans[u] = best_node
+
+		for _, v := range adj[u] {
+			if v != p {
+				dfs(v, u)
+			}
+		}
+
+		for i := 0; i < count; i++ {
+			deepest_node[prs[i]] = old_nodes[i]
+		}
+	}
+
+	dfs(1, 0)
+
+	var out []byte
+	writeInt := func(x int) {
+		if x == -1 {
+			out = append(out, '-', '1', '\n')
+			return
+		}
+		if x == 0 {
+			out = append(out, '0', '\n')
+			return
+		}
+		var buf [20]byte
+		pos := 20
+		for x > 0 {
+			pos--
+			buf[pos] = byte(x%10 + '0')
+			x /= 10
+		}
+		out = append(out, buf[pos:]...)
+		out = append(out, '\n')
+	}
+
+	for i := 0; i < q; i++ {
+		typ := readInt()
+		if typ == 1 {
+			v := readInt()
+			if ans[v] == 0 {
+				writeInt(-1)
+			} else {
+				writeInt(ans[v])
+			}
+		} else if typ == 2 {
+			v := readInt()
+			w := readInt()
+			val[v] = w
+			dfs(1, 0)
+		}
+	}
+	return strings.TrimSpace(string(out))
 }
 
 func run(bin string, input string) (string, error) {
@@ -189,12 +327,6 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
 	scanner := bufio.NewScanner(strings.NewReader(testcasesERaw))
 	idx := 0
@@ -205,11 +337,7 @@ func main() {
 		}
 		idx++
 		input := parseInput(line)
-		exp, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", idx, err)
-			os.Exit(1)
-		}
+		exp := solve463E(input)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", idx, err, input)

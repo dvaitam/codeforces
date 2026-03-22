@@ -6,8 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
@@ -17,46 +15,73 @@ type testCase struct {
 	input string
 }
 
-var verifierDir string
+// Embedded solver for 1866I
+func solveI(input string) string {
+	bpos := 0
+	buffer := []byte(input)
 
-func init() {
-	if _, file, _, ok := runtime.Caller(0); ok {
-		verifierDir = filepath.Dir(file)
-	} else {
-		verifierDir = "."
+	readInt := func() int {
+		for bpos < len(buffer) && buffer[bpos] <= ' ' {
+			bpos++
+		}
+		if bpos >= len(buffer) {
+			return 0
+		}
+		res := 0
+		for bpos < len(buffer) && buffer[bpos] > ' ' {
+			res = res*10 + int(buffer[bpos]-'0')
+			bpos++
+		}
+		return res
 	}
-}
 
-func buildReference() (string, error) {
-	outPath := filepath.Join(verifierDir, "ref1866I.bin")
-	cmd := exec.Command("go", "build", "-o", outPath, "1866I.go")
-	cmd.Dir = verifierDir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, string(out))
+	N := readInt()
+	if N == 0 {
+		return ""
 	}
-	return outPath, nil
-}
+	M := readInt()
+	K := readInt()
 
-func runProgram(target, input string) (string, error) {
-	if !filepath.IsAbs(target) {
-		if abs, err := filepath.Abs(target); err == nil {
-			target = abs
+	specials := make([][]int, N+1)
+	for i := 0; i < K; i++ {
+		r := readInt()
+		c := readInt()
+		specials[r] = append(specials[r], c)
+	}
+
+	in_S := make([]bool, M+1)
+	for i := 1; i <= M; i++ {
+		in_S[i] = true
+	}
+
+	max_S := M
+
+	for r := N; r >= 1; r-- {
+		s_1 := 0
+		for _, c := range specials[r] {
+			if c > s_1 {
+				s_1 = c
+			}
+		}
+
+		for max_S > 0 && !in_S[max_S] {
+			max_S--
+		}
+
+		c := max_S
+		if c > s_1 && c > 0 {
+			in_S[c] = false
+			if r == 1 && c == 1 {
+				return "Bhinneka"
+			}
+		}
+
+		for _, sp := range specials[r] {
+			in_S[sp] = false
 		}
 	}
-	var cmd *exec.Cmd
-	if strings.HasSuffix(target, ".go") {
-		cmd = exec.Command("go", "run", target)
-	} else {
-		cmd = exec.Command(target)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return out.String(), fmt.Errorf("runtime error: %v\n%s", err, out.String())
-	}
-	return out.String(), nil
+
+	return "Chaneka"
 }
 
 func parseWinner(out string) (string, error) {
@@ -71,26 +96,33 @@ func parseWinner(out string) (string, error) {
 	return w, nil
 }
 
-func verifyCase(candidate, reference string, tc testCase) error {
-	refOut, err := runProgram(reference, tc.input)
+func verifyCase(candidate string, tc testCase) error {
+	expected := solveI(tc.input)
+	expWinner, err := parseWinner(expected)
 	if err != nil {
-		return fmt.Errorf("reference error: %v", err)
-	}
-	expected, err := parseWinner(refOut)
-	if err != nil {
-		return fmt.Errorf("invalid reference output: %v", err)
+		return fmt.Errorf("embedded solver error: %v", err)
 	}
 
-	candOut, err := runProgram(candidate, tc.input)
-	if err != nil {
-		return fmt.Errorf("candidate error: %v", err)
+	var cmd *exec.Cmd
+	if strings.HasSuffix(candidate, ".go") {
+		cmd = exec.Command("go", "run", candidate)
+	} else {
+		cmd = exec.Command(candidate)
 	}
-	got, err := parseWinner(candOut)
+	cmd.Stdin = strings.NewReader(tc.input)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("candidate error: %v\n%s", err, out.String())
+	}
+
+	got, err := parseWinner(strings.TrimSpace(out.String()))
 	if err != nil {
 		return fmt.Errorf("invalid candidate output: %v", err)
 	}
-	if got != expected {
-		return fmt.Errorf("expected %s, got %s\ncandidate output:\n%s", expected, got, candOut)
+	if got != expWinner {
+		return fmt.Errorf("expected %s, got %s", expWinner, got)
 	}
 	return nil
 }
@@ -123,7 +155,7 @@ func randomTest(name string, rng *rand.Rand, maxN int) testCase {
 	if maxCells < 0 {
 		maxCells = 0
 	}
-	k := rng.Intn(min(maxCells, 10) + 1)
+	k := rng.Intn(myMin(maxCells, 10) + 1)
 	cells := make([][2]int, 0, k)
 	used := make(map[[2]int]bool)
 	for len(cells) < k {
@@ -142,7 +174,7 @@ func randomTest(name string, rng *rand.Rand, maxN int) testCase {
 	return testCase{name: name, input: formatInput(n, m, k, cells)}
 }
 
-func min(a, b int) int {
+func myMin(a, b int) int {
 	if a < b {
 		return a
 	}
@@ -174,16 +206,9 @@ func main() {
 	}
 	candidate := args[0]
 
-	ref, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
 	tests := generateTests()
 	for i, tc := range tests {
-		if err := verifyCase(candidate, ref, tc); err != nil {
+		if err := verifyCase(candidate, tc); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d (%s) failed: %v\ninput:\n%s", i+1, tc.name, err, tc.input)
 			os.Exit(1)
 		}

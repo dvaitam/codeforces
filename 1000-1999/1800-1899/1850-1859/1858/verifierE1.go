@@ -1,27 +1,115 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func buildOracle(srcFile string, binName string) (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	src := filepath.Join(dir, srcFile)
-	bin := filepath.Join(os.TempDir(), binName)
-	cmd := exec.Command("go", "build", "-o", bin, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+// Embedded solver for 1858E1
+func solve1858E1(input string) string {
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	scanner.Split(bufio.ScanWords)
+	buf := make([]byte, 0, 1024*1024)
+	scanner.Buffer(buf, 10*1024*1024)
+
+	if !scanner.Scan() {
+		return ""
 	}
-	return bin, nil
+	q, _ := strconv.Atoi(scanner.Text())
+
+	up := make([][20]int, q+1)
+	val := make([]int, q+1)
+
+	stack := make([]int, 0, q+1)
+	stack = append(stack, 0)
+
+	queries := make([]int, 0, q)
+
+	id := 0
+
+	for i := 0; i < q; i++ {
+		scanner.Scan()
+		op := scanner.Text()
+		if op == "+" {
+			scanner.Scan()
+			x, _ := strconv.Atoi(scanner.Text())
+			id++
+			val[id] = x
+			p := stack[len(stack)-1]
+			up[id][0] = p
+			for j := 1; j < 20; j++ {
+				up[id][j] = up[up[id][j-1]][j-1]
+			}
+			stack = append(stack, id)
+		} else if op == "-" {
+			scanner.Scan()
+			k, _ := strconv.Atoi(scanner.Text())
+			curr := stack[len(stack)-1]
+			for j := 19; j >= 0; j-- {
+				if (k & (1 << j)) != 0 {
+					curr = up[curr][j]
+				}
+			}
+			stack = append(stack, curr)
+		} else if op == "!" {
+			stack = stack[:len(stack)-1]
+		} else if op == "?" {
+			queries = append(queries, stack[len(stack)-1])
+		}
+	}
+
+	head := make([]int, id+1)
+	for i := range head {
+		head[i] = -1
+	}
+	next := make([]int, id+1)
+
+	for i := 1; i <= id; i++ {
+		p := up[i][0]
+		next[i] = head[p]
+		head[p] = i
+	}
+
+	ansAt := make([]int, id+1)
+	freq := make([]int, 1000005)
+	distinct := 0
+
+	var dfs func(int)
+	dfs = func(u int) {
+		ansAt[u] = distinct
+		for v := head[u]; v != -1; v = next[v] {
+			x := val[v]
+			if freq[x] == 0 {
+				distinct++
+			}
+			freq[x]++
+
+			dfs(v)
+
+			freq[x]--
+			if freq[x] == 0 {
+				distinct--
+			}
+		}
+	}
+
+	dfs(0)
+
+	var sb strings.Builder
+	for i, qNode := range queries {
+		if i > 0 {
+			sb.WriteByte('\n')
+		}
+		sb.WriteString(strconv.Itoa(ansAt[qNode]))
+	}
+	return sb.String()
 }
 
 func run(bin, input string) (string, error) {
@@ -77,13 +165,9 @@ func randomCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
-func verify(oracle, userBin string, cases []string) {
+func verify(userBin string, cases []string) {
 	for i, in := range cases {
-		want, err := run(oracle, in)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle failed on case %d: %v\ninput:\n%s", i+1, err, in)
-			os.Exit(1)
-		}
+		want := solve1858E1(in)
 		got, err := run(userBin, in)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "test %d: %v\ninput:\n%s", i+1, err, in)
@@ -103,16 +187,10 @@ func main() {
 		os.Exit(1)
 	}
 	userBin := os.Args[1]
-	oracle, err := buildOracle("1858E1.go", "oracle1858E1.bin")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	cases := deterministicCases()
 	for len(cases) < 100 {
 		cases = append(cases, randomCase(rng))
 	}
-	verify(oracle, userBin, cases)
+	verify(userBin, cases)
 }

@@ -6,8 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 )
@@ -25,6 +23,157 @@ type testCase struct {
 	desc  string
 }
 
+// Embedded solver for 331E2 ported from /tmp/cf_r21_331_E2.go
+func solve331E2(input string) string {
+	fields := strings.Fields(input)
+	pos := 0
+	nextInt := func() int {
+		v, _ := strconv.Atoi(fields[pos])
+		pos++
+		return v
+	}
+
+	n := nextInt()
+	m := nextInt()
+
+	type Edge struct {
+		to int
+		V  string
+	}
+
+	type State struct {
+		u   int
+		typ int
+		Q   string
+	}
+
+	adj := make([][]Edge, n+1)
+	for i := 0; i < m; i++ {
+		u := nextInt()
+		v := nextInt()
+		k := nextInt()
+		visions := make([]byte, k)
+		for j := 0; j < k; j++ {
+			visions[j] = byte(nextInt())
+		}
+		adj[u] = append(adj[u], Edge{to: v, V: string(visions)})
+	}
+
+	MOD := 1000000007
+
+	curCount := make(map[State]int)
+	curPath := make(map[State][]byte)
+
+	for i := 1; i <= n; i++ {
+		s := State{u: i, typ: 0, Q: string([]byte{byte(i)})}
+		curCount[s] = 1
+		curPath[s] = []byte{byte(i)}
+	}
+
+	var e1Path []byte
+	ansE2 := make([]int, 2*n+1)
+
+	for step := 1; step <= 2*n; step++ {
+		nextCount := make(map[State]int)
+		nextPath := make(map[State][]byte)
+
+		for state, count := range curCount {
+			path := curPath[state]
+			if state.typ == 0 {
+				for _, e := range adj[state.u] {
+					T := state.Q + string([]byte{byte(e.to)})
+					Ve := e.V
+
+					var newState State
+					valid := false
+
+					if strings.HasPrefix(T, Ve) {
+						newState = State{u: e.to, typ: 0, Q: T[len(Ve):]}
+						valid = true
+					} else if strings.HasPrefix(Ve, T) {
+						newState = State{u: e.to, typ: 1, Q: Ve[len(T):]}
+						valid = true
+					}
+
+					if valid {
+						if newState.typ == 1 && len(newState.Q) > 2*n-step {
+							continue
+						}
+						nextCount[newState] = (nextCount[newState] + count) % MOD
+						if _, exists := nextPath[newState]; !exists {
+							newP := make([]byte, len(path), len(path)+1)
+							copy(newP, path)
+							newP = append(newP, byte(e.to))
+							nextPath[newState] = newP
+						}
+					}
+				}
+			} else {
+				w := int(state.Q[0])
+				for _, e := range adj[state.u] {
+					if e.to == w {
+						T := state.Q[1:] + e.V
+						var newState State
+						if len(T) == 0 {
+							newState = State{u: w, typ: 0, Q: ""}
+						} else {
+							newState = State{u: w, typ: 1, Q: T}
+						}
+
+						if newState.typ == 1 && len(newState.Q) > 2*n-step {
+							continue
+						}
+
+						nextCount[newState] = (nextCount[newState] + count) % MOD
+						if _, exists := nextPath[newState]; !exists {
+							newP := make([]byte, len(path), len(path)+1)
+							copy(newP, path)
+							newP = append(newP, byte(w))
+							nextPath[newState] = newP
+						}
+						break
+					}
+				}
+			}
+		}
+
+		curCount = nextCount
+		curPath = nextPath
+
+		ans := 0
+		for state, count := range curCount {
+			if state.typ == 0 && state.Q == "" {
+				ans = (ans + count) % MOD
+				if e1Path == nil && len(curPath[state]) <= 2*n {
+					e1Path = curPath[state]
+				}
+			}
+		}
+		ansE2[step] = ans
+	}
+
+	var sb strings.Builder
+	if e1Path == nil {
+		sb.WriteString("0\n")
+	} else {
+		sb.WriteString(fmt.Sprintf("%d\n", len(e1Path)))
+		for i, v := range e1Path {
+			if i > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(strconv.Itoa(int(v)))
+		}
+		sb.WriteByte('\n')
+	}
+
+	for i := 1; i <= 2*n; i++ {
+		sb.WriteString(strconv.Itoa(ansE2[i]))
+		sb.WriteByte('\n')
+	}
+
+	return sb.String()
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierE2.go /path/to/candidate")
@@ -32,21 +181,11 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	oracle, cleanup, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build oracle: %v\n", err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
 	tests := generateTests()
 	for idx, tc := range tests {
 		input := buildInput(tc)
-		expStdout, _, err := runBinary(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle failed on test %d (%s): %v\ninput:\n%s\n", idx+1, tc.desc, err, input)
-			os.Exit(1)
-		}
+		expStdout := solve331E2(input)
+
 		expVals, err := parseOutput(expStdout, tc.n)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle produced invalid output on test %d (%s): %v\noutput:\n%s\n", idx+1, tc.desc, err, expStdout)
@@ -72,31 +211,13 @@ func main() {
 	fmt.Printf("All %d tests passed.\n", len(tests))
 }
 
-func buildOracle() (string, func(), error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", nil, fmt.Errorf("cannot determine verifier directory")
-	}
-	dir := filepath.Dir(file)
-	tmpDir, err := os.MkdirTemp("", "oracle-331E2-")
-	if err != nil {
-		return "", nil, err
-	}
-	outPath := filepath.Join(tmpDir, "oracleE2")
-	cmd := exec.Command("go", "build", "-o", outPath, "331E2.go")
-	cmd.Dir = dir
-	if output, err := cmd.CombinedOutput(); err != nil {
-		os.RemoveAll(tmpDir)
-		return "", nil, fmt.Errorf("go build failed: %v\n%s", err, string(output))
-	}
-	cleanup := func() {
-		os.RemoveAll(tmpDir)
-	}
-	return outPath, cleanup, nil
-}
-
 func runBinary(path, input string) (string, string, error) {
-	cmd := commandFor(path)
+	var cmd *exec.Cmd
+	if strings.HasSuffix(path, ".go") {
+		cmd = exec.Command("go", "run", path)
+	} else {
+		cmd = exec.Command(path)
+	}
 	cmd.Stdin = strings.NewReader(input)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -106,18 +227,9 @@ func runBinary(path, input string) (string, string, error) {
 	return stdout.String(), stderr.String(), err
 }
 
-func commandFor(path string) *exec.Cmd {
-	if strings.HasSuffix(path, ".go") {
-		return exec.Command("go", "run", path)
-	}
-	return exec.Command(path)
-}
-
 func parseOutput(out string, n int) ([]int, error) {
 	expected := 2 * n
 	tokens := strings.Fields(out)
-	// The output format is: E1 answer (path length + path nodes, or "0") followed by 2*n E2 counts.
-	// We need to extract just the last 2*n tokens (the E2 counts).
 	if len(tokens) < expected {
 		return nil, fmt.Errorf("expected at least %d integers for E2 counts, got %d total tokens", expected, len(tokens))
 	}
@@ -128,7 +240,7 @@ func parseOutput(out string, n int) ([]int, error) {
 		if err != nil {
 			return nil, fmt.Errorf("E2 token %d: not an integer (%v)", i+1, err)
 		}
-		norm := int((val%mod + mod) % mod)
+		norm := int((val%int64(mod) + int64(mod)) % int64(mod))
 		res[i] = norm
 	}
 	return res, nil

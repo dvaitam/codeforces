@@ -1,36 +1,70 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 )
 
 const testCount = 100
 
-func buildOracle() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	src := filepath.Join(dir, "2147D.go")
-	tmp, err := os.CreateTemp("", "oracle2147D")
-	if err != nil {
-		return "", err
+// ---- Embedded solver for 2147D ----
+
+func solveAll(input string) string {
+	in := bufio.NewReaderSize(strings.NewReader(input), 1<<20)
+	var out bytes.Buffer
+	w := bufio.NewWriterSize(&out, 1<<20)
+
+	var t int
+	fmt.Fscan(in, &t)
+	for ; t > 0; t-- {
+		var n int
+		fmt.Fscan(in, &n)
+		a := make([]int64, n)
+		var sum int64
+		for i := 0; i < n; i++ {
+			fmt.Fscan(in, &a[i])
+			sum += a[i]
+		}
+
+		sort.Slice(a, func(i, j int) bool { return a[i] < a[j] })
+
+		oddCounts := make([]int64, 0)
+		for i := 0; i < n; {
+			j := i + 1
+			for j < n && a[j] == a[i] {
+				j++
+			}
+			if a[i]&1 == 1 {
+				oddCounts = append(oddCounts, int64(j-i))
+			}
+			i = j
+		}
+
+		var diff int64
+		for i := len(oddCounts) - 1; i >= 0; i-- {
+			if oddCounts[i] >= diff {
+				diff = oddCounts[i] - diff
+			} else {
+				diff = diff - oddCounts[i]
+			}
+		}
+
+		alice := (sum + diff) / 2
+		bob := sum - alice
+		fmt.Fprintln(w, alice, bob)
 	}
-	path := tmp.Name()
-	tmp.Close()
-	os.Remove(path)
-	cmd := exec.Command("go", "build", "-o", path, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build oracle: %v\n%s", err, string(out))
-	}
-	return path, nil
+	w.Flush()
+	return strings.TrimSpace(out.String())
 }
+
+// ---- Verifier harness ----
 
 func run(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
@@ -89,20 +123,13 @@ func main() {
 		os.Exit(1)
 	}
 	userBin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
+
 	r := rand.New(rand.NewSource(1))
 	for tcase := 0; tcase < testCount; tcase++ {
 		input := genCase(r)
-		expectStr, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle failed on test %d: %v\n", tcase+1, err)
-			os.Exit(1)
-		}
+
+		expectStr := solveAll(input)
+
 		gotStr, err := run(userBin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "test %d: %v\n", tcase+1, err)
