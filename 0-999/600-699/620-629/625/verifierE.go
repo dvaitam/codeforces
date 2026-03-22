@@ -228,7 +228,6 @@ func solveE(nFrogs int, mVal int64, positions []int64, powers []int64) (int, []i
 			result = append(result, f.orig_idx)
 		}
 	}
-	sort.Ints(result)
 	return activeCount, result
 }
 
@@ -300,11 +299,15 @@ func main() {
 			fmt.Printf("Test %d insufficient numbers\n", i+1)
 			os.Exit(1)
 		}
+		gotVals := make([]int, cntOut)
 		for j := 0; j < cntOut; j++ {
-			var val int
-			fmt.Sscanf(reader[1+j], "%d", &val)
-			if val != expected[j] {
-				fmt.Printf("Test %d wrong answer expected %v got %v\n", i+1, expected, reader[1:1+cntOut])
+			fmt.Sscanf(reader[1+j], "%d", &gotVals[j])
+		}
+		sort.Ints(gotVals)
+		sort.Ints(expected)
+		for j := 0; j < cntOut; j++ {
+			if gotVals[j] != expected[j] {
+				fmt.Printf("Test %d wrong answer expected %v got %v\n", i+1, expected, gotVals)
 				os.Exit(1)
 			}
 		}

@@ -106,6 +106,10 @@ func solveD(input string) string {
 				LSize := C + add
 				rem -= add
 
+				if idx+LSize > M {
+					possible = false
+					break
+				}
 				OCurr := prefixD[idx+LSize] - prefixD[idx] - LSize
 				OPrev = OCurr
 				idx += LSize
@@ -138,6 +142,9 @@ func solveD(input string) string {
 				}
 				LSizes[step] += add
 				rem -= add
+				if idx+LSizes[step] > M {
+					break
+				}
 				OCurr := prefixD[idx+LSizes[step]] - prefixD[idx] - LSizes[step]
 				OPrev = OCurr
 				idx += LSizes[step]
@@ -187,7 +194,7 @@ func solveD(input string) string {
 
 			leafIdx := M
 			for i := 0; i < M; i++ {
-				for outDeg[i] > 0 {
+				for outDeg[i] > 0 && leafIdx < n {
 					fmt.Fprintln(writer, nodes[i].id, nodes[leafIdx].id)
 					outDeg[i] -= 1
 					leafIdx++

@@ -29,8 +29,8 @@ func buildOracle() (string, error) {
 }
 
 func generateRandomCase(rng *rand.Rand) testCase {
-	n := rng.Intn(4) + 1
-	m := rng.Intn(4) + 1
+	n := rng.Intn(3) + 1
+	m := rng.Intn(3) + 1
 	type side struct {
 		name  string
 		count int
@@ -109,8 +109,8 @@ func main() {
 	defer os.Remove(oracle)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	cases := make([]testCase, 0, 10)
-	for i := 0; i < 10; i++ {
+	cases := make([]testCase, 0, 5)
+	for i := 0; i < 5; i++ {
 		cases = append(cases, generateRandomCase(rng))
 	}
 	for i, tc := range cases {

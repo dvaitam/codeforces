@@ -21,6 +21,9 @@ func solve326E(input string) (string, error) {
 	}
 
 	if name == "Alice" {
+		if n == 0 {
+			return fmt.Sprintf("%.10f", 1.0), nil
+		}
 		f := make([]float64, h+2)
 		F := make([]float64, h+2)
 		for x := 1; x <= h+1; x++ {
@@ -34,6 +37,8 @@ func solve326E(input string) (string, error) {
 		}
 
 		powF := make([][]float64, h+2)
+		powF[0] = make([]float64, n+1)
+		powF[0][0] = 1.0
 		for x := 1; x <= h+1; x++ {
 			powF[x] = make([]float64, n+1)
 			powF[x][0] = 1.0
@@ -70,7 +75,7 @@ func solve326E(input string) (string, error) {
 		return fmt.Sprintf("%.10f", expectedBob), nil
 	} else {
 		target := n - 1
-		if target == 0 {
+		if target <= 0 {
 			return fmt.Sprintf("%.10f", 0.0), nil
 		}
 

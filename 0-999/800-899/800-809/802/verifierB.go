@@ -42,55 +42,54 @@ func solveReference(input string) string {
 	}
 	n, _ := strconv.Atoi(fields[0])
 	k, _ := strconv.Atoi(fields[1])
-	q := n
-	a := make([]int, q)
-	for i := 0; i < q; i++ {
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
 		a[i], _ = strconv.Atoi(fields[2+i])
 	}
 
-	inf := q + 1
-	nextPos := make([]int, q)
-	last := make(map[int]int, q*2)
-	for i := q - 1; i >= 0; i-- {
-		x := a[i]
-		if p, ok := last[x]; ok {
-			nextPos[i] = p
-		} else {
-			nextPos[i] = inf
-		}
-		last[x] = i
+	// Compute next occurrence of each element (Belady's: evict the item
+	// whose next use is furthest in the future).
+	next := make([]int, n)
+	last := make(map[int]int)
+	for i := 0; i < n; i++ {
+		last[a[i]] = n
+	}
+	for i := n - 1; i >= 0; i-- {
+		next[i] = last[a[i]]
+		last[a[i]] = i
 	}
 
-	cur := make(map[int]int, k*2+1)
+	library := make(map[int]int, k*2+1)
 	h := &RefMaxHeap{}
 	heap.Init(h)
-	misses := 0
+	cost := 0
 
-	for i, x := range a {
-		nxt := nextPos[i]
-		if _, ok := cur[x]; ok {
-			cur[x] = nxt
-			heap.Push(h, RefItem{next: nxt, id: x})
+	for i := 0; i < n; i++ {
+		b := a[i]
+		nxt := next[i]
+		if _, ok := library[b]; ok {
+			library[b] = nxt
+			heap.Push(h, RefItem{next: nxt, id: b})
 			continue
 		}
 
-		misses++
-		if len(cur) == k {
+		cost++
+		if len(library) >= k {
 			for h.Len() > 0 {
 				it := heap.Pop(h).(RefItem)
-				if v, ok := cur[it.id]; ok && v == it.next {
-					delete(cur, it.id)
+				if cur, ok := library[it.id]; ok && cur == it.next {
+					delete(library, it.id)
 					break
 				}
 			}
 		}
 		if k > 0 {
-			cur[x] = nxt
-			heap.Push(h, RefItem{next: nxt, id: x})
+			library[b] = nxt
+			heap.Push(h, RefItem{next: nxt, id: b})
 		}
 	}
 
-	return strconv.Itoa(misses)
+	return strconv.Itoa(cost)
 }
 
 func runProg(exe, input string) (string, error) {

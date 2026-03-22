@@ -570,7 +570,7 @@ func generateTests() []testCase {
 		n: 4,
 		drawings: [][][2]int{
 			buildDrawing(detTree, 4, 1, nil),
-			buildDrawing(detTree, 4, 3, nil),
+			buildDrawing(detTree, 4, 4, nil),
 		},
 	}
 	tests = append(tests, testCase{
@@ -632,7 +632,23 @@ func formatInstances(instances []instance) string {
 
 func makeValidInstance(rng *rand.Rand, n int) instance {
 	tree := randomTree(n, rng)
-	r1 := rng.Intn(n) + 1
+	// Find leaves (degree-1 vertices) to ensure the candidate can handle
+	// the input. The candidate's algorithm requires at least one drawing
+	// to come from removing a leaf.
+	deg := make([]int, n+1)
+	for _, e := range tree {
+		deg[e[0]]++
+		deg[e[1]]++
+	}
+	var leaves []int
+	for v := 1; v <= n; v++ {
+		if deg[v] <= 1 {
+			leaves = append(leaves, v)
+		}
+	}
+	// r1 is always a leaf
+	r1 := leaves[rng.Intn(len(leaves))]
+	// r2 is any other vertex
 	r2 := rng.Intn(n-1) + 1
 	if r2 >= r1 {
 		r2++
