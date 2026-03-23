@@ -251,7 +251,14 @@ func genGraph(rng *rand.Rand, n, m int) []VEdge {
 func genTest(rng *rand.Rand) (string, string) {
 	n := rng.Intn(4) + 2
 	maxEdges := n * (n - 1) / 2
-	m := rng.Intn(minInt(maxEdges, 4-n+1)) + n - 1
+	extra := maxEdges - (n - 1)
+	if extra < 1 {
+		extra = 1
+	}
+	m := rng.Intn(extra) + n - 1
+	if m > maxEdges {
+		m = maxEdges
+	}
 	k := rng.Intn(n) + 1
 	specials := make([]int, k)
 	used := make([]bool, n)

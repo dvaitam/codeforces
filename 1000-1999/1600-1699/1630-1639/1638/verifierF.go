@@ -1,12 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -16,17 +15,130 @@ type testCase struct {
 	h []int64
 }
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+// Embedded correct solver for 1638F
+func solve1638F(tc testCase) string {
+	n := tc.n
+	h := make([]int64, n+2)
+	for i := 1; i <= n; i++ {
+		h[i] = tc.h[i-1]
 	}
-	oracle := filepath.Join(dir, "oracleF")
-	cmd := exec.Command("go", "build", "-o", oracle, "1638F.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+
+	L := make([]int, n+2)
+	R := make([]int, n+2)
+	for i := 1; i <= n; i++ {
+		L[i] = i
+		for L[i] > 1 && h[L[i]-1] >= h[i] {
+			L[i] = L[L[i]-1]
+		}
 	}
-	return oracle, nil
+	for i := n; i >= 1; i-- {
+		R[i] = i
+		for R[i] < n && h[R[i]+1] >= h[i] {
+			R[i] = R[R[i]+1]
+		}
+	}
+
+	var ans int64
+
+	pref := make([]int64, n+2)
+	for m := 1; m <= n; m++ {
+		pref[m] = pref[m-1]
+		for i := 1; i <= m; i++ {
+			rightBound := R[i]
+			if rightBound > m {
+				rightBound = m
+			}
+			area := h[i] * int64(rightBound-L[i]+1)
+			if area > pref[m] {
+				pref[m] = area
+			}
+		}
+	}
+
+	suff := make([]int64, n+2)
+	for m := n; m >= 1; m-- {
+		suff[m] = suff[m+1]
+		for i := m; i <= n; i++ {
+			leftBound := L[i]
+			if leftBound < m {
+				leftBound = m
+			}
+			area := h[i] * int64(R[i]-leftBound+1)
+			if area > suff[m] {
+				suff[m] = area
+			}
+		}
+	}
+
+	for m := 1; m <= n-1; m++ {
+		if pref[m]+suff[m+1] > ans {
+			ans = pref[m] + suff[m+1]
+		}
+	}
+	if pref[n] > ans {
+		ans = pref[n]
+	}
+
+	H_left := make([]int64, n+2)
+	H_right := make([]int64, n+2)
+	C := make([]int64, 0, 2*n+5)
+
+	for k := 1; k <= n; k++ {
+		minH := h[k]
+		for x := k; x >= 1; x-- {
+			if h[x] < minH {
+				minH = h[x]
+			}
+			H_left[x] = minH
+		}
+
+		minH = h[k]
+		for y := k; y <= n; y++ {
+			if h[y] < minH {
+				minH = h[y]
+			}
+			H_right[y] = minH
+		}
+
+		C = C[:0]
+		C = append(C, 0, h[k])
+		for x := 1; x <= k; x++ {
+			C = append(C, H_left[x])
+		}
+		for y := k; y <= n; y++ {
+			C = append(C, h[k]-H_right[y])
+		}
+
+		sort.Slice(C, func(i, j int) bool { return C[i] < C[j] })
+
+		leftPtr := 1
+		rightPtr := k
+
+		for i := 0; i < len(C); i++ {
+			if i > 0 && C[i] == C[i-1] {
+				continue
+			}
+			HA := C[i]
+			if HA < 0 || HA > h[k] {
+				continue
+			}
+			HB := h[k] - HA
+
+			for leftPtr <= k && H_left[leftPtr] < HA {
+				leftPtr++
+			}
+			for rightPtr+1 <= n && H_right[rightPtr+1] >= HB {
+				rightPtr++
+			}
+
+			area := HA*int64(R[k]-leftPtr+1) + HB*int64(rightPtr-L[k]+1)
+			if area > ans {
+				ans = area
+			}
+		}
+	}
+
+	return fmt.Sprint(ans)
 }
 
 func generateCases() []testCase {
@@ -43,7 +155,7 @@ func generateCases() []testCase {
 	return cases
 }
 
-func runCase(oracle, bin string, tc testCase) error {
+func runCase(bin string, tc testCase) (string, string, error) {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", tc.n))
 	for i, v := range tc.h {
@@ -55,29 +167,19 @@ func runCase(oracle, bin string, tc testCase) error {
 	sb.WriteByte('\n')
 	input := sb.String()
 
-	cmdO := exec.Command(oracle)
-	cmdO.Stdin = strings.NewReader(input)
-	var outO bytes.Buffer
-	cmdO.Stdout = &outO
-	if err := cmdO.Run(); err != nil {
-		return fmt.Errorf("oracle runtime error: %v", err)
-	}
-	expected := strings.TrimSpace(outO.String())
+	expected := solve1638F(tc)
 
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
+	var out strings.Builder
+	var stderr strings.Builder
 	cmd.Stdout = &out
-	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\nstderr: %s", err, stderr.String())
+		return expected, "", fmt.Errorf("runtime error: %v\nstderr: %s", err, stderr.String())
 	}
 	got := strings.TrimSpace(out.String())
-	if got != expected {
-		return fmt.Errorf("expected %s got %s", expected, got)
-	}
-	return nil
+	return expected, got, nil
 }
 
 func main() {
@@ -87,17 +189,15 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
 	cases := generateCases()
 	for i, c := range cases {
-		if err := runCase(oracle, bin, c); err != nil {
+		expected, got, err := runCase(bin, c)
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", i+1, err)
+			os.Exit(1)
+		}
+		if got != expected {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", i+1, expected, got)
 			os.Exit(1)
 		}
 	}

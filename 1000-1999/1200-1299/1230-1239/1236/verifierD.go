@@ -6,23 +6,73 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+// ---------- embedded solver for 1236D ----------
+
+// solveEmbedded implements the correct solution for CF 1236D.
+// The doll starts at (1,1) facing right. At each cell it may move forward
+// or turn right once then move forward. We simulate the walk and check
+// whether every non-obstacle cell is visited exactly once.
+func solveEmbedded(input string) string {
+	var n, m, k int
+	r := strings.NewReader(input)
+	fmt.Fscan(r, &n, &m, &k)
+
+	obs := make(map[[2]int]bool)
+	for i := 0; i < k; i++ {
+		var x, y int
+		fmt.Fscan(r, &x, &y)
+		obs[[2]int{x, y}] = true
 	}
-	oracle := filepath.Join(dir, "oracleD")
-	cmd := exec.Command("go", "build", "-o", oracle, "1236D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+
+	if obs[[2]int{1, 1}] {
+		return "No"
 	}
-	return oracle, nil
+
+	total := n*m - k
+
+	// direction vectors: 0=right, 1=down, 2=left, 3=up
+	dx := [4]int{0, 1, 0, -1}
+	dy := [4]int{1, 0, -1, 0}
+
+	visited := make(map[[2]int]bool)
+	visited[[2]int{1, 1}] = true
+	count := 1
+	x, y := 1, 1
+	dir := 0
+
+	for count < total {
+		// Try to move forward
+		nx, ny := x+dx[dir], y+dy[dir]
+		if nx >= 1 && nx <= n && ny >= 1 && ny <= m && !obs[[2]int{nx, ny}] && !visited[[2]int{nx, ny}] {
+			x, y = nx, ny
+			visited[[2]int{x, y}] = true
+			count++
+			continue
+		}
+		// Try to turn right and then move forward
+		dir = (dir + 1) % 4
+		nx, ny = x+dx[dir], y+dy[dir]
+		if nx >= 1 && nx <= n && ny >= 1 && ny <= m && !obs[[2]int{nx, ny}] && !visited[[2]int{nx, ny}] {
+			x, y = nx, ny
+			visited[[2]int{x, y}] = true
+			count++
+			continue
+		}
+		// Cannot move
+		break
+	}
+
+	if count == total {
+		return "Yes"
+	}
+	return "No"
 }
+
+// ---------- verifier infrastructure ----------
 
 func buildIfGo(path string) (string, func(), error) {
 	if strings.HasSuffix(path, ".go") {
@@ -91,21 +141,10 @@ func main() {
 	}
 	defer cleanup()
 
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 1; i <= 100; i++ {
 		input := genCase(rng)
-		expect, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", i, err)
-			os.Exit(1)
-		}
+		expect := solveEmbedded(input)
 		got, err := run(cand, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i, err, input)

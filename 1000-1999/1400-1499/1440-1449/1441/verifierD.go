@@ -1,12 +1,11 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -36,17 +35,121 @@ func (tc testCase) Input() string {
 	return sb.String()
 }
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+// Embedded correct solver for 1441D
+func solve1441D(input string) string {
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	scanner.Split(bufio.ScanWords)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
+
+	scanInt := func() int {
+		scanner.Scan()
+		res, _ := strconv.Atoi(scanner.Text())
+		return res
 	}
-	oracle := filepath.Join(dir, "oracleD")
-	cmd := exec.Command("go", "build", "-o", oracle, "1441D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+
+	var out strings.Builder
+	w := bufio.NewWriter(&out)
+
+	t := scanInt()
+	for i := 0; i < t; i++ {
+		n := scanInt()
+		color := make([]int, n+1)
+		for j := 1; j <= n; j++ {
+			color[j] = scanInt()
+		}
+		adj := make([][]int, n+1)
+		for j := 0; j < n-1; j++ {
+			u := scanInt()
+			v := scanInt()
+			adj[u] = append(adj[u], v)
+			adj[v] = append(adj[v], u)
+		}
+
+		ans := 0
+		const negInf = -1000000000
+
+		var dfs func(u, p int) (int, int)
+		dfs = func(u, p int) (int, int) {
+			dp0, dp1 := negInf, negInf
+			if color[u] == 1 {
+				dp0 = 0
+			} else if color[u] == 2 {
+				dp1 = 0
+			}
+
+			for _, v := range adj[u] {
+				if v == p {
+					continue
+				}
+				v0, v1 := dfs(v, u)
+
+				if color[u] == 1 {
+					tmpV1 := v1
+					if tmpV1 != negInf {
+						tmpV1++
+					}
+					bestV := v0
+					if tmpV1 > bestV {
+						bestV = tmpV1
+					}
+					if dp0+bestV > ans {
+						ans = dp0 + bestV
+					}
+					if bestV > dp0 {
+						dp0 = bestV
+					}
+				} else if color[u] == 2 {
+					tmpV0 := v0
+					if tmpV0 != negInf {
+						tmpV0++
+					}
+					bestV := v1
+					if tmpV0 > bestV {
+						bestV = tmpV0
+					}
+					if dp1+bestV > ans {
+						ans = dp1 + bestV
+					}
+					if bestV > dp1 {
+						dp1 = bestV
+					}
+				} else {
+					if dp0 != negInf && v1 != negInf {
+						if dp0+v1+1 > ans {
+							ans = dp0 + v1 + 1
+						}
+					}
+					if dp1 != negInf && v0 != negInf {
+						if dp1+v0+1 > ans {
+							ans = dp1 + v0 + 1
+						}
+					}
+					if dp0 != negInf && v0 != negInf {
+						if dp0+v0 > ans {
+							ans = dp0 + v0
+						}
+					}
+					if dp1 != negInf && v1 != negInf {
+						if dp1+v1 > ans {
+							ans = dp1 + v1
+						}
+					}
+					if v0 > dp0 {
+						dp0 = v0
+					}
+					if v1 > dp1 {
+						dp1 = v1
+					}
+				}
+			}
+			return dp0, dp1
+		}
+
+		dfs(1, 0)
+		fmt.Fprintln(w, (ans+3)/2)
 	}
-	return oracle, nil
+	w.Flush()
+	return strings.TrimSpace(out.String())
 }
 
 func genCase(rng *rand.Rand) testCase {
@@ -66,7 +169,7 @@ func genCase(rng *rand.Rand) testCase {
 func runExe(path, input string) (string, error) {
 	cmd := exec.Command(path)
 	cmd.Stdin = strings.NewReader(input)
-	var out, stderr bytes.Buffer
+	var out, stderr strings.Builder
 	cmd.Stdout = &out
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
@@ -81,30 +184,21 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	cases := []testCase{{n: 1, colors: []int{0}, edges: []edge{}}}
 	for i := 0; i < 100; i++ {
 		cases = append(cases, genCase(rng))
 	}
 	for i, tc := range cases {
-		exp, err := runExe(oracle, tc.Input())
+		inp := tc.Input()
+		exp := solve1441D(inp)
+		got, err := runExe(bin, inp)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
-		got, err := runExe(bin, tc.Input())
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, tc.Input())
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, inp)
 			os.Exit(1)
 		}
 		if got != exp {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, exp, got, tc.Input())
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, exp, got, inp)
 			os.Exit(1)
 		}
 	}

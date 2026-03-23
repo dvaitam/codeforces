@@ -50,17 +50,32 @@ func main() {
 	n, _ := strconv.Atoi(scanner.Text())
 	m := nextInt()
 
-	adj := make([][]Edge, n+1)
+	maxNode := n
+	type rawEdge struct {
+		u, v int
+		w    int64
+	}
+	edges := make([]rawEdge, m)
 	for i := 0; i < m; i++ {
-		u := nextInt()
-		v := nextInt()
-		w := nextInt64()
-		adj[u] = append(adj[u], Edge{v, w})
-		adj[v] = append(adj[v], Edge{u, w})
+		edges[i].u = nextInt()
+		edges[i].v = nextInt()
+		edges[i].w = nextInt64()
+		if edges[i].u > maxNode {
+			maxNode = edges[i].u
+		}
+		if edges[i].v > maxNode {
+			maxNode = edges[i].v
+		}
 	}
 
-	visited := make([]bool, n+1)
-	d := make([]int64, n+1)
+	adj := make([][]Edge, maxNode+1)
+	for _, e := range edges {
+		adj[e.u] = append(adj[e.u], Edge{e.v, e.w})
+		adj[e.v] = append(adj[e.v], Edge{e.u, e.w})
+	}
+
+	visited := make([]bool, maxNode+1)
+	d := make([]int64, maxNode+1)
 	ans := int64(0)
 	mod := int64(1000000007)
 
@@ -71,64 +86,68 @@ func main() {
 	}
 
 	for i := 1; i <= n; i++ {
-		if !visited[i] {
-			basis := make([]int64, 61)
-			k := 0
-			var comp []int
+		if i >= len(visited) || visited[i] {
+			continue
+		}
+		basis := make([]int64, 61)
+		k := 0
+		var comp []int
 
-			queue := []int{i}
-			visited[i] = true
-			for head := 0; head < len(queue); head++ {
-				u := queue[head]
-				comp = append(comp, u)
-				for _, e := range adj[u] {
-					v, w := e.to, e.w
-					if !visited[v] {
-						visited[v] = true
-						d[v] = d[u] ^ w
-						queue = append(queue, v)
-					} else {
-						cycle := d[u] ^ d[v] ^ w
-						for bit := 60; bit >= 0; bit-- {
-							if (cycle>>bit)&1 == 1 {
-								if basis[bit] == 0 {
-									basis[bit] = cycle
-									k++
-									break
-								}
-								cycle ^= basis[bit]
-							}
-						}
-					}
-				}
-			}
-
-			basisOR := int64(0)
-			for bit := 0; bit <= 60; bit++ {
-				basisOR |= basis[bit]
-			}
-
-			vc := int64(len(comp))
-			pairsTotal := (vc * (vc - 1) / 2) % mod
-
-			for bit := 0; bit <= 60; bit++ {
-				if (basisOR>>bit)&1 == 1 {
-					term := (pairsTotal * pow2[k-1]) % mod
-					term = (term * pow2[bit]) % mod
-					ans = (ans + term) % mod
+		queue := []int{i}
+		visited[i] = true
+		for head := 0; head < len(queue); head++ {
+			u := queue[head]
+			comp = append(comp, u)
+			for _, e := range adj[u] {
+				v, w := e.to, e.w
+				if !visited[v] {
+					visited[v] = true
+					d[v] = d[u] ^ w
+					queue = append(queue, v)
 				} else {
-					c1 := int64(0)
-					for _, u := range comp {
-						if (d[u]>>bit)&1 == 1 {
-							c1++
+					cycle := d[u] ^ d[v] ^ w
+					for bit := 60; bit >= 0; bit-- {
+						if (cycle>>bit)&1 == 1 {
+							if basis[bit] == 0 {
+								basis[bit] = cycle
+								k++
+								break
+							}
+							cycle ^= basis[bit]
 						}
 					}
-					c0 := vc - c1
-					pairs := (c0 * c1) % mod
-					term := (pairs * pow2[k]) % mod
-					term = (term * pow2[bit]) % mod
-					ans = (ans + term) % mod
 				}
+			}
+		}
+
+		basisOR := int64(0)
+		for bit := 0; bit <= 60; bit++ {
+			basisOR |= basis[bit]
+		}
+
+		vc := int64(len(comp))
+		pairsTotal := (vc * (vc - 1) / 2) % mod
+
+		for bit := 0; bit <= 60; bit++ {
+			if (basisOR>>bit)&1 == 1 {
+				if k < 1 {
+					continue
+				}
+				term := (pairsTotal * pow2[k-1]) % mod
+				term = (term * pow2[bit]) % mod
+				ans = (ans + term) % mod
+			} else {
+				c1 := int64(0)
+				for _, u := range comp {
+					if (d[u]>>bit)&1 == 1 {
+						c1++
+					}
+				}
+				c0 := vc - c1
+				pairs := (c0 * c1) % mod
+				term := (pairs * pow2[k]) % mod
+				term = (term * pow2[bit]) % mod
+				ans = (ans + term) % mod
 			}
 		}
 	}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -11,238 +10,349 @@ import (
 	"strings"
 )
 
-// ---------- embedded solver (from cf_t23_240_E.go) ----------
-
-type SolverEdge struct {
-	id, u, v, w int
-}
-
-type HeapNode struct {
-	id, u, v, w int
-	lazy        int
-	left, right *HeapNode
-}
-
-func heapApply(n *HeapNode, lazy int) {
-	if n != nil {
-		n.w += lazy
-		n.lazy += lazy
-	}
-}
-
-func heapPush(n *HeapNode) {
-	if n != nil && n.lazy != 0 {
-		heapApply(n.left, n.lazy)
-		heapApply(n.right, n.lazy)
-		n.lazy = 0
-	}
-}
-
-func heapMerge(a, b *HeapNode) *HeapNode {
-	if a == nil {
-		return b
-	}
-	if b == nil {
-		return a
-	}
-	heapPush(a)
-	heapPush(b)
-	if a.w > b.w {
-		a, b = b, a
-	}
-	a.right = heapMerge(a.right, b)
-	a.left, a.right = a.right, a.left
-	return a
-}
-
-func heapPop(n *HeapNode) *HeapNode {
-	heapPush(n)
-	res := heapMerge(n.left, n.right)
-	n.left = nil
-	n.right = nil
-	return res
-}
+// ---------- embedded solver (correct Edmonds/Chu-Liu with edge recovery) ----------
 
 func solveEmbedded(input string) string {
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	scanner.Split(bufio.ScanWords)
-	buf := make([]byte, 1024*1024)
-	scanner.Buffer(buf, 1024*1024*10)
-
-	out := &bytes.Buffer{}
-
-	scanInt := func() int {
-		scanner.Scan()
-		x, _ := strconv.Atoi(scanner.Text())
-		return x
+	sc := strings.Fields(input)
+	idx := 0
+	nextInt := func() int {
+		v, _ := strconv.Atoi(sc[idx])
+		idx++
+		return v
 	}
 
-	if !scanner.Scan() {
-		return ""
+	n := nextInt()
+	m := nextInt()
+
+	type edge struct {
+		u, v, w int
 	}
-	n, _ := strconv.Atoi(scanner.Text())
-	m := scanInt()
-
-	edges := make([]SolverEdge, m+1)
-	adj := make([][]SolverEdge, n+1)
-
-	for i := 1; i <= m; i++ {
-		u := scanInt()
-		v := scanInt()
-		w := scanInt()
-		edges[i] = SolverEdge{i, u, v, w}
-		adj[u] = append(adj[u], edges[i])
+	edges := make([]edge, m)
+	for i := 0; i < m; i++ {
+		u := nextInt()
+		v := nextInt()
+		w := nextInt()
+		edges[i] = edge{u, v, w}
 	}
 
-	reached := make([]bool, n+1)
+	// Check reachability from 1 in original directed graph
+	adj := make([][]int, n+1)
+	for _, e := range edges {
+		adj[e.u] = append(adj[e.u], e.v)
+	}
+	vis := make([]bool, n+1)
+	vis[1] = true
 	q := []int{1}
-	reached[1] = true
 	for len(q) > 0 {
 		u := q[0]
 		q = q[1:]
-		for _, e := range adj[u] {
-			if !reached[e.v] {
-				reached[e.v] = true
-				q = append(q, e.v)
+		for _, v := range adj[u] {
+			if !vis[v] {
+				vis[v] = true
+				q = append(q, v)
 			}
 		}
 	}
-
 	for i := 1; i <= n; i++ {
-		if !reached[i] {
-			fmt.Fprintln(out, "-1")
-			return strings.TrimSpace(out.String())
+		if !vis[i] {
+			return "-1"
 		}
 	}
 
-	maxNodes := 2*n + 1
-	heaps := make([]*HeapNode, maxNodes)
-	for i := 1; i <= m; i++ {
-		e := edges[i]
-		if e.v == 1 {
-			continue
-		}
-		nNode := &HeapNode{id: e.id, u: e.u, v: e.v, w: e.w}
-		heaps[e.v] = heapMerge(heaps[e.v], nNode)
+	// Edmonds' algorithm with edge recovery
+	// We work with 0-indexed nodes internally
+	root := 0
+	curEdges := make([]wEdge, m)
+	for i, e := range edges {
+		curEdges[i] = wEdge{e.u - 1, e.v - 1, e.w, i}
 	}
 
-	parent := make([]int, maxNodes)
-	for i := 1; i < maxNodes; i++ {
-		parent[i] = i
+	// iterative Edmonds with edge id tracking
+	// chosen[v] = original edge index chosen as incoming edge for v
+	chosen := edmonds(n, root, curEdges)
+	if chosen == nil {
+		return "-1"
 	}
 
-	find := func(i int) int {
-		root := i
-		for root != parent[root] {
-			root = parent[root]
+	var result []int
+	for _, eidx := range chosen {
+		if edges[eidx].w == 1 {
+			result = append(result, eidx+1)
 		}
-		curr := i
-		for curr != root {
-			nxt := parent[curr]
-			parent[curr] = root
-			curr = nxt
-		}
-		return root
 	}
 
-	visited := make([]int, maxNodes)
-	visited[1] = 2
-
-	enter := make([]*HeapNode, maxNodes)
-	inEdge := make([]*HeapNode, n+1)
-
-	compId := n
-
-	for i := 2; i <= n; i++ {
-		if visited[i] != 0 {
-			continue
-		}
-
-		curr := i
-		path := []int{curr}
-		visited[curr] = 1
-
-		for {
-			var minEdge *HeapNode
-			for heaps[curr] != nil {
-				cand := heaps[curr]
-				heaps[curr] = heapPop(heaps[curr])
-				if find(cand.u) == curr {
-					continue
-				}
-				minEdge = cand
-				break
+	var out bytes.Buffer
+	fmt.Fprintln(&out, len(result))
+	if len(result) > 0 {
+		for i, id := range result {
+			if i > 0 {
+				fmt.Fprint(&out, " ")
 			}
+			fmt.Fprint(&out, id)
+		}
+		fmt.Fprintln(&out)
+	}
+	return strings.TrimSpace(out.String())
+}
 
-			if minEdge == nil {
-				break
+// edmonds finds minimum cost arborescence rooted at root.
+// Returns slice where result[v] = original edge index for v's incoming edge (v != root).
+// Returns nil if no arborescence exists.
+func edmonds(n, root int, edges []wEdge) []int {
+	const INF = int(1e18)
+
+	// We'll track which original edge is chosen for each vertex through contractions.
+	// id[v] = supernode id for vertex v
+	// For each contraction, we record what happened so we can expand later.
+
+	type contraction struct {
+		cycleNodes []int          // nodes in the cycle (in supernode space before contraction)
+		cycleEdge  map[int]int    // cycleEdge[v] = edge index in 'edges' that was the min incoming for v (in the cycle)
+		newNode    int            // the supernode id
+	}
+
+	curN := n
+	// id[v] maps original vertex v to current supernode
+	id := make([]int, n)
+	for i := range id {
+		id[i] = i
+	}
+
+	var contractions []contraction
+	curEdges := make([]wEdge, len(edges))
+	copy(curEdges, edges)
+
+	for {
+		// Find minimum incoming edge for each non-root node
+		minIn := make([]int, curN)    // min incoming cost
+		minEdge := make([]int, curN)  // index in curEdges of min incoming edge
+		pre := make([]int, curN)      // predecessor node
+		for i := range minIn {
+			minIn[i] = INF
+			minEdge[i] = -1
+			pre[i] = -1
+		}
+
+		for i, e := range curEdges {
+			if e.from == e.to {
+				continue
 			}
+			if e.cost < minIn[e.to] {
+				minIn[e.to] = e.cost
+				minEdge[e.to] = i
+				pre[e.to] = e.from
+			}
+		}
 
-			enter[curr] = minEdge
-			inEdge[minEdge.v] = minEdge
+		// Check if all non-root nodes are reachable
+		for v := 0; v < curN; v++ {
+			if v == root && v < curN {
+				continue
+			}
+			if v == root {
+				continue
+			}
+			if minIn[v] == INF {
+				return nil
+			}
+		}
 
-			nxt := find(minEdge.u)
+		// Find cycles
+		visited := make([]int, curN) // 0=unvisited, -1=done, >0=visit id
+		cycleID := make([]int, curN) // which cycle a node belongs to (-1 = none)
+		for i := range cycleID {
+			cycleID[i] = -1
+		}
 
-			if visited[nxt] == 2 {
-				break
-			} else if visited[nxt] == 0 {
-				visited[nxt] = 1
-				path = append(path, nxt)
-				curr = nxt
-			} else if visited[nxt] == 1 {
-				idx := -1
-				for j := 0; j < len(path); j++ {
-					if path[j] == nxt {
-						idx = j
+		numCycles := 0
+		for v := 0; v < curN; v++ {
+			if v == root || visited[v] != 0 {
+				continue
+			}
+			// Walk back through predecessors
+			path := []int{}
+			u := v
+			for u != root && visited[u] == 0 {
+				visited[u] = v + 1 // mark with unique id
+				path = append(path, u)
+				u = pre[u]
+			}
+			if u != root && visited[u] == v+1 {
+				// Found a cycle, mark all nodes from u back to u
+				cid := numCycles
+				numCycles++
+				w := u
+				for {
+					cycleID[w] = cid
+					w = pre[w]
+					if w == u {
 						break
 					}
 				}
+			}
+			// Mark all visited nodes as done
+			for _, w := range path {
+				visited[w] = -1
+			}
+		}
 
-				compId++
-				newC := compId
+		if numCycles == 0 {
+			// No cycles, we have our arborescence
+			// Recover original edge indices
+			// minEdge[v] points to the edge in curEdges chosen for each v
+			result := make([]int, n) // result[original_v] = original edge index
+			for i := range result {
+				result[i] = -1
+			}
 
-				for j := idx; j < len(path); j++ {
-					c := path[j]
-					parent[c] = newC
-					lazyVal := -enter[c].w
-					if heaps[c] != nil {
-						heapApply(heaps[c], lazyVal)
-						heaps[newC] = heapMerge(heaps[newC], heaps[c])
+			// First, record choices at current level
+			chosenAtLevel := make([]int, curN) // chosenAtLevel[supernode] = curEdges index
+			for v := 0; v < curN; v++ {
+				if v == root {
+					continue
+				}
+				chosenAtLevel[v] = minEdge[v]
+			}
+
+			// Now expand contractions in reverse
+			// We need to map supernodes back to original vertices
+			// and figure out which original edges are chosen
+
+			// Build final chosen map: supernode -> original edge index
+			superChosen := make(map[int]int)
+			for v := 0; v < curN; v++ {
+				if v == root {
+					continue
+				}
+				superChosen[v] = curEdges[chosenAtLevel[v]].origIdx
+			}
+
+			// Expand contractions in reverse order
+			for i := len(contractions) - 1; i >= 0; i-- {
+				c := contractions[i]
+				// The supernode c.newNode was chosen to have incoming edge superChosen[c.newNode]
+				// This edge's target (in original space) determines which cycle node receives external edge
+				incomingOrigIdx := superChosen[c.newNode]
+
+				// Add all cycle edges to superChosen
+				for _, cNode := range c.cycleNodes {
+					superChosen[cNode] = c.cycleEdge[cNode]
+				}
+				// Override the one that receives the external edge
+				// We need to find which cycle node contains incomingTarget
+				// But after multiple contractions, incomingTarget might be inside a nested supernode
+				// We need to find which cycle node of THIS contraction contains incomingTarget
+				// Actually, incomingTarget is an original vertex (0-indexed). We need to figure out
+				// which cycleNode it mapped to at the time of this contraction.
+
+				// The cycle nodes are supernode IDs at the level before this contraction.
+				// We need to know which cycle node contained the original vertex incomingTarget.
+				// We can determine this by looking at the edge: curEdges[chosenAtLevel].to was the
+				// supernode that incomingTarget mapped to.
+
+				// Actually, a cleaner approach: the edge in edges[incomingOrigIdx] targets original vertex
+				// incomingTarget+1. At the time of contraction i, this vertex was part of one of the
+				// cycle nodes. The cycle edge for that node gets replaced by the external edge.
+
+				// But we don't easily know the mapping at contraction time. Let me use a different approach.
+
+				// Actually let's track this differently.
+				delete(superChosen, c.newNode)
+
+				// The external incoming edge replaces the cycle edge for one cycle node.
+				// That cycle node is the one whose cycle edge target is "replaced" by the external edge.
+				// In Edmonds', the external edge enters the cycle at the vertex it points to.
+				// At contraction level i, the edge pointed to c.newNode (the supernode).
+				// Before contraction, it pointed to one of the cycle nodes.
+
+				// We need to figure out which cycle node the external edge originally entered.
+				// The origIdx tells us the original edge, and edges[origIdx].to-1 = original target vertex.
+				// We need to trace this original vertex through contractions 0..i-1 to find its supernode
+				// at level i.
+
+				targetSuper := edges[incomingOrigIdx].to
+				for j := 0; j < i; j++ {
+					cj := contractions[j]
+					for _, cn := range cj.cycleNodes {
+						if cn == targetSuper {
+							targetSuper = cj.newNode
+							break
+						}
 					}
 				}
 
-				path = path[:idx]
-				path = append(path, newC)
-				visited[newC] = 1
-				curr = newC
+				// targetSuper is now the cycle node that receives the external edge
+				superChosen[targetSuper] = incomingOrigIdx
+			}
+
+			// Now superChosen maps original vertices (0-indexed) to their incoming original edge index
+			for v, eidx := range superChosen {
+				if v < n {
+					result[v] = eidx
+				}
+			}
+
+			return result
+		}
+
+		// Contract cycles
+		// Build new node mapping
+		newID := make([]int, curN)
+		nextNode := 0
+		// First assign IDs to cycle supernodes
+		cycleNewNode := make([]int, numCycles)
+		for i := 0; i < numCycles; i++ {
+			cycleNewNode[i] = nextNode
+			nextNode++
+		}
+		// Then assign IDs to non-cycle nodes
+		for v := 0; v < curN; v++ {
+			if cycleID[v] >= 0 {
+				newID[v] = cycleNewNode[cycleID[v]]
+			} else {
+				newID[v] = nextNode
+				nextNode++
 			}
 		}
+		newRoot := newID[root]
 
-		for _, c := range path {
-			visited[c] = 2
-		}
-	}
-
-	ans := []int{}
-	for i := 2; i <= n; i++ {
-		if inEdge[i] != nil && edges[inEdge[i].id].w == 1 {
-			ans = append(ans, inEdge[i].id)
-		}
-	}
-
-	if len(ans) == 0 {
-		fmt.Fprintln(out, 0)
-	} else {
-		fmt.Fprintln(out, len(ans))
-		for i, id := range ans {
-			if i > 0 {
-				fmt.Fprint(out, " ")
+		// Record contraction info
+		for cid := 0; cid < numCycles; cid++ {
+			var cycleNodes []int
+			cycleEdge := make(map[int]int)
+			for v := 0; v < curN; v++ {
+				if cycleID[v] == cid {
+					cycleNodes = append(cycleNodes, v)
+					cycleEdge[v] = curEdges[minEdge[v]].origIdx
+				}
 			}
-			fmt.Fprint(out, id)
+			contractions = append(contractions, contraction{
+				cycleNodes: cycleNodes,
+				cycleEdge:  cycleEdge,
+				newNode:    cycleNewNode[cid],
+			})
 		}
-		fmt.Fprintln(out)
+
+		// Build new edge set
+		var newEdges []wEdge
+		for _, e := range curEdges {
+			nu := newID[e.from]
+			nv := newID[e.to]
+			if nu == nv {
+				continue
+			}
+			newCost := e.cost - minIn[e.to]
+			newEdges = append(newEdges, wEdge{nu, nv, newCost, e.origIdx})
+		}
+
+		curEdges = newEdges
+		curN = nextNode
+		root = newRoot
 	}
-	return strings.TrimSpace(out.String())
+}
+
+type wEdge struct {
+	from, to, cost, origIdx int
 }
 
 // ---------- verifier infrastructure ----------
@@ -315,7 +425,6 @@ func checkAnswer(tc verTestCase, output string) error {
 		if tc.expect != 0 {
 			return fmt.Errorf("expected %d repairs but reported 0", tc.expect)
 		}
-		// "0" can appear alone or with "0" on second line
 		if len(tokens) != 1 {
 			return fmt.Errorf("extra tokens after 0")
 		}

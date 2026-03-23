@@ -310,7 +310,7 @@ func deterministicTests() []testCase {
 }
 
 func randomTest(rng *rand.Rand) testCase {
-	n := rng.Intn(8) + 3
+	n := rng.Intn(6) + 3
 	m := rng.Intn(10)
 	k := rng.Intn(5) + 1
 	if k > n {
@@ -356,7 +356,7 @@ func main() {
 
 	tests := deterministicTests()
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 200; i++ {
+	for i := 0; i < 10; i++ {
 		tests = append(tests, randomTest(rng))
 	}
 

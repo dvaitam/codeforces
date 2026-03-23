@@ -59,7 +59,7 @@ func solve() int {
        }
        if now != Rt && vis[now] == i {
            cnt++
-           k := now
+           _ = now
            for {
                sg[now] = cnt
                now = pre[now]
@@ -80,7 +80,7 @@ func solve() int {
        }
    }
    // contract edges, build new a and update b
-   oldA := len(a)
+   _ = len(a)
    for i := 1; i <= m; i++ {
        k := mi[b[i].v]
        l := b[i].v
