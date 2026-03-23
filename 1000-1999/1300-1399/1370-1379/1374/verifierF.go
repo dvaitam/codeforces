@@ -7,17 +7,133 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
 
+const oracleSource = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+type Pair struct {
+	val, id int
+}
+
+func main() {
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
+
+	readInt := func() int {
+		if !scanner.Scan() {
+			return 0
+		}
+		res, _ := strconv.Atoi(scanner.Text())
+		return res
+	}
+
+	t := readInt()
+	var out strings.Builder
+	for tc := 0; tc < t; tc++ {
+		n := readInt()
+		a := make([]int, n)
+		pairs := make([]Pair, n)
+		for i := 0; i < n; i++ {
+			a[i] = readInt()
+			pairs[i] = Pair{val: a[i], id: i}
+		}
+
+		sort.SliceStable(pairs, func(i, j int) bool {
+			return pairs[i].val < pairs[j].val
+		})
+
+		b := make([]int, n)
+		for i := 0; i < n; i++ {
+			b[pairs[i].id] = i + 1
+		}
+
+		inv := 0
+		for i := 0; i < n; i++ {
+			for j := i + 1; j < n; j++ {
+				if b[i] > b[j] {
+					inv++
+				}
+			}
+		}
+
+		if inv%2 != 0 {
+			dupFound := false
+			for i := 0; i < n-1; i++ {
+				if pairs[i].val == pairs[i+1].val {
+					id1, id2 := pairs[i].id, pairs[i+1].id
+					b[id1], b[id2] = b[id2], b[id1]
+					dupFound = true
+					break
+				}
+			}
+			if !dupFound {
+				out.WriteString("-1\n")
+				continue
+			}
+		}
+
+		var ops []int
+		for v := 1; v <= n-2; v++ {
+			p := -1
+			for i := 0; i < n; i++ {
+				if b[i] == v {
+					p = i
+					break
+				}
+			}
+
+			for p > v {
+				ops = append(ops, p-1)
+				tmp := b[p]
+				b[p] = b[p-1]
+				b[p-1] = b[p-2]
+				b[p-2] = tmp
+				p -= 2
+			}
+			if p == v {
+				ops = append(ops, v, v)
+				for k := 0; k < 2; k++ {
+					tmp := b[v+1]
+					b[v+1] = b[v]
+					b[v] = b[v-1]
+					b[v-1] = tmp
+				}
+			}
+		}
+
+		out.WriteString(strconv.Itoa(len(ops)) + "\n")
+		for i, op := range ops {
+			if i > 0 {
+				out.WriteString(" ")
+			}
+			out.WriteString(strconv.Itoa(op))
+		}
+		out.WriteString("\n")
+	}
+	fmt.Print(out.String())
+}
+`
+
 func buildOracle() (string, error) {
-	_, self, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(self)
-	oracle := filepath.Join(dir, "oracleF")
-	cmd := exec.Command("go", "build", "-o", oracle, "1374F.go")
-	cmd.Dir = dir
+	dir := os.TempDir()
+	src := filepath.Join(dir, fmt.Sprintf("oracle1374F_%d.go", time.Now().UnixNano()))
+	if err := os.WriteFile(src, []byte(oracleSource), 0644); err != nil {
+		return "", fmt.Errorf("write oracle source: %v", err)
+	}
+	defer os.Remove(src)
+	oracle := src[:len(src)-3]
+	cmd := exec.Command("go", "build", "-o", oracle, src)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}

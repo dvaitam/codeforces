@@ -13,10 +13,87 @@ import (
 	"time"
 )
 
+const oracleSource = `package main
+
+import (
+	"fmt"
+)
+
+const Y = 201
+const offset = 100
+
+func main() {
+	var s string
+	if _, err := fmt.Scan(&s); err != nil {
+		return
+	}
+
+	n := make([]int, 65)
+	for i := 0; i < len(s); i++ {
+		n[i] = int(s[len(s)-1-i] - '0')
+	}
+
+	var dp [Y][Y]int64
+	var next_dp [Y][Y]int64
+
+	for i := 0; i < Y; i++ {
+		for j := 0; j < Y; j++ {
+			dp[i][j] = 1e18
+		}
+	}
+
+	for y1 := 0; y1 < Y; y1++ {
+		dp[offset][y1] = 0
+	}
+
+	for i := 0; i < 63; i++ {
+		for j := 0; j < Y; j++ {
+			for k := 0; k < Y; k++ {
+				next_dp[j][k] = 1e18
+			}
+		}
+
+		for y_i := 0; y_i < Y; y_i++ {
+			for y_i1 := 0; y_i1 < Y; y_i1++ {
+				if dp[y_i][y_i1] >= 1e15 {
+					continue
+				}
+				xi := int64(n[i]) + int64(10*(y_i1-offset)) - int64(y_i-offset)
+				for y_i2 := 0; y_i2 < Y; y_i2++ {
+					xi1 := int64(n[i+1]) + int64(10*(y_i2-offset)) - int64(y_i1-offset)
+					diff := xi - xi1
+					if diff < 0 {
+						diff = -diff
+					}
+					cost := diff * int64(i+1)
+
+					if dp[y_i][y_i1]+cost < next_dp[y_i1][y_i2] {
+						next_dp[y_i1][y_i2] = dp[y_i][y_i1] + cost
+					}
+				}
+			}
+		}
+
+		for j := 0; j < Y; j++ {
+			for k := 0; k < Y; k++ {
+				dp[j][k] = next_dp[j][k]
+			}
+		}
+	}
+
+	fmt.Println(dp[offset][offset])
+}
+`
+
 func buildOracle() (string, error) {
-	dir, _ := os.Getwd()
-	oracle := filepath.Join(dir, "oracleF")
-	cmd := exec.Command("go", "build", "-o", oracle, "1487F.go")
+	dir := os.TempDir()
+	src := filepath.Join(dir, fmt.Sprintf("oracle1487F_%d.go", time.Now().UnixNano()))
+	if err := os.WriteFile(src, []byte(oracleSource), 0644); err != nil {
+		return "", fmt.Errorf("write oracle source: %v", err)
+	}
+	defer os.Remove(src)
+	oracle := src[:len(src)-3]
+	cmd := exec.Command("go", "build", "-o", oracle, src)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}

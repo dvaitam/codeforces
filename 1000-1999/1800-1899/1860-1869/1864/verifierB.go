@@ -43,7 +43,7 @@ func expectedB(n, k int, s string) string {
 }
 
 func generateCase(rng *rand.Rand) (string, string) {
-	n := rng.Intn(10) + 1
+	n := rng.Intn(10) + 2
 	k := rng.Intn(n-1) + 1
 	bytes := make([]byte, n)
 	for i := range bytes {

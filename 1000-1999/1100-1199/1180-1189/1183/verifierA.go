@@ -6,17 +6,29 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	oracle := "oracleA"
-	cmd := exec.Command("go", "build", "-o", oracle, "1183A.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+// Embedded oracle solver for 1183A
+func solveOracle(input string) (string, error) {
+	a, err := strconv.Atoi(strings.TrimSpace(input))
+	if err != nil {
+		return "", fmt.Errorf("parse error: %v", err)
 	}
-	return oracle, nil
+	for {
+		s := 0
+		tmp := a
+		for tmp > 0 {
+			s += tmp % 10
+			tmp /= 10
+		}
+		if s%4 == 0 {
+			return strconv.Itoa(a), nil
+		}
+		a++
+	}
 }
 
 func runProg(prog, input string) (string, error) {
@@ -48,19 +60,13 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input := genCase(rng)
-		exp, err := runProg(oracle, input)
+		exp, err := solveOracle(input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle runtime error on case %d: %v\n", i+1, err)
+			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
 		out, err := runProg(bin, input)

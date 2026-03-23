@@ -6,23 +6,51 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	refSource        = "2160B.go"
-	tempOraclePrefix = "oracle-2160B-"
-	randomTests      = 80
-	maxN             = 200
+	randomTests = 80
+	maxN        = 200
 )
 
 type testCase struct {
 	n int
 	b []int64
+}
+
+// Embedded solver (matches 2160B.go logic).
+func solve(tc testCase) string {
+	n := tc.n
+	b := tc.b
+
+	a := make([]int, n+1)
+	nextVal := 1
+	var prev int64
+
+	for i := 1; i <= n; i++ {
+		g := b[i] - prev
+		prev = b[i]
+		l := i - int(g)
+		if l <= 0 {
+			a[i] = nextVal
+			nextVal++
+		} else {
+			a[i] = a[l]
+		}
+	}
+
+	var sb strings.Builder
+	for i := 1; i <= n; i++ {
+		if i > 1 {
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(strconv.Itoa(a[i]))
+	}
+	sb.WriteByte('\n')
+	return sb.String()
 }
 
 func main() {
@@ -32,26 +60,14 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	oracle, cleanup, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build oracle: %v\n", err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
 	tests := deterministicTests()
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	tests = append(tests, randomTestsCases(rng, randomTests)...)
 
 	for idx, tc := range tests {
 		input := formatInput(tc)
-		expOut, err := runProgram(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle runtime error on test %d: %v\n", idx+1, err)
-			fmt.Println("Input:")
-			fmt.Print(input)
-			os.Exit(1)
-		}
+		expOut := solve(tc)
+
 		gotOut, err := runProgram(candidate, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "candidate runtime error on test %d: %v\n", idx+1, err)
@@ -86,29 +102,6 @@ func main() {
 	}
 
 	fmt.Printf("All %d tests passed\n", len(tests))
-}
-
-func buildOracle() (string, func(), error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", nil, fmt.Errorf("failed to determine verifier path")
-	}
-	dir := filepath.Dir(file)
-	tmpDir, err := os.MkdirTemp("", tempOraclePrefix)
-	if err != nil {
-		return "", nil, err
-	}
-	outPath := filepath.Join(tmpDir, "oracleB")
-	cmd := exec.Command("go", "build", "-o", outPath, refSource)
-	cmd.Dir = dir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		os.RemoveAll(tmpDir)
-		return "", nil, fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	cleanup := func() {
-		os.RemoveAll(tmpDir)
-	}
-	return outPath, cleanup, nil
 }
 
 func runProgram(path, input string) (string, error) {
@@ -160,25 +153,35 @@ func formatInput(tc testCase) string {
 
 func deterministicTests() []testCase {
 	return []testCase{
-		{n: 1, b: []int64{0, 5}},
-		{n: 2, b: []int64{0, 3, 7}},
-		{n: 3, b: []int64{0, 1, 4, 9}},
+		{n: 1, b: []int64{0, 1}},
+		{n: 3, b: []int64{0, 1, 3, 6}},
+		{n: 3, b: []int64{0, 1, 3, 5}},
+		{n: 3, b: []int64{0, 1, 3, 4}},
+		{n: 4, b: []int64{0, 1, 2, 3, 7}},
 	}
 }
 
+// Generate valid test cases by constructing array a first, then computing b.
 func randomTestsCases(rng *rand.Rand, count int) []testCase {
 	tests := make([]testCase, 0, count)
 	for len(tests) < count {
 		n := rng.Intn(maxN-1) + 1
+		a := make([]int, n+1)
+		for i := 1; i <= n; i++ {
+			a[i] = rng.Intn(n) + 1
+		}
+		// compute b from a
 		b := make([]int64, n+1)
 		for i := 1; i <= n; i++ {
-			b[i] = randInt64(rng)
+			var sum int64
+			seen := make(map[int]bool)
+			for j := i; j >= 1; j-- {
+				seen[a[j]] = true
+				sum += int64(len(seen))
+			}
+			b[i] = sum
 		}
 		tests = append(tests, testCase{n: n, b: b})
 	}
 	return tests
-}
-
-func randInt64(rng *rand.Rand) int64 {
-	return int64(rng.Intn(1<<30)) - int64(rng.Intn(1<<30))
 }

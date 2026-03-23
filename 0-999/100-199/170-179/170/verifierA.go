@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"strconv"
@@ -122,15 +123,6 @@ type testCase struct {
 	rects []rect
 }
 
-// solveA mirrors 170A solution: discard all rectangles.
-func solveA(n int) []string {
-	res := make([]string, n)
-	for i := 0; i < n; i++ {
-		res[i] = "-1 -1 -1 -1"
-	}
-	return res
-}
-
 func parseTestcases() ([]testCase, error) {
 	lines := strings.Split(strings.TrimSpace(testcasesRaw), "\n")
 	var cases []testCase
@@ -207,6 +199,117 @@ func runBinary(path, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func parseFloat10(s string) (float64, bool) {
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0, false
+	}
+	// check that coord*10 is integer
+	v10 := v * 10
+	if math.Abs(v10-math.Round(v10)) > 1e-6 {
+		return 0, false
+	}
+	return v, true
+}
+
+func rectsOverlap(x1a, y1a, x2a, y2a, x1b, y1b, x2b, y2b float64) bool {
+	// Check if two axis-aligned rectangles share positive area
+	eps := 1e-9
+	overlapX := math.Min(x2a, x2b) - math.Max(x1a, x1b)
+	overlapY := math.Min(y2a, y2b) - math.Max(y1a, y1b)
+	return overlapX > eps && overlapY > eps
+}
+
+func validateOutput(tc testCase, output string) error {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) != tc.n {
+		return fmt.Errorf("expected %d lines, got %d", tc.n, len(lines))
+	}
+
+	type placed struct {
+		x1, y1, x2, y2 float64
+		idx             int
+	}
+	var rects []placed
+
+	for i := 0; i < tc.n; i++ {
+		line := strings.TrimSpace(lines[i])
+		parts := strings.Fields(line)
+		if len(parts) == 4 {
+			// Check if it's "-1 -1 -1 -1" (discarded)
+			if parts[0] == "-1" && parts[1] == "-1" && parts[2] == "-1" && parts[3] == "-1" {
+				continue
+			}
+			x1, ok1 := parseFloat10(parts[0])
+			y1, ok2 := parseFloat10(parts[1])
+			x2, ok3 := parseFloat10(parts[2])
+			y2, ok4 := parseFloat10(parts[3])
+			if !ok1 || !ok2 || !ok3 || !ok4 {
+				return fmt.Errorf("rect %d: coordinates*10 must be integers", i+1)
+			}
+			// Ensure x1<x2, y1<y2
+			if x1 > x2 {
+				x1, x2 = x2, x1
+			}
+			if y1 > y2 {
+				y1, y2 = y2, y1
+			}
+			eps := 1e-9
+			if x2-x1 < eps || y2-y1 < eps {
+				return fmt.Errorf("rect %d: degenerate rectangle", i+1)
+			}
+			// Check within bounds [0,w] x [0,h]
+			if x1 < -eps || y1 < -eps || x2 > float64(tc.w)+eps || y2 > float64(tc.h)+eps {
+				return fmt.Errorf("rect %d: out of bounds", i+1)
+			}
+			// Check scale: placed w/h must preserve aspect ratio of original rect
+			pw := x2 - x1
+			ph := y2 - y1
+			ow := float64(tc.rects[i].w)
+			oh := float64(tc.rects[i].h)
+			// Could be rotated: check both orientations
+			ratioOrig := ow / oh
+			ratioPlaced := pw / ph
+			ratioOrigRot := oh / ow
+			isNormal := math.Abs(ratioPlaced/ratioOrig-1) < 1e-4
+			isRotated := math.Abs(ratioPlaced/ratioOrigRot-1) < 1e-4
+			if !isNormal && !isRotated {
+				return fmt.Errorf("rect %d: aspect ratio mismatch (placed %.4f x %.4f, orig %d x %d)", i+1, pw, ph, tc.rects[i].w, tc.rects[i].h)
+			}
+			// Check scale limits: enlarged <= 2x, shrunk >= 1/10
+			var scaleW, scaleH float64
+			if isNormal {
+				scaleW = pw / ow
+				scaleH = ph / oh
+			} else {
+				scaleW = pw / oh
+				scaleH = ph / ow
+			}
+			scale := (scaleW + scaleH) / 2
+			if scale > 2.0+1e-6 || scale < 0.1-1e-6 {
+				return fmt.Errorf("rect %d: scale %.4f out of [0.1, 2.0]", i+1, scale)
+			}
+
+			rects = append(rects, placed{x1, y1, x2, y2, i})
+		} else {
+			return fmt.Errorf("rect %d: expected 4 fields, got %d", i+1, len(parts))
+		}
+	}
+
+	// Check no two placed rectangles share positive area
+	for i := 0; i < len(rects); i++ {
+		for j := i + 1; j < len(rects); j++ {
+			a := rects[i]
+			b := rects[j]
+			if rectsOverlap(a.x1, a.y1, a.x2, a.y2, b.x1, b.y1, b.x2, b.y2) {
+				return fmt.Errorf("rects %d and %d overlap", a.idx+1, b.idx+1)
+			}
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierA.go /path/to/binary")
@@ -225,7 +328,6 @@ func main() {
 	defer cleanup()
 
 	for idx, tc := range cases {
-		_ = tc // keep for future logic if needed
 		input := fmt.Sprintf("%d %d\n%d\n", tc.w, tc.h, tc.n)
 		for _, r := range tc.rects {
 			input += fmt.Sprintf("%d %d\n", r.w, r.h)
@@ -235,10 +337,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", idx+1, err)
 			os.Exit(1)
 		}
-		expectedLines := solveA(tc.n)
-		expected := strings.Join(expectedLines, "\n")
-		if strings.TrimSpace(got) != expected {
-			fmt.Fprintf(os.Stderr, "case %d mismatch\nexpected:\n%s\ngot:\n%s\n", idx+1, expected, got)
+		if err := validateOutput(tc, got); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d invalid output: %v\noutput:\n%s\n", idx+1, err, got)
 			os.Exit(1)
 		}
 	}

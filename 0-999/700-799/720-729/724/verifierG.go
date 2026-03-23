@@ -6,9 +6,136 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
+
+const refSource = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+)
+
+var scanner *bufio.Scanner
+
+func init() {
+	scanner = bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024*10)
+}
+
+func nextInt() int {
+	scanner.Scan()
+	ans, _ := strconv.Atoi(scanner.Text())
+	return ans
+}
+
+func nextInt64() int64 {
+	scanner.Scan()
+	ans, _ := strconv.ParseInt(scanner.Text(), 10, 64)
+	return ans
+}
+
+type Edge struct {
+	to int
+	w  int64
+}
+
+func main() {
+	if !scanner.Scan() {
+		return
+	}
+	n, _ := strconv.Atoi(scanner.Text())
+	m := nextInt()
+
+	adj := make([][]Edge, n+1)
+	for i := 0; i < m; i++ {
+		u := nextInt()
+		v := nextInt()
+		w := nextInt64()
+		adj[u] = append(adj[u], Edge{v, w})
+		adj[v] = append(adj[v], Edge{u, w})
+	}
+
+	visited := make([]bool, n+1)
+	d := make([]int64, n+1)
+	ans := int64(0)
+	mod := int64(1000000007)
+
+	pow2 := make([]int64, 130)
+	pow2[0] = 1
+	for i := 1; i < 130; i++ {
+		pow2[i] = (pow2[i-1] * 2) % mod
+	}
+
+	for i := 1; i <= n; i++ {
+		if !visited[i] {
+			basis := make([]int64, 61)
+			k := 0
+			var comp []int
+
+			queue := []int{i}
+			visited[i] = true
+			for head := 0; head < len(queue); head++ {
+				u := queue[head]
+				comp = append(comp, u)
+				for _, e := range adj[u] {
+					v, w := e.to, e.w
+					if !visited[v] {
+						visited[v] = true
+						d[v] = d[u] ^ w
+						queue = append(queue, v)
+					} else {
+						cycle := d[u] ^ d[v] ^ w
+						for bit := 60; bit >= 0; bit-- {
+							if (cycle>>bit)&1 == 1 {
+								if basis[bit] == 0 {
+									basis[bit] = cycle
+									k++
+									break
+								}
+								cycle ^= basis[bit]
+							}
+						}
+					}
+				}
+			}
+
+			basisOR := int64(0)
+			for bit := 0; bit <= 60; bit++ {
+				basisOR |= basis[bit]
+			}
+
+			vc := int64(len(comp))
+			pairsTotal := (vc * (vc - 1) / 2) % mod
+
+			for bit := 0; bit <= 60; bit++ {
+				if (basisOR>>bit)&1 == 1 {
+					term := (pairsTotal * pow2[k-1]) % mod
+					term = (term * pow2[bit]) % mod
+					ans = (ans + term) % mod
+				} else {
+					c1 := int64(0)
+					for _, u := range comp {
+						if (d[u]>>bit)&1 == 1 {
+							c1++
+						}
+					}
+					c0 := vc - c1
+					pairs := (c0 * c1) % mod
+					term := (pairs * pow2[k]) % mod
+					term = (term * pow2[bit]) % mod
+					ans = (ans + term) % mod
+				}
+			}
+		}
+	}
+
+	fmt.Println(ans)
+}
+`
 
 func runProgram(bin, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -441,6 +568,34 @@ const testcasesRaw = `1 0
 3 6
 7 8`
 
+func parseInput(raw string) string {
+	lines := strings.Split(strings.TrimSpace(raw), "\n")
+	if len(lines) < 1 {
+		return ""
+	}
+	// First line: n m
+	parts := strings.Fields(lines[0])
+	if len(parts) < 2 {
+		return ""
+	}
+	n := 0
+	m := 0
+	fmt.Sscanf(parts[0], "%d", &n)
+	fmt.Sscanf(parts[1], "%d", &m)
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
+
+	// Next line has n space-separated weights
+	// Third line has n space-separated weights
+	// We need to convert to edge format: m edges
+	// Wait, this format is: n m, then n values (c_i), then n values (d_i)
+	// Actually looking at the test data more carefully...
+	// The format appears to be custom for this problem.
+	// Let me just pass raw input directly.
+	return raw
+}
+
 func readTests() ([]string, error) {
 	raw := strings.TrimSpace(testcasesRaw)
 	if !strings.Contains(raw, "\n\n") {
@@ -467,63 +622,38 @@ func readTests() ([]string, error) {
 	return tests, nil
 }
 
-func verify(candidate, refSrc string) error {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	srcPath := filepath.Join(dir, refSrc)
+func buildRef() (string, func(), error) {
 	tmpDir, err := os.MkdirTemp("", "refbuild")
 	if err != nil {
-		return err
+		return "", nil, err
 	}
-	defer os.RemoveAll(tmpDir)
-	tmpSrc := filepath.Join(tmpDir, filepath.Base(srcPath))
-	data, err := os.ReadFile(srcPath)
+	srcPath := filepath.Join(tmpDir, "ref.go")
+	if err := os.WriteFile(srcPath, []byte(refSource), 0644); err != nil {
+		os.RemoveAll(tmpDir)
+		return "", nil, err
+	}
+	binPath := filepath.Join(tmpDir, "ref")
+	cmd := exec.Command("go", "build", "-o", binPath, srcPath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		os.RemoveAll(tmpDir)
+		return "", nil, fmt.Errorf("failed to build reference: %v\n%s", err, out)
+	}
+	return binPath, func() { os.RemoveAll(tmpDir) }, nil
+}
+
+func verify(candidate string) error {
+	refBin, cleanup, err := buildRef()
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(tmpSrc, data, 0644); err != nil {
-		return err
-	}
-	refBin := filepath.Join(tmpDir, "refbin")
-	cmd := exec.Command("go", "build", "-o", refBin, tmpSrc)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to build reference: %v\n%s", err, out)
-	}
-	candPath := candidate
-	var cleanup func()
-	if strings.HasSuffix(candidate, ".go") {
-		tmpCdir, err := os.MkdirTemp("", "candbuild")
-		if err != nil {
-			return err
-		}
-		data, err := os.ReadFile(candidate)
-		if err != nil {
-			os.RemoveAll(tmpCdir)
-			return err
-		}
-		tmpSrc := filepath.Join(tmpCdir, filepath.Base(candidate))
-		if err := os.WriteFile(tmpSrc, data, 0644); err != nil {
-			os.RemoveAll(tmpCdir)
-			return err
-		}
-		candBin := filepath.Join(tmpCdir, "candbin")
-		if out, err := exec.Command("go", "build", "-o", candBin, tmpSrc).CombinedOutput(); err != nil {
-			os.RemoveAll(tmpCdir)
-			return fmt.Errorf("failed to build candidate: %v\n%s", err, out)
-		}
-		candPath = candBin
-		cleanup = func() { os.RemoveAll(tmpCdir) }
-	}
-	if cleanup != nil {
-		defer cleanup()
-	}
+	defer cleanup()
 
 	tests, err := readTests()
 	if err != nil {
 		return err
 	}
 	for i, in := range tests {
-		candOut, err := runProgram(candPath, in)
+		candOut, err := runProgram(candidate, in)
 		if err != nil {
 			return fmt.Errorf("case %d: %v", i+1, err)
 		}
@@ -545,7 +675,7 @@ func main() {
 		os.Exit(1)
 	}
 	candidate := os.Args[1]
-	if err := verify(candidate, "724G.go"); err != nil {
+	if err := verify(candidate); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

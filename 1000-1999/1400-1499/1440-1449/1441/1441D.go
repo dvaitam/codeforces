@@ -1,133 +1,126 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "os"
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
 )
 
-// Fast IO
-var rdr = bufio.NewReader(os.Stdin)
-var wrtr = bufio.NewWriter(os.Stdout)
-
-func readInt() (int, error) {
-   var x int
-   var neg bool
-   b := make([]byte, 0, 16)
-   for {
-       ch, err := rdr.ReadByte()
-       if err != nil {
-           return 0, err
-       }
-       if (ch >= '0' && ch <= '9') || ch == '-' {
-           b = append(b, ch)
-           break
-       }
-   }
-   for {
-       ch, err := rdr.ReadByte()
-       if err != nil {
-           break
-       }
-       if ch < '0' || ch > '9' {
-           break
-       }
-       b = append(b, ch)
-   }
-   // parse b
-   for i, ch := range b {
-       if ch == '-' && i == 0 {
-           neg = true
-       } else {
-           x = x*10 + int(ch-'0')
-       }
-   }
-   if neg {
-       x = -x
-   }
-   return x, nil
-}
-
 func main() {
-   defer wrtr.Flush()
-   t, _ := readInt()
-   for tc := 0; tc < t; tc++ {
-       n, _ := readInt()
-       a := make([]int, n)
-       cntW, cntB := 0, 0
-       for i := 0; i < n; i++ {
-           ai, _ := readInt()
-           a[i] = ai
-           if ai == 1 {
-               cntW++
-           } else if ai == 2 {
-               cntB++
-           }
-       }
-       // build adjacency
-       adj := make([][]int, n)
-       for i := 0; i < n-1; i++ {
-           u, _ := readInt(); v, _ := readInt()
-           u--; v--
-           adj[u] = append(adj[u], v)
-           adj[v] = append(adj[v], u)
-       }
-       // if only one color or none, can remove all in one op
-       if cntW == 0 || cntB == 0 {
-           fmt.Fprintln(wrtr, 1)
-           continue
-       }
-       // count components on white+grey (a != 2)
-       vis := make([]bool, n)
-       compWG := 0
-       stack := make([]int, 0, n)
-       for i := 0; i < n; i++ {
-           if !vis[i] && a[i] != 2 {
-               compWG++
-               // dfs
-               stack = stack[:0]
-               stack = append(stack, i)
-               vis[i] = true
-               for len(stack) > 0 {
-                   v := stack[len(stack)-1]
-                   stack = stack[:len(stack)-1]
-                   for _, u := range adj[v] {
-                       if !vis[u] && a[u] != 2 {
-                           vis[u] = true
-                           stack = append(stack, u)
-                       }
-                   }
-               }
-           }
-       }
-       // count components on black+grey (a != 1)
-       vis2 := make([]bool, n)
-       compBG := 0
-       for i := 0; i < n; i++ {
-           if !vis2[i] && a[i] != 1 {
-               compBG++
-               stack = stack[:0]
-               stack = append(stack, i)
-               vis2[i] = true
-               for len(stack) > 0 {
-                   v := stack[len(stack)-1]
-                   stack = stack[:len(stack)-1]
-                   for _, u := range adj[v] {
-                       if !vis2[u] && a[u] != 1 {
-                           vis2[u] = true
-                           stack = append(stack, u)
-                       }
-                   }
-               }
-           }
-       }
-       // answer
-       // both groups non-empty
-       // minimum ops = 1 + min(compWG, compBG)
-       ans := 1 + compWG
-       if 1+compBG < ans {
-           ans = 1 + compBG
-       }
-       fmt.Fprintln(wrtr, ans)
-   }
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
+
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+
+	scanInt := func() int {
+		scanner.Scan()
+		res, _ := strconv.Atoi(scanner.Text())
+		return res
+	}
+
+	if !scanner.Scan() {
+		return
+	}
+	t, _ := strconv.Atoi(scanner.Text())
+
+	for i := 0; i < t; i++ {
+		n := scanInt()
+		color := make([]int, n+1)
+		for j := 1; j <= n; j++ {
+			color[j] = scanInt()
+		}
+		adj := make([][]int, n+1)
+		for j := 0; j < n-1; j++ {
+			u := scanInt()
+			v := scanInt()
+			adj[u] = append(adj[u], v)
+			adj[v] = append(adj[v], u)
+		}
+
+		ans := 0
+		const negInf = -1000000000
+
+		var dfs func(u, p int) (int, int)
+		dfs = func(u, p int) (int, int) {
+			dp0, dp1 := negInf, negInf
+			if color[u] == 1 {
+				dp0 = 0
+			} else if color[u] == 2 {
+				dp1 = 0
+			}
+
+			for _, v := range adj[u] {
+				if v == p {
+					continue
+				}
+				v0, v1 := dfs(v, u)
+
+				if color[u] == 1 {
+					tmpV1 := v1
+					if tmpV1 != negInf {
+						tmpV1++
+					}
+					bestV := v0
+					if tmpV1 > bestV {
+						bestV = tmpV1
+					}
+					if dp0+bestV > ans {
+						ans = dp0 + bestV
+					}
+					if bestV > dp0 {
+						dp0 = bestV
+					}
+				} else if color[u] == 2 {
+					tmpV0 := v0
+					if tmpV0 != negInf {
+						tmpV0++
+					}
+					bestV := v1
+					if tmpV0 > bestV {
+						bestV = tmpV0
+					}
+					if dp1+bestV > ans {
+						ans = dp1 + bestV
+					}
+					if bestV > dp1 {
+						dp1 = bestV
+					}
+				} else {
+					if dp0 != negInf && v1 != negInf {
+						if dp0+v1+1 > ans {
+							ans = dp0 + v1 + 1
+						}
+					}
+					if dp1 != negInf && v0 != negInf {
+						if dp1+v0+1 > ans {
+							ans = dp1 + v0 + 1
+						}
+					}
+					if dp0 != negInf && v0 != negInf {
+						if dp0+v0 > ans {
+							ans = dp0 + v0
+						}
+					}
+					if dp1 != negInf && v1 != negInf {
+						if dp1+v1 > ans {
+							ans = dp1 + v1
+						}
+					}
+					if v0 > dp0 {
+						dp0 = v0
+					}
+					if v1 > dp1 {
+						dp1 = v1
+					}
+				}
+			}
+			return dp0, dp1
+		}
+
+		dfs(1, 0)
+		fmt.Fprintln(out, (ans+3)/2)
+	}
 }

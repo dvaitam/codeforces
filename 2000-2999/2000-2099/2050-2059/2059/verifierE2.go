@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -12,8 +13,7 @@ import (
 )
 
 const (
-	refSourceE2 = "./2059E2.go"
-	sumLimit    = 300000
+	sumLimit = 300000
 )
 
 type testCase struct {
@@ -27,6 +27,153 @@ type operation struct {
 	val int
 }
 
+// ---------- embedded solver (from cf_t23_2059_E2.go) ----------
+
+func solveAllCases(input string) string {
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	scanner.Split(bufio.ScanWords)
+	buf := make([]byte, 1024*1024)
+	scanner.Buffer(buf, 10*1024*1024)
+
+	readInt := func() int {
+		scanner.Scan()
+		val, _ := strconv.Atoi(scanner.Text())
+		return val
+	}
+
+	t := readInt()
+	out := &bytes.Buffer{}
+
+	for tc := 0; tc < t; tc++ {
+		n := readInt()
+		m := readInt()
+
+		A := make([]int, n*m)
+		for i := 0; i < n*m; i++ {
+			A[i] = readInt()
+		}
+
+		B := make([]int, n*m)
+		posB := make([]int, 2*n*m+1)
+		for i := range posB {
+			posB[i] = -1
+		}
+		for i := 0; i < n*m; i++ {
+			B[i] = readInt()
+			posB[B[i]] = i
+		}
+
+		L := 0
+		for L < n*m {
+			p := posB[A[L]]
+			if p != -1 {
+				if L == 0 || p > posB[A[L-1]] {
+					L++
+				} else {
+					break
+				}
+			} else {
+				break
+			}
+		}
+
+		check := func(K int) bool {
+			isRet := make([]bool, n*m)
+			for i := 0; i < K; i++ {
+				isRet[posB[A[i]]] = true
+			}
+			c := 0
+			for j := 0; j < n*m; j++ {
+				if !isRet[j] {
+					if c > (j/m)*m {
+						return false
+					}
+				} else {
+					c++
+				}
+			}
+			return true
+		}
+
+		ansK := 0
+		low := 0
+		high := L
+		for low <= high {
+			mid := (low + high) / 2
+			if check(mid) {
+				ansK = mid
+				low = mid + 1
+			} else {
+				high = mid - 1
+			}
+		}
+
+		isRet := make([]bool, n*m)
+		for i := 0; i < ansK; i++ {
+			isRet[posB[A[i]]] = true
+		}
+
+		Ij := make([]int, 0, n*m-ansK)
+		for j := 0; j < n*m; j++ {
+			if !isRet[j] {
+				Ij = append(Ij, j)
+			}
+		}
+
+		numI := len(Ij)
+		fmt.Fprintln(out, numI)
+
+		if numI > 0 {
+			type Op struct {
+				i int
+				x int
+			}
+			ansOps := make([]Op, numI)
+
+			tree := make([]int, numI+1)
+			for i := 1; i <= numI; i++ {
+				tree[i] += 1
+				nxt := i + (i & -i)
+				if nxt <= numI {
+					tree[nxt] += tree[i]
+				}
+			}
+
+			for i := numI - 1; i >= 0; i-- {
+				j := Ij[i]
+				pi := i - (j % m)
+
+				idx := 0
+				rem := pi
+				for step := 19; step >= 0; step-- {
+					next := idx + (1 << step)
+					if next <= numI && tree[next] <= rem {
+						idx = next
+						rem -= tree[next]
+					}
+				}
+				pos := idx + 1
+
+				for k := pos; k <= numI; k += k & -k {
+					tree[k] -= 1
+				}
+
+				ansOps[pos-1] = Op{
+					i: j/m + 1,
+					x: B[j],
+				}
+			}
+
+			for i := 0; i < numI; i++ {
+				fmt.Fprintln(out, ansOps[i].i, ansOps[i].x)
+			}
+		}
+	}
+	return out.String()
+}
+
+// ---------- verifier infrastructure ----------
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierE2.go /path/to/candidate")
@@ -34,21 +181,11 @@ func main() {
 	}
 	candidate := os.Args[len(os.Args)-1]
 
-	refBin, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
 	tests := generateTests()
 	input := buildInput(tests)
 
-	refOut, err := runProgram(refBin, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference failed: %v\noutput:\n%s\n", err, refOut)
-		os.Exit(1)
-	}
+	refOut := solveAllCases(input)
+
 	candOut, err := runCandidate(candidate, input)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "candidate failed: %v\noutput:\n%s\n", err, candOut)
@@ -80,30 +217,8 @@ func main() {
 	fmt.Printf("All %d tests passed.\n", len(tests))
 }
 
-func buildReference() (string, error) {
-	tmp, err := os.CreateTemp("", "2059E2-ref-*")
-	if err != nil {
-		return "", err
-	}
-	tmp.Close()
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSourceE2))
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, out.String())
-	}
-	return tmp.Name(), nil
-}
-
 func runCandidate(path, input string) (string, error) {
 	cmd := commandFor(path)
-	return runWithInput(cmd, input)
-}
-
-func runProgram(path, input string) (string, error) {
-	cmd := exec.Command(path)
 	return runWithInput(cmd, input)
 }
 
@@ -120,11 +235,15 @@ func commandFor(path string) *exec.Cmd {
 
 func runWithInput(cmd *exec.Cmd, input string) (string, error) {
 	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	err := cmd.Run()
-	return out.String(), err
+	if err != nil {
+		return "", fmt.Errorf("%v\nstderr: %s", err, stderr.String())
+	}
+	return stdout.String(), nil
 }
 
 func parseCounts(output string, t int) ([]int, error) {
@@ -219,7 +338,7 @@ func validateOperationValues(tc testCase, ops []operation) error {
 func simulate(tc testCase, ops []operation) error {
 	arr := copyMatrix(tc.start)
 	n, m := tc.n, tc.m
-	for idx, op := range ops {
+	for _, op := range ops {
 		x := op.val
 		for k := op.idx - 1; k < n; k++ {
 			row := arr[k]
@@ -229,9 +348,6 @@ func simulate(tc testCase, ops []operation) error {
 			}
 			row[0] = x
 			x = last
-		}
-		if idx >= 0 {
-			// nothing else to do, the last value is discarded
 		}
 	}
 	for i := 0; i < n; i++ {

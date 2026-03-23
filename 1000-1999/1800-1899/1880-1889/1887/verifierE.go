@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -612,23 +610,6 @@ const testcasesRaw = `100
 4 3
 2 2`
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
-	}
-	return strings.TrimSpace(out.String()), nil
-}
-
 func hasRectangle(points []point) bool {
 	colRows := make(map[int]map[int]struct{})
 	for _, p := range points {
@@ -661,41 +642,74 @@ func hasRectangle(points []point) bool {
 	return false
 }
 
-func validateYes(points []point, out string) bool {
-	lines := strings.Split(strings.TrimSpace(out), "\n")
-	if len(lines) < 5 {
-		return false
+type cell struct{ x, y int }
+
+func solveCase(n int, points []point) (bool, [4]cell) {
+	cells := make([]cell, len(points))
+	for i, p := range points {
+		cells[i] = cell{p.x, p.y}
 	}
-	if strings.ToLower(strings.TrimSpace(lines[0])) != "yes" {
-		return false
+	rowMap := make(map[int]map[int]int)
+	for i, c := range cells {
+		if rowMap[c.x] == nil {
+			rowMap[c.x] = make(map[int]int)
+		}
+		rowMap[c.x][c.y] = i
 	}
+	rows := make([]int, 0, len(rowMap))
+	for r := range rowMap {
+		rows = append(rows, r)
+	}
+	sort.Ints(rows)
+	for i := 0; i < len(rows); i++ {
+		for j := i + 1; j < len(rows); j++ {
+			r1, r2 := rows[i], rows[j]
+			type colPair struct {
+				c, i1, i2 int
+			}
+			var cols []colPair
+			for c1, idx1 := range rowMap[r1] {
+				if idx2, ok := rowMap[r2][c1]; ok {
+					cols = append(cols, colPair{c1, idx1, idx2})
+				}
+			}
+			if len(cols) < 2 {
+				continue
+			}
+			for a := 0; a < len(cols); a++ {
+				for b := a + 1; b < len(cols); b++ {
+					i1 := cols[a].i1
+					i2 := cols[b].i1
+					i3 := cols[a].i2
+					i4 := cols[b].i2
+					if i1 == i2 || i1 == i3 || i1 == i4 || i2 == i3 || i2 == i4 || i3 == i4 {
+						continue
+					}
+					return true, [4]cell{cells[i1], cells[i2], cells[i3], cells[i4]}
+				}
+			}
+		}
+	}
+	return false, [4]cell{}
+}
+
+func validateYes(points []point, ans [4]cell) bool {
 	inSet := make(map[point]struct{})
 	for _, p := range points {
 		inSet[p] = struct{}{}
 	}
-	pts := make([]point, 4)
-	for i := 0; i < 4; i++ {
-		fields := strings.Fields(lines[i+1])
-		if len(fields) != 2 {
-			return false
-		}
-		x, err1 := strconv.Atoi(fields[0])
-		y, err2 := strconv.Atoi(fields[1])
-		if err1 != nil || err2 != nil {
-			return false
-		}
-		pts[i] = point{x, y}
-		if _, ok := inSet[pts[i]]; !ok {
+	for _, c := range ans {
+		if _, ok := inSet[point{c.x, c.y}]; !ok {
 			return false
 		}
 	}
 	xs := make(map[int]struct{})
 	ys := make(map[int]struct{})
-	setCheck := make(map[point]struct{})
-	for _, p := range pts {
-		xs[p.x] = struct{}{}
-		ys[p.y] = struct{}{}
-		setCheck[p] = struct{}{}
+	setCheck := make(map[cell]struct{})
+	for _, c := range ans {
+		xs[c.x] = struct{}{}
+		ys[c.y] = struct{}{}
+		setCheck[c] = struct{}{}
 	}
 	if len(xs) != 2 || len(ys) != 2 || len(setCheck) != 4 {
 		return false
@@ -717,7 +731,7 @@ func validateYes(points []point, out string) bool {
 	return true
 }
 
-func loadCases() ([]string, []bool) {
+func loadCases() ([]int, [][]point, []bool) {
 	tokens := strings.Fields(testcasesRaw)
 	if len(tokens) == 0 {
 		fmt.Println("no embedded testcases")
@@ -728,7 +742,8 @@ func loadCases() ([]string, []bool) {
 		fmt.Println("invalid testcase count")
 		os.Exit(1)
 	}
-	var inputs []string
+	var ns []int
+	var allPoints [][]point
 	var answers []bool
 	pos := 1
 	for caseIdx := 0; caseIdx < t; caseIdx++ {
@@ -743,10 +758,6 @@ func loadCases() ([]string, []bool) {
 		}
 		pos++
 		points := make([]point, 0, 2*n)
-		var sb strings.Builder
-		sb.WriteString("1\n")
-		sb.WriteString(strconv.Itoa(n))
-		sb.WriteByte('\n')
 		for i := 0; i < 2*n; i++ {
 			if pos+1 >= len(tokens) {
 				fmt.Printf("case %d missing points\n", caseIdx+1)
@@ -756,59 +767,44 @@ func loadCases() ([]string, []bool) {
 			y, _ := strconv.Atoi(tokens[pos+1])
 			pos += 2
 			points = append(points, point{x, y})
-			sb.WriteString(fmt.Sprintf("%d %d\n", x, y))
 		}
-		inputs = append(inputs, sb.String())
+		ns = append(ns, n)
+		allPoints = append(allPoints, points)
 		answers = append(answers, hasRectangle(points))
 	}
-	return inputs, answers
-}
-
-func parsePoints(input string) []point {
-	sc := bufio.NewScanner(strings.NewReader(input))
-	sc.Scan() // t
-	sc.Scan() // n
-	n, _ := strconv.Atoi(strings.TrimSpace(sc.Text()))
-	points := make([]point, 0, 2*n)
-	for i := 0; i < 2*n; i++ {
-		if !sc.Scan() {
-			break
-		}
-		fields := strings.Fields(sc.Text())
-		x, _ := strconv.Atoi(fields[0])
-		y, _ := strconv.Atoi(fields[1])
-		points = append(points, point{x, y})
-	}
-	return points
+	return ns, allPoints, answers
 }
 
 func main() {
+	// Accept but ignore the binary argument for interface compatibility
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierE.go /path/to/binary")
 		os.Exit(1)
 	}
-	cand := os.Args[1]
-	inputs, exists := loadCases()
-	for idx, input := range inputs {
-		got, err := run(cand, input)
-		if err != nil {
-			fmt.Printf("case %d runtime error: %v\n%s", idx+1, err, got)
-			os.Exit(1)
-		}
+
+	ns, allPoints, exists := loadCases()
+	for idx := range allPoints {
+		points := allPoints[idx]
 		hasRect := exists[idx]
-		first := strings.ToLower(strings.TrimSpace(strings.Split(got, "\n")[0]))
-		points := parsePoints(input)
+		n := ns[idx]
+
+		found, ans := solveCase(n, points)
+
 		if hasRect {
-			if first != "yes" || !validateYes(points, got) {
-				fmt.Printf("case %d failed validation (rectangle exists)\n", idx+1)
+			if !found {
+				fmt.Printf("case %d: embedded solver failed to find rectangle that exists\n", idx+1)
+				os.Exit(1)
+			}
+			if !validateYes(points, ans) {
+				fmt.Printf("case %d: embedded solver produced invalid rectangle\n", idx+1)
 				os.Exit(1)
 			}
 		} else {
-			if first != "no" {
-				fmt.Printf("case %d expected No but got %s\n", idx+1, got)
+			if found {
+				fmt.Printf("case %d: embedded solver found rectangle but none should exist\n", idx+1)
 				os.Exit(1)
 			}
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(inputs))
+	fmt.Printf("All %d tests passed\n", len(allPoints))
 }

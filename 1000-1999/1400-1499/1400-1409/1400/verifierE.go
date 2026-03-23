@@ -11,13 +11,93 @@ import (
 	"time"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+const oracleSource = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func main() {
+	in := bufio.NewReaderSize(os.Stdin, 1<<20)
+
+	var n int
+	fmt.Fscan(in, &n)
+
+	a := make([]int64, n)
+	for i := 0; i < n; i++ {
+		fmt.Fscan(in, &a[i])
 	}
-	oracle := filepath.Join(dir, "oracleE")
-	cmd := exec.Command("go", "build", "-o", oracle, "1400E.go")
+
+	var solve func(int, int, int64) int64
+	solve = func(l, r int, base int64) int64 {
+		if l > r {
+			return 0
+		}
+		width := int64(r - l + 1)
+		mn := a[l]
+		for i := l + 1; i <= r; i++ {
+			if a[i] < mn {
+				mn = a[i]
+			}
+		}
+		if mn-base >= width {
+			return width
+		}
+		cost := mn - base
+		i := l
+		for i <= r {
+			if a[i] == mn {
+				i++
+				continue
+			}
+			j := i
+			for j <= r && a[j] > mn {
+				j++
+			}
+			cost += solve(i, j-1, mn)
+			if cost >= width {
+				return width
+			}
+			i = j
+		}
+		if cost < width {
+			return cost
+		}
+		return width
+	}
+
+	var ans int64
+	i := 0
+	for i < n {
+		for i < n && a[i] == 0 {
+			i++
+		}
+		if i == n {
+			break
+		}
+		j := i
+		for j < n && a[j] > 0 {
+			j++
+		}
+		ans += solve(i, j-1, 0)
+		i = j
+	}
+
+	fmt.Println(ans)
+}
+`
+
+func buildOracle() (string, error) {
+	dir := os.TempDir()
+	src := filepath.Join(dir, fmt.Sprintf("oracle1400E_%d.go", time.Now().UnixNano()))
+	if err := os.WriteFile(src, []byte(oracleSource), 0644); err != nil {
+		return "", fmt.Errorf("write oracle source: %v", err)
+	}
+	defer os.Remove(src)
+	oracle := src[:len(src)-3]
+	cmd := exec.Command("go", "build", "-o", oracle, src)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
 	}

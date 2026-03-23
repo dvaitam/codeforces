@@ -94,33 +94,41 @@ func makeTestCase(a, b []int) testCase {
 
 func solveReference(a, b []int) int64 {
 	n := len(a)
-	combined := make([]int, 0, 2*n)
-	combined = append(combined, a...)
-	combined = append(combined, b...)
-	sort.Ints(combined)
-	m1 := combined[n-1]
-	m2 := combined[n]
-	cost1 := int64(0)
-	cost2 := int64(0)
+	A := make([]int64, n)
+	B := make([]int64, n)
 	for i := 0; i < n; i++ {
-		cost1 += absDiff(a[i], m1)
-		cost2 += absDiff(a[i], m2)
+		A[i] = int64(a[i])
+		B[i] = int64(b[i])
 	}
-	for i := 0; i < n; i++ {
-		cost1 += absDiff(b[i], m1)
-		cost2 += absDiff(b[i], m2)
-	}
-	if cost2 < cost1 {
-		return cost2
-	}
-	return cost1
-}
+	sort.Slice(A, func(i, j int) bool { return A[i] < A[j] })
+	sort.Slice(B, func(i, j int) bool { return B[i] < B[j] })
 
-func absDiff(x, y int) int64 {
-	if x >= y {
-		return int64(x - y)
+	var sumW int64
+	for i := 0; i < n; i++ {
+		diff := A[i] - B[i]
+		if diff < 0 {
+			sumW -= diff
+		} else {
+			sumW += diff
+		}
 	}
-	return int64(y - x)
+
+	prefB := make([]int64, n+1)
+	for i := 0; i < n; i++ {
+		prefB[i+1] = prefB[i] + B[i]
+	}
+
+	var sumC int64
+	k := 0
+	for i := 0; i < n; i++ {
+		for k < n && B[k] <= A[i] {
+			k++
+		}
+		sumC += int64(k)*A[i] - prefB[k]
+		sumC += (prefB[n] - prefB[k]) - int64(n-k)*A[i]
+	}
+
+	return sumC - int64(n-1)*sumW
 }
 
 func run(bin, input string) (string, error) {

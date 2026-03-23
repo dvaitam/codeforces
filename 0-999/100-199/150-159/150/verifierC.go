@@ -3,48 +3,125 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func maxSubarray(a []int64) int64 {
-	best := a[0]
-	for i := 0; i < len(a); i++ {
-		sum := int64(0)
-		for j := i; j < len(a); j++ {
-			sum += a[j]
-			if sum > best {
-				best = sum
-			}
-		}
-	}
-	if best < 0 {
-		return 0
-	}
-	return best
+// Embedded correct solver for 150C (CF-accepted)
+
+type Node struct {
+	min   int64
+	max   int64
+	best  int64
+	valid bool
 }
 
-func solve(n, m, c int, x []int64, p []int64, queries [][2]int) string {
-	if n == 1 {
-		return "0.000000000000"
+func combine(a, b Node) Node {
+	if !a.valid {
+		return b
 	}
-	arr := make([]int64, n)
-	for i := 1; i < n; i++ {
-		diff := x[i+1] - x[i]
-		arr[i] = (diff-int64(2*c))*p[i] + diff*(100-p[i])
+	if !b.valid {
+		return a
 	}
-	var ans int64
-	for _, q := range queries {
-		l, r := q[0], q[1]
-		if l < r {
-			sub := arr[l:r]
-			ans += maxSubarray(sub)
+	best := a.best
+	if b.best > best {
+		best = b.best
+	}
+	cross := b.max - a.min
+	if cross > best {
+		best = cross
+	}
+	minv := a.min
+	if b.min < minv {
+		minv = b.min
+	}
+	maxv := a.max
+	if b.max > maxv {
+		maxv = b.max
+	}
+	return Node{min: minv, max: maxv, best: best, valid: true}
+}
+
+func solveC(input string) string {
+	data := []byte(input)
+	ptr := 0
+	nextInt := func() int {
+		n := len(data)
+		for ptr < n && (data[ptr] < '0' || data[ptr] > '9') {
+			ptr++
 		}
+		val := 0
+		for ptr < n && data[ptr] >= '0' && data[ptr] <= '9' {
+			val = val*10 + int(data[ptr]-'0')
+			ptr++
+		}
+		return val
 	}
-	return fmt.Sprintf("%.12f", float64(ans)/200.0)
+
+	n := nextInt()
+	m := nextInt()
+	c := int64(nextInt())
+
+	x := make([]int64, n)
+	for i := 0; i < n; i++ {
+		x[i] = int64(nextInt())
+	}
+
+	pref := make([]int64, n)
+	for i := 1; i < n; i++ {
+		pref[i] = pref[i-1] + int64(nextInt())
+	}
+
+	t := make([]int64, n)
+	for i := 0; i < n; i++ {
+		t[i] = 100*x[i] - 2*c*pref[i]
+	}
+
+	size := 1
+	for size < n {
+		size <<= 1
+	}
+	tree := make([]Node, size<<1)
+	for i := 0; i < n; i++ {
+		tree[size+i] = Node{min: t[i], max: t[i], best: 0, valid: true}
+	}
+	for i := size - 1; i >= 1; i-- {
+		tree[i] = combine(tree[i<<1], tree[i<<1|1])
+	}
+
+	query := func(l, r int) Node {
+		l += size
+		r += size
+		var left, right Node
+		for l < r {
+			if l&1 == 1 {
+				left = combine(left, tree[l])
+				l++
+			}
+			if r&1 == 1 {
+				r--
+				right = combine(tree[r], right)
+			}
+			l >>= 1
+			r >>= 1
+		}
+		return combine(left, right)
+	}
+
+	var sum int64
+	for i := 0; i < m; i++ {
+		a := nextInt()
+		b := nextInt()
+		res := query(a-1, b)
+		sum += res.best
+	}
+
+	return fmt.Sprintf("%d.%03d", sum/200, (sum%200)*5)
 }
 
 func run(bin, input string) (string, error) {
@@ -65,6 +142,11 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func parseFloat(s string) float64 {
+	v, _ := strconv.ParseFloat(s, 64)
+	return v
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierC.go /path/to/binary")
@@ -76,15 +158,11 @@ func main() {
 		n := rng.Intn(8) + 2
 		m := rng.Intn(5) + 1
 		c := rng.Intn(10) + 1
-		x := make([]int64, n+1)
-		for j := 1; j <= n; j++ {
-			if j == 1 {
-				x[j] = 0
-			} else {
-				x[j] = x[j-1] + int64(rng.Intn(10)+1)
-			}
+		x := make([]int64, n)
+		for j := 1; j < n; j++ {
+			x[j] = x[j-1] + int64(rng.Intn(10)+1)
 		}
-		p := make([]int64, n+1)
+		p := make([]int64, n)
 		for j := 1; j < n; j++ {
 			p[j] = int64(rng.Intn(101))
 		}
@@ -96,7 +174,7 @@ func main() {
 		}
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d %d %d\n", n, m, c))
-		for j := 1; j <= n; j++ {
+		for j := 0; j < n; j++ {
 			sb.WriteString(fmt.Sprintf("%d ", x[j]))
 		}
 		sb.WriteString("\n")
@@ -108,13 +186,18 @@ func main() {
 			sb.WriteString(fmt.Sprintf("%d %d\n", queries[j][0], queries[j][1]))
 		}
 		input := sb.String()
-		expected := solve(n, m, c, x, p, queries)
+		expected := solveC(input)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(expected) != strings.TrimSpace(got) {
+		// Compare as floats with tolerance
+		expVal := parseFloat(expected)
+		gotVal := parseFloat(strings.TrimSpace(got))
+		diff := math.Abs(expVal - gotVal)
+		denom := math.Max(1.0, math.Abs(expVal))
+		if diff/denom > 1e-6 {
 			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, expected, got, input)
 			os.Exit(1)
 		}

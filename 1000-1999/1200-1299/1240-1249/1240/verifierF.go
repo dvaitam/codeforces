@@ -1,13 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -22,25 +21,182 @@ type testCase struct {
 	b []int
 }
 
-func buildOracle() (string, func(), error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", nil, fmt.Errorf("cannot determine verifier path")
+// Embedded oracle solver for 1240F
+func solveOracle(input string) (string, error) {
+	reader := bufio.NewReaderSize(strings.NewReader(input), 1<<20)
+
+	var n, m, k int
+	if _, err := fmt.Fscan(reader, &n, &m, &k); err != nil {
+		return "", err
 	}
-	dir := filepath.Dir(file)
-	tmpDir, err := os.MkdirTemp("", "oracle-1240F-")
-	if err != nil {
-		return "", nil, err
+
+	for i := 0; i < n; i++ {
+		var x int
+		fmt.Fscan(reader, &x)
 	}
-	path := filepath.Join(tmpDir, "oracleF")
-	cmd := exec.Command("go", "build", "-o", path, "1240F.go")
-	cmd.Dir = dir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		os.RemoveAll(tmpDir)
-		return "", nil, fmt.Errorf("failed to build oracle: %v\n%s", err, out)
+
+	a := make([]int, m)
+	b := make([]int, m)
+	outLists := make([][]int, n)
+	inLists := make([][]int, n)
+
+	for i := 0; i < m; i++ {
+		fmt.Fscan(reader, &a[i], &b[i])
+		a[i]--
+		b[i]--
+		outLists[a[i]] = append(outLists[a[i]], i)
+		inLists[b[i]] = append(inLists[b[i]], i)
 	}
-	cleanup := func() { os.RemoveAll(tmpDir) }
-	return path, cleanup, nil
+
+	leftOf := make([]int, m)
+	rightOf := make([]int, m)
+
+	L := 0
+	for v := 0; v < n; v++ {
+		list := outLists[v]
+		for i := 0; i < len(list); i += k {
+			id := L
+			L++
+			end := i + k
+			if end > len(list) {
+				end = len(list)
+			}
+			for _, e := range list[i:end] {
+				leftOf[e] = id
+			}
+		}
+	}
+
+	R := 0
+	for v := 0; v < n; v++ {
+		list := inLists[v]
+		for i := 0; i < len(list); i += k {
+			id := R
+			R++
+			end := i + k
+			if end > len(list) {
+				end = len(list)
+			}
+			for _, e := range list[i:end] {
+				rightOf[e] = id
+			}
+		}
+	}
+
+	leftInc := make([][]int, L)
+	for i := 0; i < L; i++ {
+		row := make([]int, k+1)
+		for j := range row {
+			row[j] = -1
+		}
+		leftInc[i] = row
+	}
+
+	rightInc := make([][]int, R)
+	for i := 0; i < R; i++ {
+		row := make([]int, k+1)
+		for j := range row {
+			row[j] = -1
+		}
+		rightInc[i] = row
+	}
+
+	color := make([]int, m)
+
+	assign := func(e, c int) {
+		color[e] = c
+		leftInc[leftOf[e]][c] = e
+		rightInc[rightOf[e]][c] = e
+	}
+
+	for e := 0; e < m; e++ {
+		u := leftOf[e]
+		v := rightOf[e]
+
+		common := 0
+		for c := 1; c <= k; c++ {
+			if leftInc[u][c] == -1 && rightInc[v][c] == -1 {
+				common = c
+				break
+			}
+		}
+		if common != 0 {
+			assign(e, common)
+			continue
+		}
+
+		afree := 0
+		for c := 1; c <= k; c++ {
+			if leftInc[u][c] == -1 {
+				afree = c
+				break
+			}
+		}
+
+		bfree := 0
+		for c := 1; c <= k; c++ {
+			if rightInc[v][c] == -1 {
+				bfree = c
+				break
+			}
+		}
+
+		path := make([]int, 0)
+		side := 0
+		cur := u
+		want := bfree
+
+		for {
+			ee := -1
+			if side == 0 {
+				ee = leftInc[cur][want]
+			} else {
+				ee = rightInc[cur][want]
+			}
+			if ee == -1 {
+				break
+			}
+			path = append(path, ee)
+			if side == 0 {
+				cur = rightOf[ee]
+				side = 1
+			} else {
+				cur = leftOf[ee]
+				side = 0
+			}
+			if want == afree {
+				want = bfree
+			} else {
+				want = afree
+			}
+		}
+
+		for _, ee := range path {
+			c := color[ee]
+			leftInc[leftOf[ee]][c] = -1
+			rightInc[rightOf[ee]][c] = -1
+		}
+
+		for _, ee := range path {
+			if color[ee] == afree {
+				color[ee] = bfree
+			} else {
+				color[ee] = afree
+			}
+			c := color[ee]
+			leftInc[leftOf[ee]][c] = ee
+			rightInc[rightOf[ee]][c] = ee
+		}
+
+		assign(e, bfree)
+	}
+
+	var sb strings.Builder
+	for i := 0; i < m; i++ {
+		sb.WriteString(strconv.Itoa(color[i]))
+		sb.WriteByte('\n')
+	}
+	return sb.String(), nil
 }
 
 func runBinary(bin string, input string) (string, error) {
@@ -198,13 +354,6 @@ func main() {
 	}
 	target := os.Args[1]
 
-	oracle, cleanup, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
 	tests := deterministicTests()
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 200; i++ {
@@ -213,7 +362,7 @@ func main() {
 
 	for idx, tc := range tests {
 		input := buildInput(tc)
-		expOut, err := runBinary(oracle, input)
+		expOut, err := solveOracle(input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle failed on test %d: %v\ninput:\n%s\n", idx+1, err, input)
 			os.Exit(1)

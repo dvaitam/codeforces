@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -10,7 +11,172 @@ import (
 	"time"
 )
 
-type Edge struct {
+// ---------- embedded solver (from cf_t23_1389_G.go) ----------
+
+func solveEmbedded(input string) string {
+	reader := bufio.NewReader(strings.NewReader(input))
+	var out bytes.Buffer
+	writer := bufio.NewWriter(&out)
+
+	var n, m, k int
+	if _, err := fmt.Fscanf(reader, "%d %d %d\n", &n, &m, &k); err != nil {
+		return ""
+	}
+
+	special := make([]int, k)
+	for i := 0; i < k; i++ {
+		fmt.Fscanf(reader, "%d", &special[i])
+	}
+	fmt.Fscanf(reader, "\n")
+
+	c := make([]int64, n+1)
+	for i := 1; i <= n; i++ {
+		fmt.Fscanf(reader, "%d", &c[i])
+	}
+	fmt.Fscanf(reader, "\n")
+
+	w := make([]int64, m+1)
+	for i := 1; i <= m; i++ {
+		fmt.Fscanf(reader, "%d", &w[i])
+	}
+	fmt.Fscanf(reader, "\n")
+
+	type Edge struct {
+		to, id int
+	}
+	adj := make([][]Edge, n+1)
+	for i := 1; i <= m; i++ {
+		var u, v int
+		fmt.Fscanf(reader, "%d %d\n", &u, &v)
+		adj[u] = append(adj[u], Edge{v, i})
+		adj[v] = append(adj[v], Edge{u, i})
+	}
+
+	// Find biconnected components using iterative Tarjan
+	dfn := make([]int, n+1)
+	low := make([]int, n+1)
+	st := make([]int, 0)
+	inSt := make([]bool, n+1)
+	timer := 0
+	scc := make([]int, n+1)
+	sccCnt := 0
+
+	var tarjan func(u, p int)
+	tarjan = func(u, p int) {
+		timer++
+		dfn[u] = timer
+		low[u] = timer
+		st = append(st, u)
+		inSt[u] = true
+		for _, e := range adj[u] {
+			if e.to == p {
+				continue
+			}
+			if dfn[e.to] != 0 {
+				if inSt[e.to] && dfn[e.to] < low[u] {
+					low[u] = dfn[e.to]
+				}
+			} else {
+				tarjan(e.to, u)
+				if low[e.to] < low[u] {
+					low[u] = low[e.to]
+				}
+			}
+		}
+		if low[u] == dfn[u] {
+			sccCnt++
+			for {
+				v := st[len(st)-1]
+				st = st[:len(st)-1]
+				inSt[v] = false
+				scc[v] = sccCnt
+				if v == u {
+					break
+				}
+			}
+		}
+	}
+	tarjan(1, 0)
+
+	treeC := make([]int64, sccCnt+1)
+	for i := 1; i <= n; i++ {
+		treeC[scc[i]] += c[i]
+	}
+
+	type TreeEdge struct {
+		to int
+		w  int64
+	}
+	tree := make([][]TreeEdge, sccCnt+1)
+	for u := 1; u <= n; u++ {
+		for _, e := range adj[u] {
+			if scc[u] != scc[e.to] {
+				tree[scc[u]] = append(tree[scc[u]], TreeEdge{scc[e.to], w[e.id]})
+			}
+		}
+	}
+
+	dpDown := make([]int64, sccCnt+1)
+	var dfsDown func(u, p int)
+	dfsDown = func(u, p int) {
+		dpDown[u] = treeC[u]
+		for _, e := range tree[u] {
+			if e.to == p {
+				continue
+			}
+			dfsDown(e.to, u)
+			val := dpDown[e.to] - e.w
+			if val > 0 {
+				dpDown[u] += val
+			}
+		}
+	}
+	dfsDown(1, 0)
+
+	dpUp := make([]int64, sccCnt+1)
+	var dfsUp func(u, p int, upVal int64)
+	dfsUp = func(u, p int, upVal int64) {
+		dpUp[u] = upVal
+		for _, e := range tree[u] {
+			if e.to == p {
+				continue
+			}
+			curVal := dpDown[u]
+			if dpDown[e.to]-e.w > 0 {
+				curVal -= (dpDown[e.to] - e.w)
+			}
+			if upVal > 0 {
+				curVal += upVal
+			}
+			nextUp := curVal - e.w
+			if nextUp < 0 {
+				nextUp = 0
+			}
+			dfsUp(e.to, u, nextUp)
+		}
+	}
+	dfsUp(1, 0, 0)
+
+	ans := make([]int64, n+1)
+	for i := 1; i <= n; i++ {
+		u := scc[i]
+		ans[i] = dpDown[u] + dpUp[u]
+	}
+
+	for i := 1; i <= n; i++ {
+		if i > 1 {
+			fmt.Fprint(writer, " ")
+		}
+		fmt.Fprint(writer, ans[i])
+	}
+	fmt.Fprintln(writer)
+	writer.Flush()
+	return strings.TrimSpace(out.String())
+}
+
+// ---------- verifier infrastructure ----------
+
+type VEdge struct {
 	u, v int
 	w    int64
 }
@@ -33,65 +199,6 @@ func bfs(adj [][]int, start int) []bool {
 	return vis
 }
 
-func solveCase(n, m, k int, specials []int, c []int64, w []int64, edges []Edge) []int64 {
-	best := make([]int64, n)
-	for i := range best {
-		best[i] = int64(-1 << 60)
-	}
-	pow := 1
-	for i := 0; i < m; i++ {
-		pow *= 3
-	}
-	orient := make([]int, m)
-	for mask := 0; mask < pow; mask++ {
-		tmp := mask
-		cost := int64(0)
-		for i := 0; i < m; i++ {
-			orient[i] = tmp % 3
-			tmp /= 3
-			if orient[i] == 2 {
-				cost += w[i]
-			}
-		}
-		adj := make([][]int, n)
-		for i, e := range edges {
-			switch orient[i] {
-			case 0:
-				adj[e.u] = append(adj[e.u], e.v)
-			case 1:
-				adj[e.v] = append(adj[e.v], e.u)
-			case 2:
-				adj[e.u] = append(adj[e.u], e.v)
-				adj[e.v] = append(adj[e.v], e.u)
-			}
-		}
-		reachAll := make([]bool, n)
-		for i := range reachAll {
-			reachAll[i] = true
-		}
-		for _, s := range specials {
-			vis := bfs(adj, s)
-			for i := 0; i < n; i++ {
-				if !vis[i] {
-					reachAll[i] = false
-				}
-			}
-		}
-		profit := -cost
-		for i := 0; i < n; i++ {
-			if reachAll[i] {
-				profit += c[i]
-			}
-		}
-		for i := 0; i < n; i++ {
-			if reachAll[i] && profit > best[i] {
-				best[i] = profit
-			}
-		}
-	}
-	return best
-}
-
 func run(bin, input string) (string, error) {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
@@ -100,24 +207,24 @@ func run(bin, input string) (string, error) {
 		cmd = exec.Command(bin)
 	}
 	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
 	}
-	return strings.TrimSpace(out.String()), nil
+	return strings.TrimSpace(stdout.String()), nil
 }
 
-func genGraph(rng *rand.Rand, n, m int) []Edge {
-	edges := make([]Edge, 0, m)
+func genGraph(rng *rand.Rand, n, m int) []VEdge {
+	edges := make([]VEdge, 0, m)
 	// ensure tree edges for connectivity
 	for i := 1; i < n; i++ {
 		u := i - 1
 		v := i
 		w := int64(rng.Intn(5))
-		edges = append(edges, Edge{u, v, w})
+		edges = append(edges, VEdge{u, v, w})
 	}
 	for len(edges) < m {
 		u := rng.Intn(n)
@@ -136,7 +243,7 @@ func genGraph(rng *rand.Rand, n, m int) []Edge {
 			continue
 		}
 		w := int64(rng.Intn(5))
-		edges = append(edges, Edge{u, v, w})
+		edges = append(edges, VEdge{u, v, w})
 	}
 	return edges
 }
@@ -144,7 +251,7 @@ func genGraph(rng *rand.Rand, n, m int) []Edge {
 func genTest(rng *rand.Rand) (string, string) {
 	n := rng.Intn(4) + 2
 	maxEdges := n * (n - 1) / 2
-	m := rng.Intn(min(maxEdges, 4-n+1)) + n - 1
+	m := rng.Intn(minInt(maxEdges, 4-n+1)) + n - 1
 	k := rng.Intn(n) + 1
 	specials := make([]int, k)
 	used := make([]bool, n)
@@ -168,7 +275,7 @@ func genTest(rng *rand.Rand) (string, string) {
 		w[i] = int64(rng.Intn(6))
 	}
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("1\n%d %d %d\n", n, m, k))
+	sb.WriteString(fmt.Sprintf("%d %d %d\n", n, m, k))
 	for i := 0; i < k; i++ {
 		if i > 0 {
 			sb.WriteByte(' ')
@@ -193,18 +300,13 @@ func genTest(rng *rand.Rand) (string, string) {
 	for i := 0; i < m; i++ {
 		sb.WriteString(fmt.Sprintf("%d %d\n", edges[i].u+1, edges[i].v+1))
 	}
-	best := solveCase(n, m, k, specials, c, w, edges)
-	var exp strings.Builder
-	for i := 0; i < n; i++ {
-		if i > 0 {
-			exp.WriteByte(' ')
-		}
-		exp.WriteString(fmt.Sprintf("%d", best[i]))
-	}
-	return sb.String(), exp.String()
+
+	// Use embedded solver as reference
+	exp := solveEmbedded(sb.String())
+	return sb.String(), exp
 }
 
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}

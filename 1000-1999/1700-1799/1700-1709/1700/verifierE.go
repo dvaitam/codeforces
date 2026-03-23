@@ -235,11 +235,22 @@ func solveE(input string) string {
 	}
 
 	totalCells := n * m
+	type pair struct{ a, b int }
+	seen := make(map[pair]bool)
 	for _, a := range candList {
 		for b := 0; b < totalCells; b++ {
-			if a >= b {
+			if a == b {
 				continue
 			}
+			u, v := a, b
+			if u > v {
+				u, v = v, u
+			}
+			p := pair{u, v}
+			if seen[p] {
+				continue
+			}
+			seen[p] = true
 			if checkSwap(a, b) {
 				count++
 			}
@@ -258,7 +269,7 @@ func generateTestsE() []string {
 	for i := 0; i < numTestsE; i++ {
 		n := rng.Intn(3) + 2
 		m := rng.Intn(3) + 2
-		vals := rand.Perm(n * m)
+		vals := rng.Perm(n * m)
 		for j := range vals {
 			vals[j]++
 		}

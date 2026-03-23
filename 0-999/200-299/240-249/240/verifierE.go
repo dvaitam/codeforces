@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
@@ -10,12 +11,248 @@ import (
 	"strings"
 )
 
+// ---------- embedded solver (from cf_t23_240_E.go) ----------
+
+type SolverEdge struct {
+	id, u, v, w int
+}
+
+type HeapNode struct {
+	id, u, v, w int
+	lazy        int
+	left, right *HeapNode
+}
+
+func heapApply(n *HeapNode, lazy int) {
+	if n != nil {
+		n.w += lazy
+		n.lazy += lazy
+	}
+}
+
+func heapPush(n *HeapNode) {
+	if n != nil && n.lazy != 0 {
+		heapApply(n.left, n.lazy)
+		heapApply(n.right, n.lazy)
+		n.lazy = 0
+	}
+}
+
+func heapMerge(a, b *HeapNode) *HeapNode {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	heapPush(a)
+	heapPush(b)
+	if a.w > b.w {
+		a, b = b, a
+	}
+	a.right = heapMerge(a.right, b)
+	a.left, a.right = a.right, a.left
+	return a
+}
+
+func heapPop(n *HeapNode) *HeapNode {
+	heapPush(n)
+	res := heapMerge(n.left, n.right)
+	n.left = nil
+	n.right = nil
+	return res
+}
+
+func solveEmbedded(input string) string {
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	scanner.Split(bufio.ScanWords)
+	buf := make([]byte, 1024*1024)
+	scanner.Buffer(buf, 1024*1024*10)
+
+	out := &bytes.Buffer{}
+
+	scanInt := func() int {
+		scanner.Scan()
+		x, _ := strconv.Atoi(scanner.Text())
+		return x
+	}
+
+	if !scanner.Scan() {
+		return ""
+	}
+	n, _ := strconv.Atoi(scanner.Text())
+	m := scanInt()
+
+	edges := make([]SolverEdge, m+1)
+	adj := make([][]SolverEdge, n+1)
+
+	for i := 1; i <= m; i++ {
+		u := scanInt()
+		v := scanInt()
+		w := scanInt()
+		edges[i] = SolverEdge{i, u, v, w}
+		adj[u] = append(adj[u], edges[i])
+	}
+
+	reached := make([]bool, n+1)
+	q := []int{1}
+	reached[1] = true
+	for len(q) > 0 {
+		u := q[0]
+		q = q[1:]
+		for _, e := range adj[u] {
+			if !reached[e.v] {
+				reached[e.v] = true
+				q = append(q, e.v)
+			}
+		}
+	}
+
+	for i := 1; i <= n; i++ {
+		if !reached[i] {
+			fmt.Fprintln(out, "-1")
+			return strings.TrimSpace(out.String())
+		}
+	}
+
+	maxNodes := 2*n + 1
+	heaps := make([]*HeapNode, maxNodes)
+	for i := 1; i <= m; i++ {
+		e := edges[i]
+		if e.v == 1 {
+			continue
+		}
+		nNode := &HeapNode{id: e.id, u: e.u, v: e.v, w: e.w}
+		heaps[e.v] = heapMerge(heaps[e.v], nNode)
+	}
+
+	parent := make([]int, maxNodes)
+	for i := 1; i < maxNodes; i++ {
+		parent[i] = i
+	}
+
+	find := func(i int) int {
+		root := i
+		for root != parent[root] {
+			root = parent[root]
+		}
+		curr := i
+		for curr != root {
+			nxt := parent[curr]
+			parent[curr] = root
+			curr = nxt
+		}
+		return root
+	}
+
+	visited := make([]int, maxNodes)
+	visited[1] = 2
+
+	enter := make([]*HeapNode, maxNodes)
+	inEdge := make([]*HeapNode, n+1)
+
+	compId := n
+
+	for i := 2; i <= n; i++ {
+		if visited[i] != 0 {
+			continue
+		}
+
+		curr := i
+		path := []int{curr}
+		visited[curr] = 1
+
+		for {
+			var minEdge *HeapNode
+			for heaps[curr] != nil {
+				cand := heaps[curr]
+				heaps[curr] = heapPop(heaps[curr])
+				if find(cand.u) == curr {
+					continue
+				}
+				minEdge = cand
+				break
+			}
+
+			if minEdge == nil {
+				break
+			}
+
+			enter[curr] = minEdge
+			inEdge[minEdge.v] = minEdge
+
+			nxt := find(minEdge.u)
+
+			if visited[nxt] == 2 {
+				break
+			} else if visited[nxt] == 0 {
+				visited[nxt] = 1
+				path = append(path, nxt)
+				curr = nxt
+			} else if visited[nxt] == 1 {
+				idx := -1
+				for j := 0; j < len(path); j++ {
+					if path[j] == nxt {
+						idx = j
+						break
+					}
+				}
+
+				compId++
+				newC := compId
+
+				for j := idx; j < len(path); j++ {
+					c := path[j]
+					parent[c] = newC
+					lazyVal := -enter[c].w
+					if heaps[c] != nil {
+						heapApply(heaps[c], lazyVal)
+						heaps[newC] = heapMerge(heaps[newC], heaps[c])
+					}
+				}
+
+				path = path[:idx]
+				path = append(path, newC)
+				visited[newC] = 1
+				curr = newC
+			}
+		}
+
+		for _, c := range path {
+			visited[c] = 2
+		}
+	}
+
+	ans := []int{}
+	for i := 2; i <= n; i++ {
+		if inEdge[i] != nil && edges[inEdge[i].id].w == 1 {
+			ans = append(ans, inEdge[i].id)
+		}
+	}
+
+	if len(ans) == 0 {
+		fmt.Fprintln(out, 0)
+	} else {
+		fmt.Fprintln(out, len(ans))
+		for i, id := range ans {
+			if i > 0 {
+				fmt.Fprint(out, " ")
+			}
+			fmt.Fprint(out, id)
+		}
+		fmt.Fprintln(out)
+	}
+	return strings.TrimSpace(out.String())
+}
+
+// ---------- verifier infrastructure ----------
+
 type edgeData struct {
 	from, to   int
 	needRepair bool
 }
 
-type testCase struct {
+type verTestCase struct {
 	input  string
 	expect int
 	n      int
@@ -43,14 +280,16 @@ func main() {
 			os.Exit(1)
 		}
 		if err := checkAnswer(tc, out); err != nil {
-			fmt.Printf("test %d failed: %v\ninput:\n%s\noutput:\n%s\nexpected minimal repairs: %d\n", i+1, err, tc.input, out, tc.expect)
+			// Also run embedded solver for comparison
+			refOut := solveEmbedded(tc.input)
+			fmt.Printf("test %d failed: %v\ninput:\n%s\noutput:\n%s\nexpected minimal repairs: %d\nreference output:\n%s\n", i+1, err, tc.input, out, tc.expect, refOut)
 			os.Exit(1)
 		}
 	}
 	fmt.Println("all tests passed")
 }
 
-func checkAnswer(tc testCase, output string) error {
+func checkAnswer(tc verTestCase, output string) error {
 	output = strings.TrimSpace(output)
 	if len(output) == 0 {
 		return fmt.Errorf("empty output")
@@ -72,7 +311,17 @@ func checkAnswer(tc testCase, output string) error {
 	if err != nil || k < 0 {
 		return fmt.Errorf("invalid number of repairs %q", tokens[0])
 	}
-	if len(tokens) != k+1 {
+	if k == 0 {
+		if tc.expect != 0 {
+			return fmt.Errorf("expected %d repairs but reported 0", tc.expect)
+		}
+		// "0" can appear alone or with "0" on second line
+		if len(tokens) != 1 {
+			return fmt.Errorf("extra tokens after 0")
+		}
+		return nil
+	}
+	if len(tokens) < k+1 {
 		return fmt.Errorf("reported %d roads but provided %d identifiers", k, len(tokens)-1)
 	}
 	if k != tc.expect {
@@ -136,16 +385,20 @@ func allReachable(n int, edges []edgeData, repaired map[int]struct{}) bool {
 func run(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+	if err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+	}
+	return strings.TrimSpace(stdout.String()), err
 }
 
-func genTests() []testCase {
+func genTests() []verTestCase {
 	rand.Seed(42)
-	var tests []testCase
+	var tests []verTestCase
 	tests = append(tests, newTestCase(1, nil))
 	tests = append(tests, newTestCase(2, []edgeData{
 		{from: 1, to: 2, needRepair: false},
@@ -161,7 +414,7 @@ func genTests() []testCase {
 	return tests
 }
 
-func randomTestCase() testCase {
+func randomTestCase() verTestCase {
 	n := rand.Intn(10) + 1
 	maxPossible := n * (n - 1)
 	limit := n*3 + rand.Intn(n+1)
@@ -194,7 +447,7 @@ func randomTestCase() testCase {
 	return newTestCase(n, edges)
 }
 
-func newTestCase(n int, edges []edgeData) testCase {
+func newTestCase(n int, edges []edgeData) verTestCase {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d %d\n", n, len(edges)))
 	for _, e := range edges {
@@ -207,7 +460,7 @@ func newTestCase(n int, edges []edgeData) testCase {
 	edgesCopy := make([]edgeData, len(edges))
 	copy(edgesCopy, edges)
 	expect := calcMinRepairs(n, edgesCopy)
-	return testCase{
+	return verTestCase{
 		input:  sb.String(),
 		expect: expect,
 		n:      n,

@@ -7,127 +7,134 @@ import (
 	"sort"
 )
 
-var (
-	n       int
-	a       []int
-	g       [][]int
-	sz      []int
-	mn      []int
-	mx      []int
-	orig    []int
-	invalid bool
-)
-
-func dfs(u int) {
-	mn[u] = a[u]
-	mx[u] = a[u]
-	sz[u] = 1
-	for _, v := range g[u] {
-		dfs(v)
-		if mn[v] < mn[u] {
-			mn[u] = mn[v]
-		}
-		if mx[v] > mx[u] {
-			mx[u] = mx[v]
-		}
-		sz[u] += sz[v]
-	}
-	if mx[u]-mn[u]+1 != sz[u] {
-		invalid = true
-	}
-}
-
-func build(u int, start int) int {
-	orig[u] = start
-	start++
-	sort.Slice(g[u], func(i, j int) bool {
-		return mn[g[u][i]] < mn[g[u][j]]
-	})
-	for _, v := range g[u] {
-		start = build(v, start)
-	}
-	return start
-}
-
-// Fenwick tree implementation
-
-type BIT struct {
-	n int
-	t []int
-}
-
-func NewBIT(n int) *BIT {
-	return &BIT{n: n, t: make([]int, n+2)}
-}
-
-func (b *BIT) Add(idx, val int) {
-	for idx <= b.n {
-		b.t[idx] += val
-		idx += idx & -idx
-	}
-}
-
-func (b *BIT) Sum(idx int) int {
-	s := 0
-	for idx > 0 {
-		s += b.t[idx]
-		idx -= idx & -idx
-	}
-	return s
-}
-
 func main() {
-	in := bufio.NewReader(os.Stdin)
-	out := bufio.NewWriter(os.Stdout)
-	defer out.Flush()
+	reader := bufio.NewReader(os.Stdin)
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
 
-	if _, err := fmt.Fscan(in, &n); err != nil {
+	var n int
+	if _, err := fmt.Fscan(reader, &n); err != nil {
 		return
 	}
-	a = make([]int, n)
-	for i := 0; i < n; i++ {
-		fmt.Fscan(in, &a[i])
+
+	a := make([]int, n+1)
+	pos := make([]int, n+1)
+	for i := 1; i <= n; i++ {
+		fmt.Fscan(reader, &a[i])
+		pos[a[i]] = i
 	}
-	g = make([][]int, n)
+
+	adj := make([][]int, n+1)
 	for i := 0; i < n-1; i++ {
 		var u, v int
-		fmt.Fscan(in, &u, &v)
-		u--
-		v--
-		g[u] = append(g[u], v)
+		fmt.Fscan(reader, &u, &v)
+		adj[u] = append(adj[u], v)
 	}
 
-	sz = make([]int, n)
-	mn = make([]int, n)
-	mx = make([]int, n)
-	orig = make([]int, n)
-
-	dfs(0)
-	if invalid || mn[0] != 1 || mx[0] != n {
-		fmt.Fprintln(out, "NO")
-		return
-	}
-	build(0, 1)
-
-	pos := make([]int, n+1)
-	for i := 0; i < n; i++ {
-		pos[a[i]] = i + 1
-	}
-	bit := NewBIT(n)
-	inv := 0
-	for i := 1; i <= n; i++ {
-		p := pos[i]
-		inv += i - 1 - bit.Sum(p)
-		bit.Add(p, 1)
-	}
-
-	fmt.Fprintln(out, "YES")
-	fmt.Fprintln(out, inv)
-	for i := 0; i < n; i++ {
-		if i > 0 {
-			fmt.Fprint(out, " ")
+	minVal := make([]int, n+1)
+	var dfsMin func(int)
+	dfsMin = func(u int) {
+		minVal[u] = a[u]
+		for _, v := range adj[u] {
+			dfsMin(v)
+			if minVal[v] < minVal[u] {
+				minVal[u] = minVal[v]
+			}
 		}
-		fmt.Fprint(out, orig[i])
 	}
-	fmt.Fprintln(out)
+	dfsMin(1)
+
+	for u := 1; u <= n; u++ {
+		sort.Slice(adj[u], func(i, j int) bool {
+			return minVal[adj[u][i]] < minVal[adj[u][j]]
+		})
+	}
+
+	aOrig := make([]int, n+1)
+	origPos := make([]int, n+1)
+	timer := 1
+	var buildOrig func(int)
+	buildOrig = func(u int) {
+		aOrig[u] = timer
+		origPos[timer] = u
+		timer++
+		for _, v := range adj[u] {
+			buildOrig(v)
+		}
+	}
+	buildOrig(1)
+
+	bit := make([]int, n+2)
+	add := func(idx, val int) {
+		for ; idx <= n; idx += idx & -idx {
+			bit[idx] += val
+		}
+	}
+	query := func(idx int) int {
+		sum := 0
+		for ; idx > 0; idx -= idx & -idx {
+			sum += bit[idx]
+		}
+		return sum
+	}
+
+	var D int64 = 0
+	var countInversions func(int)
+	countInversions = func(u int) {
+		greater := query(n) - query(a[u])
+		D += int64(greater)
+		add(a[u], 1)
+		for _, v := range adj[u] {
+			countInversions(v)
+		}
+		add(a[u], -1)
+	}
+	countInversions(1)
+
+	maxX := 0
+	for u := 1; u <= n; u++ {
+		if a[u] < aOrig[u] {
+			if a[u] > maxX {
+				maxX = a[u]
+			}
+		}
+	}
+
+	for y := 1; y < maxX; y++ {
+		u := pos[y]
+		for _, v := range adj[u] {
+			if a[v] > y {
+				fmt.Fprintln(writer, "NO")
+				return
+			}
+		}
+	}
+
+	for u := 1; u <= n; u++ {
+		actualMin := a[u]
+		var checkMin func(int)
+		checkMin = func(curr int) {
+			if a[curr] < actualMin {
+				actualMin = a[curr]
+			}
+			for _, child := range adj[curr] {
+				checkMin(child)
+			}
+		}
+		checkMin(u)
+		if actualMin != minVal[u] {
+			fmt.Fprintln(writer, "NO")
+			return
+		}
+	}
+
+	fmt.Fprintln(writer, "YES")
+	fmt.Fprintln(writer, D)
+	for i := 1; i <= n; i++ {
+		fmt.Fprint(writer, aOrig[i])
+		if i < n {
+			fmt.Fprint(writer, " ")
+		}
+	}
+	fmt.Fprintln(writer)
 }

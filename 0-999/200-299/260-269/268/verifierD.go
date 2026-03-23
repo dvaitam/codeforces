@@ -12,145 +12,150 @@ import (
 
 const MOD = 1000000009
 
-func modPow(a, e int) int {
-	res := 1
-	x := a % MOD
-	for e > 0 {
-		if e&1 == 1 {
-			res = int((int64(res) * int64(x)) % MOD)
-		}
-		x = int((int64(x) * int64(x)) % MOD)
-		e >>= 1
+func solveK(n, h, k int) int64 {
+	type State struct {
+		x [4]int
 	}
-	return res
-}
+	states := []State{}
+	stateToID := make(map[State]int)
 
-func computeA(M, h, k int) int {
-	if k == 0 {
-		return modPow(4, M)
-	}
-	if k == 4 {
-		if M < h {
-			return modPow(4, M)
+	var generate func(idx int, maxVal int, current State)
+	generate = func(idx int, maxVal int, current State) {
+		if idx == k {
+			stateToID[current] = len(states)
+			states = append(states, current)
+			return
 		}
-		return 0
+		for v := maxVal; v >= 0; v-- {
+			current.x[idx] = v
+			generate(idx+1, v, current)
+		}
 	}
-	dim := 1
-	for i := 0; i < k; i++ {
-		dim *= h
+
+	var startState State
+	generate(0, h-1, startState)
+
+	numStates := len(states)
+	outTrans := make([]int, numStates)
+	inTrans := make([][]int, numStates)
+	for i := range inTrans {
+		inTrans[i] = make([]int, k)
 	}
-	trans := make([][]int, k+1)
-	for j := 0; j <= k; j++ {
-		trans[j] = make([]int, dim)
-	}
-	decode := func(s int) []int {
-		z := make([]int, k)
+
+	for id, s := range states {
+		outS := State{}
+		valid := true
 		for i := 0; i < k; i++ {
-			z[i] = s % h
-			s /= h
+			outS.x[i] = s.x[i] + 1
+			if outS.x[i] >= h {
+				valid = false
+			}
 		}
-		return z
-	}
-	encode := func(z []int) int {
-		s := 0
-		mul := 1
-		for i := 0; i < k; i++ {
-			s += z[i] * mul
-			mul *= h
+		if valid {
+			outTrans[id] = stateToID[outS]
+		} else {
+			outTrans[id] = -1
 		}
-		return s
-	}
-	for s := 0; s < dim; s++ {
-		z := decode(s)
-		for j := 0; j < k; j++ {
-			ok := true
-			nz := make([]int, k)
+
+		for m := 0; m < k; m++ {
+			inS := State{}
+			validIn := true
+			var newGaps [4]int
 			for i := 0; i < k; i++ {
-				if i == j {
-					nz[i] = 0
+				if i == m {
+					newGaps[i] = 0
 				} else {
-					if z[i]+1 >= h {
-						ok = false
-						break
+					g := s.x[i] + 1
+					if g >= h {
+						validIn = false
 					}
-					nz[i] = z[i] + 1
+					newGaps[i] = g
 				}
 			}
-			if ok {
-				trans[j][s] = encode(nz)
+			if validIn {
+				for i := 0; i < k; i++ {
+					for j := i + 1; j < k; j++ {
+						if newGaps[i] < newGaps[j] {
+							newGaps[i], newGaps[j] = newGaps[j], newGaps[i]
+						}
+					}
+				}
+				for i := 0; i < k; i++ {
+					inS.x[i] = newGaps[i]
+				}
+				inTrans[id][m] = stateToID[inS]
 			} else {
-				trans[j][s] = -1
+				inTrans[id][m] = -1
 			}
-		}
-		ok := true
-		nz := make([]int, k)
-		for i := 0; i < k; i++ {
-			if z[i]+1 >= h {
-				ok = false
-				break
-			}
-			nz[i] = z[i] + 1
-		}
-		if ok {
-			trans[k][s] = encode(nz)
-		} else {
-			trans[k][s] = -1
 		}
 	}
-	dp := make([]int, dim)
-	ndp := make([]int, dim)
-	dp[0] = 1
-	others := 4 - k
-	for pos := 0; pos < M; pos++ {
-		for i := range ndp {
-			ndp[i] = 0
+
+	type Trans struct {
+		dest int
+		mult int64
+	}
+	transitions := make([][]Trans, numStates)
+	for id := 0; id < numStates; id++ {
+		var dests []int
+		var mults []int64
+		add := func(dest int, count int64) {
+			for i, d := range dests {
+				if d == dest {
+					mults[i] += count
+					return
+				}
+			}
+			dests = append(dests, dest)
+			mults = append(mults, count)
 		}
-		for s := 0; s < dim; s++ {
-			v := dp[s]
-			if v == 0 {
+		if outTrans[id] != -1 && 4-k > 0 {
+			add(outTrans[id], int64(4-k))
+		}
+		for m := 0; m < k; m++ {
+			if inTrans[id][m] != -1 {
+				add(inTrans[id][m], 1)
+			}
+		}
+		for i, d := range dests {
+			transitions[id] = append(transitions[id], Trans{d, mults[i]})
+		}
+	}
+
+	dp := make([]int64, numStates)
+	var initS State
+	dp[stateToID[initS]] = 1
+
+	for step := 0; step < n; step++ {
+		nextDp := make([]int64, numStates)
+		for id, ways := range dp {
+			if ways == 0 {
 				continue
 			}
-			for j := 0; j < k; j++ {
-				t := trans[j][s]
-				if t >= 0 {
-					ndp[t] = (ndp[t] + v) % MOD
-				}
-			}
-			t := trans[k][s]
-			if t >= 0 {
-				ndp[t] = (ndp[t] + int((int64(v)*int64(others))%MOD)) % MOD
+			for _, t := range transitions[id] {
+				nextDp[t.dest] = (nextDp[t.dest] + ways*t.mult) % MOD
 			}
 		}
-		dp, ndp = ndp, dp
+		dp = nextDp
 	}
-	sum := 0
-	for _, v := range dp {
-		sum = (sum + v) % MOD
+
+	var total int64 = 0
+	for _, ways := range dp {
+		total = (total + ways) % MOD
 	}
-	return sum
+	return total
 }
 
 func solveCase(n, h int) int {
-	M := n - h + 1
-	A := make([]int, 5)
-	for k := 0; k <= 4; k++ {
-		A[k] = computeA(M, h, k)
+	n1 := solveK(n, h, 1)
+	n2 := solveK(n, h, 2)
+	n3 := solveK(n, h, 3)
+	n4 := solveK(n, h, 4)
+
+	ans := (4*n1 - 6*n2 + 4*n3 - n4) % MOD
+	if ans < 0 {
+		ans += MOD
 	}
-	C4 := []int{1, 4, 6, 4, 1}
-	f := 0
-	for k := 0; k <= 4; k++ {
-		term := int((int64(C4[k]) * int64(A[k])) % MOD)
-		if k%2 == 1 {
-			f = (f - term + MOD) % MOD
-		} else {
-			f = (f + term) % MOD
-		}
-	}
-	powTail := modPow(4, n-M)
-	g := int((int64(f) * int64(powTail)) % MOD)
-	total := modPow(4, n)
-	ans := (total - g + MOD) % MOD
-	return ans
+	return int(ans)
 }
 
 func generateCase(rng *rand.Rand) (string, string) {

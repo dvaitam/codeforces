@@ -6,19 +6,10 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
-
-func buildOracle() (string, error) {
-	oracle := filepath.Join(os.TempDir(), "oracleB")
-	cmd := exec.Command("go", "build", "-o", oracle, "1794B.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build oracle: %v\n%s", err, out)
-	}
-	return oracle, nil
-}
 
 func run(bin, input string) (string, error) {
 	cmd := exec.Command(bin)
@@ -50,6 +41,26 @@ func buildCandidate(path string) (string, func(), error) {
 	return path, func() {}, nil
 }
 
+func solveCase(n int, a []int) string {
+	vals := make([]int64, n)
+	for i := 0; i < n; i++ {
+		vals[i] = int64(a[i])
+		if vals[i] == 1 {
+			vals[i]++
+		}
+	}
+	for i := 0; i < n-1; i++ {
+		if vals[i+1]%vals[i] == 0 {
+			vals[i+1]++
+		}
+	}
+	parts := make([]string, n)
+	for i := 0; i < n; i++ {
+		parts[i] = strconv.FormatInt(vals[i], 10)
+	}
+	return strings.Join(parts, " ")
+}
+
 func generateCase(rng *rand.Rand) string {
 	n := rng.Intn(20) + 1
 	sb := strings.Builder{}
@@ -65,6 +76,46 @@ func generateCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
+func parseInput(input string) (int, []int) {
+	tokens := strings.Fields(input)
+	// tokens[0] = "1" (t), tokens[1] = n, tokens[2..] = array
+	n, _ := strconv.Atoi(tokens[1])
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		a[i], _ = strconv.Atoi(tokens[2+i])
+	}
+	return n, a
+}
+
+func validateOutput(n int, a []int, output string) error {
+	tokens := strings.Fields(output)
+	if len(tokens) != n {
+		return fmt.Errorf("expected %d values, got %d", n, len(tokens))
+	}
+	vals := make([]int64, n)
+	totalOps := int64(0)
+	for i := 0; i < n; i++ {
+		v, err := strconv.ParseInt(tokens[i], 10, 64)
+		if err != nil {
+			return fmt.Errorf("invalid number %q", tokens[i])
+		}
+		if v < int64(a[i]) {
+			return fmt.Errorf("value %d decreased from %d", v, a[i])
+		}
+		totalOps += v - int64(a[i])
+		vals[i] = v
+	}
+	if totalOps > int64(2*n) {
+		return fmt.Errorf("too many operations: %d > %d", totalOps, 2*n)
+	}
+	for i := 0; i < n-1; i++ {
+		if vals[i+1]%vals[i] == 0 {
+			return fmt.Errorf("a[%d]=%d divides a[%d]=%d", i, vals[i], i+1, vals[i+1])
+		}
+	}
+	return nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierB.go /path/to/binary")
@@ -77,28 +128,19 @@ func main() {
 	}
 	defer cleanup()
 
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
-
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 1; i <= 100; i++ {
 		input := generateCase(rng)
-		expect, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", i, err)
-			os.Exit(1)
-		}
+		n, a := parseInput(input)
 		got, err := run(candidatePath, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d: %v\n", i, err)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(got) != strings.TrimSpace(expect) {
-			fmt.Printf("case %d failed\ninput:\n%s\nexpected:\n%s\n\ngot:\n%s\n", i, input, expect, got)
+		if err := validateOutput(n, a, got); err != nil {
+			// Also check against embedded solver
+			expect := solveCase(n, a)
+			fmt.Printf("case %d failed: %v\ninput:\n%s\nexpected:\n%s\n\ngot:\n%s\n", i, err, input, expect, got)
 			os.Exit(1)
 		}
 	}

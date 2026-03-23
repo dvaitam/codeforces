@@ -1,12 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -15,31 +15,80 @@ type testInput struct {
 	text string
 }
 
-func buildReference() (string, error) {
-	refDir := filepath.Join("2000-2999", "2100-2199", "2160-2169", "2169")
-	tmp, err := os.CreateTemp("", "ref2169D2")
-	if err != nil {
-		return "", err
-	}
-	tmpPath := tmp.Name()
-	tmp.Close()
-	os.Remove(tmpPath)
+// Embedded reference solver for 2169 D2.
+func solveD2(input string) string {
+	in := bufio.NewReader(strings.NewReader(input))
+	var buf bytes.Buffer
+	out := bufio.NewWriter(&buf)
 
-	cmd := exec.Command("go", "build", "-o", tmpPath, "2169D2.go")
-	cmd.Dir = refDir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build reference failed: %v\n%s", err, string(out))
+	var t int
+	fmt.Fscan(in, &t)
+
+	for i := 0; i < t; i++ {
+		var x, y, k int64
+		fmt.Fscan(in, &x, &y, &k)
+
+		if y == 1 {
+			fmt.Fprintln(out, -1)
+			continue
+		}
+
+		D := y - 1
+		V := k - 1
+		limit := int64(1000000000000)
+
+		possible := true
+
+		for x > 0 {
+			if V >= limit {
+				possible = false
+				break
+			}
+
+			q := V / D
+			if q == 0 {
+				break
+			}
+
+			var steps int64 = 1
+			if q < D {
+				rem := (q+1)*D - 1 - V
+				steps = rem / q
+				if steps == 0 {
+					steps = 1
+				}
+			}
+
+			if steps > x {
+				steps = x
+			}
+
+			V += steps * q
+			x -= steps
+		}
+
+		if V >= limit {
+			possible = false
+		}
+
+		if possible {
+			fmt.Fprintln(out, V+1)
+		} else {
+			fmt.Fprintln(out, -1)
+		}
 	}
-	return tmpPath, nil
+
+	out.Flush()
+	return buf.String()
 }
 
 func commandForPath(path string) *exec.Cmd {
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".go":
+	switch {
+	case strings.HasSuffix(path, ".go"):
 		return exec.Command("go", "run", path)
-	case ".py":
+	case strings.HasSuffix(path, ".py"):
 		return exec.Command("python3", path)
-	case ".js":
+	case strings.HasSuffix(path, ".js"):
 		return exec.Command("node", path)
 	default:
 		return exec.Command(path)
@@ -104,20 +153,10 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	ref, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
 	tests := randomTests()
 	for idx, input := range tests {
-		expect, err := runBinary(ref, input.text)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\ninput:\n%s\n", idx+1, err, input.text)
-			os.Exit(1)
-		}
+		expect := solveD2(input.text)
+
 		got, err := runBinary(bin, input.text)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "candidate runtime error on test %d: %v\ninput:\n%s\n", idx+1, err, input.text)
