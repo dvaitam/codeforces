@@ -182,7 +182,12 @@ func generateCase(rng *rand.Rand) (string, string) {
 		sb.WriteString(fmt.Sprintf("%.2f\n", probs[i]))
 	}
 	input := sb.String()
-	res := solveD(n, m, A, B, edges, probs)
+	// Round probs to 2 decimals to match what the binary reads from stdin
+	roundedProbs := make([]float64, n)
+	for i := 0; i < n; i++ {
+		roundedProbs[i], _ = strconv.ParseFloat(fmt.Sprintf("%.2f", probs[i]), 64)
+	}
+	res := solveD(n, m, A, B, edges, roundedProbs)
 	return input, formatRes(res)
 }
 

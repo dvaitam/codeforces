@@ -11,116 +11,104 @@ import (
 	"time"
 )
 
-// computeMinEdges computes the minimum number of edges to add.
-// The functional graph has components; each node i -> f[i].
-// We need to count the number of weakly connected components in the
-// underlying undirected graph of the functional graph, then handle
-// leaves (in-degree 0 nodes) and cycles.
+// computeMinEdges computes the minimum number of edges to add so that the
+// functional graph f becomes strongly connected. This mirrors the logic of the
+// reference solver at /tmp/cf_t24_22_E.go:
+//   1. Walk from every leaf (in-degree 0) to discover which weakly-connected
+//      component it belongs to, recording each leaf.
+//   2. Walk from remaining unvisited nodes (pure-cycle components) and record
+//      the cycle root as a pseudo-leaf for that component.
+//   3. If there is exactly one component with no real leaves, answer is 0.
+//   4. Otherwise, for each component we need one edge to chain the cycles
+//      together, plus one extra edge per additional leaf in that component.
+//      Total = k + sum_i(max(0, len(leavesOfComp[i]) - 1))   where k = #components.
 func computeMinEdges(n int, f []int) int {
-	// Find all weakly connected components and count cycles
-	inDeg := make([]int, n+1)
+	inDegree := make([]int, n+1)
 	for i := 1; i <= n; i++ {
-		inDeg[f[i]]++
+		inDegree[f[i]]++
 	}
 
 	compID := make([]int, n+1)
-	numCycles := 0
-	numLeaves := 0
+	var leavesOfComp [][]int
+	currentComp := 0
 
-	// Process trees (nodes with in-degree 0)
+	// Phase 1: walk from every leaf (in-degree 0 node).
 	for i := 1; i <= n; i++ {
-		if inDeg[i] == 0 {
-			numLeaves++
+		if inDegree[i] == 0 {
+			curr := i
+			var path []int
+			for compID[curr] == 0 {
+				compID[curr] = -1
+				path = append(path, curr)
+				curr = f[curr]
+			}
+			c := compID[curr]
+			if c == -1 {
+				// We reached a cycle node that was visited in this walk but
+				// not yet assigned a component.
+				currentComp++
+				c = currentComp
+				leavesOfComp = append(leavesOfComp, []int{})
+			}
+			for _, v := range path {
+				compID[v] = c
+			}
+			leavesOfComp[c-1] = append(leavesOfComp[c-1], i)
 		}
 	}
 
-	// Find cycles
-	vis := make([]int, n+1)
+	// Phase 2: pure-cycle components (no leaves).
 	for i := 1; i <= n; i++ {
-		if vis[i] != 0 {
-			continue
-		}
-		cur := i
-		for vis[cur] == 0 {
-			vis[cur] = i
-			cur = f[cur]
-		}
-		if vis[cur] == i {
-			// Found a new cycle
-			numCycles++
-			compID[cur] = numCycles
-			next := f[cur]
-			for next != cur {
-				compID[next] = numCycles
-				next = f[next]
+		if compID[i] == 0 {
+			curr := i
+			var path []int
+			for compID[curr] == 0 {
+				compID[curr] = -1
+				path = append(path, curr)
+				curr = f[curr]
+			}
+			c := compID[curr]
+			if c == -1 {
+				currentComp++
+				c = currentComp
+				// For a pure-cycle component, add the cycle root as a
+				// pseudo-leaf so it participates in the chaining.
+				leavesOfComp = append(leavesOfComp, []int{curr})
+			}
+			for _, v := range path {
+				compID[v] = c
 			}
 		}
 	}
 
-	if numCycles == 1 && numLeaves == 0 {
+	numLeaves := 0
+	for i := 1; i <= n; i++ {
+		if inDegree[i] == 0 {
+			numLeaves++
+		}
+	}
+
+	if currentComp == 1 && numLeaves == 0 {
 		return 0
 	}
 
-	// The answer is max(numLeaves, numCycles) when there are leaves,
-	// or numCycles when there are no leaves but multiple cycles.
-	// Actually for this functional graph problem:
-	// - Each component has exactly one cycle
-	// - numLeaves nodes have in-degree 0
-	// - We need to connect all components and redirect leaves
-	// The minimum edges = max(numLeaves, numCycles) if numLeaves > 0, else numCycles
-	// Wait, let me reconsider. Each weakly connected component has one cycle.
-	// Trees hang off cycles. Leaves are nodes with in-degree 0.
-
-	// Count weakly connected components
-	parent := make([]int, n+1)
-	for i := 0; i <= n; i++ {
-		parent[i] = i
-	}
-	var find func(int) int
-	find = func(x int) int {
-		for parent[x] != x {
-			parent[x] = parent[parent[x]]
-			x = parent[x]
-		}
-		return x
-	}
-	union := func(a, b int) {
-		a, b = find(a), find(b)
-		if a != b {
-			parent[a] = b
+	// Count edges: one per component (to chain cycles) plus extras for leaves.
+	k := currentComp
+	total := 0
+	for i := 0; i < k; i++ {
+		// One edge to link cycle i -> leavesOfComp[(i+1)%k][0]
+		total++
+		// Extra edges for remaining leaves in component i
+		if len(leavesOfComp[i]) > 1 {
+			total += len(leavesOfComp[i]) - 1
 		}
 	}
-	for i := 1; i <= n; i++ {
-		union(i, f[i])
-	}
-	compSet := make(map[int]bool)
-	for i := 1; i <= n; i++ {
-		compSet[find(i)] = true
-	}
-	numComponents := len(compSet)
-
-	if numComponents == 1 && numLeaves == 0 {
-		return 0
-	}
-
-	// For each component, we need at least one edge to connect them (numComponents - 1 for connectivity).
-	// Plus we need to redirect each leaf.
-	// But each added edge can both connect components and redirect a leaf.
-	// The answer is max(numLeaves, numComponents).
-	// If numLeaves == 0, answer = numComponents (each cycle-only component needs one edge to break into the whole).
-	if numLeaves == 0 {
-		return numComponents
-	}
-	if numLeaves > numComponents {
-		return numLeaves
-	}
-	return numComponents
+	return total
 }
 
 // checkAnswer validates that after adding the given edges, the graph becomes
 // strongly connected (everyone can reach everyone).
 func checkAnswer(n int, f []int, edges [][2]int) bool {
-	// Build adjacency list with original edges + added edges
 	adj := make([][]int, n+1)
 	for i := 1; i <= n; i++ {
 		adj[i] = append(adj[i], f[i])
@@ -129,8 +117,6 @@ func checkAnswer(n int, f []int, edges [][2]int) bool {
 		adj[e[0]] = append(adj[e[0]], e[1])
 	}
 
-	// Check strong connectivity: BFS/DFS from node 1 should reach all,
-	// and in the reverse graph, BFS/DFS from node 1 should reach all.
 	reachable := func(adjList [][]int) bool {
 		vis := make([]bool, n+1)
 		queue := []int{1}
@@ -157,7 +143,6 @@ func checkAnswer(n int, f []int, edges [][2]int) bool {
 		return false
 	}
 
-	// Build reverse graph
 	radj := make([][]int, n+1)
 	for i := 1; i <= n; i++ {
 		radj[f[i]] = append(radj[f[i]], i)

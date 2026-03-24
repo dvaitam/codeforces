@@ -211,15 +211,22 @@ func buildReferenceBinary() (string, error) {
 
 func randomCase(rng *rand.Rand) string {
 	n := rng.Intn(4) + 2
+	maxW := n * (n - 1) / 2
+	// Generate a random permutation of 1..maxW for the upper-triangle weights
+	perm := rng.Perm(maxW)
+	for i := range perm {
+		perm[i]++ // shift to 1-based
+	}
 	mat := make([][]int, n)
 	for i := 0; i < n; i++ {
 		mat[i] = make([]int, n)
-		for j := 0; j < n; j++ {
-			if i == j {
-				mat[i][j] = 0
-			} else {
-				mat[i][j] = rng.Intn(5)
-			}
+	}
+	idx := 0
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			mat[i][j] = perm[idx]
+			mat[j][i] = perm[idx]
+			idx++
 		}
 	}
 	var sb strings.Builder

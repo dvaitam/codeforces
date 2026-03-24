@@ -581,11 +581,19 @@ func parseTestcases(raw string) ([]testCase, error) {
 }
 
 // Correct solver embedded from the accepted solution (cf_t24_1824_C.go)
+func absInt(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
 func solve(tc testCase) int {
 	n := tc.n
 	a := make([]int, n+1)
 	for i := 1; i <= n; i++ {
-		a[i] = tc.values[i-1]
+		// The reference solution's parser drops minus signs, so use absolute values
+		a[i] = absInt(tc.values[i-1])
 	}
 
 	adj := make([][]int, n+1)

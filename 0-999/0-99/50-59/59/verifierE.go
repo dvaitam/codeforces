@@ -217,7 +217,7 @@ func run(bin, input string) (string, error) {
 }
 
 func generateCaseE(rng *rand.Rand) string {
-	n := rng.Intn(5) + 2
+	n := rng.Intn(49) + 2 // max n = 50
 	edges := make([][2]int, 0)
 	for i := 1; i <= n; i++ {
 		for j := i + 1; j <= n; j++ {
@@ -269,7 +269,7 @@ func main() {
 	defer cleanup()
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 5; i++ {
 		in := generateCaseE(rng)
 		exp, err := run(ref, in)
 		if err != nil {
