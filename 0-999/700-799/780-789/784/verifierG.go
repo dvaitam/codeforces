@@ -8,6 +8,49 @@ import (
 	"strings"
 )
 
+// executeBF interprets a Brainfuck program and returns the output bytes.
+func executeBF(program string) string {
+	mem := make([]byte, 30000)
+	ptr := 0
+	var out []byte
+	// precompute bracket matching
+	matching := make(map[int]int)
+	stack := []int{}
+	for i, c := range program {
+		if c == '[' {
+			stack = append(stack, i)
+		} else if c == ']' {
+			j := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			matching[j] = i
+			matching[i] = j
+		}
+	}
+	for ip := 0; ip < len(program); ip++ {
+		switch program[ip] {
+		case '>':
+			ptr++
+		case '<':
+			ptr--
+		case '+':
+			mem[ptr]++
+		case '-':
+			mem[ptr]--
+		case '.':
+			out = append(out, mem[ptr])
+		case '[':
+			if mem[ptr] == 0 {
+				ip = matching[ip]
+			}
+		case ']':
+			if mem[ptr] != 0 {
+				ip = matching[ip]
+			}
+		}
+	}
+	return string(out)
+}
+
 const testcasesG = `31-48 ++\n++++++++++++++++++++++++++++++++++++++++++++++++.>+++\n++++++++++++++++++++++++++++++++++++++++++++++++.>+++++++++\n++++++++++++++++++++++++++++++++++++++++++++++++.
 0-9 ++\n++++++++++++++++++++++++++++++++++++++++++++++++.>++++\n++++++++++++++++++++++++++++++++++++++++++++++++.>+++++++\n++++++++++++++++++++++++++++++++++++++++++++++++.
 20-49+1-17 ++\n++++++++++++++++++++++++++++++++++++++++++++++++.>+\n++++++++++++++++++++++++++++++++++++++++++++++++.>+\n++++++++++++++++++++++++++++++++++++++++++++++++.
@@ -181,14 +224,18 @@ func main() {
 		total++
 		fields := strings.Fields(line)
 		expr := fields[0]
-		expected := strings.TrimSpace(generate(eval(expr)))
+		result := eval(expr)
+		result = ((result % 256) + 256) % 256
+		expectedOutput := fmt.Sprintf("%d", result)
 		got, err := runCandidate(bin, expr+"\n")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", total, err)
 			os.Exit(1)
 		}
-		if got != expected {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\n", total, expected, got)
+		// Execute the candidate's BF program and check the output
+		bfOutput := executeBF(got)
+		if bfOutput != expectedOutput {
+			fmt.Fprintf(os.Stderr, "case %d failed: BF output %q, expected %q (expr=%s)\n", total, bfOutput, expectedOutput, expr)
 			os.Exit(1)
 		}
 	}

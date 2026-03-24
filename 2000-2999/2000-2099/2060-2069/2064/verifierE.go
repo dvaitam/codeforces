@@ -6,13 +6,147 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const refSource = "./2064E.go"
+// ---- Embedded correct solver for 2064 E ----
+
+func solveReference(input string) string {
+	data := []byte(input)
+	pos := 0
+	maxLen := len(data)
+	readNext := func() byte {
+		if pos >= maxLen {
+			return 0
+		}
+		b := data[pos]
+		pos++
+		return b
+	}
+
+	readInt := func() int {
+		b := readNext()
+		for b != 0 && (b < '0' || b > '9') {
+			b = readNext()
+		}
+		if b == 0 {
+			return 0
+		}
+		res := 0
+		for b >= '0' && b <= '9' {
+			res = res*10 + int(b-'0')
+			b = readNext()
+		}
+		return res
+	}
+
+	const mod int64 = 998244353
+	const maxN = 200005
+
+	parent := make([]int, maxN)
+	sz := make([]int, maxN)
+	color := make([]int, maxN)
+	prev := make([]int, maxN)
+	nxt := make([]int, maxN)
+	x := make([]int, maxN)
+	p := make([]int, maxN)
+	c := make([]int, maxN)
+
+	var out bytes.Buffer
+
+	t := readInt()
+	for t > 0 {
+		t--
+		n := readInt()
+		for i := 1; i <= n; i++ {
+			p[i] = readInt()
+		}
+		for i := 1; i <= n; i++ {
+			c[i] = readInt()
+		}
+
+		for i := 1; i <= n; i++ {
+			x[p[i]] = i
+		}
+
+		for i := 1; i <= n; i++ {
+			parent[i] = i
+			sz[i] = 1
+			color[i] = c[i]
+			prev[i] = i - 1
+			nxt[i] = i + 1
+		}
+		prev[1] = 0
+		nxt[n] = 0
+
+		find := func(i int) int {
+			root := i
+			for parent[root] != root {
+				root = parent[root]
+			}
+			curr := i
+			for curr != root {
+				nNode := parent[curr]
+				parent[curr] = root
+				curr = nNode
+			}
+			return root
+		}
+
+		merge := func(u, v int) {
+			parent[v] = u
+			sz[u] += sz[v]
+			nxt[u] = nxt[v]
+			if nxt[v] != 0 {
+				prev[nxt[v]] = u
+			}
+		}
+
+		curr := 1
+		for nxt[curr] != 0 {
+			nx := nxt[curr]
+			if color[curr] == color[nx] {
+				merge(curr, nx)
+			} else {
+				curr = nx
+			}
+		}
+
+		ans := int64(1)
+
+		for k := 1; k <= n; k++ {
+			idx := x[k]
+			b := find(idx)
+
+			ans = (ans * int64(sz[b])) % mod
+			sz[b]--
+
+			if sz[b] == 0 {
+				pBlk := prev[b]
+				nBlk := nxt[b]
+
+				if pBlk != 0 {
+					nxt[pBlk] = nBlk
+				}
+				if nBlk != 0 {
+					prev[nBlk] = pBlk
+				}
+
+				if pBlk != 0 && nBlk != 0 && color[pBlk] == color[nBlk] {
+					merge(pBlk, nBlk)
+				}
+			}
+		}
+
+		out.WriteString(strconv.FormatInt(ans, 10))
+		out.WriteByte('\n')
+	}
+	return out.String()
+}
+
+// ---- Verifier infrastructure ----
 
 type testCase struct {
 	name    string
@@ -27,21 +161,10 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, cleanup, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
 	tests := buildTests()
 
 	for idx, tc := range tests {
-		refOut, err := runProgram(refBin, tc.input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference runtime error on test %d (%s): %v\ninput:\n%soutput:\n%s", idx+1, tc.name, err, tc.input, refOut)
-			os.Exit(1)
-		}
+		refOut := solveReference(tc.input)
 		refAns, err := parseAnswers(refOut, tc.answers)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "reference produced invalid output on test %d (%s): %v\ninput:\n%soutput:\n%s", idx+1, tc.name, err, tc.input, refOut)
@@ -66,23 +189,6 @@ func main() {
 	}
 
 	fmt.Printf("All %d tests passed.\n", len(tests))
-}
-
-func buildReference() (string, func(), error) {
-	dir, err := os.MkdirTemp("", "cf-2064E-ref-")
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to create temp directory: %v", err)
-	}
-	binPath := filepath.Join(dir, "ref2064E.bin")
-	cmd := exec.Command("go", "build", "-o", binPath, refSource)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		_ = os.RemoveAll(dir)
-		return "", nil, fmt.Errorf("failed to build reference: %v\n%s", err, stderr.String())
-	}
-	cleanup := func() { _ = os.RemoveAll(dir) }
-	return binPath, cleanup, nil
 }
 
 func runProgram(bin, input string) (string, error) {
@@ -130,7 +236,7 @@ func equalSlices(a, b []int64) bool {
 
 func buildTests() []testCase {
 	tests := []testCase{
-		newTestCase("sample", "4\n1\n1\n1\n1\n5\n3 4 1 2\n1 1 1 1 1\n5\n4 2 3 1 5\n2 1 4 1 5\n40\n29 15 20 35 37 31 27 1 32 36 38 25 22 8 16 7 3 28 11 12 23 4 14 9 39 13 10 30 6 2 24 17 19 5 34 18 33 26 40 21\n3 1 2 2 1 2 3 1 1 1 1 2 1 3 1 1 3 1 1 1 2 2 1 3 3 3 2 3 2 2 2 2 1 3 2 1 1 2 2 2\n"),
+		newTestCase("sample", "4\n1\n1\n1\n5\n3 4 1 2 5\n1 1 1 1 1\n5\n4 2 3 1 5\n2 1 4 1 5\n40\n29 15 20 35 37 31 27 1 32 36 38 25 22 8 16 7 3 28 11 12 23 4 14 9 39 13 10 30 6 2 24 17 19 5 34 18 33 26 40 21\n3 1 2 2 1 2 3 1 1 1 1 2 1 3 1 1 3 1 1 1 2 2 1 3 3 3 2 3 2 2 2 2 1 3 2 1 1 2 2 2\n"),
 		buildSingleCase("n1", []int{1}, []int{1}),
 		buildSingleCase("sorted colors same", []int{1, 2, 3, 4}, []int{7, 7, 7, 7}),
 		buildSingleCase("permutation reversed", []int{4, 3, 2, 1}, []int{1, 2, 3, 4}),

@@ -1,23 +1,115 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	oracle := "oracleF"
-	cmd := exec.Command("go", "build", "-o", oracle, "1183F.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+func solve(input string) string {
+	reader := bufio.NewReader(strings.NewReader(input))
+
+	readInt := func() int {
+		n := 0
+		b, err := reader.ReadByte()
+		if err != nil {
+			return 0
+		}
+		for b < '0' || b > '9' {
+			b, err = reader.ReadByte()
+			if err != nil {
+				return 0
+			}
+		}
+		for b >= '0' && b <= '9' {
+			n = n*10 + int(b-'0')
+			b, err = reader.ReadByte()
+			if err != nil {
+				break
+			}
+		}
+		return n
 	}
-	return oracle, nil
+
+	var out strings.Builder
+
+	q := readInt()
+	for t := 0; t < q; t++ {
+		n := readInt()
+
+		a := make([]int, n)
+		for i := 0; i < n; i++ {
+			a[i] = readInt()
+		}
+
+		sort.Slice(a, func(i, j int) bool {
+			return a[i] > a[j]
+		})
+
+		var A []int
+		for i := 0; i < n; i++ {
+			if i == 0 || a[i] != a[i-1] {
+				A = append(A, a[i])
+			}
+		}
+
+		maxSum := 0
+		m := len(A)
+
+		for i := 0; i < m; i++ {
+			x := A[i]
+			valY := 0
+			valZ := 0
+			if i+1 < m {
+				valY = A[i+1]
+			}
+			if i+2 < m {
+				valZ = A[i+2]
+			}
+			if maxSum >= x+valY+valZ {
+				break
+			}
+			if x > maxSum {
+				maxSum = x
+			}
+			for j := i + 1; j < m; j++ {
+				y := A[j]
+				valZ2 := 0
+				if j+1 < m {
+					valZ2 = A[j+1]
+				}
+				if maxSum >= x+y+valZ2 {
+					break
+				}
+				if x%y == 0 {
+					continue
+				}
+				if x+y > maxSum {
+					maxSum = x + y
+				}
+				for k := j + 1; k < m; k++ {
+					z := A[k]
+					if x%z == 0 || y%z == 0 {
+						continue
+					}
+					if x+y+z > maxSum {
+						maxSum = x + y + z
+					}
+					break
+				}
+			}
+		}
+		fmt.Fprintln(&out, maxSum)
+	}
+
+	return strings.TrimSpace(out.String())
 }
 
 func runProg(prog, input string) (string, error) {
@@ -63,21 +155,11 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input := genCase(rng)
-		exp, err := runProg(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle runtime error on case %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
+		exp := solve(input)
 		out, err := runProg(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d runtime error: %v\n%s", i+1, err, out)

@@ -566,45 +566,257 @@ type testCase struct {
 	ops []operation
 }
 
-// solveLogic mirrors 217E.go: maps each query position back through the operations.
-func solveLogic(tc testCase) string {
-	s := tc.s
-	k := tc.k
-	n := len(tc.ops)
-	L := make([]int, n)
-	R := make([]int, n)
-	segLen := make([]int, n)
-	half := make([]int, n)
-	for i, op := range tc.ops {
-		L[i] = op.l
-		R[i] = op.r
-		ln := op.r - op.l + 1
-		segLen[i] = ln
-		half[i] = ln / 2
+// ---------- correct solver (rope / persistent approach from CF-accepted solution) ----------
+
+const (
+	typOrig   = 0
+	typConcat = 1
+	typView   = 2
+)
+
+type Node struct {
+	typ uint8
+	len int64
+	a   int64
+	b   int64
+	l   *Node
+	r   *Node
+}
+
+var pool []Node
+var poolPtr int
+
+func alloc() *Node {
+	n := &pool[poolPtr]
+	poolPtr++
+	return n
+}
+
+func makeOrig(start, step, cnt int64) *Node {
+	if cnt <= 0 {
+		return nil
 	}
-	out := make([]byte, k)
-	for pos := 1; pos <= k; pos++ {
-		p := pos
-		for i := n - 1; i >= 0; i-- {
-			li := L[i]
-			ri := R[i]
-			ln := segLen[i]
-			if p > ri && p <= ri+ln {
-				idx := p - ri
-				h := half[i]
-				if idx <= h {
-					p = li + idx*2 - 1
-				} else {
-					p = li + (idx-h-1)*2
-				}
-			} else if p > ri+ln {
-				p -= ln
+	if cnt == 1 {
+		step = 1
+	}
+	n := alloc()
+	n.typ = typOrig
+	n.len = cnt
+	n.a = start
+	n.b = step
+	n.l = nil
+	n.r = nil
+	return n
+}
+
+func locate(node *Node, pos int64) int64 {
+	for {
+		switch node.typ {
+		case typOrig:
+			return node.a + node.b*(pos-1)
+		case typView:
+			pos = node.a + node.b*(pos-1)
+			node = node.l
+		default:
+			if pos <= node.l.len {
+				node = node.l
+			} else {
+				pos -= node.l.len
+				node = node.r
 			}
 		}
-		out[pos-1] = s[p-1]
 	}
+}
+
+func makeView(child *Node, offset, step, cnt int64) *Node {
+	if child == nil || cnt <= 0 {
+		return nil
+	}
+	if cnt == 1 {
+		return makeOrig(locate(child, offset), 1, 1)
+	}
+	for {
+		if offset == 1 && step == 1 && cnt == child.len {
+			return child
+		}
+		switch child.typ {
+		case typOrig:
+			return makeOrig(child.a+child.b*(offset-1), child.b*step, cnt)
+		case typView:
+			offset = child.a + child.b*(offset-1)
+			step = child.b * step
+			child = child.l
+		default:
+			lenL := child.l.len
+			last := offset + step*(cnt-1)
+			if last <= lenL {
+				child = child.l
+			} else if offset > lenL {
+				offset -= lenL
+				child = child.r
+			} else {
+				n := alloc()
+				n.typ = typView
+				n.len = cnt
+				n.a = offset
+				n.b = step
+				n.l = child
+				n.r = nil
+				return n
+			}
+		}
+	}
+}
+
+func makeConcat(a, b *Node) *Node {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	if a.typ == typOrig && b.typ == typOrig && a.b == b.b && a.a+a.b*a.len == b.a {
+		return makeOrig(a.a, a.b, a.len+b.len)
+	}
+	if a.typ == typView && b.typ == typView && a.l == b.l && a.b == b.b && a.a+a.b*a.len == b.a {
+		return makeView(a.l, a.a, a.b, a.len+b.len)
+	}
+	n := alloc()
+	n.typ = typConcat
+	n.len = a.len + b.len
+	n.a = 0
+	n.b = 0
+	n.l = a
+	n.r = b
+	return n
+}
+
+func min64(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+type Task struct {
+	node *Node
+	a    int64
+	d    int64
+	m    int64
+}
+
+func materialize(root *Node, src []byte) []byte {
+	out := make([]byte, int(root.len))
+	idx := 0
+	stack := make([]Task, 0, 1024)
+	n := root
+	var a, d, m int64 = 1, 1, root.len
+	for {
+		for {
+			if n == nil || m <= 0 {
+				break
+			}
+			switch n.typ {
+			case typView:
+				a = n.a + n.b*(a-1)
+				if m == 1 {
+					d = 1
+				} else {
+					d = n.b * d
+				}
+				n = n.l
+			case typConcat:
+				lenL := n.l.len
+				if a > lenL {
+					a -= lenL
+					n = n.r
+					continue
+				}
+				t := (lenL-a)/d + 1
+				if t >= m {
+					n = n.l
+					continue
+				}
+				stack = append(stack, Task{node: n.r, a: a + d*t - lenL, d: d, m: m - t})
+				m = t
+				n = n.l
+			default:
+				start := n.a + n.b*(a-1)
+				if m == 1 {
+					out[idx] = src[int(start-1)]
+					idx++
+				} else {
+					step := n.b * d
+					if step == 1 {
+						s := int(start - 1)
+						e := s + int(m)
+						copy(out[idx:idx+int(m)], src[s:e])
+						idx += int(m)
+					} else {
+						pos := start - 1
+						for i := int64(0); i < m; i++ {
+							out[idx] = src[int(pos)]
+							idx++
+							pos += step
+						}
+					}
+				}
+				break
+			}
+			if n == nil || n.typ == typOrig {
+				break
+			}
+		}
+		if len(stack) == 0 {
+			break
+		}
+		t := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		n = t.node
+		a = t.a
+		d = t.d
+		m = t.m
+	}
+	return out
+}
+
+func solveCorrect(tc testCase) string {
+	src := []byte(tc.s)
+	k := int64(tc.k)
+	nm := len(tc.ops)
+	pool = make([]Node, 30*nm+100)
+	poolPtr = 0
+	curLen := int64(len(src))
+	root := makeOrig(1, 1, min64(curLen, k))
+	for i := 0; i < nm; i++ {
+		l := int64(tc.ops[i].l)
+		r := int64(tc.ops[i].r)
+		m := r - l + 1
+		curLen += m
+		newLen := min64(curLen, k)
+		if r >= newLen {
+			root = makeView(root, 1, 1, newLen)
+			continue
+		}
+		a := makeView(root, 1, 1, r)
+		b := makeView(root, l, 1, m)
+		copyLen := min64(m, newLen-r)
+		evenCnt := m / 2
+		var d *Node
+		if copyLen <= evenCnt {
+			d = makeView(b, 2, 2, copyLen)
+		} else {
+			d = makeConcat(makeView(b, 2, 2, evenCnt), makeView(b, 1, 2, copyLen-evenCnt))
+		}
+		tailLen := newLen - r - copyLen
+		e := makeView(root, r+1, 1, tailLen)
+		root = makeConcat(makeConcat(a, d), e)
+	}
+	out := materialize(root, src)
 	return string(out)
 }
+
+// ---------- end correct solver ----------
 
 func parseCase(lines []string, start int) (testCase, int, error) {
 	if start >= len(lines) {
@@ -708,7 +920,7 @@ func main() {
 		os.Exit(1)
 	}
 	for idx, tc := range testcases {
-		expect := solveLogic(tc)
+		expect := solveCorrect(tc)
 		input := buildInput(tc)
 		got, err := run(bin, input)
 		if err != nil {

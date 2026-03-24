@@ -3,148 +3,141 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func solveD(n, m, A, B int, edges [][2]int, p []float64) []float64 {
-	A--
-	B--
-	if A < B {
-		A, B = B, A
-	}
-	g := make([][]int, n)
+func solveD(n, m, a, b int, edges [][2]int, p []float64) []float64 {
+	a--
+	b--
+
+	adj := make([][]int, n)
+	deg := make([]int, n)
 	for _, e := range edges {
 		u := e[0] - 1
 		v := e[1] - 1
-		g[u] = append(g[u], v)
-		g[v] = append(g[v], u)
+		adj[u] = append(adj[u], v)
+		adj[v] = append(adj[v], u)
+		deg[u]++
+		deg[v]++
 	}
-	id := make([][]int, n)
-	for i := 0; i < n; i++ {
-		id[i] = make([]int, n)
+
+	ans := make([]float64, n)
+	if a == b {
+		ans[a] = 1.0
+		return ans
 	}
-	N := 0
+
+	P := make([][]float64, n)
 	for i := 0; i < n; i++ {
-		for j := 0; j <= i; j++ {
-			id[i][j] = N
-			N++
+		P[i] = make([]float64, n)
+		P[i][i] = p[i]
+		for _, v := range adj[i] {
+			P[i][v] = (1.0 - p[i]) / float64(deg[i])
 		}
 	}
-	a := make([][]float64, N)
+
+	stateIdx := make([][]int, n)
+	idx := 0
+	for i := 0; i < n; i++ {
+		stateIdx[i] = make([]int, n)
+		for j := 0; j < n; j++ {
+			if i != j {
+				stateIdx[i][j] = idx
+				idx++
+			}
+		}
+	}
+
+	N := idx
+	A := make([][]float64, N)
 	for i := 0; i < N; i++ {
-		a[i] = make([]float64, N)
+		A[i] = make([]float64, N)
 	}
-	edge := func(ea, b1, c, d int, e float64) {
-		if ea < b1 {
-			ea, b1 = b1, ea
-		}
-		if c < d {
-			c, d = d, c
-		}
-		i1 := id[ea][b1]
-		i2 := id[c][d]
-		a[i1][i2] += e
-	}
-	for i := 0; i < n; i++ {
-		for j := 0; j <= i; j++ {
-			if i == j {
-				edge(i, j, i, j, 1)
+	B := make([]float64, N)
+
+	for x := 0; x < n; x++ {
+		for y := 0; y < n; y++ {
+			if x == y {
 				continue
 			}
-			edge(i, j, i, j, p[i]*p[j])
-			giLen := float64(len(g[i]))
-			gjLen := float64(len(g[j]))
-			for _, qi := range g[i] {
-				edge(i, j, qi, j, (1-p[i])/giLen*p[j])
-				for _, qj := range g[j] {
-					edge(i, j, qi, qj, (1-p[i])/giLen*(1-p[j])/gjLen)
+			Sp := stateIdx[x][y]
+			for u := 0; u < n; u++ {
+				if P[x][u] == 0 {
+					continue
+				}
+				for v := 0; v < n; v++ {
+					if P[y][v] == 0 {
+						continue
+					}
+					if u != v {
+						S := stateIdx[u][v]
+						A[S][Sp] -= P[x][u] * P[y][v]
+					}
 				}
 			}
-			for _, qj := range g[j] {
-				edge(i, j, i, qj, (1-p[j])/gjLen*p[i])
-			}
 		}
 	}
-	for i := 0; i < n; i++ {
-		for j := 0; j < i; j++ {
-			idx := id[i][j]
-			a[idx][idx] -= 1
-		}
-	}
-	l := make([][]float64, N)
-	u := make([][]float64, N)
+
 	for i := 0; i < N; i++ {
-		l[i] = make([]float64, N)
-		u[i] = make([]float64, N)
+		A[i][i] += 1.0
 	}
-	for j := 0; j < N; j++ {
-		u[0][j] = a[0][j]
-	}
-	for j := 1; j < N; j++ {
-		l[j][0] = a[j][0] / u[0][0]
-	}
-	for i := 1; i < N; i++ {
-		for j := i; j < N; j++ {
-			sum := a[i][j]
-			for k := 0; k < i; k++ {
-				sum -= l[i][k] * u[k][j]
-			}
-			u[i][j] = sum
-		}
+	B[stateIdx[a][b]] = 1.0
+
+	// Gaussian elimination with partial pivoting
+	for i := 0; i < N; i++ {
+		pivot := i
 		for j := i + 1; j < N; j++ {
-			sum := a[j][i]
-			for k := 0; k < i; k++ {
-				sum -= l[j][k] * u[k][i]
+			if math.Abs(A[j][i]) > math.Abs(A[pivot][i]) {
+				pivot = j
 			}
-			l[j][i] = sum / u[i][i]
+		}
+
+		A[i], A[pivot] = A[pivot], A[i]
+		B[i], B[pivot] = B[pivot], B[i]
+
+		inv := 1.0 / A[i][i]
+		for j := i; j < N; j++ {
+			A[i][j] *= inv
+		}
+		B[i] *= inv
+
+		for j := 0; j < N; j++ {
+			if i != j && A[j][i] != 0 {
+				factor := A[j][i]
+				for k := i; k < N; k++ {
+					A[j][k] -= factor * A[i][k]
+				}
+				B[j] -= factor * B[i]
+			}
 		}
 	}
-	for i := 0; i < N; i++ {
-		l[i][i] = 1
-	}
-	x := make([]float64, N)
-	y := make([]float64, N)
-	bvec := make([]float64, N)
-	res := make([]float64, n)
-	idxAB := id[A][B]
-	for d := 0; d < n; d++ {
-		for i := 0; i < N; i++ {
-			bvec[i] = 0
-		}
-		bvec[id[d][d]] = 1
-		for i := 0; i < N; i++ {
-			sum := bvec[i]
-			for j := 0; j < i; j++ {
-				sum -= l[i][j] * y[j]
+
+	for k := 0; k < n; k++ {
+		for x := 0; x < n; x++ {
+			for y := 0; y < n; y++ {
+				if x != y {
+					S := stateIdx[x][y]
+					ans[k] += B[S] * P[x][k] * P[y][k]
+				}
 			}
-			y[i] = sum
 		}
-		for i := N - 1; i >= 0; i-- {
-			sum := y[i]
-			for j := i + 1; j < N; j++ {
-				sum -= u[i][j] * x[j]
-			}
-			x[i] = sum / u[i][i]
-		}
-		res[d] = x[idxAB]
 	}
-	return res
+
+	return ans
 }
 
 func formatRes(res []float64) string {
-	var sb strings.Builder
+	parts := make([]string, len(res))
 	for i, v := range res {
-		if i > 0 {
-			sb.WriteByte(' ')
-		}
-		sb.WriteString(fmt.Sprintf("%.8f", v))
+		parts[i] = fmt.Sprintf("%.9f", v)
 	}
-	sb.WriteByte('\n')
-	return sb.String()
+	return strings.Join(parts, " ")
 }
 
 func generateCase(rng *rand.Rand) (string, string) {
@@ -188,7 +181,18 @@ func generateCase(rng *rand.Rand) (string, string) {
 	for i := 0; i < n; i++ {
 		sb.WriteString(fmt.Sprintf("%.2f\n", probs[i]))
 	}
-	return sb.String(), formatRes(solveD(n, m, A, B, edges, probs))
+	input := sb.String()
+	res := solveD(n, m, A, B, edges, probs)
+	return input, formatRes(res)
+}
+
+func parseFloats(s string) []float64 {
+	parts := strings.Fields(s)
+	res := make([]float64, len(parts))
+	for i, p := range parts {
+		res[i], _ = strconv.ParseFloat(p, 64)
+	}
+	return res
 }
 
 func runCase(exe, input, expected string) error {
@@ -202,8 +206,16 @@ func runCase(exe, input, expected string) error {
 	}
 	got := strings.TrimSpace(out.String())
 	exp := strings.TrimSpace(expected)
-	if got != exp {
-		return fmt.Errorf("expected %q got %q", exp, got)
+
+	gotVals := parseFloats(got)
+	expVals := parseFloats(exp)
+	if len(gotVals) != len(expVals) {
+		return fmt.Errorf("expected %d values got %d\nexpected %q\ngot %q", len(expVals), len(gotVals), exp, got)
+	}
+	for i := range gotVals {
+		if math.Abs(gotVals[i]-expVals[i]) > 1e-5 {
+			return fmt.Errorf("value %d: expected %.9f got %.9f\nexpected %q\ngot %q", i, expVals[i], gotVals[i], exp, got)
+		}
 	}
 	return nil
 }

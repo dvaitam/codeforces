@@ -21,10 +21,11 @@ func run(bin, input string) (string, error) {
 	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return out.String(), fmt.Errorf("runtime error: %v", err)
+		return out.String(), fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
 	}
 	return out.String(), nil
 }
@@ -59,7 +60,10 @@ func parseAndSum(expr string, allowLeadingZero bool) (int, error) {
 func validate(input, output string) error {
 	lines := strings.Split(strings.TrimSpace(output), "\n")
 	if len(lines) != 3 {
-		return fmt.Errorf("expected three lines of output")
+		return fmt.Errorf("expected three lines of output, got %d", len(lines))
+	}
+	for i := range lines {
+		lines[i] = strings.TrimSpace(lines[i])
 	}
 	sc := bufio.NewScanner(strings.NewReader(input))
 	sc.Split(bufio.ScanWords)

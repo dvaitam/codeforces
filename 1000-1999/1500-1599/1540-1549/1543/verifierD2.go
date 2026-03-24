@@ -20,6 +20,19 @@ func xorK(a, b, k int) int {
 	return res
 }
 
+func subK(a, b, k int) int {
+	res := 0
+	mul := 1
+	for a > 0 || b > 0 {
+		d := ((a%k - b%k) + k) % k
+		res += d * mul
+		mul *= k
+		a /= k
+		b /= k
+	}
+	return res
+}
+
 type testD2 struct {
 	n int
 	k int
@@ -52,11 +65,10 @@ func main() {
 	writer := bufio.NewWriter(stdin)
 	reader := bufio.NewReader(stdout)
 	fmt.Fprintln(writer, T)
-	for _, tc := range tests {
-		fmt.Fprintf(writer, "%d %d\n", tc.n, tc.k)
-	}
 	writer.Flush()
 	for _, tc := range tests {
+		fmt.Fprintf(writer, "%d %d\n", tc.n, tc.k)
+		writer.Flush()
 		x := tc.x
 		for i := 0; i < tc.n; i++ {
 			var q int
@@ -72,12 +84,12 @@ func main() {
 			} else {
 				fmt.Fprintln(writer, 0)
 				writer.Flush()
-				x = xorK(x, q, tc.k)
+				// x XOR_k z = q  =>  z = subK(q, x, k)
+				x = subK(q, x, tc.k)
 			}
 		}
 	}
 	stdin.Close()
-	writer.Flush()
 	if err := cmd.Wait(); err != nil {
 		fmt.Fprintln(os.Stderr, "binary exited with error:", err)
 		os.Exit(1)

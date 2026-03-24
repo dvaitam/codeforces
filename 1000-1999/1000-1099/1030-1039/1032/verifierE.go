@@ -3,24 +3,75 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 )
 
-func buildOracle() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	src := filepath.Join(dir, "1032E.go")
-	bin := filepath.Join(os.TempDir(), "oracle1032E.bin")
-	cmd := exec.Command("go", "build", "-o", bin, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+func solve(input string) string {
+	r := strings.NewReader(input)
+	var n int
+	fmt.Fscan(r, &n)
+
+	a := make([]int, n)
+	counts := make(map[int]int)
+	for i := 0; i < n; i++ {
+		fmt.Fscan(r, &a[i])
+		counts[a[i]]++
 	}
-	return bin, nil
+
+	if len(counts) <= 1 {
+		return fmt.Sprintf("%d", n)
+	}
+
+	dp := make([][]*big.Int, n+1)
+	for i := range dp {
+		dp[i] = make([]*big.Int, 10001)
+		for j := range dp[i] {
+			dp[i][j] = new(big.Int)
+		}
+	}
+	dp[0][0].SetInt64(1)
+
+	currentSum := 0
+	currentCnt := 0
+	for _, w := range a {
+		currentCnt++
+		currentSum += w
+		for i := currentCnt; i >= 1; i-- {
+			for j := currentSum; j >= w; j-- {
+				if dp[i-1][j-w].Sign() > 0 {
+					dp[i][j].Add(dp[i][j], dp[i-1][j-w])
+				}
+			}
+		}
+	}
+
+	maxRevealed := 0
+	for x, c := range counts {
+		for k := 1; k <= c; k++ {
+			req := k * x
+			ncr := big.NewInt(1)
+			for i := 1; i <= k; i++ {
+				ncr.Mul(ncr, big.NewInt(int64(c-i+1)))
+				ncr.Div(ncr, big.NewInt(int64(i)))
+			}
+
+			if dp[k][req].Cmp(ncr) == 0 {
+				revealed := k
+				if k == c && len(counts) == 2 {
+					revealed = n
+				}
+				if revealed > maxRevealed {
+					maxRevealed = revealed
+				}
+			}
+		}
+	}
+
+	return fmt.Sprintf("%d", maxRevealed)
 }
 
 func run(bin, input string) (string, error) {
@@ -61,12 +112,6 @@ func main() {
 		os.Exit(1)
 	}
 	userBin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 	r := rand.New(rand.NewSource(1))
 	cases := []string{
 		"1\n1\n",
@@ -77,11 +122,7 @@ func main() {
 		cases = append(cases, genCase(r))
 	}
 	for idx, input := range cases {
-		want, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle failed on test %d: %v\ninput:\n%s", idx+1, err, input)
-			os.Exit(1)
-		}
+		want := solve(input)
 		got, err := run(userBin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "test %d: %v\ninput:\n%s", idx+1, err, input)

@@ -6,23 +6,149 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+const refSource = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func abs(a int) int {
+	if a < 0 {
+		return -a
 	}
-	oracle := filepath.Join(dir, "oracleF")
-	cmd := exec.Command("go", "build", "-o", oracle, "1301F.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
+	return a
 }
+
+func main() {
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
+	buf := make([]byte, 0, 1024*1024)
+	scanner.Buffer(buf, 1024*1024)
+
+	nextInt := func() int {
+		scanner.Scan()
+		res := 0
+		for _, b := range scanner.Bytes() {
+			res = res*10 + int(b-'0')
+		}
+		return res
+	}
+
+	n := nextInt()
+	m := nextInt()
+	k := nextInt()
+
+	grid := make([]int8, n*m)
+	color_cells := make([][]int, k+1)
+
+	for i := 0; i < n*m; i++ {
+		c := int8(nextInt())
+		grid[i] = c
+		color_cells[c] = append(color_cells[c], i)
+	}
+
+	D := make([][]int32, k+1)
+	Q := make([]int, n*m)
+
+	for c := int8(1); c <= int8(k); c++ {
+		D[c] = make([]int32, n*m)
+		for i := 0; i < n*m; i++ {
+			D[c][i] = -1
+		}
+		visited_color := make([]bool, k+1)
+		head, tail := 0, 0
+
+		for _, v := range color_cells[c] {
+			D[c][v] = 0
+			Q[tail] = v
+			tail++
+		}
+		visited_color[c] = true
+
+		for head < tail {
+			u := Q[head]
+			head++
+			d := D[c][u]
+
+			u_col := grid[u]
+			if !visited_color[u_col] {
+				visited_color[u_col] = true
+				for _, v := range color_cells[u_col] {
+					if D[c][v] == -1 {
+						D[c][v] = d + 1
+						Q[tail] = v
+						tail++
+					}
+				}
+			}
+
+			r, c_idx := u/m, u%m
+
+			if r > 0 {
+				v := u - m
+				if D[c][v] == -1 {
+					D[c][v] = d + 1
+					Q[tail] = v
+					tail++
+				}
+			}
+			if r < n-1 {
+				v := u + m
+				if D[c][v] == -1 {
+					D[c][v] = d + 1
+					Q[tail] = v
+					tail++
+				}
+			}
+			if c_idx > 0 {
+				v := u - 1
+				if D[c][v] == -1 {
+					D[c][v] = d + 1
+					Q[tail] = v
+					tail++
+				}
+			}
+			if c_idx < m-1 {
+				v := u + 1
+				if D[c][v] == -1 {
+					D[c][v] = d + 1
+					Q[tail] = v
+					tail++
+				}
+			}
+		}
+	}
+
+	q := nextInt()
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
+
+	for i := 0; i < q; i++ {
+		r1 := nextInt() - 1
+		c1 := nextInt() - 1
+		r2 := nextInt() - 1
+		c2 := nextInt() - 1
+
+		u := r1*m + c1
+		v := r2*m + c2
+		ans := int32(abs(r1-r2) + abs(c1-c2))
+
+		for c := int8(1); c <= int8(k); c++ {
+			cost := D[c][u] + D[c][v] + 1
+			if cost < ans {
+				ans = cost
+			}
+		}
+		fmt.Fprintln(writer, ans)
+	}
+}
+`
 
 func genCase(r *rand.Rand) string {
 	n := r.Intn(4) + 1
@@ -95,13 +221,44 @@ func run(cmdPath, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func buildReferenceBinary() (string, error) {
+	srcFile, err := os.CreateTemp("", "cf-1301F-src-*.go")
+	if err != nil {
+		return "", err
+	}
+	if _, err := srcFile.WriteString(refSource); err != nil {
+		srcFile.Close()
+		os.Remove(srcFile.Name())
+		return "", err
+	}
+	srcFile.Close()
+	defer os.Remove(srcFile.Name())
+
+	tmp, err := os.CreateTemp("", "cf-1301F-ref-*")
+	if err != nil {
+		return "", err
+	}
+	tmp.Close()
+	os.Remove(tmp.Name())
+
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), srcFile.Name())
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		os.Remove(tmp.Name())
+		return "", fmt.Errorf("go build error: %v\n%s", err, stderr.String())
+	}
+	return tmp.Name(), nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("usage: go run verifierF.go /path/to/binary")
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
+
+	oracle, err := buildReferenceBinary()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

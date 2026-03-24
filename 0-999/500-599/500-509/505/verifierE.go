@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"container/heap"
 	"fmt"
 	"math/rand"
 	"os"
@@ -11,96 +10,85 @@ import (
 	"time"
 )
 
-type Item struct {
-	id int
-	ai int64
-}
-
-type MaxHeap []Item
-
-func (h MaxHeap) Len() int            { return len(h) }
-func (h MaxHeap) Less(i, j int) bool  { return h[i].ai > h[j].ai }
-func (h MaxHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
-func (h *MaxHeap) Push(x interface{}) { *h = append(*h, x.(Item)) }
-func (h *MaxHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[0 : n-1]
-	return x
-}
-
 func expected(n, m, k int, p int64, hArr, aArr []int64) int64 {
-	hi := int64(0)
+	mi := int64(m)
+	var maxA int64
+	var upper int64
+
+	fArr := make([]int64, n)
+	gArr := make([]int64, n)
+
 	for i := 0; i < n; i++ {
-		endH := hArr[i] + aArr[i]*int64(m)
-		if endH > hi {
-			hi = endH
+		g := mi * aArr[i]
+		f := hArr[i] + g
+		gArr[i] = g
+		fArr[i] = f
+		if aArr[i] > maxA {
+			maxA = aArr[i]
+		}
+		if f > upper {
+			upper = f
 		}
 	}
-	can := func(H int64) bool {
-		events := make([][]int, m+2)
-		times := make([]int, n)
-		for i := 0; i < n; i++ {
-			var t0 int
-			if hArr[i] > H {
-				t0 = 1
-			} else {
-				t0 = int((H-hArr[i])/aArr[i]) + 2
-			}
-			if t0 <= m {
-				events[t0] = append(events[t0], i)
-			}
+
+	ceilPos := func(x, y int64) int64 {
+		if x <= 0 {
+			return 0
 		}
-		hq := &MaxHeap{}
-		heap.Init(hq)
-		for d := 1; d <= m; d++ {
-			for _, idx := range events[d] {
-				heap.Push(hq, Item{id: idx, ai: aArr[idx]})
+		return (x + y - 1) / y
+	}
+
+	totalCap := int64(m * k)
+
+	check := func(H int64) bool {
+		if H < maxA {
+			return false
+		}
+		cnt := make([]int64, m+1)
+		var total int64
+
+		for i := 0; i < n; i++ {
+			t := ceilPos(fArr[i]-H, p)
+			total += t
+			if total > totalCap {
+				return false
 			}
-			for j := 0; j < k; j++ {
-				if hq.Len() == 0 {
-					break
-				}
-				it := heap.Pop(hq).(Item)
-				id := it.id
-				times[id]++
-				hStart := hArr[id] + aArr[id]*int64(d) - int64(times[id])*p
-				var tnext int
-				if hStart > H {
-					tnext = d + 1
-				} else {
-					tnext = d + int((H-hStart)/aArr[id]) + 2
-				}
-				if tnext <= m {
-					events[tnext] = append(events[tnext], id)
-				}
+
+			u := ceilPos(gArr[i]-H, p)
+			a := aArr[i]
+
+			for r := int64(0); r < u; r++ {
+				d := int((H + r*p) / a)
+				cnt[d]++
 			}
-			if hq.Len() > 0 {
+			cnt[m] += t - u
+		}
+
+		var used int64
+		kk := int64(k)
+		for s := 1; s <= m; s++ {
+			used += cnt[s]
+			if used > int64(s)*kk {
 				return false
 			}
 		}
 		return true
 	}
-	lo := int64(-1)
-	for lo+1 < hi {
-		mid := (lo + hi) / 2
-		if can(mid) {
-			hi = mid
+
+	l, r := maxA-1, upper
+	for l+1 < r {
+		mid := (l + r) >> 1
+		if check(mid) {
+			r = mid
 		} else {
-			lo = mid
+			l = mid
 		}
 	}
-	return hi
+	return r
 }
 
 func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var stderr bytes.Buffer

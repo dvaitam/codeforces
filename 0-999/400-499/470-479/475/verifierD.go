@@ -6,21 +6,71 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	exe := filepath.Join(dir, "oracleD")
-	cmd := exec.Command("go", "build", "-o", exe, filepath.Join(dir, "475D.go"))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle: %v\n%s", err, out)
+func gcd475(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
 	}
-	return exe, nil
+	return a
+}
+
+type pair475 struct {
+	g int
+	c int64
+}
+
+func solveD(input string) string {
+	idx := 0
+	data := []byte(input)
+	nextInt := func() int {
+		for idx < len(data) && (data[idx] < '0' || data[idx] > '9') {
+			idx++
+		}
+		v := 0
+		for idx < len(data) && data[idx] >= '0' && data[idx] <= '9' {
+			v = v*10 + int(data[idx]-'0')
+			idx++
+		}
+		return v
+	}
+
+	n := nextInt()
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		a[i] = nextInt()
+	}
+
+	total := make(map[int]int64)
+	var current []pair475
+	for i := 0; i < n; i++ {
+		next := make([]pair475, 0, len(current)+1)
+		next = append(next, pair475{a[i], 1})
+		for _, p := range current {
+			next = append(next, pair475{gcd475(p.g, a[i]), p.c})
+		}
+		current = current[:0]
+		for _, p := range next {
+			if len(current) > 0 && current[len(current)-1].g == p.g {
+				current[len(current)-1].c += p.c
+			} else {
+				current = append(current, p)
+			}
+		}
+		for _, p := range current {
+			total[p.g] += p.c
+		}
+	}
+
+	q := nextInt()
+	var sb strings.Builder
+	for i := 0; i < q; i++ {
+		x := nextInt()
+		fmt.Fprintf(&sb, "%d\n", total[x])
+	}
+	return strings.TrimSpace(sb.String())
 }
 
 func generateCase(rng *rand.Rand) string {
@@ -68,20 +118,10 @@ func main() {
 		os.Exit(1)
 	}
 	candidate := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input := generateCase(rng)
-		exp, err := runProg("./"+oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle failure on case %d: %v\ninput:\n%s", i+1, err, input)
-			os.Exit(1)
-		}
+		exp := solveD(input)
 		got, err := runProg(candidate, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d: %v\ninput:\n%s", i+1, err, input)

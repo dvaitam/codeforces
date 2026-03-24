@@ -9,130 +9,133 @@ import (
 	"strings"
 )
 
-type edge struct {
-	to   int
-	rev  int
-	cap  int
-	cost int
+type Edge struct {
+	to, rev         int
+	cap, flow, cost int
 }
 
-type MCMF struct {
-	n     int
-	graph [][]edge
-	dist  []int
-	prevv []int
-	preve []int
-}
+const SOLINF int = 1e9
 
-func NewMCMF(n int) *MCMF {
-	g := make([][]edge, n)
-	return &MCMF{n: n, graph: g, dist: make([]int, n), prevv: make([]int, n), preve: make([]int, n)}
-}
+func solve(n int, s string, b []int) int {
+	S := 0
+	T := 26 + n/2 + 1
+	numNodes := T + 1
 
-func (f *MCMF) AddEdge(u, v, cap, cost int) {
-	f.graph[u] = append(f.graph[u], edge{to: v, rev: len(f.graph[v]), cap: cap, cost: cost})
-	f.graph[v] = append(f.graph[v], edge{to: u, rev: len(f.graph[u]) - 1, cap: 0, cost: -cost})
-}
+	graph := make([][]Edge, numNodes)
 
-const INF = int(1e18)
+	addEdge := func(u, v, cap, cost int) {
+		graph[u] = append(graph[u], Edge{v, len(graph[v]), cap, 0, cost})
+		graph[v] = append(graph[v], Edge{u, len(graph[u]) - 1, 0, 0, -cost})
+	}
 
-func (f *MCMF) MinCostMaxFlow(s, t int) int {
-	res := 0
-	for {
-		for i := 0; i < f.n; i++ {
-			f.dist[i] = INF
+	cnt := make([]int, 26)
+	for i := 0; i < n; i++ {
+		cnt[s[i]-'a']++
+	}
+
+	for c := 0; c < 26; c++ {
+		if cnt[c] > 0 {
+			addEdge(S, c+1, cnt[c], 0)
 		}
-		inq := make([]bool, f.n)
-		q := make([]int, 0)
-		f.dist[s] = 0
-		inq[s] = true
-		q = append(q, s)
-		for idx := 0; idx < len(q); idx++ {
-			v := q[idx]
-			inq[v] = false
-			for i, e := range f.graph[v] {
-				if e.cap > 0 && f.dist[e.to] > f.dist[v]+e.cost {
-					f.dist[e.to] = f.dist[v] + e.cost
-					f.prevv[e.to] = v
-					f.preve[e.to] = i
-					if !inq[e.to] {
-						q = append(q, e.to)
-						inq[e.to] = true
+	}
+
+	for p := 1; p <= n/2; p++ {
+		i := p - 1
+		j := n - p
+		charI := int(s[i] - 'a')
+		charJ := int(s[j] - 'a')
+		bI := b[i]
+		bJ := b[j]
+
+		pairNode := 26 + p
+		addEdge(pairNode, T, 2, 0)
+
+		for c := 0; c < 26; c++ {
+			profit := 0
+			if charI != charJ {
+				if c == charI {
+					profit = bI
+				} else if c == charJ {
+					profit = bJ
+				}
+			} else {
+				if c == charI {
+					if bI > bJ {
+						profit = bI
+					} else {
+						profit = bJ
+					}
+				}
+			}
+			addEdge(c+1, pairNode, 1, -profit)
+		}
+	}
+
+	totalFlow := 0
+	minCost := 0
+
+	for totalFlow < n {
+		dist := make([]int, numNodes)
+		for i := range dist {
+			dist[i] = SOLINF
+		}
+		parentEdge := make([]int, numNodes)
+		parentNode := make([]int, numNodes)
+		inQueue := make([]bool, numNodes)
+
+		dist[S] = 0
+		queue := []int{S}
+		inQueue[S] = true
+
+		for len(queue) > 0 {
+			u := queue[0]
+			queue = queue[1:]
+			inQueue[u] = false
+
+			for i, e := range graph[u] {
+				if e.cap-e.flow > 0 && dist[e.to] > dist[u]+e.cost {
+					dist[e.to] = dist[u] + e.cost
+					parentNode[e.to] = u
+					parentEdge[e.to] = i
+					if !inQueue[e.to] {
+						queue = append(queue, e.to)
+						inQueue[e.to] = true
 					}
 				}
 			}
 		}
-		if f.dist[t] >= 0 || f.dist[t] == INF {
+
+		if dist[T] == SOLINF {
 			break
 		}
-		d := 1
-		for v := t; v != s; v = f.prevv[v] {
-			if f.graph[f.prevv[v]][f.preve[v]].cap < d {
-				d = f.graph[f.prevv[v]][f.preve[v]].cap
-			}
-		}
-		for v := t; v != s; v = f.prevv[v] {
-			e := &f.graph[f.prevv[v]][f.preve[v]]
-			e.cap -= d
-			rev := &f.graph[v][e.rev]
-			rev.cap += d
-		}
-		res += d * f.dist[t]
-	}
-	return -res
-}
 
-func solve(n int, s string, b []int) int {
-	freq := make([]int, 26)
-	for i := 0; i < n; i++ {
-		freq[int(s[i]-'a')]++
-	}
-	letters := make([]int, 0)
-	idx := make([]int, 26)
-	for i := 0; i < 26; i++ {
-		if freq[i] > 0 {
-			idx[i] = len(letters)
-			letters = append(letters, i)
-		} else {
-			idx[i] = -1
+		push := SOLINF
+		curr := T
+		for curr != S {
+			p := parentNode[curr]
+			idx := parentEdge[curr]
+			rem := graph[p][idx].cap - graph[p][idx].flow
+			if rem < push {
+				push = rem
+			}
+			curr = p
 		}
-	}
-	L := len(letters)
-	pairs := n / 2
-	total := 1 + L + pairs*L + n + 1
-	source := 0
-	letterStart := 1
-	pairLetterStart := letterStart + L
-	posStart := pairLetterStart + pairs*L
-	sink := total - 1
 
-	flow := NewMCMF(total)
-	for k, l := range letters {
-		flow.AddEdge(source, letterStart+k, freq[l], 0)
-	}
-	for p := 0; p < pairs; p++ {
-		i := p
-		j := n - 1 - p
-		for k, l := range letters {
-			node := pairLetterStart + p*L + k
-			flow.AddEdge(letterStart+k, node, 1, 0)
-			if int(s[i]-'a') == l {
-				flow.AddEdge(node, posStart+i, 1, -b[i])
-			} else {
-				flow.AddEdge(node, posStart+i, 1, 0)
-			}
-			if int(s[j]-'a') == l {
-				flow.AddEdge(node, posStart+j, 1, -b[j])
-			} else {
-				flow.AddEdge(node, posStart+j, 1, 0)
-			}
+		totalFlow += push
+		minCost += push * dist[T]
+
+		curr = T
+		for curr != S {
+			p := parentNode[curr]
+			idx := parentEdge[curr]
+			revIdx := graph[p][idx].rev
+			graph[p][idx].flow += push
+			graph[curr][revIdx].flow -= push
+			curr = p
 		}
-	}
-	for i := 0; i < n; i++ {
-		flow.AddEdge(posStart+i, sink, 1, 0)
 	}
 
-	return flow.MinCostMaxFlow(source, sink)
+	return -minCost
 }
 
 func generateString(n int) (string, string) {

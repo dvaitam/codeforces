@@ -580,19 +580,128 @@ func parseTestcases(raw string) ([]testCase, error) {
 	return cases, nil
 }
 
+// Correct solver embedded from the accepted solution (cf_t24_1824_C.go)
 func solve(tc testCase) int {
-	degree := make([]int, tc.n+1)
+	n := tc.n
+	a := make([]int, n+1)
+	for i := 1; i <= n; i++ {
+		a[i] = tc.values[i-1]
+	}
+
+	adj := make([][]int, n+1)
 	for _, e := range tc.edges {
-		degree[e[0]]++
-		degree[e[1]]++
+		u, v := e[0], e[1]
+		adj[u] = append(adj[u], v)
+		adj[v] = append(adj[v], u)
 	}
-	leaves := 0
-	for i := 2; i <= tc.n; i++ {
-		if degree[i] == 1 {
-			leaves++
+
+	type childRes struct {
+		V  map[int]struct{}
+		dp int
+	}
+
+	var dfs func(u, p, curXOR int) (map[int]struct{}, int)
+	dfs = func(u, p, curXOR int) (map[int]struct{}, int) {
+		curXOR ^= a[u]
+
+		var children []int
+		for _, v := range adj[u] {
+			if v != p {
+				children = append(children, v)
+			}
 		}
+
+		if len(children) == 0 {
+			res := make(map[int]struct{}, 1)
+			res[curXOR] = struct{}{}
+			return res, 0
+		}
+
+		var resList []childRes
+		dpSum := 0
+		for _, v := range children {
+			V, dp := dfs(v, u, curXOR)
+			resList = append(resList, childRes{V, dp})
+			dpSum += dp
+		}
+
+		maxSize := -1
+		largestIdx := -1
+		for i, res := range resList {
+			if len(res.V) > maxSize {
+				maxSize = len(res.V)
+				largestIdx = i
+			}
+		}
+
+		L := resList[largestIdx].V
+		freq := make(map[int]int)
+
+		for i, res := range resList {
+			if i == largestIdx {
+				continue
+			}
+			for x := range res.V {
+				freq[x]++
+			}
+		}
+
+		maxFreq := 1
+		for x, c := range freq {
+			if _, ok := L[x]; ok {
+				c++
+			}
+			if c > maxFreq {
+				maxFreq = c
+			}
+		}
+
+		k := len(children)
+
+		if u == 1 {
+			freqOfZero := 0
+			if _, ok := L[0]; ok {
+				freqOfZero = 1
+			}
+			if c, ok := freq[0]; ok {
+				freqOfZero += c
+			}
+
+			cost1 := k - freqOfZero
+			cost2 := k - maxFreq + 1
+			if cost2 < cost1 {
+				cost1 = cost2
+			}
+			return nil, dpSum + cost1
+		}
+
+		dp_u := dpSum + k - maxFreq
+		if maxFreq == 1 {
+			for i, res := range resList {
+				if i == largestIdx {
+					continue
+				}
+				for x := range res.V {
+					L[x] = struct{}{}
+				}
+			}
+			return L, dp_u
+		}
+
+		R := make(map[int]struct{})
+		for x, c := range freq {
+			if _, ok := L[x]; ok {
+				c++
+			}
+			if c == maxFreq {
+				R[x] = struct{}{}
+			}
+		}
+		return R, dp_u
 	}
-	return leaves
+
+	_, ans := dfs(1, 0, 0)
+	return ans
 }
 
 func buildInput(tc testCase) string {

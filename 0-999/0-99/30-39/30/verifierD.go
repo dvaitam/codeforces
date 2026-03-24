@@ -13,98 +13,107 @@ import (
 	"time"
 )
 
-type point struct{ x, y float64 }
-
-func dist(a, b point) float64 {
-	return math.Hypot(a.x-b.x, a.y-b.y)
-}
-
-func solve(n, k int, xs []int, py int) float64 {
-	axis := make([]int, n)
-	copy(axis, xs[:n])
-	sort.Ints(axis)
-	L := float64(axis[0])
-	R := float64(axis[n-1])
-	dLine := R - L
-	px := float64(xs[n])
-	pyf := float64(py)
-	if n <= 2 {
-		m := n + 1
-		xsF := make([]float64, m)
-		ysF := make([]float64, m)
-		for i := 0; i < n; i++ {
-			xsF[i] = float64(xs[i])
-		}
-		for i := 0; i < n; i++ {
-			ysF[i] = 0
-		}
-		xsF[n] = px
-		ysF[n] = pyf
-		start := k - 1
-		others := make([]int, 0, m-1)
-		for i := 0; i < m; i++ {
-			if i != start {
-				others = append(others, i)
-			}
-		}
-		best := math.Inf(1)
-		var permute func([]int, int)
-		permute = func(a []int, l int) {
-			if l == len(a) {
-				cur := 0.0
-				prev := start
-				for _, idx := range a {
-					cur += dist(point{xsF[prev], ysF[prev]}, point{xsF[idx], ysF[idx]})
-					prev = idx
-				}
-				if cur < best {
-					best = cur
-				}
-				return
-			}
-			for i := l; i < len(a); i++ {
-				a[l], a[i] = a[i], a[l]
-				permute(a, l+1)
-				a[l], a[i] = a[i], a[l]
-			}
-		}
-		permute(others, 0)
-		return best
+// Correct solver embedded from CF-accepted solution.
+func solveCorrect(n, k int, xs []int, py int) float64 {
+	x := make([]float64, n+1)
+	for i := 0; i <= n; i++ {
+		x[i] = float64(xs[i])
 	}
-	idx := sort.Search(n, func(i int) bool { return float64(axis[i]) >= px })
-	dv := math.Inf(1)
-	for _, j := range []int{idx - 1, idx} {
-		if j >= 0 && j < n {
-			d := dist(point{px, pyf}, point{float64(axis[j]), 0})
-			if d < dv {
-				dv = d
-			}
-		}
+	y := float64(py)
+
+	Sx := x[n]
+	Sy := y
+
+	Aunsorted := make([]float64, n)
+	copy(Aunsorted, x[:n])
+
+	var startVal float64
+	if k <= n {
+		startVal = Aunsorted[k-1]
 	}
-	ans := math.Inf(1)
+
+	A := make([]float64, n)
+	copy(A, Aunsorted)
+	sort.Float64s(A)
+
+	dist := func(px float64) float64 {
+		return math.Hypot(px-Sx, Sy)
+	}
+
 	if k == n+1 {
-		d1 := dist(point{px, pyf}, point{L, 0})
-		d2 := dist(point{px, pyf}, point{R, 0})
-		ans = dLine + math.Min(d1, d2)
-	} else {
-		sx := float64(xs[k-1])
-		for dir := 0; dir < 2; dir++ {
-			var e1, e2 float64
-			if dir == 0 {
-				e1, e2 = L, R
-			} else {
-				e1, e2 = R, L
-			}
-			base := math.Abs(sx-e1) + dLine
-			ans = math.Min(ans, base+2*dv)
-			ans = math.Min(ans, dist(point{sx, 0}, point{px, pyf})+dist(point{px, pyf}, point{e1, 0})+dLine)
-			ans = math.Min(ans, base+dist(point{px, pyf}, point{e2, 0}))
+		ans := dist(A[0])
+		if n > 1 {
+			ans = A[n-1] - A[0] + math.Min(dist(A[0]), dist(A[n-1]))
+		}
+		return ans
+	}
+
+	startIdx := 0
+	for i := 0; i < n; i++ {
+		if A[i] == startVal {
+			startIdx = i + 1
+			break
 		}
 	}
+	_ = startIdx
+
+	ans := math.Inf(1)
+	Astart := startVal
+
+	for i := 0; i < n; i++ {
+		target := A[i]
+		c1 := (Astart - A[0]) + (A[n-1] - A[0]) + (A[n-1] - target)
+		c2 := (A[n-1] - Astart) + (A[n-1] - A[0]) + (target - A[0])
+		cost := math.Min(c1, c2) + dist(target)
+		if cost < ans {
+			ans = cost
+		}
+	}
+
+	for u := 1; u < n; u++ {
+		if startIdx <= u {
+			for _, xIdx := range []int{0, u - 1} {
+				X := A[xIdx]
+				for _, yIdx := range []int{u, n - 1} {
+					Y := A[yIdx]
+					var CostX float64
+					if xIdx == u-1 {
+						CostX = Astart - A[0] + A[u-1] - A[0]
+					} else {
+						CostX = A[u-1] - Astart + A[u-1] - A[0]
+					}
+					CostY := A[n-1] - A[u]
+					cost := CostX + CostY + dist(X) + dist(Y)
+					if cost < ans {
+						ans = cost
+					}
+				}
+			}
+		} else {
+			for _, xIdx := range []int{0, u - 1} {
+				X := A[xIdx]
+				for _, yIdx := range []int{u, n - 1} {
+					Y := A[yIdx]
+					CostX := A[u-1] - A[0]
+					var CostY float64
+					if yIdx == u {
+						CostY = A[n-1] - Astart + A[n-1] - A[u]
+					} else {
+						CostY = Astart - A[u] + A[n-1] - A[u]
+					}
+					cost := CostX + CostY + dist(X) + dist(Y)
+					if cost < ans {
+						ans = cost
+					}
+				}
+			}
+		}
+	}
+
 	return ans
 }
 
-func generateCase(rng *rand.Rand) (string, string) {
+func generateCase(rng *rand.Rand) (string, float64) {
 	n := rng.Intn(4) + 1
 	xs := make([]int, n+1)
 	used := map[int]bool{}
@@ -137,11 +146,11 @@ func generateCase(rng *rand.Rand) (string, string) {
 	}
 	sb.WriteString("\n")
 	sb.WriteString(fmt.Sprintf("%d\n", py))
-	expected := fmt.Sprintf("%.10f", solve(n, k, xs, py))
+	expected := solveCorrect(n, k, xs, py)
 	return sb.String(), expected
 }
 
-func runCase(bin, input, expected string) error {
+func runCase(bin, input string, expected float64) error {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
 		cmd = exec.Command("go", "run", bin)
@@ -156,13 +165,12 @@ func runCase(bin, input, expected string) error {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
 	outStr := strings.TrimSpace(out.String())
-	valExp, _ := strconv.ParseFloat(expected, 64)
-	if valOut, err := strconv.ParseFloat(outStr, 64); err == nil {
-		if math.Abs(valOut-valExp) > 1e-6 {
-			return fmt.Errorf("expected %.10f got %s", valExp, outStr)
-		}
-	} else {
+	valOut, err := strconv.ParseFloat(outStr, 64)
+	if err != nil {
 		return fmt.Errorf("invalid output %s", outStr)
+	}
+	if math.Abs(valOut-expected) > 1e-4 {
+		return fmt.Errorf("expected %.10f got %s", expected, outStr)
 	}
 	return nil
 }

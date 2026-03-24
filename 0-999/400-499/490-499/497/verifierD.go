@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"math"
@@ -15,112 +14,169 @@ import (
 
 type IPoint struct{ x, y int64 }
 
-func solveD(input string) string {
-	in := bufio.NewReader(strings.NewReader(input))
-	var Px, Py, Qx, Qy int64
-	var n, m int
-	if _, err := fmt.Fscan(in, &Px, &Py); err != nil {
-		return ""
+func dist2(a, b IPoint) int64 {
+	dx := a.x - b.x
+	dy := a.y - b.y
+	return dx*dx + dy*dy
+}
+
+func cross3(a, b, c IPoint) int64 {
+	return (b.x-a.x)*(c.y-a.y) - (b.y-a.y)*(c.x-a.x)
+}
+
+func between(a, b, x int64) bool {
+	if a > b {
+		a, b = b, a
 	}
-	fmt.Fscan(in, &n)
+	return a <= x && x <= b
+}
+
+func onSegment(a, b, p IPoint) bool {
+	return cross3(a, b, p) == 0 && between(a.x, b.x, p.x) && between(a.y, b.y, p.y)
+}
+
+func segmentsIntersect(a, b, c, d IPoint) bool {
+	o1 := cross3(a, b, c)
+	o2 := cross3(a, b, d)
+	o3 := cross3(c, d, a)
+	o4 := cross3(c, d, b)
+
+	if o1 == 0 && onSegment(a, b, c) {
+		return true
+	}
+	if o2 == 0 && onSegment(a, b, d) {
+		return true
+	}
+	if o3 == 0 && onSegment(c, d, a) {
+		return true
+	}
+	if o4 == 0 && onSegment(c, d, b) {
+		return true
+	}
+
+	return (o1 > 0) != (o2 > 0) && (o3 > 0) != (o4 > 0)
+}
+
+func pointSegWithin(p, a, b IPoint, r2 int64) bool {
+	dx := b.x - a.x
+	dy := b.y - a.y
+	len2 := dx*dx + dy*dy
+	if len2 == 0 {
+		return dist2(p, a) <= r2
+	}
+
+	apx := p.x - a.x
+	apy := p.y - a.y
+	dot := apx*dx + apy*dy
+
+	if dot <= 0 {
+		return apx*apx+apy*apy <= r2
+	}
+	if dot >= len2 {
+		bpx := p.x - b.x
+		bpy := p.y - b.y
+		return bpx*bpx+bpy*bpy <= r2
+	}
+
+	cr := dx*apy - dy*apx
+	if cr < 0 {
+		cr = -cr
+	}
+	return cr*cr <= r2*len2
+}
+
+type fastScanner struct {
+	data []byte
+	idx  int
+}
+
+func (fs *fastScanner) nextInt() int64 {
+	n := len(fs.data)
+	for fs.idx < n && fs.data[fs.idx] <= ' ' {
+		fs.idx++
+	}
+	if fs.idx >= n {
+		return 0
+	}
+	sign := int64(1)
+	if fs.data[fs.idx] == '-' {
+		sign = -1
+		fs.idx++
+	}
+	var v int64
+	for fs.idx < n {
+		c := fs.data[fs.idx]
+		if c < '0' || c > '9' {
+			break
+		}
+		v = v*10 + int64(c-'0')
+		fs.idx++
+	}
+	return sign * v
+}
+
+func solveD(input string) string {
+	data := []byte(input)
+	fs := &fastScanner{data: data}
+
+	px := fs.nextInt()
+	py := fs.nextInt()
+
+	n := int(fs.nextInt())
 	A := make([]IPoint, n)
 	for i := 0; i < n; i++ {
-		fmt.Fscan(in, &A[i].x, &A[i].y)
+		x := fs.nextInt()
+		y := fs.nextInt()
+		A[i] = IPoint{x - px, y - py}
 	}
-	fmt.Fscan(in, &Qx, &Qy)
-	fmt.Fscan(in, &m)
+
+	qx := fs.nextInt()
+	qy := fs.nextInt()
+
+	m := int(fs.nextInt())
 	B := make([]IPoint, m)
 	for i := 0; i < m; i++ {
-		fmt.Fscan(in, &B[i].x, &B[i].y)
+		x := fs.nextInt()
+		y := fs.nextInt()
+		B[i] = IPoint{x - qx, y - qy}
 	}
-	Dx := Qx - Px
-	Dy := Qy - Py
-	Cx := float64(-Dx)
-	Cy := float64(-Dy)
-	R2i := Dx*Dx + Dy*Dy
-	if R2i == 0 {
-		return "NO\n"
-	}
-	R2 := float64(R2i)
+
+	dx := qx - px
+	dy := qy - py
+	r2 := dx*dx + dy*dy
+
 	for i := 0; i < n; i++ {
+		a0 := A[i]
+		a1 := A[(i+1)%n]
 		for j := 0; j < m; j++ {
-			dx := A[i].x - B[j].x + Dx
-			dy := A[i].y - B[j].y + Dy
-			if dx*dx+dy*dy == R2i {
-				return "YES\n"
+			b0 := B[j]
+			b1 := B[(j+1)%m]
+
+			maxd := dist2(a0, b0)
+			if d := dist2(a0, b1); d > maxd {
+				maxd = d
+			}
+			if d := dist2(a1, b0); d > maxd {
+				maxd = d
+			}
+			if d := dist2(a1, b1); d > maxd {
+				maxd = d
+			}
+			if maxd < r2 {
+				continue
+			}
+
+			if segmentsIntersect(a0, a1, b0, b1) ||
+				pointSegWithin(a0, b0, b1, r2) ||
+				pointSegWithin(a1, b0, b1, r2) ||
+				pointSegWithin(b0, a0, a1, r2) ||
+				pointSegWithin(b1, a0, a1, r2) {
+				return "YES"
 			}
 		}
 	}
-	eps := 1e-9
-	for j := 0; j < m; j++ {
-		bvx := float64(B[j].x)
-		bvy := float64(B[j].y)
-		for i := 0; i < n; i++ {
-			ni := (i + 1) % n
-			u1x := float64(A[i].x) - bvx
-			u1y := float64(A[i].y) - bvy
-			u2x := float64(A[ni].x) - bvx
-			u2y := float64(A[ni].y) - bvy
-			dx := u2x - u1x
-			dy := u2y - u1y
-			a := dx*dx + dy*dy
-			ux := u1x - Cx
-			uy := u1y - Cy
-			if a < eps {
-				if math.Abs(ux*ux+uy*uy-R2) < eps {
-					return "YES\n"
-				}
-				continue
-			}
-			bq := 2 * (dx*ux + dy*uy)
-			cq := ux*ux + uy*uy - R2
-			disc := bq*bq - 4*a*cq
-			if disc < 0 {
-				continue
-			}
-			sd := math.Sqrt(disc)
-			t1 := (-bq - sd) / (2 * a)
-			t2 := (-bq + sd) / (2 * a)
-			if (t1 >= -eps && t1 <= 1+eps) || (t2 >= -eps && t2 <= 1+eps) {
-				return "YES\n"
-			}
-		}
-	}
-	for i := 0; i < n; i++ {
-		avx := float64(A[i].x)
-		avy := float64(A[i].y)
-		for j := 0; j < m; j++ {
-			nj := (j + 1) % m
-			u1x := avx - float64(B[j].x)
-			u1y := avy - float64(B[j].y)
-			u2x := avx - float64(B[nj].x)
-			u2y := avy - float64(B[nj].y)
-			dx := u2x - u1x
-			dy := u2y - u1y
-			a := dx*dx + dy*dy
-			ux := u1x - Cx
-			uy := u1y - Cy
-			if a < eps {
-				if math.Abs(ux*ux+uy*uy-R2) < eps {
-					return "YES\n"
-				}
-				continue
-			}
-			bq := 2 * (dx*ux + dy*uy)
-			cq := ux*ux + uy*uy - R2
-			disc := bq*bq - 4*a*cq
-			if disc < 0 {
-				continue
-			}
-			sd := math.Sqrt(disc)
-			t1 := (-bq - sd) / (2 * a)
-			t2 := (-bq + sd) / (2 * a)
-			if (t1 >= -eps && t1 <= 1+eps) || (t2 >= -eps && t2 <= 1+eps) {
-				return "YES\n"
-			}
-		}
-	}
-	return "NO\n"
+
+	return "NO"
 }
 
 func randPoly(rng *rand.Rand, n int) []IPoint {

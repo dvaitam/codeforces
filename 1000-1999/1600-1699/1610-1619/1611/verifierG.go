@@ -6,31 +6,86 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	src := filepath.Join(dir, "1611G.go")
-	bin := filepath.Join(os.TempDir(), "oracle1611G.bin")
-	cmd := exec.Command("go", "build", "-o", bin, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+// Embedded solver (same logic as the accepted solution cf_t24_1611_G.go)
+
+type Point struct {
+	u, v int
+}
+
+func minPaths(pts []Point) int {
+	if len(pts) == 0 {
+		return 0
 	}
-	return bin, nil
+	sort.Slice(pts, func(i, j int) bool {
+		if pts[i].u != pts[j].u {
+			return pts[i].u < pts[j].u
+		}
+		return pts[i].v < pts[j].v
+	})
+	tails := make([]int, 0)
+	for _, p := range pts {
+		x := -p.v
+		l, r := 0, len(tails)
+		for l < r {
+			m := l + (r-l)/2
+			if tails[m] < x {
+				l = m + 1
+			} else {
+				r = m
+			}
+		}
+		if l == len(tails) {
+			tails = append(tails, x)
+		} else {
+			tails[l] = x
+		}
+	}
+	return len(tails)
+}
+
+func oracleSolve(input string) (string, error) {
+	sc := strings.Fields(input)
+	pos := 0
+	nextInt := func() int {
+		v, _ := strconv.Atoi(sc[pos])
+		pos++
+		return v
+	}
+	t := nextInt()
+	var results []string
+	for tc := 0; tc < t; tc++ {
+		n := nextInt()
+		m := nextInt()
+		var evenPts, oddPts []Point
+		for i := 1; i <= n; i++ {
+			row := sc[pos]
+			pos++
+			for j := 1; j <= m; j++ {
+				if row[j-1] == '1' {
+					u := i + j
+					v := i - j
+					if u%2 == 0 {
+						evenPts = append(evenPts, Point{u, v})
+					} else {
+						oddPts = append(oddPts, Point{u, v})
+					}
+				}
+			}
+		}
+		ans := minPaths(evenPts) + minPaths(oddPts)
+		results = append(results, strconv.Itoa(ans))
+	}
+	return strings.Join(results, "\n"), nil
 }
 
 func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer
@@ -55,9 +110,6 @@ func genCase(r *rand.Rand) string {
 		fmt.Fprintf(&sb, "%d %d\n", n, m)
 		for x := 0; x < n; x++ {
 			for y := 0; y < m; y++ {
-				if y > 0 {
-					sb.WriteByte(' ')
-				}
 				if r.Intn(2) == 0 {
 					sb.WriteByte('0')
 				} else {
@@ -76,17 +128,11 @@ func main() {
 		os.Exit(1)
 	}
 	userBin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input := genCase(r)
-		want, err := run(oracle, input)
+		want, err := oracleSolve(input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "oracle failed on test %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)

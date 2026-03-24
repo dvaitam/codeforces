@@ -2,16 +2,231 @@ package main
 
 import (
 	"bytes"
+	"container/heap"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
 )
+
+// ---------- embedded correct solver ----------
+
+type solverItem struct {
+	i, j int
+	d    int64
+}
+
+type solverPQ []solverItem
+
+func (pq solverPQ) Len() int           { return len(pq) }
+func (pq solverPQ) Less(i, j int) bool { return pq[i].d < pq[j].d }
+func (pq solverPQ) Swap(i, j int)      { pq[i], pq[j] = pq[j], pq[i] }
+func (pq *solverPQ) Push(x interface{}) {
+	*pq = append(*pq, x.(solverItem))
+}
+func (pq *solverPQ) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	*pq = old[0 : n-1]
+	return item
+}
+
+type solverPair struct{ i, j int }
+
+func solveCase(n, r, k int, a [][]int, c []string) (int, int) {
+	dirs4 := [4][2]int{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}
+	dirs8 := [8][2]int{{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}}
+
+	visited := make([][]bool, n)
+	for i := 0; i < n; i++ {
+		visited[i] = make([]bool, n)
+	}
+
+	q := make([]solverPair, 0, n*n)
+
+	pathExists := func(limit int) bool {
+		if a[0][0] > limit || a[r-1][n-1] > limit {
+			return false
+		}
+		for i := 0; i < n; i++ {
+			for j := 0; j < n; j++ {
+				visited[i][j] = false
+			}
+		}
+		q = q[:0]
+		q = append(q, solverPair{0, 0})
+		visited[0][0] = true
+		head := 0
+		for head < len(q) {
+			curr := q[head]
+			head++
+			if curr.i == r-1 && curr.j == n-1 {
+				return true
+			}
+			for _, dir := range dirs4 {
+				ni, nj := curr.i+dir[0], curr.j+dir[1]
+				if ni >= 0 && ni < n && nj >= 0 && nj < n && !visited[ni][nj] && a[ni][nj] <= limit {
+					visited[ni][nj] = true
+					q = append(q, solverPair{ni, nj})
+				}
+			}
+		}
+		return false
+	}
+
+	lowM, highM := 1, 1000000
+	DM := -1
+	for lowM <= highM {
+		mid := (lowM + highM) / 2
+		if pathExists(mid) {
+			DM = mid
+			highM = mid - 1
+		} else {
+			lowM = mid + 1
+		}
+	}
+
+	reach1 := make([][]bool, n)
+	for i := 0; i < n; i++ {
+		reach1[i] = make([]bool, n)
+	}
+	q = q[:0]
+	q = append(q, solverPair{0, 0})
+	reach1[0][0] = true
+	head := 0
+	for head < len(q) {
+		curr := q[head]
+		head++
+		for _, dir := range dirs4 {
+			ni, nj := curr.i+dir[0], curr.j+dir[1]
+			if ni >= 0 && ni < n && nj >= 0 && nj < n && !reach1[ni][nj] && a[ni][nj] <= DM {
+				reach1[ni][nj] = true
+				q = append(q, solverPair{ni, nj})
+			}
+		}
+	}
+
+	reach2 := make([][]bool, n)
+	for i := 0; i < n; i++ {
+		reach2[i] = make([]bool, n)
+	}
+	q = q[:0]
+	q = append(q, solverPair{r - 1, n - 1})
+	reach2[r-1][n-1] = true
+	head = 0
+	for head < len(q) {
+		curr := q[head]
+		head++
+		for _, dir := range dirs4 {
+			ni, nj := curr.i+dir[0], curr.j+dir[1]
+			if ni >= 0 && ni < n && nj >= 0 && nj < n && !reach2[ni][nj] && a[ni][nj] <= DM {
+				reach2[ni][nj] = true
+				q = append(q, solverPair{ni, nj})
+			}
+		}
+	}
+
+	inVpath := make([][]bool, n)
+	for i := 0; i < n; i++ {
+		inVpath[i] = make([]bool, n)
+		for j := 0; j < n; j++ {
+			if reach1[i][j] && reach2[i][j] {
+				inVpath[i][j] = true
+			}
+		}
+	}
+
+	dist := make([][]int64, n)
+	for i := 0; i < n; i++ {
+		dist[i] = make([]int64, n)
+	}
+	pq := make(solverPQ, 0, n*n)
+
+	check := func(X int) bool {
+		for i := 0; i < n; i++ {
+			for j := 0; j < n; j++ {
+				dist[i][j] = 1e18
+			}
+		}
+		pq = pq[:0]
+
+		for i := 0; i < n; i++ {
+			for j := 0; j < n; j++ {
+				if X > DM && inVpath[i][j] {
+					continue
+				}
+				var w int64 = 0
+				if a[i][j] < X {
+					if c[i][j] == '1' {
+						w = int64(X - a[i][j])
+					} else {
+						w = 1e18
+					}
+				}
+				isP1 := (i == 0 || j == 0 || (j == n-1 && i <= r-1))
+				if isP1 && w <= int64(k) {
+					dist[i][j] = w
+					heap.Push(&pq, solverItem{i, j, w})
+				}
+			}
+		}
+
+		for pq.Len() > 0 {
+			curr := heap.Pop(&pq).(solverItem)
+			ci, cj, d := curr.i, curr.j, curr.d
+			if d > dist[ci][cj] {
+				continue
+			}
+
+			isP2 := (ci == n-1 || (cj == n-1 && ci >= r-1))
+			if isP2 {
+				return true
+			}
+
+			for _, dir := range dirs8 {
+				ni, nj := ci+dir[0], cj+dir[1]
+				if ni >= 0 && ni < n && nj >= 0 && nj < n {
+					if X > DM && inVpath[ni][nj] {
+						continue
+					}
+					var w int64 = 0
+					if a[ni][nj] < X {
+						if c[ni][nj] == '1' {
+							w = int64(X - a[ni][nj])
+						} else {
+							w = 1e18
+						}
+					}
+					if w != 1e18 && d+w <= int64(k) && d+w < dist[ni][nj] {
+						dist[ni][nj] = d + w
+						heap.Push(&pq, solverItem{ni, nj, dist[ni][nj]})
+					}
+				}
+			}
+		}
+		return false
+	}
+
+	ansF := 0
+	lowF, highF := 1, 2000005
+	for lowF <= highF {
+		mid := (lowF + highF) / 2
+		if check(mid) {
+			ansF = mid
+			lowF = mid + 1
+		} else {
+			highF = mid - 1
+		}
+	}
+
+	return DM, ansF
+}
+
+// ---------- test infrastructure ----------
 
 type testCase struct {
 	n int
@@ -19,36 +234,6 @@ type testCase struct {
 	k int
 	a [][]int
 	c []string
-}
-
-func callerDir() (string, error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("cannot determine caller")
-	}
-	return filepath.Dir(file), nil
-}
-
-func buildOracle() (string, func(), error) {
-	dir, err := callerDir()
-	if err != nil {
-		return "", nil, err
-	}
-	tmpDir, err := os.MkdirTemp("", "oracle-2109F-")
-	if err != nil {
-		return "", nil, err
-	}
-	outPath := filepath.Join(tmpDir, "oracleF")
-	cmd := exec.Command("go", "build", "-o", outPath, "2109F.go")
-	cmd.Dir = dir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		os.RemoveAll(tmpDir)
-		return "", nil, fmt.Errorf("failed to build oracle: %v\n%s", err, out)
-	}
-	cleanup := func() {
-		os.RemoveAll(tmpDir)
-	}
-	return outPath, cleanup, nil
 }
 
 func runBinary(bin, input string) (string, error) {
@@ -112,7 +297,6 @@ func buildInput(tests []testCase) string {
 }
 
 func deterministicTests() []testCase {
-	// Small handcrafted cases including samples.
 	return []testCase{
 		{
 			n: 2, r: 1, k: 30,
@@ -146,7 +330,6 @@ func randomTests() []testCase {
 		sumSq += tc.n * tc.n
 	}
 
-	// Variety of small cases.
 	for len(tests) < 10 {
 		add(randomCase(rng, 2, 8))
 	}
@@ -201,32 +384,22 @@ func main() {
 	}
 	target := os.Args[1]
 
-	oracle, cleanup, err := buildOracle()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
 	tests := append(deterministicTests(), randomTests()...)
 	input := buildInput(tests)
 
-	expOut, err := runBinary(oracle, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "oracle runtime error: %v\noutput:\n%s\n", err, expOut)
-		os.Exit(1)
+	// Compute expected answers using embedded solver.
+	expAns := make([][2]int, len(tests))
+	for i, tc := range tests {
+		dm, df := solveCase(tc.n, tc.r, tc.k, tc.a, tc.c)
+		expAns[i] = [2]int{dm, df}
 	}
+
 	gotOut, err := runBinary(target, input)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "target runtime error: %v\noutput:\n%s\n", err, gotOut)
 		os.Exit(1)
 	}
 
-	expAns, err := parseOutput(expOut, len(tests))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to parse oracle output: %v\n", err)
-		os.Exit(1)
-	}
 	gotAns, err := parseOutput(gotOut, len(tests))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to parse target output: %v\n", err)

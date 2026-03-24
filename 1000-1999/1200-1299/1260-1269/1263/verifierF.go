@@ -10,9 +10,197 @@ import (
 	"time"
 )
 
-type edge struct {
-	l, r int
+const refSource = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+)
+
+const INF = int(1e9)
+
+type Tree struct {
+	head      []int
+	to        []int
+	next      []int
+	edgeCount int
+	depth     []int
+	up        [][]int
 }
+
+func NewTree(n int) *Tree {
+	t := &Tree{
+		head:  make([]int, n+1),
+		to:    make([]int, 1),
+		next:  make([]int, 1),
+		depth: make([]int, n+1),
+		up:    make([][]int, n+1),
+	}
+	for i := range t.up {
+		t.up[i] = make([]int, 12)
+	}
+	return t
+}
+
+func (t *Tree) AddEdge(u, v int) {
+	t.edgeCount++
+	t.to = append(t.to, v)
+	t.next = append(t.next, t.head[u])
+	t.head[u] = t.edgeCount
+}
+
+func (t *Tree) DFS(u, p, d int) {
+	t.depth[u] = d
+	t.up[u][0] = p
+	for i := 1; i < 12; i++ {
+		t.up[u][i] = t.up[t.up[u][i-1]][i-1]
+	}
+	for e := t.head[u]; e != 0; e = t.next[e] {
+		v := t.to[e]
+		if v != p {
+			t.DFS(v, u, d+1)
+		}
+	}
+}
+
+func (t *Tree) LCA(u, v int) int {
+	if t.depth[u] < t.depth[v] {
+		u, v = v, u
+	}
+	diff := t.depth[u] - t.depth[v]
+	for i := 0; i < 12; i++ {
+		if (diff & (1 << i)) != 0 {
+			u = t.up[u][i]
+		}
+	}
+	if u == v {
+		return u
+	}
+	for i := 11; i >= 0; i-- {
+		if t.up[u][i] != t.up[v][i] {
+			u = t.up[u][i]
+			v = t.up[v][i]
+		}
+	}
+	return t.up[u][0]
+}
+
+func main() {
+	scanner := bufio.NewScanner(os.Stdin)
+	buf := make([]byte, 1024*1024)
+	scanner.Buffer(buf, 1024*1024)
+	scanner.Split(bufio.ScanWords)
+
+	scanInt := func() int {
+		scanner.Scan()
+		res, _ := strconv.Atoi(scanner.Text())
+		return res
+	}
+
+	if !scanner.Scan() {
+		return
+	}
+	n, _ := strconv.Atoi(scanner.Text())
+
+	a := scanInt()
+	tree1 := NewTree(a)
+	for i := 1; i <= a-1; i++ {
+		p := scanInt()
+		tree1.AddEdge(p, i+1)
+	}
+	x := make([]int, n+1)
+	for i := 1; i <= n; i++ {
+		x[i] = scanInt()
+	}
+
+	b := scanInt()
+	tree2 := NewTree(b)
+	for i := 1; i <= b-1; i++ {
+		q := scanInt()
+		tree2.AddEdge(q, i+1)
+	}
+	y := make([]int, n+1)
+	for i := 1; i <= n; i++ {
+		y[i] = scanInt()
+	}
+
+	tree1.DFS(1, 1, 0)
+	tree2.DFS(1, 1, 0)
+
+	dp1 := make([]int, n+1)
+	dp2 := make([]int, n+1)
+	for i := 0; i <= n; i++ {
+		dp1[i] = INF
+		dp2[i] = INF
+	}
+
+	dp1[0] = tree1.depth[x[1]]
+	dp2[0] = tree2.depth[y[1]]
+
+	for k := 1; k < n; k++ {
+		K := k + 1
+		next_dp1 := make([]int, n+1)
+		next_dp2 := make([]int, n+1)
+		for i := 0; i <= n; i++ {
+			next_dp1[i] = INF
+			next_dp2[i] = INF
+		}
+
+		for j := 0; j < k; j++ {
+			if dp1[j] != INF {
+				cost1 := dp1[j] + tree1.depth[x[K]] - tree1.depth[tree1.LCA(x[k], x[K])]
+				if cost1 < next_dp1[j] {
+					next_dp1[j] = cost1
+				}
+
+				sub := 0
+				if j > 0 {
+					sub = tree2.depth[tree2.LCA(y[j], y[K])]
+				}
+				cost2 := dp1[j] + tree2.depth[y[K]] - sub
+				if cost2 < next_dp2[k] {
+					next_dp2[k] = cost2
+				}
+			}
+		}
+
+		for i := 0; i < k; i++ {
+			if dp2[i] != INF {
+				sub := 0
+				if i > 0 {
+					sub = tree1.depth[tree1.LCA(x[i], x[K])]
+				}
+				cost1 := dp2[i] + tree1.depth[x[K]] - sub
+				if cost1 < next_dp1[k] {
+					next_dp1[k] = cost1
+				}
+
+				cost2 := dp2[i] + tree2.depth[y[K]] - tree2.depth[tree2.LCA(y[k], y[K])]
+				if cost2 < next_dp2[i] {
+					next_dp2[i] = cost2
+				}
+			}
+		}
+		dp1 = next_dp1
+		dp2 = next_dp2
+	}
+
+	minCost := INF
+	for i := 0; i < n; i++ {
+		if dp1[i] < minCost {
+			minCost = dp1[i]
+		}
+		if dp2[i] < minCost {
+			minCost = dp2[i]
+		}
+	}
+
+	ans := (a - 1) + (b - 1) - minCost
+	fmt.Println(ans)
+}
+`
 
 func run(bin, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -32,150 +220,34 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func solveF(n int, parA []int, x []int, parB []int, y []int) int {
-	a := len(parA) - 1
-	b := len(parB) - 1
-	chA := make([][]int, a+1)
-	for i := 2; i <= a; i++ {
-		p := parA[i]
-		chA[p] = append(chA[p], i)
+func buildReferenceBinary() (string, error) {
+	srcFile, err := os.CreateTemp("", "cf-1263F-src-*.go")
+	if err != nil {
+		return "", err
 	}
-	chB := make([][]int, b+1)
-	for i := 2; i <= b; i++ {
-		p := parB[i]
-		chB[p] = append(chB[p], i)
+	if _, err := srcFile.WriteString(refSource); err != nil {
+		srcFile.Close()
+		os.Remove(srcFile.Name())
+		return "", err
 	}
-	leafIdxA := make([]int, a+1)
-	leafIdxB := make([]int, b+1)
-	for i := 1; i <= n; i++ {
-		leafIdxA[x[i]] = i
-		leafIdxB[y[i]] = i
+	srcFile.Close()
+	defer os.Remove(srcFile.Name())
+
+	tmp, err := os.CreateTemp("", "cf-1263F-ref-*")
+	if err != nil {
+		return "", err
 	}
-	lA := make([]int, a+1)
-	rA := make([]int, a+1)
-	var dfsA func(int)
-	dfsA = func(u int) {
-		if len(chA[u]) == 0 {
-			idx := leafIdxA[u]
-			lA[u], rA[u] = idx, idx
-			return
-		}
-		l, r := n+1, 0
-		for _, v := range chA[u] {
-			dfsA(v)
-			if lA[v] < l {
-				l = lA[v]
-			}
-			if rA[v] > r {
-				r = rA[v]
-			}
-		}
-		lA[u], rA[u] = l, r
+	tmp.Close()
+	os.Remove(tmp.Name())
+
+	cmd := exec.Command("go", "build", "-o", tmp.Name(), srcFile.Name())
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		os.Remove(tmp.Name())
+		return "", fmt.Errorf("go build error: %v\n%s", err, stderr.String())
 	}
-	dfsA(1)
-	lB := make([]int, b+1)
-	rB := make([]int, b+1)
-	var dfsB func(int)
-	dfsB = func(u int) {
-		if len(chB[u]) == 0 {
-			idx := leafIdxB[u]
-			lB[u], rB[u] = idx, idx
-			return
-		}
-		l, r := n+1, 0
-		for _, v := range chB[u] {
-			dfsB(v)
-			if lB[v] < l {
-				l = lB[v]
-			}
-			if rB[v] > r {
-				r = rB[v]
-			}
-		}
-		lB[u], rB[u] = l, r
-	}
-	dfsB(1)
-	edgesA := make([]edge, 0, a-1)
-	for i := 2; i <= a; i++ {
-		edgesA = append(edgesA, edge{lA[i], rA[i]})
-	}
-	edgesB := make([]edge, 0, b-1)
-	for i := 2; i <= b; i++ {
-		edgesB = append(edgesB, edge{lB[i], rB[i]})
-	}
-	n1 := len(edgesA)
-	n2 := len(edgesB)
-	adj := make([][]int, n1)
-	for i := 0; i < n1; i++ {
-		e1 := edgesA[i]
-		for j := 0; j < n2; j++ {
-			e2 := edgesB[j]
-			if e1.l <= e2.r && e2.l <= e1.r {
-				adj[i] = append(adj[i], j)
-			}
-		}
-	}
-	pairU := make([]int, n1)
-	for i := range pairU {
-		pairU[i] = -1
-	}
-	pairV := make([]int, n2)
-	for i := range pairV {
-		pairV[i] = -1
-	}
-	dist := make([]int, n1)
-	INF := int(1e9)
-	bfs := func() bool {
-		q := []int{}
-		for i := 0; i < n1; i++ {
-			if pairU[i] == -1 {
-				dist[i] = 0
-				q = append(q, i)
-			} else {
-				dist[i] = INF
-			}
-		}
-		found := false
-		for head := 0; head < len(q); head++ {
-			u := q[head]
-			for _, v := range adj[u] {
-				pu := pairV[v]
-				if pu != -1 && dist[pu] == INF {
-					dist[pu] = dist[u] + 1
-					q = append(q, pu)
-				}
-				if pu == -1 {
-					found = true
-				}
-			}
-		}
-		return found
-	}
-	var dfs func(int) bool
-	dfs = func(u int) bool {
-		for _, v := range adj[u] {
-			pu := pairV[v]
-			if pu == -1 || (dist[pu] == dist[u]+1 && dfs(pu)) {
-				pairU[u] = v
-				pairV[v] = u
-				return true
-			}
-		}
-		dist[u] = INF
-		return false
-	}
-	matching := 0
-	for bfs() {
-		for i := 0; i < n1; i++ {
-			if pairU[i] == -1 {
-				if dfs(i) {
-					matching++
-				}
-			}
-		}
-	}
-	totalEdges := (a - 1) + (b - 1)
-	return totalEdges - matching
+	return tmp.Name(), nil
 }
 
 func generateTree(nLeaves int, rng *rand.Rand) (int, []int) {
@@ -201,7 +273,7 @@ func generateTree(nLeaves int, rng *rand.Rand) (int, []int) {
 	return a, par
 }
 
-func generateCase(rng *rand.Rand) (string, string) {
+func generateCase(rng *rand.Rand) string {
 	n := rng.Intn(3) + 1
 	a, parA := generateTree(n, rng)
 	x := make([]int, n+1)
@@ -234,8 +306,7 @@ func generateCase(rng *rand.Rand) (string, string) {
 		input.WriteString(fmt.Sprintf("%d ", y[i]))
 	}
 	input.WriteByte('\n')
-	expect := fmt.Sprintf("%d", solveF(n, parA, x, parB, y))
-	return input.String(), expect
+	return input.String()
 }
 
 func main() {
@@ -244,9 +315,22 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
+
+	refBin, err := buildReferenceBinary()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
+		os.Exit(1)
+	}
+	defer os.Remove(refBin)
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		in, exp := generateCase(rng)
+		in := generateCase(rng)
+		exp, err := run(refBin, in)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "reference error on case %d: %v\ninput:\n%s", i+1, err, in)
+			os.Exit(1)
+		}
 		out, err := run(bin, in)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)

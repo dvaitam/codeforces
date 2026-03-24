@@ -151,6 +151,15 @@ func buildCase(s string, updates [][2]interface{}) testCase {
 	return testCase{input: sb.String(), expected: strings.TrimSpace(out.String())}
 }
 
+func hasQuestion(s []byte) bool {
+	for _, c := range s {
+		if c == '?' {
+			return true
+		}
+	}
+	return false
+}
+
 func randomCase(rng *rand.Rand) testCase {
 	n := 2 * (rng.Intn(3) + 2)
 	b := make([]byte, n)
@@ -164,7 +173,13 @@ func randomCase(rng *rand.Rand) testCase {
 			b[i] = '?'
 		}
 	}
+	// Guarantee at least one '?' in the initial string
+	if !hasQuestion(b) {
+		b[rng.Intn(n)] = '?'
+	}
 	m := rng.Intn(3) + 1
+	cur := make([]byte, n)
+	copy(cur, b)
 	updates := make([][2]interface{}, m)
 	for i := 0; i < m; i++ {
 		idx := rng.Intn(n)
@@ -177,6 +192,16 @@ func randomCase(rng *rand.Rand) testCase {
 		} else {
 			ch = '?'
 		}
+		// Simulate applying update and check constraint
+		trial := make([]byte, n)
+		copy(trial, cur)
+		trial[idx] = ch
+		if !hasQuestion(trial) {
+			// Force this update to set a '?' instead
+			ch = '?'
+			trial[idx] = '?'
+		}
+		cur[idx] = ch
 		updates[i] = [2]interface{}{idx, ch}
 	}
 	return buildCase(string(b), updates)

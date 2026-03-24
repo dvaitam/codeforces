@@ -19,79 +19,155 @@ type queryF struct {
 	k   int64
 }
 
-func maxInt(a, b int) int {
-	if a > b {
-		return a
+const refINF int64 = 1 << 60
+
+func refEvalA(cnt []int64, n int, y int, s int64) int64 {
+	if s <= 0 {
+		return 0
 	}
-	return b
+	ops := int64(0)
+	need := s
+	for j := y; j < n; j++ {
+		c := cnt[j]
+		if need <= c {
+			return ops
+		}
+		if j == n-1 {
+			return refINF
+		}
+		need -= c
+		take := (need + 1) >> 1
+		ops += take
+		need = take
+	}
+	return refINF
 }
 
-func solveQueries(n int, cnt []int64, qs []queryF) []int64 {
-	c := make([]int64, n)
-	copy(c, cnt)
-	res := []int64{}
+func refMinB(cnt []int64, n int, y int, l, r int64) int64 {
+	if l > r {
+		return refINF
+	}
+	ans := refINF
+	offset := int64(0)
+	for {
+		c := cnt[y]
+		freeR := r
+		if freeR > c {
+			freeR = c
+		}
+		if l <= freeR {
+			v := offset - freeR
+			if v < ans {
+				ans = v
+			}
+		}
+		if y == n-1 || r <= c {
+			return ans
+		}
+		if r > c && ((r-c)&1) == 1 {
+			t := (r - c + 1) >> 1
+			a := refEvalA(cnt, n, y+1, t)
+			if a < refINF {
+				v := offset - c + 1 + (a - t)
+				if v < ans {
+					ans = v
+				}
+			}
+		}
+		if l < c+1 {
+			l = c + 1
+		}
+		l = (l - c + 1) >> 1
+		if l < 1 {
+			l = 1
+		}
+		r = (r - c) >> 1
+		offset -= c
+		y++
+		if l > r || y >= n {
+			return ans
+		}
+	}
+}
+
+func refSolve(cnt []int64, n int, pow2 []int64, totalCountAll, totalUnits int64, x int, k int64) int64 {
+	if k > totalUnits {
+		return -1
+	}
+	if x == n-1 {
+		if k <= totalCountAll {
+			return 0
+		}
+		return k - totalCountAll
+	}
+	var g, lowCap int64
+	for i := 0; i <= x; i++ {
+		g += cnt[i]
+		lowCap += cnt[i] * pow2[i]
+	}
+	if k <= g {
+		return 0
+	}
+	d := k - g
+	l := lowCap - g
+	y := x + 1
+	u := pow2[y]
+	lb := int64(0)
+	if d > l {
+		lb = (d - l + u - 1) / u
+	}
+	ans := refINF
+	upper := (d - 1) >> 1
+	if lb <= upper {
+		v := refMinB(cnt, n, y, lb, upper)
+		if v < refINF {
+			cost := d + v
+			if cost < ans {
+				ans = cost
+			}
+		}
+	}
+	s0 := lb
+	half := (d + 1) >> 1
+	if s0 < half {
+		s0 = half
+	}
+	a := refEvalA(cnt, n, y, s0)
+	if a < refINF {
+		cost := a + s0
+		if cost < ans {
+			ans = cost
+		}
+	}
+	if ans >= refINF {
+		return -1
+	}
+	return ans
+}
+
+func solveQueries(n int, cnt0 []int64, qs []queryF) []int64 {
+	cnt := make([]int64, n)
+	copy(cnt, cnt0)
+	pow2 := make([]int64, n+1)
+	pow2[0] = 1
+	for i := 1; i <= n; i++ {
+		pow2[i] = pow2[i-1] << 1
+	}
+	var totalCountAll, totalUnits int64
+	for i := 0; i < n; i++ {
+		totalCountAll += cnt[i]
+		totalUnits += cnt[i] * pow2[i]
+	}
+
+	var res []int64
 	for _, q := range qs {
 		if q.typ == 1 {
-			c[q.pos] = q.val
+			delta := q.val - cnt[q.pos]
+			cnt[q.pos] = q.val
+			totalCountAll += delta
+			totalUnits += delta * pow2[q.pos]
 		} else {
-			x := q.x
-			k := q.k
-			m := n - x - 1
-			arr := make([]int64, maxInt(1, m+1))
-			var small int64
-			for i := 0; i <= x && i < n; i++ {
-				small += c[i]
-			}
-			arr[0] = small
-			for j := 1; j <= m; j++ {
-				arr[j] = c[x+j]
-			}
-			need := k
-			if arr[0] >= need {
-				res = append(res, 0)
-				continue
-			}
-			var totUnits int64
-			for j, v := range arr {
-				if v == 0 {
-					continue
-				}
-				totUnits += v << uint(j)
-			}
-			if totUnits < need {
-				res = append(res, -1)
-				continue
-			}
-			var ans int64
-			need2 := need - arr[0]
-			for need2 > 0 {
-				r1 := (need2 + 1) / 2
-				var avail1 int64
-				if len(arr) > 1 {
-					avail1 = arr[1]
-				}
-				need1 := r1 - avail1
-				if need1 <= 0 {
-					ans += r1
-					break
-				}
-				jj := 2
-				for jj <= m && (jj >= len(arr) || arr[jj] == 0) {
-					jj++
-				}
-				if jj > m {
-					ans = -1
-					break
-				}
-				sj := int64(1) << (jj - 1)
-				needCj := (need1 + sj - 1) / sj
-				if needCj > arr[jj] {
-					needCj = arr[jj]
-				}
-				ans += needCj
-				arr[jj] -= needCj
-				arr[jj-1] += needCj * 2
-			}
+			ans := refSolve(cnt, n, pow2, totalCountAll, totalUnits, q.x, q.k)
 			res = append(res, ans)
 		}
 	}

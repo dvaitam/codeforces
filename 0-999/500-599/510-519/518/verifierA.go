@@ -11,23 +11,24 @@ import (
 )
 
 func expected(s, t string) string {
-	// compute next lexicographical string after s
-	n := len(s)
-	next := []byte(s)
-	i := n - 1
-	for ; i >= 0; i-- {
-		if next[i] != 'z' {
-			next[i]++
+	b := []byte(s)
+	carried := true
+	for i := len(b) - 1; i >= 0; i-- {
+		if b[i] < 'z' {
+			b[i]++
+			for j := i + 1; j < len(b); j++ {
+				b[j] = 'a'
+			}
+			carried = false
 			break
 		}
-		next[i] = 'a'
 	}
-	if i < 0 {
+	if carried {
 		return "No such string"
 	}
-	res := string(next)
-	if res < t {
-		return res
+	next := string(b)
+	if next < t {
+		return next
 	}
 	return "No such string"
 }
@@ -35,42 +36,40 @@ func expected(s, t string) string {
 func generateCase(rng *rand.Rand) (string, string, string) {
 	n := rng.Intn(10) + 1
 	s := make([]byte, n)
+	t := make([]byte, n)
+	// generate two random strings of the same length, ensure s < t
 	for i := 0; i < n; i++ {
 		s[i] = byte('a' + rng.Intn(26))
-	}
-	// generate t greater than s
-	t := make([]byte, n)
-	copy(t, s)
-	pos := rng.Intn(n)
-	// ensure some position increases
-	if t[pos] < 'z' {
-		t[pos] = byte(int(t[pos]) + 1 + rng.Intn(int('z'-t[pos])))
-	} else {
-		j := pos
-		for j >= 0 && t[j] == 'z' {
-			j--
-		}
-		if j >= 0 {
-			t[j] = byte(int(t[j]) + 1 + rng.Intn(int('z'-t[j])))
-		} else {
-			// all z, append 'a'
-			t = append(t, 'a')
-			n++
-		}
-	}
-	for i := pos + 1; i < n && i < len(t); i++ {
 		t[i] = byte('a' + rng.Intn(26))
 	}
-	return string(s), string(t), expected(string(s), string(t))
+	ss, tt := string(s), string(t)
+	if ss > tt {
+		ss, tt = tt, ss
+	}
+	if ss == tt {
+		// make t strictly greater by setting last char
+		t = []byte(tt)
+		for i := n - 1; i >= 0; i-- {
+			if t[i] < 'z' {
+				t[i]++
+				tt = string(t)
+				break
+			}
+		}
+		if ss >= tt {
+			// s is all z's, just pick s="a..a", t="z..z"
+			for i := range s {
+				s[i] = 'a'
+				t[i] = 'z'
+			}
+			ss, tt = string(s), string(t)
+		}
+	}
+	return ss, tt, expected(ss, tt)
 }
 
 func runCase(bin, s, t, exp string) error {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	input := fmt.Sprintf("%s\n%s\n", s, t)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
