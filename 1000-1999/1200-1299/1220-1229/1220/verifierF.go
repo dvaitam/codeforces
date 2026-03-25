@@ -8,101 +8,168 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+
 )
 
-type testF struct {
-	a []int
-}
+// ---------- embedded solver from accepted solution ----------
 
-func genTestsF() []testF {
-	rand.Seed(122006)
-	tests := make([]testF, 100)
-	for i := range tests {
-		n := rand.Intn(8) + 2
-		a := make([]int, n)
-		pos := rand.Intn(n)
-		for j := range a {
-			if j == pos {
-				a[j] = 1
-			} else {
-				a[j] = rand.Intn(9) + 2
-			}
-		}
-		tests[i] = testF{a: a}
-	}
-	return tests
-}
-
-func max(a, b int) int {
+func solverMax(a, b int) int {
 	if a > b {
 		return a
 	}
 	return b
 }
 
-func solveF(tc testF) (int, int) {
-	n := len(tc.a)
-	a := tc.a
-	root := 0
-	for i, v := range a {
-		if v == 1 {
-			root = i
+type SegTree struct {
+	maxVal []int
+	lazy   []int
+	n      int
+}
+
+func NewSegTree(n int) *SegTree {
+	return &SegTree{
+		maxVal: make([]int, 4*n+1),
+		lazy:   make([]int, 4*n+1),
+		n:      n,
+	}
+}
+
+func (st *SegTree) push(node int) {
+	if st.lazy[node] != 0 {
+		st.maxVal[2*node] += st.lazy[node]
+		st.lazy[2*node] += st.lazy[node]
+		st.maxVal[2*node+1] += st.lazy[node]
+		st.lazy[2*node+1] += st.lazy[node]
+		st.lazy[node] = 0
+	}
+}
+
+func (st *SegTree) Add(node, l, r, ql, qr, val int) {
+	if ql > r || qr < l {
+		return
+	}
+	if ql <= l && r <= qr {
+		st.maxVal[node] += val
+		st.lazy[node] += val
+		return
+	}
+	st.push(node)
+	mid := (l + r) / 2
+	st.Add(2*node, l, mid, ql, qr, val)
+	st.Add(2*node+1, mid+1, r, ql, qr, val)
+	st.maxVal[node] = solverMax(st.maxVal[2*node], st.maxVal[2*node+1])
+}
+
+type Item struct {
+	val, idx, depth int
+}
+
+func compute_depths(C []int) []int {
+	L := len(C)
+	D := make([]int, L+1)
+	D[0] = 0
+	if L == 0 {
+		return D
+	}
+
+	st := NewSegTree(L)
+	stack := make([]Item, 0, L)
+
+	for i := 1; i <= L; i++ {
+		val := C[i-1]
+		for len(stack) > 0 && stack[len(stack)-1].val > val {
+			stack = stack[:len(stack)-1]
+		}
+
+		left_idx := 1
+		if len(stack) > 0 {
+			left_idx = stack[len(stack)-1].idx + 1
+		}
+
+		right_idx := i - 1
+		if left_idx <= right_idx {
+			st.Add(1, 1, L, left_idx, right_idx, 1)
+		}
+
+		depth := 1
+		if len(stack) > 0 {
+			depth = stack[len(stack)-1].depth + 1
+		}
+
+		st.Add(1, 1, L, i, i, depth)
+		stack = append(stack, Item{val: val, idx: i, depth: depth})
+
+		D[i] = st.maxVal[1]
+	}
+	return D
+}
+
+func solveFCase(a []int) (int, int) {
+	n := len(a)
+	if n == 1 {
+		return 1, 0
+	}
+
+	p0 := -1
+	for i := 0; i < n; i++ {
+		if a[i] == 1 {
+			p0 = i
 			break
 		}
 	}
-	b := make([][]int, 2)
-	b[0] = make([]int, n)
-	b[1] = make([]int, n)
-	for i := 0; i < n; i++ {
-		b[0][i] = a[(root+i)%n]
-		b[1][i] = a[(root+n-i)%n]
+
+	B := make([]int, n-1)
+	for i := 0; i < n-1; i++ {
+		B[i] = a[(p0+1+i)%n]
 	}
-	dpl := make([][]int, 2)
-	dpr := make([][]int, 2)
-	ans := make([][]int, 2)
-	for t := 0; t < 2; t++ {
-		dpl[t] = make([]int, n)
-		dpr[t] = make([]int, n)
-		ans[t] = make([]int, n)
+
+	D_pref := compute_depths(B)
+
+	B_rev := make([]int, n-1)
+	for i := 0; i < n-1; i++ {
+		B_rev[i] = B[n-2-i]
 	}
-	for t := 0; t < 2; t++ {
-		stack := make([]int, 0, n)
-		dpl[t][0] = 1
-		ans[t][0] = 1
-		stack = append(stack, 0)
-		for i := 1; i < n; i++ {
-			nex := -1
-			for len(stack) > 0 && b[t][stack[len(stack)-1]] > b[t][i] {
-				j := stack[len(stack)-1]
-				stack = stack[:len(stack)-1]
-				if nex == -1 {
-					dpr[t][j] = dpl[t][j]
-					nex = j
-				} else {
-					dpr[t][j] = max(dpr[t][nex]+1, dpl[t][j])
-					nex = j
-				}
-			}
-			if nex == -1 {
-				dpl[t][i] = 1
+	D_pref_rev := compute_depths(B_rev)
+
+	minDepth := int(1e9)
+	bestS := -1
+
+	for k := 0; k < n; k++ {
+		dY := D_pref[k]
+		dX := D_pref_rev[n-1-k]
+		depth := 1 + solverMax(dY, dX)
+		if depth < minDepth {
+			minDepth = depth
+			bestS = (p0 + 1 + k) % n
+		}
+	}
+
+	return minDepth, bestS
+}
+
+// ---------- verifier logic ----------
+
+type testF struct {
+	a []int
+}
+
+func genTestsF() []testF {
+	rng := rand.New(rand.NewSource(122006))
+	tests := make([]testF, 100)
+	for i := range tests {
+		n := rng.Intn(8) + 2
+		a := make([]int, n)
+		pos := rng.Intn(n)
+		for j := range a {
+			if j == pos {
+				a[j] = 1
 			} else {
-				dpl[t][i] = dpr[t][nex] + 1
+				a[j] = rng.Intn(9) + 2
 			}
-			stack = append(stack, i)
-			cur := len(stack) + dpl[t][i] - 1
-			ans[t][i] = max(cur, ans[t][i-1])
 		}
+		tests[i] = testF{a: a}
 	}
-	ret := n + n
-	k := 0
-	for i := 0; i < n; i++ {
-		val := max(ans[0][i], ans[1][n-1-i])
-		if val < ret {
-			ret = val
-			k = (root + 1 + i) % n
-		}
-	}
-	return ret, k
+	return tests
 }
 
 func main() {
@@ -129,7 +196,7 @@ func main() {
 	expectedRet := make([]int, len(tests))
 	expectedK := make([]int, len(tests))
 	for i, tc := range tests {
-		r, k := solveF(tc)
+		r, k := solveFCase(tc.a)
 		expectedRet[i] = r
 		expectedK[i] = k
 	}

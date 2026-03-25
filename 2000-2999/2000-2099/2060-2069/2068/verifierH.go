@@ -7,13 +7,16 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const refSource = "2000-2999/2000-2099/2060-2069/2068/2068H.go"
+type Item struct {
+	val int64
+	id  int
+}
 
 type testCase struct {
 	name      string
@@ -30,18 +33,10 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, cleanup, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer cleanup()
-	_ = refBin
-
 	tests := buildTests()
 
 	for idx, tc := range tests {
-		input := buildInput(tc)
+		input := buildInputStr(tc)
 
 		candOut, err := runProgram(candidate, input)
 		if err != nil {
@@ -55,35 +50,6 @@ func main() {
 	}
 
 	fmt.Printf("All %d tests passed\n", len(tests))
-}
-
-func buildReference() (string, func(), error) {
-	dir, err := os.MkdirTemp("", "cf-2068H-ref-")
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to create temp dir: %v", err)
-	}
-	src, err := os.ReadFile(refSource)
-	if err != nil {
-		os.RemoveAll(dir)
-		return "", nil, fmt.Errorf("failed to read reference: %v", err)
-	}
-	fixed := bytes.Replace(src, []byte("pos []target"), []byte("pos [][]target"), 1)
-	refPath := filepath.Join(dir, "ref_main.go")
-	if err := os.WriteFile(refPath, fixed, 0o644); err != nil {
-		os.RemoveAll(dir)
-		return "", nil, fmt.Errorf("failed to write patched reference: %v", err)
-	}
-
-	binPath := filepath.Join(dir, "ref2068H.bin")
-	cmd := exec.Command("go", "build", "-o", binPath, refPath)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		os.RemoveAll(dir)
-		return "", nil, fmt.Errorf("failed to build reference: %v\n%s", err, stderr.String())
-	}
-	cleanup := func() { _ = os.RemoveAll(dir) }
-	return binPath, cleanup, nil
 }
 
 func runProgram(bin, input string) (string, error) {
@@ -175,7 +141,7 @@ func abs64(x int64) int64 {
 	return x
 }
 
-func buildInput(tc testCase) string {
+func buildInputStr(tc testCase) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", tc.n))
 	sb.WriteString(fmt.Sprintf("%d %d\n", tc.a, tc.b))
@@ -187,6 +153,143 @@ func buildInput(tc testCase) string {
 	}
 	sb.WriteByte('\n')
 	return sb.String()
+}
+
+// solveRef is the embedded correct reference solver for 2068H.
+func solveRef(tc testCase) (bool, [][2]int64) {
+	n := tc.n
+	a := tc.a
+	b := tc.b
+	d := tc.dist
+
+	U := a + b
+	V := a - b
+
+	D := int64(0)
+	for _, v := range d {
+		D += v
+	}
+
+	if (D-U)%2 != 0 {
+		return false, nil
+	}
+
+	Ru := (D - U) / 2
+	Rv := (D - V) / 2
+
+	if Ru < 0 || Ru > D || Rv < 0 || Rv > D {
+		return false, nil
+	}
+
+	items := make([]Item, n-1)
+	for i := 0; i < n-1; i++ {
+		items[i] = Item{val: d[i], id: i}
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].val > items[j].val
+	})
+
+	ansArr := make([]int, n-1)
+
+	var dfs func(idx int, w1, w2, w3, w4 int64) bool
+	dfs = func(idx int, w1, w2, w3, w4 int64) bool {
+		if idx == len(items) {
+			return true
+		}
+		val := items[idx].val
+		origId := items[idx].id
+
+		if w1 >= val {
+			ansArr[origId] = 1
+			if dfs(idx+1, w1-val, w2, w3, w4) {
+				return true
+			}
+		}
+		if w2 >= val && w2 != w1 {
+			ansArr[origId] = 2
+			if dfs(idx+1, w1, w2-val, w3, w4) {
+				return true
+			}
+		}
+		if w3 >= val && w3 != w1 && w3 != w2 {
+			ansArr[origId] = 3
+			if dfs(idx+1, w1, w2, w3-val, w4) {
+				return true
+			}
+		}
+		if w4 >= val && w4 != w1 && w4 != w2 && w4 != w3 {
+			ansArr[origId] = 4
+			if dfs(idx+1, w1, w2, w3, w4-val) {
+				return true
+			}
+		}
+		return false
+	}
+
+	if !dfs(0, Ru, D-Ru, Rv, D-Rv) {
+		return false, nil
+	}
+
+	sumA1 := int64(0)
+	sumB1 := int64(0)
+
+	k := make([]int64, len(d))
+	j := make([]int64, len(d))
+
+	for i := 0; i < len(d); i++ {
+		switch ansArr[i] {
+		case 1:
+			k[i] = d[i]
+			sumA1 += d[i]
+		case 2:
+			k[i] = 0
+		case 3:
+			j[i] = d[i]
+			sumB1 += d[i]
+		case 4:
+			j[i] = 0
+		}
+	}
+
+	remU := Ru - sumA1
+	for i := 0; i < len(d); i++ {
+		if ansArr[i] == 3 || ansArr[i] == 4 {
+			take := d[i]
+			if remU < take {
+				take = remU
+			}
+			k[i] = take
+			remU -= take
+		}
+	}
+
+	remV := Rv - sumB1
+	for i := 0; i < len(d); i++ {
+		if ansArr[i] == 1 || ansArr[i] == 2 {
+			take := d[i]
+			if remV < take {
+				take = remV
+			}
+			j[i] = take
+			remV -= take
+		}
+	}
+
+	coords := make([][2]int64, n)
+	x, y := int64(0), int64(0)
+	coords[0] = [2]int64{x, y}
+	for i := 0; i < len(d); i++ {
+		du := d[i] - 2*k[i]
+		dv := d[i] - 2*j[i]
+		dx := (du + dv) / 2
+		dy := (du - dv) / 2
+		x += dx
+		y += dy
+		coords[i+1] = [2]int64{x, y}
+	}
+
+	return true, coords
 }
 
 func buildTests() []testCase {
@@ -233,7 +336,12 @@ func buildTests() []testCase {
 		},
 	}
 
-	// Add random feasible and impossible cases.
+	// Determine expectYes using the embedded solver for deterministic tests
+	for i := range tests {
+		yes, _ := solveRef(tests[i])
+		tests[i].expectYes = yes
+	}
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 5; i++ {
 		tc := randomFeasible(rng, 5+i)
@@ -254,18 +362,18 @@ func randomFeasible(rng *rand.Rand, n int) testCase {
 	coords := make([][2]int64, n)
 	dist := make([]int64, n-1)
 	for i := 1; i < n; i++ {
-		len := int64(rng.Intn(6)) // 0..5
+		l := int64(rng.Intn(6))
 		var dx, dy int64
 		dir := rng.Intn(4)
 		switch dir {
 		case 0:
-			dx, dy = len, 0
+			dx, dy = l, 0
 		case 1:
-			dx, dy = -len, 0
+			dx, dy = -l, 0
 		case 2:
-			dx, dy = 0, len
+			dx, dy = 0, l
 		default:
-			dx, dy = 0, -len
+			dx, dy = 0, -l
 		}
 		coords[i][0] = coords[i-1][0] + dx
 		coords[i][1] = coords[i-1][1] + dy
@@ -288,11 +396,10 @@ func randomImpossible(rng *rand.Rand, n int) testCase {
 	dist := make([]int64, n-1)
 	var sum int64
 	for i := 0; i < n-1; i++ {
-		di := int64(rng.Intn(10)) // 0..9
+		di := int64(rng.Intn(10))
 		dist[i] = di
 		sum += di
 	}
-	// Place target too far to guarantee impossibility.
 	a := sum + 5
 	return testCase{
 		name:      fmt.Sprintf("impossible-%d", rng.Int()),

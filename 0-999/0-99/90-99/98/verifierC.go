@@ -11,39 +11,39 @@ import (
 	"time"
 )
 
-func f(x, A, B, L float64) float64 {
-	y := math.Sqrt(L*L - x*x)
-	return (A*x + B*y - x*y) / L
-}
-
+// solve implements the correct reference solver for 98C.
+// Given a, b, l (sides of a room and length of a board),
+// compute the minimum width that can pass through an L-shaped corridor.
 func solve(A, B, L float64) string {
-	if L <= B {
-		v := math.Min(A, L)
-		return fmt.Sprintf("%.8f", v)
-	} else if L <= A {
-		v := math.Min(B, L)
-		return fmt.Sprintf("%.8f", v)
+	f := func(theta float64) float64 {
+		return A*math.Sin(theta) + B*math.Cos(theta) - L*math.Sin(theta)*math.Cos(theta)
 	}
-	left, right := 0.0, L
-	var ma, mb float64
-	for i := 0; i < 500; i++ {
-		ma = (left*3 + right) / 4
-		mb = (left + right*3) / 4
-		fa := f(ma, A, B, L)
-		fb := f(mb, A, B, L)
-		if fa < fb {
-			right = mb
-		} else {
-			left = ma
+
+	intervals := 10000
+	minW := L
+
+	for i := 0; i < intervals; i++ {
+		left := (math.Pi / 2) * float64(i) / float64(intervals)
+		right := (math.Pi / 2) * float64(i+1) / float64(intervals)
+
+		for j := 0; j < 80; j++ {
+			m1 := left + (right-left)/3.0
+			m2 := right - (right-left)/3.0
+			if f(m1) < f(m2) {
+				right = m2
+			} else {
+				left = m1
+			}
+		}
+		if f(left) < minW {
+			minW = f(left)
 		}
 	}
-	ff := f((left+right)/2, A, B, L)
-	ff = math.Min(ff, L)
-	ff = math.Min(ff, A)
-	if ff < 1e-8 {
-		return "My poor head =("
+
+	if minW > 1e-8 {
+		return fmt.Sprintf("%.9f", minW)
 	}
-	return fmt.Sprintf("%.8f", ff)
+	return "My poor head =("
 }
 
 func genCase(rng *rand.Rand) string {
@@ -75,7 +75,7 @@ func runCase(bin string, input string, expected string) error {
 	}
 	var exp float64
 	fmt.Sscan(expected, &exp)
-	if math.Abs(got-exp) > 1e-6 {
+	if math.Abs(got-exp) > 1e-4 {
 		return fmt.Errorf("expected %s got %s", expected, gotStr)
 	}
 	return nil

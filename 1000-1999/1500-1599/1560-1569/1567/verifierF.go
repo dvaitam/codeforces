@@ -10,112 +10,6 @@ import (
 	"time"
 )
 
-type DSU struct {
-	parent []int
-	sz     []int
-	f      []bool
-}
-
-func NewDSU(n int) *DSU {
-	d := &DSU{parent: make([]int, n), sz: make([]int, n), f: make([]bool, n)}
-	for i := 0; i < n; i++ {
-		d.parent[i] = i
-		d.sz[i] = 1
-	}
-	return d
-}
-
-func (d *DSU) find(a int) int {
-	if d.parent[a] == a {
-		return a
-	}
-	p := d.parent[a]
-	root := d.find(p)
-	d.f[a] = d.f[a] != d.f[p]
-	d.parent[a] = root
-	return root
-}
-
-func (d *DSU) link(a, b int, parity bool) {
-	if d.sz[a] < d.sz[b] {
-		a, b = b, a
-	}
-	d.parent[b] = a
-	d.sz[a] += d.sz[b]
-	d.f[b] = parity
-}
-
-func (d *DSU) Unite(a, b int) {
-	pa := d.find(a)
-	pb := d.find(b)
-	if pa != pb {
-		parity := d.f[a] == d.f[b]
-		d.link(pa, pb, parity)
-	}
-}
-
-func solveCase(grid []string) (bool, [][]int) {
-	n := len(grid)
-	m := len(grid[0])
-	dirs := [][2]int{{1, 0}, {0, 1}, {-1, 0}, {0, -1}}
-	id := func(i, j int) int { return i*m + j }
-	dsu := NewDSU(n * m)
-	res := make([][]int, n)
-	for i := range res {
-		res[i] = make([]int, m)
-	}
-	for i := 0; i < n; i++ {
-		for j := 0; j < m; j++ {
-			if grid[i][j] != 'X' {
-				continue
-			}
-			var ne []int
-			for _, d := range dirs {
-				ni, nj := i+d[0], j+d[1]
-				if ni >= 0 && ni < n && nj >= 0 && nj < m && grid[ni][nj] == '.' {
-					ne = append(ne, id(ni, nj))
-				}
-			}
-			if len(ne)%2 == 1 {
-				return false, nil
-			}
-			for k := 1; k < len(ne); k++ {
-				dsu.Unite(ne[k-1], ne[k])
-			}
-		}
-	}
-	for i := 0; i < n; i++ {
-		for j := 0; j < m; j++ {
-			if grid[i][j] != '.' {
-				continue
-			}
-			idx := id(i, j)
-			dsu.find(idx)
-			if dsu.f[idx] {
-				res[i][j] = 1
-			} else {
-				res[i][j] = 4
-			}
-		}
-	}
-	for i := 0; i < n; i++ {
-		for j := 0; j < m; j++ {
-			if grid[i][j] != 'X' {
-				continue
-			}
-			sum := 0
-			for _, d := range dirs {
-				ni, nj := i+d[0], j+d[1]
-				if ni >= 0 && ni < n && nj >= 0 && nj < m && grid[ni][nj] == '.' {
-					sum += res[ni][nj]
-				}
-			}
-			res[i][j] = sum
-		}
-	}
-	return true, res
-}
-
 func run(bin, input string) (string, error) {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
@@ -169,24 +63,168 @@ func buildInput(grid []string) string {
 	return sb.String()
 }
 
-func formatRes(ok bool, ans [][]int) string {
-	if !ok {
-		return "NO"
-	}
-	var sb strings.Builder
-	sb.WriteString("YES\n")
-	for i, row := range ans {
-		for j, v := range row {
-			if j > 0 {
-				sb.WriteByte(' ')
+// hasSolution checks if a valid solution exists using bipartite check.
+func hasSolution(grid []string) bool {
+	n := len(grid)
+	m := len(grid[0])
+	dirs := [][2]int{{1, 0}, {0, 1}, {-1, 0}, {0, -1}}
+
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			if grid[i][j] != 'X' {
+				continue
 			}
-			sb.WriteString(fmt.Sprintf("%d", v))
-		}
-		if i+1 < len(ans) {
-			sb.WriteByte('\n')
+			cnt := 0
+			for _, d := range dirs {
+				ni, nj := i+d[0], j+d[1]
+				if ni >= 0 && ni < n && nj >= 0 && nj < m && grid[ni][nj] == '.' {
+					cnt++
+				}
+			}
+			if cnt%2 == 1 {
+				return false
+			}
 		}
 	}
-	return sb.String()
+
+	// Build adjacency for bipartite check
+	type Edge struct{ u, v int }
+	id := func(r, c int) int { return r*m + c }
+	adj := make([][]int, n*m)
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			if grid[i][j] != 'X' {
+				continue
+			}
+			var ne []int
+			for _, d := range dirs {
+				ni, nj := i+d[0], j+d[1]
+				if ni >= 0 && ni < n && nj >= 0 && nj < m && grid[ni][nj] == '.' {
+					ne = append(ne, id(ni, nj))
+				}
+			}
+			if len(ne) == 2 {
+				adj[ne[0]] = append(adj[ne[0]], ne[1])
+				adj[ne[1]] = append(adj[ne[1]], ne[0])
+			} else if len(ne) == 4 {
+				// pair vertical and horizontal
+				adj[ne[0]] = append(adj[ne[0]], ne[2])
+				adj[ne[2]] = append(adj[ne[2]], ne[0])
+				adj[ne[1]] = append(adj[ne[1]], ne[3])
+				adj[ne[3]] = append(adj[ne[3]], ne[1])
+			}
+		}
+	}
+
+	color := make([]int, n*m)
+	for i := range color {
+		color[i] = -1
+	}
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			if grid[i][j] != '.' || color[id(i, j)] != -1 {
+				continue
+			}
+			queue := []int{id(i, j)}
+			color[id(i, j)] = 0
+			for len(queue) > 0 {
+				u := queue[0]
+				queue = queue[1:]
+				for _, v := range adj[u] {
+					if color[v] == -1 {
+						color[v] = 1 - color[u]
+						queue = append(queue, v)
+					} else if color[v] == color[u] {
+						return false
+					}
+				}
+			}
+		}
+	}
+	return true
+}
+
+// validateOutput checks if the candidate's output is valid for the given grid.
+func validateOutput(grid []string, output string) error {
+	n := len(grid)
+	m := len(grid[0])
+	dirs := [][2]int{{1, 0}, {0, 1}, {-1, 0}, {0, -1}}
+
+	lines := strings.Split(output, "\n")
+	if len(lines) == 0 {
+		return fmt.Errorf("empty output")
+	}
+
+	verdict := strings.TrimSpace(lines[0])
+	canSolve := hasSolution(grid)
+
+	if verdict == "NO" {
+		if canSolve {
+			return fmt.Errorf("candidate said NO but solution exists")
+		}
+		return nil
+	}
+	if verdict != "YES" {
+		return fmt.Errorf("expected YES or NO, got %q", verdict)
+	}
+	if !canSolve {
+		return fmt.Errorf("candidate said YES but no solution exists")
+	}
+
+	if len(lines) < n+1 {
+		return fmt.Errorf("expected %d grid rows, got %d lines", n, len(lines)-1)
+	}
+
+	vals := make([][]int, n)
+	for i := 0; i < n; i++ {
+		parts := strings.Fields(strings.TrimSpace(lines[i+1]))
+		if len(parts) != m {
+			return fmt.Errorf("row %d: expected %d values, got %d", i, m, len(parts))
+		}
+		vals[i] = make([]int, m)
+		for j := 0; j < m; j++ {
+			var v int
+			if _, err := fmt.Sscan(parts[j], &v); err != nil {
+				return fmt.Errorf("row %d col %d: bad int %q", i, j, parts[j])
+			}
+			vals[i][j] = v
+		}
+	}
+
+	// Check unmarked cells have value 1 or 4
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			if grid[i][j] == '.' {
+				if vals[i][j] != 1 && vals[i][j] != 4 {
+					return fmt.Errorf("cell (%d,%d) is unmarked but has value %d (need 1 or 4)", i, j, vals[i][j])
+				}
+			}
+		}
+	}
+
+	// Check marked cells: value = sum of adjacent unmarked, and divisible by 5
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			if grid[i][j] != 'X' {
+				continue
+			}
+			sum := 0
+			for _, d := range dirs {
+				ni, nj := i+d[0], j+d[1]
+				if ni >= 0 && ni < n && nj >= 0 && nj < m && grid[ni][nj] == '.' {
+					sum += vals[ni][nj]
+				}
+			}
+			if vals[i][j] != sum {
+				return fmt.Errorf("cell (%d,%d) is marked: expected sum %d, got %d", i, j, sum, vals[i][j])
+			}
+			if sum%5 != 0 {
+				return fmt.Errorf("cell (%d,%d) is marked: sum %d not divisible by 5", i, j, sum)
+			}
+		}
+	}
+
+	return nil
 }
 
 func main() {
@@ -204,10 +242,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:%s", i+1, err, input)
 			os.Exit(1)
 		}
-		ok, ans := solveCase(grid)
-		expected := formatRes(ok, ans)
-		if out != expected {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:%s", i+1, expected, out, input)
+		if err := validateOutput(grid, out); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: %v\ninput:%s\noutput:\n%s\n", i+1, err, input, out)
 			os.Exit(1)
 		}
 	}

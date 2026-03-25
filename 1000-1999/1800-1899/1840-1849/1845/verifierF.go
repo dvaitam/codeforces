@@ -131,102 +131,62 @@ const testcaseData = `2 10 5 13 7 18 3 10
 3 9 6 18 17 8 14 7 9
 4 6 4 8 7 9 6`
 
-const (
-	mod1 int64 = 998244353
-	mod2 int64 = 1004535809
-	root int64 = 3
-)
+const MOD845 = 998244353
+const G845 = 3
 
-func modPow(a, e, mod int64) int64 {
+func pow845(a, b int64) int64 {
 	res := int64(1)
-	for e > 0 {
-		if e&1 == 1 {
-			res = res * a % mod
+	a %= MOD845
+	for b > 0 {
+		if b%2 == 1 {
+			res = res * a % MOD845
 		}
-		a = a * a % mod
-		e >>= 1
+		a = a * a % MOD845
+		b /= 2
 	}
 	return res
 }
 
-func modInv(a, mod int64) int64 {
-	return modPow(a, mod-2, mod)
-}
-
-func ntt(a []int64, invert bool, mod, root int64) {
+func ntt845(a []int64, invert bool) {
 	n := len(a)
-	for i, j := 1, 0; i < n; i++ {
+	j := 0
+	for i := 1; i < n; i++ {
 		bit := n >> 1
-		for ; j&bit != 0; bit >>= 1 {
+		for j&bit != 0 {
 			j ^= bit
+			bit >>= 1
 		}
-		j |= bit
+		j ^= bit
 		if i < j {
 			a[i], a[j] = a[j], a[i]
 		}
 	}
-	for length := 2; length <= n; length <<= 1 {
-		wlen := modPow(root, (mod-1)/int64(length), mod)
+	for l := 2; l <= n; l <<= 1 {
+		half := l >> 1
+		wLen := pow845(G845, (MOD845-1)/int64(l))
 		if invert {
-			wlen = modInv(wlen, mod)
+			wLen = pow845(wLen, MOD845-2)
 		}
-		for i := 0; i < n; i += length {
+		for i := 0; i < n; i += l {
 			w := int64(1)
-			half := length >> 1
-			for j := 0; j < half; j++ {
-				u := a[i+j]
-				v := a[i+j+half] * w % mod
-				a[i+j] = u + v
-				if a[i+j] >= mod {
-					a[i+j] -= mod
-				}
-				a[i+j+half] = u - v
-				if a[i+j+half] < 0 {
-					a[i+j+half] += mod
-				}
-				w = w * wlen % mod
+			for k := 0; k < half; k++ {
+				u := a[i+k]
+				v := a[i+k+half] * w % MOD845
+				a[i+k] = (u + v) % MOD845
+				a[i+k+half] = (u - v + MOD845) % MOD845
+				w = w * wLen % MOD845
 			}
 		}
 	}
 	if invert {
-		invN := modInv(int64(n), mod)
-		for i := range a {
-			a[i] = a[i] * invN % mod
+		nInv := pow845(int64(n), MOD845-2)
+		for i := 0; i < n; i++ {
+			a[i] = a[i] * nInv % MOD845
 		}
 	}
 }
 
-func convolution(a, b []int64, mod, root int64) []int64 {
-	need := len(a) + len(b) - 1
-	n := 1
-	for n < need {
-		n <<= 1
-	}
-	fa := make([]int64, n)
-	fb := make([]int64, n)
-	copy(fa, a)
-	copy(fb, b)
-	ntt(fa, false, mod, root)
-	ntt(fb, false, mod, root)
-	for i := 0; i < n; i++ {
-		fa[i] = fa[i] * fb[i] % mod
-	}
-	ntt(fa, true, mod, root)
-	return fa[:need]
-}
-
-var invMod1 int64 = modInv(mod1%mod2, mod2)
-
-func crt(a1, a2 int64) int64 {
-	diff := (a2 - a1) % mod2
-	if diff < 0 {
-		diff += mod2
-	}
-	x := diff * invMod1 % mod2
-	return a1 + x*mod1
-}
-
-func divisors(n int64) []int64 {
+func divisors845(n int64) []int64 {
 	res := []int64{}
 	for i := int64(1); i*i <= n; i++ {
 		if n%i == 0 {
@@ -240,12 +200,7 @@ func divisors(n int64) []int64 {
 	return res
 }
 
-var factorCache = map[int64][]int64{}
-
-func primeFactors(n int64) []int64 {
-	if pf, ok := factorCache[n]; ok {
-		return pf
-	}
+func primeFactors845(n int64) []int64 {
 	tmp := n
 	res := []int64{}
 	for p := int64(2); p*p <= tmp; p++ {
@@ -259,20 +214,11 @@ func primeFactors(n int64) []int64 {
 	if tmp > 1 {
 		res = append(res, tmp)
 	}
-	factorCache[n] = res
 	return res
 }
 
-func phi(n int64) int64 {
-	res := n
-	for _, p := range primeFactors(n) {
-		res = res / p * (p - 1)
-	}
-	return res
-}
-
-func countCoprimeUpTo(n, m int64) int64 {
-	primes := primeFactors(m)
+func countCoprimeUpTo845(n, m int64) int64 {
+	primes := primeFactors845(m)
 	res := n
 	l := len(primes)
 	for mask := 1; mask < (1 << l); mask++ {
@@ -293,169 +239,134 @@ func countCoprimeUpTo(n, m int64) int64 {
 	return res
 }
 
-type testCase struct {
-	input    string
-	expected string
-}
-
 func solveCase(l, T int64, speeds []int) string {
-	L := l * 2
 	maxV := 0
 	for _, v := range speeds {
 		if v > maxV {
 			maxV = v
 		}
 	}
+
 	size := 1
-	for size < maxV+1 {
+	for size <= 2*maxV {
 		size <<= 1
 	}
-	size <<= 1
 
 	A := make([]int64, size)
+	B := make([]int64, size)
 	for _, v := range speeds {
 		A[v] = 1
+		B[maxV-v] = 1
 	}
-	B := make([]int64, size)
+
+	ntt845(A, false)
+	ntt845(B, false)
+
+	sumFFT := make([]int64, size)
+	diffFFT := make([]int64, size)
 	for i := 0; i < size; i++ {
-		B[i] = A[size-1-i]
+		sumFFT[i] = A[i] * A[i] % MOD845
+		diffFFT[i] = A[i] * B[i] % MOD845
 	}
 
-	conv1 := convolution(A, B, mod1, root)
-	conv2 := convolution(A, B, mod2, root)
+	ntt845(sumFFT, true)
+	ntt845(diffFFT, true)
 
-	maxDiff := maxV
-	diffPresence := make([]bool, maxDiff+1)
-	for d := 1; d <= maxDiff; d++ {
-		idx := size - 1 + d
-		if idx < len(conv1) && (conv1[idx] != 0 || conv2[idx] != 0) {
-			diffPresence[d] = true
+	maxS := 2 * maxV
+	S := make([]bool, maxS+1)
+
+	for _, v := range speeds {
+		sumFFT[2*v] = (sumFFT[2*v] - 1 + MOD845) % MOD845
+	}
+
+	for i := 1; i <= maxS; i++ {
+		if sumFFT[i] > 0 {
+			S[i] = true
+		}
+	}
+	for i := 1; i <= maxV; i++ {
+		if diffFFT[maxV+i] > 0 {
+			S[i] = true
 		}
 	}
 
-	convS1 := convolution(A, A, mod1, root)
-	convS2 := convolution(A, A, mod2, root)
-	maxSum := maxV * 2
-	sumPresence := make([]bool, maxSum+1)
-	for s := 0; s <= maxSum && s < len(convS1); s++ {
-		cnt := crt(convS1[s], convS2[s])
-		if s%2 == 0 {
-			v := s / 2
-			if v < len(A) && A[v] == 1 {
-				if cnt > 0 {
-					cnt--
+	hasMultiple := make([]bool, maxS+1)
+	for i := 1; i <= maxS; i++ {
+		if S[i] {
+			hasMultiple[i] = true
+		}
+	}
+
+	inSPrime := make([]bool, maxS+1)
+	for i := 1; i <= maxS; i++ {
+		for j := i; j <= maxS; j += i {
+			if hasMultiple[j] {
+				inSPrime[i] = true
+				break
+			}
+		}
+	}
+
+	minPrime := make([]int, maxS+1)
+	for i := 2; i <= maxS; i++ {
+		if minPrime[i] == 0 {
+			for j := i; j <= maxS; j += i {
+				if minPrime[j] == 0 {
+					minPrime[j] = i
 				}
 			}
 		}
-		if cnt > 0 {
-			sumPresence[s] = true
-		}
 	}
 
-	divs := divisors(L)
-	diffDivs := []int64{}
-	sumDivs := []int64{}
-	for _, g := range divs {
-		if int64(maxDiff) >= g {
-			diffDivs = append(diffDivs, g)
-		}
-		if int64(maxSum) >= g {
-			sumDivs = append(sumDivs, g)
-		}
-	}
-
-	diffMultiple := map[int64]bool{}
-	for _, g := range diffDivs {
-		for d := int(g); d <= maxDiff; d += int(g) {
-			if diffPresence[d] {
-				diffMultiple[g] = true
-				break
-			}
-		}
-	}
-
-	sumMultiple := map[int64]bool{}
-	for _, g := range sumDivs {
-		for s := int(g); s <= maxSum; s += int(g) {
-			if sumPresence[s] {
-				sumMultiple[g] = true
-				break
-			}
-		}
-	}
-
-	sort.Slice(diffDivs, func(i, j int) bool { return diffDivs[i] > diffDivs[j] })
-	sort.Slice(sumDivs, func(i, j int) bool { return sumDivs[i] > sumDivs[j] })
-
-	diffExact := map[int64]bool{}
-	for i, g := range diffDivs {
-		if !diffMultiple[g] {
+	var ans int64 = 0
+	for b := 1; b <= maxS; b++ {
+		if !inSPrime[b] {
 			continue
 		}
-		ok := true
-		for j := 0; j < i; j++ {
-			h := diffDivs[j]
-			if h%g == 0 && diffExact[h] {
-				ok = false
-				break
-			}
-		}
-		if ok {
-			diffExact[g] = true
-		}
-	}
 
-	sumExact := map[int64]bool{}
-	for i, g := range sumDivs {
-		if !sumMultiple[g] {
+		M := (T * int64(b)) / (2 * l)
+		if M == 0 {
 			continue
 		}
-		ok := true
-		for j := 0; j < i; j++ {
-			h := sumDivs[j]
-			if h%g == 0 && sumExact[h] {
-				ok = false
-				break
+
+		var primes []int64
+		temp := b
+		for temp > 1 {
+			p := minPrime[temp]
+			primes = append(primes, int64(p))
+			for temp%p == 0 {
+				temp /= p
 			}
 		}
-		if ok {
-			sumExact[g] = true
-		}
-	}
 
-	flag := map[int64]bool{}
-	for g := range diffExact {
-		m := L / g
-		for _, d := range divisors(g) {
-			flag[m*d] = true
-		}
-	}
-	for g := range sumExact {
-		m := L / g
-		for _, d := range divisors(g) {
-			flag[m*d] = true
-		}
-	}
-
-	countUpTo := func(r int64) int64 {
-		if r <= 0 {
-			return 0
-		}
-		var ans int64
-		for _, g := range divs {
-			if !flag[g] {
-				continue
+		k := len(primes)
+		var count int64 = 0
+		for mask := 0; mask < (1 << k); mask++ {
+			prod := int64(1)
+			bits := 0
+			for i := 0; i < k; i++ {
+				if (mask & (1 << i)) != 0 {
+					prod *= primes[i]
+					bits++
+				}
 			}
-			m := L / g
-			ans += countCoprimeUpTo(r/g, m)
+			term := M / prod
+			if bits%2 == 1 {
+				count -= term
+			} else {
+				count += term
+			}
 		}
-		return ans
+		count %= 1000000007
+		ans = (ans + count) % 1000000007
 	}
 
-	totalInPeriod := countUpTo(L)
-	ans := (T / L % mod1) * (totalInPeriod % mod1) % mod1
-	ans = (ans + countUpTo(T%L)%mod1) % mod1
 	return fmt.Sprintf("%d", ans)
+}
+
+type testCase struct {
+	input    string
+	expected string
 }
 
 func loadCases() ([]testCase, error) {

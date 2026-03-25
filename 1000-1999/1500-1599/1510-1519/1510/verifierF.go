@@ -1,14 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -28,25 +27,9 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	ref, err := buildReferenceBinary()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
-
 	tests := generateTests()
 	for idx, tc := range tests {
-		refOut, err := runProgram(ref, tc.input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference failed on test %d: %v\ninput:\n%s\n", idx+1, err, tc.input)
-			os.Exit(1)
-		}
-		refVal, err := parseFloat(refOut)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to parse reference output on test %d: %v\noutput:\n%s\n", idx+1, err, refOut)
-			os.Exit(1)
-		}
+		refVal := solve(tc.input)
 
 		gotOut, err := runProgram(bin, tc.input)
 		if err != nil {
@@ -60,45 +43,207 @@ func main() {
 		}
 
 		if !almostEqual(refVal, gotVal, tolerance) {
-			fmt.Fprintf(os.Stderr, "test %d mismatch: expected %.12f got %.12f\ninput:\n%sreference output:\n%s\nparticipant output:\n%s\n",
-				idx+1, refVal, gotVal, tc.input, refOut, gotOut)
+			fmt.Fprintf(os.Stderr, "test %d mismatch: expected %.12f got %.12f\ninput:\n%sparticipant output:\n%s\n",
+				idx+1, refVal, gotVal, tc.input, gotOut)
 			os.Exit(1)
 		}
 	}
 	fmt.Printf("All %d tests passed\n", len(tests))
 }
 
-func buildReferenceBinary() (string, error) {
-	dir, err := verifierDir()
-	if err != nil {
-		return "", err
-	}
-	tmp, err := os.CreateTemp("", "1510F_ref_*.bin")
-	if err != nil {
-		return "", err
-	}
-	path := tmp.Name()
-	tmp.Close()
+// ---------- Embedded CF-accepted solver for 1510F ----------
 
-	cmd := exec.Command("go", "build", "-o", path, "1510F.go")
-	cmd.Dir = dir
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.Remove(path)
-		return "", fmt.Errorf("%v\n%s", err, out.String())
-	}
-	return path, nil
+type sPoint struct {
+	x, y float64
 }
 
-func verifierDir() (string, error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("unable to determine verifier directory")
-	}
-	return filepath.Dir(file), nil
+type sRay struct {
+	angle float64
+	orig  sPoint
+	dir   sPoint
 }
+
+type sSector struct {
+	F1       sPoint
+	F2       sPoint
+	L_hidden float64
+}
+
+func solve(input string) float64 {
+	reader := bufio.NewReader(strings.NewReader(input))
+	var n int
+	var L float64
+	fmt.Fscan(reader, &n, &L)
+
+	V := make([]sPoint, n)
+	for i := 0; i < n; i++ {
+		fmt.Fscan(reader, &V[i].x, &V[i].y)
+	}
+
+	pref := make([]float64, n)
+	cur := 0.0
+	for i := 0; i < n; i++ {
+		pref[i] = cur
+		p1 := V[i]
+		p2 := V[(i+1)%n]
+		cur += math.Hypot(p1.x-p2.x, p1.y-p2.y)
+	}
+	P_poly := cur
+
+	ccwDist := func(i, j int) float64 {
+		d := pref[j] - pref[i]
+		if d < 0 {
+			d += P_poly
+		}
+		return d
+	}
+
+	rays := make([]sRay, 0, 2*n)
+	for i := 0; i < n; i++ {
+		p1 := V[i]
+		p2 := V[(i+1)%n]
+		E := sPoint{p2.x - p1.x, p2.y - p1.y}
+		LE := math.Hypot(E.x, E.y)
+		U := sPoint{E.x / LE, E.y / LE}
+
+		angFwd := math.Atan2(U.y, U.x)
+		if angFwd < 0 {
+			angFwd += 2 * math.Pi
+		}
+		rays = append(rays, sRay{angle: angFwd, orig: p2, dir: U})
+
+		Ubwd := sPoint{-U.x, -U.y}
+		angBwd := math.Atan2(Ubwd.y, Ubwd.x)
+		if angBwd < 0 {
+			angBwd += 2 * math.Pi
+		}
+		rays = append(rays, sRay{angle: angBwd, orig: p1, dir: Ubwd})
+	}
+
+	sort.Slice(rays, func(i, j int) bool {
+		return rays[i].angle < rays[j].angle
+	})
+
+	sectors := make([]sSector, 2*n)
+	for k := 0; k < 2*n; k++ {
+		ang1 := rays[k].angle
+		ang2 := rays[(k+1)%(2*n)].angle
+		if k == 2*n-1 {
+			ang2 += 2 * math.Pi
+		}
+		mid := (ang1 + ang2) / 2.0
+		ux := math.Cos(mid)
+		uy := math.Sin(mid)
+
+		maxVal := -1e18
+		minVal := 1e18
+		idxLeft := -1
+		idxRight := -1
+		for i, p := range V {
+			val := -uy*p.x + ux*p.y
+			if val > maxVal {
+				maxVal = val
+				idxLeft = i
+			}
+			if val < minVal {
+				minVal = val
+				idxRight = i
+			}
+		}
+		sectors[k] = sSector{
+			F1:       V[idxLeft],
+			F2:       V[idxRight],
+			L_hidden: ccwDist(idxLeft, idxRight),
+		}
+	}
+
+	Pk := make([]sPoint, 2*n)
+	for k := 0; k < 2*n; k++ {
+		sec := sectors[k]
+		F1 := sec.F1
+		F2 := sec.F2
+		D := L - sec.L_hidden
+
+		Vorig := rays[k].orig
+		U := rays[k].dir
+
+		A := sPoint{Vorig.x - F1.x, Vorig.y - F1.y}
+		B := sPoint{Vorig.x - F2.x, Vorig.y - F2.y}
+
+		P := 2.0 * (U.x*(A.x-B.x) + U.y*(A.y-B.y))
+		Q := (A.x*A.x + A.y*A.y) - (B.x*B.x + B.y*B.y) - D*D
+
+		a_quad := P*P - 4.0*D*D
+		b_quad := 2.0*P*Q - 8.0*D*D*(U.x*B.x+U.y*B.y)
+		c_quad := Q*Q - 4.0*D*D*(B.x*B.x+B.y*B.y)
+
+		disc := b_quad*b_quad - 4.0*a_quad*c_quad
+		if disc < 0 {
+			disc = 0
+		}
+		r := (-b_quad - math.Sqrt(disc)) / (2.0 * a_quad)
+
+		Pk[k] = sPoint{Vorig.x + r*U.x, Vorig.y + r*U.y}
+	}
+
+	totalArea := 0.0
+	for k := 0; k < 2*n; k++ {
+		sec := sectors[k]
+		F1 := sec.F1
+		F2 := sec.F2
+		D := L - sec.L_hidden
+
+		a_el := D / 2.0
+		dxF := F1.x - F2.x
+		dyF := F1.y - F2.y
+		distF := math.Hypot(dxF, dyF)
+		c_el := distF / 2.0
+		b_el := math.Sqrt(math.Max(0, a_el*a_el-c_el*c_el))
+
+		C := sPoint{(F1.x + F2.x) / 2.0, (F1.y + F2.y) / 2.0}
+
+		var Uel, Vel sPoint
+		if distF < 1e-9 {
+			Uel = sPoint{1.0, 0.0}
+		} else {
+			Uel = sPoint{dxF / distF, dyF / distF}
+		}
+		Vel = sPoint{-Uel.y, Uel.x}
+
+		pStart := Pk[k]
+		pEnd := Pk[(k+1)%(2*n)]
+
+		dx0 := pStart.x - C.x
+		dy0 := pStart.y - C.y
+		cos0 := (dx0*Uel.x + dy0*Uel.y) / a_el
+		sin0 := (dx0*Vel.x + dy0*Vel.y) / b_el
+		t0 := math.Atan2(sin0, cos0)
+
+		dx1 := pEnd.x - C.x
+		dy1 := pEnd.y - C.y
+		cos1 := (dx1*Uel.x + dy1*Uel.y) / a_el
+		sin1 := (dx1*Vel.x + dy1*Vel.y) / b_el
+		t1 := math.Atan2(sin1, cos1)
+
+		diff := t1 - t0
+		for diff < 0 {
+			diff += 2.0 * math.Pi
+		}
+		for diff >= 2.0*math.Pi {
+			diff -= 2.0 * math.Pi
+		}
+
+		term1 := a_el * b_el * diff
+		term2 := a_el * (math.Cos(t1) - math.Cos(t0)) * (C.x*Uel.y - C.y*Uel.x)
+		term3 := b_el * (math.Sin(t1) - math.Sin(t0)) * (C.x*Vel.y - C.y*Vel.x)
+
+		totalArea += 0.5 * (term1 + term2 + term3)
+	}
+
+	return totalArea
+}
+
+// ---------- Utility functions ----------
 
 func runProgram(path, input string) (string, error) {
 	var cmd *exec.Cmd
@@ -187,7 +332,7 @@ func randomTests(rng *rand.Rand, batches int) []testCase {
 		perimeter := polygonPerimeter(points)
 		l := perimeter + rng.Float64()*500 + 1
 		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d %.10f\n", n, l))
+		sb.WriteString(fmt.Sprintf("%d %.10f\n", len(points), l))
 		for _, pt := range points {
 			sb.WriteString(fmt.Sprintf("%.10f %.10f\n", pt[0], pt[1]))
 		}
@@ -204,7 +349,7 @@ func stressTests(rng *rand.Rand) []testCase {
 		perimeter := polygonPerimeter(points)
 		l := perimeter + rng.Float64()*8e5 + 1e-3
 		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("%d %.10f\n", n, l))
+		sb.WriteString(fmt.Sprintf("%d %.10f\n", len(points), l))
 		for _, pt := range points {
 			sb.WriteString(fmt.Sprintf("%.10f %.10f\n", pt[0], pt[1]))
 		}
@@ -243,14 +388,14 @@ func convexHull(points [][2]float64) [][2]float64 {
 		}
 		return points[i][0] < points[j][0]
 	})
-	n := len(points)
-	if n <= 1 {
+	nn := len(points)
+	if nn <= 1 {
 		return points
 	}
 	half := func(points [][2]float64) [][2]float64 {
-		h := make([][2]float64, 0, n)
+		h := make([][2]float64, 0, nn)
 		for _, p := range points {
-			for len(h) >= 2 && cross(h[len(h)-2], h[len(h)-1], p) <= 0 {
+			for len(h) >= 2 && crossP(h[len(h)-2], h[len(h)-1], p) <= 0 {
 				h = h[:len(h)-1]
 			}
 			h = append(h, p)
@@ -273,6 +418,6 @@ func reversePoints(points [][2]float64) [][2]float64 {
 	return res
 }
 
-func cross(a, b, c [2]float64) float64 {
+func crossP(a, b, c [2]float64) float64 {
 	return (b[0]-a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0])
 }

@@ -9,37 +9,81 @@ import (
 	"time"
 )
 
-func solveC(n, m int, a [][]int64) int64 {
-	P := make([][]int64, n+1)
+// solveC computes the maximum spiral sum using the same logic as the accepted solution.
+// A spiral starts at center (cr, cc) and expands outward in rings of radius 2, 4, ...
+// For odd-sized spirals (3x3, 7x7, ...) the center is a single cell.
+// For even-expansion spirals (starting from 3x3 ring without center), they start at radius 1.
+// The spiral is NOT a full square; it's a border-walking spiral that excludes one cell per ring.
+func solveC(n, m int, A [][]int64) int64 {
+	pref := make([][]int64, n+1)
 	for i := 0; i <= n; i++ {
-		P[i] = make([]int64, m+1)
+		pref[i] = make([]int64, m+1)
 	}
-	for i := 1; i <= n; i++ {
-		rowSum := int64(0)
-		for j := 1; j <= m; j++ {
-			rowSum += a[i-1][j-1]
-			P[i][j] = P[i-1][j] + rowSum
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			pref[i+1][j+1] = pref[i][j+1] + pref[i+1][j] - pref[i][j] + A[i][j]
 		}
 	}
-	maxSum := int64(-9e18)
-	maxK := n
-	if m < maxK {
-		maxK = m
+
+	getSum := func(r1, c1, r2, c2 int) int64 {
+		return pref[r2+1][c2+1] - pref[r1][c2+1] - pref[r2+1][c1] + pref[r1][c1]
 	}
-	for k := 3; k <= maxK; k += 2 {
-		kk := k
-		for i := 0; i+kk <= n; i++ {
-			i2 := i + kk
-			for j := 0; j+kk <= m; j++ {
-				j2 := j + kk
-				sum := P[i2][j2] - P[i][j2] - P[i2][j] + P[i][j]
-				if sum > maxSum {
-					maxSum = sum
+
+	ans := int64(-1e18)
+
+	// Type 1: spirals with a single-cell center (sizes 1, 5, 9, ... -> radius 0, 2, 4, ...)
+	for cr := 0; cr < n; cr++ {
+		for cc := 0; cc < m; cc++ {
+			sum := A[cr][cc]
+			rad := 2
+			k := 5
+			for cr-rad >= 0 && cr+rad < n && cc-rad >= 0 && cc+rad < m {
+				r := cr - rad
+				c := cc - rad
+				border := getSum(r, c, r+k-1, c+k-1) - getSum(r+1, c+1, r+k-2, c+k-2)
+				sum += border - A[r+1][c] + A[r+2][c+1]
+				if sum > ans {
+					ans = sum
+				}
+				rad += 2
+				k += 4
+			}
+		}
+	}
+
+	// Type 2: spirals starting from a 3x3 ring (no single-cell center), sizes 3, 7, 11, ... -> radius 1, 3, 5, ...
+	for cr := 0; cr < n; cr++ {
+		for cc := 0; cc < m; cc++ {
+			rad := 1
+			k := 3
+			if cr-rad >= 0 && cr+rad < n && cc-rad >= 0 && cc+rad < m {
+				r := cr - rad
+				c := cc - rad
+				border := getSum(r, c, r+k-1, c+k-1) - getSum(r+1, c+1, r+k-2, c+k-2)
+				sum := border - A[r+1][c]
+				if sum > ans {
+					ans = sum
+				}
+
+				rad += 2
+				k += 4
+
+				for cr-rad >= 0 && cr+rad < n && cc-rad >= 0 && cc+rad < m {
+					r := cr - rad
+					c := cc - rad
+					border := getSum(r, c, r+k-1, c+k-1) - getSum(r+1, c+1, r+k-2, c+k-2)
+					sum += border - A[r+1][c] + A[r+2][c+1]
+					if sum > ans {
+						ans = sum
+					}
+					rad += 2
+					k += 4
 				}
 			}
 		}
 	}
-	return maxSum
+
+	return ans
 }
 
 func runCase(bin string, n, m int, a [][]int64) error {

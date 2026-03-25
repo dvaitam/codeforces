@@ -31,11 +31,54 @@ func runBinary(path, input string) (string, error) {
 }
 
 func solveF(r *bufio.Reader) string {
-	var n, m int
-	if _, err := fmt.Fscan(r, &n, &m); err != nil {
+	var n int
+	var m int64
+	if _, err := fmt.Fscan(r, &n); err != nil {
 		return ""
 	}
-	return "0"
+	if _, err := fmt.Fscan(r, &m); err != nil {
+		return ""
+	}
+
+	if n == 1 {
+		return fmt.Sprintf("%d", int64(1)%m)
+	}
+
+	MOD := m
+
+	R := make([]int64, n+1)
+	SumM := make([]int64, 2*n+2)
+	PrefSum := make([]int64, 2*n+2)
+
+	pow2 := int64(2) % MOD
+
+	for length := 1; length <= n; length++ {
+		if length == 1 {
+			R[1] = 1 % MOD
+			SumM[2] = (SumM[2] + R[1]) % MOD
+		} else if length == 2 {
+			R[2] = 1 % MOD
+			SumM[4] = (SumM[4] + R[2]) % MOD
+		} else {
+			R[length] = pow2
+			pow2 = (pow2 * 2) % MOD
+
+			for L := 1; L < length; L++ {
+				K := length - 2*L - 1
+				curS := int64(0)
+				if K >= 1 {
+					curS = (R[L] * PrefSum[K]) % MOD
+				}
+				R[length] = (R[length] - curS + MOD) % MOD
+				SumM[length+L] = (SumM[length+L] + curS) % MOD
+			}
+			SumM[2*length] = (SumM[2*length] + R[length]) % MOD
+		}
+
+		PrefSum[length+1] = (PrefSum[length] + SumM[length+1]) % MOD
+	}
+
+	return fmt.Sprintf("%d", R[n]%MOD)
 }
 
 func generateCaseF(rng *rand.Rand) string {

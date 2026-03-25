@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"math/bits"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -25,26 +27,36 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
 	tests := buildTests()
-	input := serializeTests(tests)
 
-	expected, err := runAndParse(refBin, input, totalQueries(tests))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference failed: %v\n", err)
-		os.Exit(1)
-	}
+	// Compute expected answers using embedded solver
+	expected := solveAll(tests)
 
-	got, err := runAndParse(candidate, input, totalQueries(tests))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "candidate failed: %v\n", err)
-		os.Exit(1)
+	// Run candidate on each test case individually (the problem is single-case)
+	got := make([]int64, 0, len(expected))
+	for _, tc := range tests {
+		input := tc.s + "\n" + strconv.Itoa(len(tc.sets)) + "\n"
+		for _, c := range tc.sets {
+			input += c + "\n"
+		}
+		out, err := runProgram(candidate, input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "candidate failed: %v\n", err)
+			os.Exit(1)
+		}
+		fields := strings.Fields(out)
+		if len(fields) != len(tc.sets) {
+			fmt.Fprintf(os.Stderr, "expected %d answers, got %d (output: %q)\n", len(tc.sets), len(fields), out)
+			os.Exit(1)
+		}
+		for _, f := range fields {
+			val, err := strconv.ParseInt(f, 10, 64)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "invalid integer %q: %v\n", f, err)
+				os.Exit(1)
+			}
+			got = append(got, val)
+		}
 	}
 
 	idx := 0
@@ -61,33 +73,149 @@ func main() {
 	fmt.Println("All tests passed")
 }
 
-func buildReference() (string, error) {
-	const refName = "./ref_212B.bin"
-	cmd := exec.Command("go", "build", "-o", refName, "212B.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, string(out))
+// solveAll uses the embedded CF-accepted solver logic to compute all answers.
+func solveAll(tests []testCase) []int64 {
+	var results []int64
+	for _, tc := range tests {
+		results = append(results, solveOne(tc)...)
 	}
-	return refName, nil
+	return results
 }
 
-func runAndParse(target, input string, ansCount int) ([]int64, error) {
-	out, err := runProgram(target, input)
-	if err != nil {
-		return nil, err
+// solveOne is the embedded CF-accepted solver for 212B.
+func solveOne(tc testCase) []int64 {
+	s := []byte(tc.s)
+	n := len(s)
+	if n == 0 {
+		res := make([]int64, len(tc.sets))
+		return res
 	}
-	fields := strings.Fields(out)
-	if len(fields) != ansCount {
-		return nil, fmt.Errorf("expected %d answers, got %d (output: %q)", ansCount, len(fields), out)
+
+	numWords := (n + 63) / 64
+	bitsets := make([][]uint64, 26)
+	for c := 0; c < 26; c++ {
+		bitsets[c] = make([]uint64, numWords)
 	}
-	res := make([]int64, ansCount)
-	for i, f := range fields {
-		val, err := strconv.ParseInt(f, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("invalid integer %q: %v", f, err)
+	for i, b := range s {
+		c := b - 'a'
+		word := i / 64
+		bit := i % 64
+		bitsets[c][word] |= uint64(1) << bit
+	}
+
+	nextPos := make([][26]int32, n+1)
+	for c := 0; c < 26; c++ {
+		nextPos[n][c] = int32(n)
+	}
+	for i := n - 1; i >= 0; i-- {
+		nextPos[i] = nextPos[i+1]
+		nextPos[i][s[i]-'a'] = int32(i)
+	}
+
+	valid := make([]uint64, numWords)
+	charsInMask := make([]int, 0, 26)
+	memo := make(map[uint32]int)
+
+	results := make([]int64, len(tc.sets))
+
+	for qi, qstr := range tc.sets {
+		q := []byte(qstr)
+		maskC := uint32(0)
+		for _, b := range q {
+			if b >= 'a' && b <= 'z' {
+				maskC |= 1 << (b - 'a')
+			}
 		}
-		res[i] = val
+
+		if val, ok := memo[maskC]; ok {
+			results[qi] = int64(val)
+			continue
+		}
+
+		charsInMask = charsInMask[:0]
+		for c := 0; c < 26; c++ {
+			if (maskC & (1 << c)) != 0 {
+				charsInMask = append(charsInMask, c)
+			}
+		}
+		numChars := len(charsInMask)
+
+		for j := 0; j < numWords; j++ {
+			valid[j] = 0
+		}
+		for _, c := range charsInMask {
+			bc := bitsets[c]
+			for j := 0; j < numWords; j++ {
+				valid[j] |= bc[j]
+			}
+		}
+
+		if n%64 != 0 {
+			valid[numWords-1] &= (uint64(1) << (n % 64)) - 1
+		}
+
+		count := 0
+		inBlock := false
+		l := 0
+
+		for j := 0; j < numWords; j++ {
+			v := valid[j]
+			b := 0
+			for b < 64 {
+				if inBlock {
+					inv := (^v) & (^uint64(0) << b)
+					if inv == 0 {
+						break
+					}
+					tz := bits.TrailingZeros64(inv)
+					r := j*64 + tz - 1
+					if r-l+1 >= numChars {
+						ok := true
+						for _, c := range charsInMask {
+							if nextPos[l][c] > int32(r) {
+								ok = false
+								break
+							}
+						}
+						if ok {
+							count++
+						}
+					}
+					inBlock = false
+					b = tz + 1
+				} else {
+					rem := v & (^uint64(0) << b)
+					if rem == 0 {
+						break
+					}
+					tz := bits.TrailingZeros64(rem)
+					l = j*64 + tz
+					inBlock = true
+					b = tz + 1
+				}
+			}
+		}
+
+		if inBlock {
+			r := n - 1
+			if r-l+1 >= numChars {
+				ok := true
+				for _, c := range charsInMask {
+					if nextPos[l][c] > int32(r) {
+						ok = false
+						break
+					}
+				}
+				if ok {
+					count++
+				}
+			}
+		}
+
+		memo[maskC] = count
+		results[qi] = int64(count)
 	}
-	return res, nil
+	return results
 }
 
 func runProgram(target, input string) (string, error) {
@@ -152,31 +280,6 @@ func deterministicTests() []testCase {
 	}
 }
 
-func serializeTests(tests []testCase) string {
-	var sb strings.Builder
-	sb.WriteString(strconv.Itoa(len(tests)))
-	sb.WriteByte('\n')
-	for _, tc := range tests {
-		sb.WriteString(tc.s)
-		sb.WriteByte('\n')
-		sb.WriteString(strconv.Itoa(len(tc.sets)))
-		sb.WriteByte('\n')
-		for _, c := range tc.sets {
-			sb.WriteString(c)
-			sb.WriteByte('\n')
-		}
-	}
-	return sb.String()
-}
-
-func totalQueries(tests []testCase) int {
-	total := 0
-	for _, tc := range tests {
-		total += len(tc.sets)
-	}
-	return total
-}
-
 func totalStringLen(tests []testCase) int {
 	total := 0
 	for _, tc := range tests {
@@ -184,3 +287,6 @@ func totalStringLen(tests []testCase) int {
 	}
 	return total
 }
+
+// suppress unused import
+var _ = bufio.NewReader

@@ -1,44 +1,45 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
-	"io"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
 
 const K = 45
 
-type pair struct {
-	val, idx int
-}
-
-func solveE(r io.Reader) string {
-	reader := bufio.NewReader(r)
-	var n int
-	if _, err := fmt.Fscan(reader, &n); err != nil {
-		return ""
+func solveE(input string) float64 {
+	fields := strings.Fields(input)
+	idx := 0
+	n, _ := strconv.Atoi(fields[idx]); idx++
+	if n == 0 {
+		return 0.0
 	}
 	a := make([]int, n+2)
 	for i := 1; i <= n; i++ {
-		fmt.Fscan(reader, &a[i])
+		a[i], _ = strconv.Atoi(fields[idx]); idx++
 	}
+
 	p2 := make([]float64, K)
 	p2[0] = 1.0
 	for i := 1; i < K; i++ {
 		p2[i] = p2[i-1] * 2.0
 	}
+
+	type pair struct{ val, idx int }
 	v := make([]pair, n)
 	for i := 1; i <= n; i++ {
 		v[i-1] = pair{a[i], i}
 	}
 	sort.Slice(v, func(i, j int) bool { return v[i].val < v[j].val })
+
 	tlft := make([]int, n+2)
 	trgt := make([]int, n+2)
 	for i := 0; i <= n+1; i++ {
@@ -47,6 +48,7 @@ func solveE(r io.Reader) string {
 	}
 	tlft[0] = 0
 	trgt[n] = n + 1
+
 	ans := 0.0
 	for _, pr := range v {
 		i := pr.idx
@@ -72,11 +74,10 @@ func solveE(r io.Reader) string {
 		tlft[right] = left
 		ans += tl * tr * float64(a[i]) * 0.5
 	}
-	result := ans / (float64(n) * float64(n))
-	return fmt.Sprintf("%.12f\n", result)
+	return ans / (float64(n) * float64(n))
 }
 
-func runCaseE(bin, in, expect string) error {
+func runCaseE(bin, in string, expected float64) error {
 	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(in)
 	var out bytes.Buffer
@@ -85,10 +86,13 @@ func runCaseE(bin, in, expect string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	got := strings.TrimSpace(out.String())
-	exp := strings.TrimSpace(expect)
-	if got != exp {
-		return fmt.Errorf("expected %q got %q", exp, got)
+	gotStr := strings.TrimSpace(out.String())
+	got, err := strconv.ParseFloat(gotStr, 64)
+	if err != nil {
+		return fmt.Errorf("cannot parse output %q as float: %v", gotStr, err)
+	}
+	if math.Abs(got-expected) > 1e-6 {
+		return fmt.Errorf("expected %.12f got %.12f (diff=%.12e)", expected, got, math.Abs(got-expected))
 	}
 	return nil
 }
@@ -116,8 +120,8 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		in := genCaseE(rng)
-		expect := solveE(strings.NewReader(in))
-		if err := runCaseE(bin, in, expect); err != nil {
+		expected := solveE(in)
+		if err := runCaseE(bin, in, expected); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}

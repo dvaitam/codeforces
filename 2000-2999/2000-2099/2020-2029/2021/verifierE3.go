@@ -1,19 +1,20 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
 
-type edge struct {
+type edgeT struct {
 	u, v int
 	w    int64
 }
@@ -21,7 +22,7 @@ type edge struct {
 type testCase struct {
 	n, m, p int
 	req     []int
-	edges   []edge
+	edges   []edgeT
 }
 
 func main() {
@@ -31,21 +32,11 @@ func main() {
 	}
 	candidate := os.Args[len(os.Args)-1]
 
-	refBin, cleanup, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
 	tests := generateTests()
 	input := buildInput(tests)
 
-	refOut, err := runProgram(refBin, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference failed: %v\n%s", err, refOut)
-		os.Exit(1)
-	}
+	refOut := solveAll(input)
+
 	candOut, err := runCandidate(candidate, input)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "candidate failed: %v\n%s", err, candOut)
@@ -60,30 +51,189 @@ func main() {
 	fmt.Printf("All %d tests passed.\n", len(tests))
 }
 
-func buildReference() (string, func(), error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", nil, fmt.Errorf("cannot locate verifier directory")
+// solveAll implements the correct reference solver (Kruskal reconstruction tree approach).
+func solveAll(input string) string {
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024*10)
+	scanner.Split(bufio.ScanWords)
+
+	readInt := func() int {
+		scanner.Scan()
+		b := scanner.Bytes()
+		res := 0
+		for _, v := range b {
+			res = res*10 + int(v-'0')
+		}
+		return res
 	}
-	dir := filepath.Dir(file)
-	tmpDir, err := os.MkdirTemp("", "ref-2021E3-")
-	if err != nil {
-		return "", nil, err
+
+	scanner.Scan()
+	b := scanner.Bytes()
+	t := 0
+	for _, v := range b {
+		t = t*10 + int(v-'0')
 	}
-	outPath := filepath.Join(tmpDir, "oracle2021E3")
-	cmd := exec.Command("go", "build", "-o", outPath, "2021E3.go")
-	cmd.Dir = dir
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
-	if err := cmd.Run(); err != nil {
-		os.RemoveAll(tmpDir)
-		return "", nil, fmt.Errorf("%v\n%s", err, buf.String())
+
+	var out bytes.Buffer
+	bw := bufio.NewWriter(&out)
+
+	for tc := 0; tc < t; tc++ {
+		n := readInt()
+		m := readInt()
+		p := readInt()
+
+		S := make([]int, p)
+		for i := 0; i < p; i++ {
+			S[i] = readInt()
+		}
+
+		type Edge struct{ u, v, w int }
+		edges := make([]Edge, m)
+		for i := 0; i < m; i++ {
+			edges[i].u = readInt()
+			edges[i].v = readInt()
+			edges[i].w = readInt()
+		}
+
+		sort.Slice(edges, func(i, j int) bool {
+			return edges[i].w < edges[j].w
+		})
+
+		parent := make([]int, 2*n)
+		for i := 1; i < 2*n; i++ {
+			parent[i] = i
+		}
+
+		find := func(i int) int {
+			root := i
+			for root != parent[root] {
+				root = parent[root]
+			}
+			curr := i
+			for curr != root {
+				nxt := parent[curr]
+				parent[curr] = root
+				curr = nxt
+			}
+			return root
+		}
+
+		krt_parent := make([]int, 2*n)
+		left := make([]int, 2*n)
+		right := make([]int, 2*n)
+		W := make([]int64, 2*n)
+
+		node_cnt := n
+		for _, e := range edges {
+			r1 := find(e.u)
+			r2 := find(e.v)
+			if r1 != r2 {
+				node_cnt++
+				W[node_cnt] = int64(e.w)
+				krt_parent[r1] = node_cnt
+				krt_parent[r2] = node_cnt
+				left[node_cnt] = r1
+				right[node_cnt] = r2
+				parent[r1] = node_cnt
+				parent[r2] = node_cnt
+			}
+		}
+
+		c := make([]int64, 2*n)
+		for _, s := range S {
+			c[s] = 1
+		}
+
+		for i := 1; i < node_cnt; i++ {
+			p_node := krt_parent[i]
+			c[p_node] += c[i]
+		}
+
+		weight := make([]int64, 2*n)
+		for i := 1; i < node_cnt; i++ {
+			p_node := krt_parent[i]
+			weight[i] = (W[p_node] - W[i]) * c[i]
+		}
+
+		dp := make([]int64, 2*n)
+		heavy := make([]int, 2*n)
+
+		for i := 1; i <= node_cnt; i++ {
+			if left[i] != 0 {
+				dp[i] = -1
+
+				v := left[i]
+				val := dp[v] + weight[v]
+				if val > dp[i] {
+					dp[i] = val
+					heavy[i] = v
+				}
+
+				v = right[i]
+				val = dp[v] + weight[v]
+				if val > dp[i] {
+					dp[i] = val
+					heavy[i] = v
+				}
+			}
+		}
+
+		is_light := make([]bool, 2*n)
+		is_light[node_cnt] = true
+
+		for i := node_cnt; i >= 1; i-- {
+			if left[i] != 0 {
+				h := heavy[i]
+
+				v := left[i]
+				if v == h {
+					is_light[v] = false
+				} else {
+					is_light[v] = true
+				}
+
+				v = right[i]
+				if v == h {
+					is_light[v] = false
+				} else {
+					is_light[v] = true
+				}
+			}
+		}
+
+		paths := make([]int64, 0, n)
+		for i := 1; i <= node_cnt; i++ {
+			if is_light[i] {
+				var pw int64
+				if i == node_cnt {
+					pw = dp[i]
+				} else {
+					pw = dp[i] + weight[i]
+				}
+				paths = append(paths, pw)
+			}
+		}
+
+		sort.Slice(paths, func(i, j int) bool {
+			return paths[i] > paths[j]
+		})
+
+		ans := int64(p) * W[node_cnt]
+		for k := 1; k <= n; k++ {
+			if k-1 < len(paths) {
+				ans -= paths[k-1]
+			}
+			bw.WriteString(strconv.FormatInt(ans, 10))
+			if k == n {
+				bw.WriteByte('\n')
+			} else {
+				bw.WriteByte(' ')
+			}
+		}
 	}
-	cleanup := func() {
-		os.RemoveAll(tmpDir)
-	}
-	return outPath, cleanup, nil
+
+	bw.Flush()
+	return out.String()
 }
 
 func commandFor(path string) *exec.Cmd {
@@ -99,11 +249,6 @@ func commandFor(path string) *exec.Cmd {
 
 func runCandidate(path, input string) (string, error) {
 	cmd := commandFor(path)
-	return runWithInput(cmd, input)
-}
-
-func runProgram(path, input string) (string, error) {
-	cmd := exec.Command(path)
 	return runWithInput(cmd, input)
 }
 
@@ -140,9 +285,9 @@ func generateTests() []testCase {
 	}
 
 	// Small deterministic cases
-	add(buildPathTest(2, []edge{{1, 2, 5}}, []int{1}))
-	add(buildPathTest(3, []edge{{1, 2, 1}, {2, 3, 2}}, []int{1, 3}))
-	add(buildPathTest(4, []edge{{1, 2, 7}, {2, 3, 3}, {3, 4, 4}}, []int{2, 4}))
+	add(buildPathTest(2, []edgeT{{1, 2, 5}}, []int{1}))
+	add(buildPathTest(3, []edgeT{{1, 2, 1}, {2, 3, 2}}, []int{1, 3}))
+	add(buildPathTest(4, []edgeT{{1, 2, 7}, {2, 3, 3}, {3, 4, 4}}, []int{2, 4}))
 
 	// Random connected graphs
 	for len(tests) < 40 && totalN < 180000 && totalM < 180000 {
@@ -168,21 +313,20 @@ func generateTests() []testCase {
 	return tests
 }
 
-func buildPathTest(n int, edges []edge, req []int) testCase {
+func buildPathTest(n int, edges []edgeT, req []int) testCase {
 	return testCase{
 		n:     n,
 		m:     len(edges),
 		p:     len(req),
 		req:   append([]int(nil), req...),
-		edges: append([]edge(nil), edges...),
+		edges: append([]edgeT(nil), edges...),
 	}
 }
 
-func generateConnectedGraph(rng *rand.Rand, n, m int) []edge {
-	edges := make([]edge, 0, m)
-	// Start with a tree (chain) to ensure connectivity
+func generateConnectedGraph(rng *rand.Rand, n, m int) []edgeT {
+	edges := make([]edgeT, 0, m)
 	for i := 1; i < n; i++ {
-		edges = append(edges, edge{u: i, v: i + 1, w: rngWeight(rng)})
+		edges = append(edges, edgeT{u: i, v: i + 1, w: rngWeight(rng)})
 	}
 	seen := make(map[int]struct{}, m)
 	for _, e := range edges {
@@ -203,7 +347,7 @@ func generateConnectedGraph(rng *rand.Rand, n, m int) []edge {
 			continue
 		}
 		seen[key] = struct{}{}
-		edges = append(edges, edge{u: u, v: v, w: rngWeight(rng)})
+		edges = append(edges, edgeT{u: u, v: v, w: rngWeight(rng)})
 	}
 	return edges
 }

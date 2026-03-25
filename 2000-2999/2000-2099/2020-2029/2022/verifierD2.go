@@ -1,17 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
-
-const refSource = "./2022D2.go"
 
 type testCase struct {
 	n     int
@@ -25,41 +21,24 @@ func main() {
 	}
 	candidate := os.Args[len(os.Args)-1]
 
-	refBin, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
 	tests := generateTests()
-	input := buildInput(tests)
 
-	refOut, err := runProgram(refBin, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference failed: %v\noutput:\n%s\n", err, refOut)
-		os.Exit(1)
-	}
-	candOut, err := runCandidate(candidate, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "candidate failed: %v\noutput:\n%s\n", err, candOut)
-		os.Exit(1)
-	}
-
-	expect, err := parseOutputs(refOut, len(tests))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not parse reference output: %v\n", err)
-		os.Exit(1)
-	}
-	got, err := parseOutputs(candOut, len(tests))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not parse candidate output: %v\n", err)
-		os.Exit(1)
-	}
-
+	// Compute expected answers directly
+	expect := make([]int, len(tests))
 	for i, tc := range tests {
-		if expect[i] != got[i] {
-			fmt.Fprintf(os.Stderr, "wrong answer on test %d: expected %d got %d (impostor at %d)\n", i+1, expect[i], got[i], impostorIndex(tc.roles))
+		expect[i] = impostorIndex(tc.roles)
+	}
+
+	// Run candidate with an interaction simulator
+	candAnswers, err := runInteractive(candidate, tests)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "candidate failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	for i := range tests {
+		if expect[i] != candAnswers[i] {
+			fmt.Fprintf(os.Stderr, "wrong answer on test %d: expected %d got %d\n", i+1, expect[i], candAnswers[i])
 			os.Exit(1)
 		}
 	}
@@ -67,70 +46,155 @@ func main() {
 	fmt.Printf("All %d tests passed.\n", len(tests))
 }
 
-func buildReference() (string, error) {
-	tmp, err := os.CreateTemp("", "2022D2-ref-*")
+// runInteractive simulates the interactive judge for the candidate binary.
+// The candidate reads t, then for each test reads n, then issues "? u v" queries
+// and finally "! ans".
+func runInteractive(binPath string, tests []testCase) ([]int, error) {
+	cmd := exec.Command(binPath)
+
+	stdinPipe, err := cmd.StdinPipe()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	tmp.Close()
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, out.String())
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
 	}
-	return tmp.Name(), nil
-}
+	cmd.Stderr = os.Stderr
 
-func runCandidate(path, input string) (string, error) {
-	cmd := commandFor(path)
-	return runWithInput(cmd, input)
-}
-
-func runProgram(path, input string) (string, error) {
-	cmd := exec.Command(path)
-	return runWithInput(cmd, input)
-}
-
-func commandFor(path string) *exec.Cmd {
-	switch filepath.Ext(path) {
-	case ".go":
-		return exec.Command("go", "run", path)
-	case ".py":
-		return exec.Command("python3", path)
-	default:
-		return exec.Command(path)
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("start: %v", err)
 	}
-}
 
-func runWithInput(cmd *exec.Cmd, input string) (string, error) {
-	cmd.Stdin = strings.NewReader(input)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	return out.String(), err
-}
+	answers := make([]int, len(tests))
+	scanner := newLineScanner(stdoutPipe)
 
-func parseOutputs(output string, t int) ([]int, error) {
-	tokens := strings.Fields(output)
-	if len(tokens) < t {
-		return nil, fmt.Errorf("expected %d outputs, got %d", t, len(tokens))
-	}
-	if len(tokens) > t {
-		return nil, fmt.Errorf("extra output detected starting at token %q", tokens[t])
-	}
-	ans := make([]int, t)
-	for i := 0; i < t; i++ {
-		val, err := strconv.Atoi(tokens[i])
-		if err != nil {
-			return nil, fmt.Errorf("token %q is not integer", tokens[i])
+	// Write number of test cases
+	fmt.Fprintf(stdinPipe, "%d\n", len(tests))
+
+	for ti, tc := range tests {
+		// Write n
+		fmt.Fprintf(stdinPipe, "%d\n", tc.n)
+
+		// Now interact: read lines from candidate
+		for {
+			line, err := scanner.ReadLine()
+			if err != nil {
+				stdinPipe.Close()
+				cmd.Wait()
+				return nil, fmt.Errorf("test %d: read error: %v", ti+1, err)
+			}
+			line = strings.TrimSpace(line)
+			if len(line) == 0 {
+				continue
+			}
+
+			if line[0] == '!' {
+				// Final answer
+				parts := strings.Fields(line)
+				if len(parts) < 2 {
+					stdinPipe.Close()
+					cmd.Wait()
+					return nil, fmt.Errorf("test %d: bad answer line: %s", ti+1, line)
+				}
+				val, err := strconv.Atoi(parts[1])
+				if err != nil {
+					stdinPipe.Close()
+					cmd.Wait()
+					return nil, fmt.Errorf("test %d: bad answer value: %s", ti+1, parts[1])
+				}
+				answers[ti] = val
+				break
+			} else if line[0] == '?' {
+				// Query: ? u v
+				// u asks about v: "are you and v the same type?"
+				// Crewmate answers truthfully, impostor lies
+				parts := strings.Fields(line)
+				if len(parts) < 3 {
+					stdinPipe.Close()
+					cmd.Wait()
+					return nil, fmt.Errorf("test %d: bad query: %s", ti+1, line)
+				}
+				u, _ := strconv.Atoi(parts[1])
+				v, _ := strconv.Atoi(parts[2])
+
+				uRole := tc.roles[u-1] // 0 or 1 for crewmate, -1 for impostor
+				vRole := tc.roles[v-1]
+
+				// Compute truth: are u and v the same type?
+				// For the impostor, we assign them an effective color of 0
+				uColor := uRole
+				if uColor == -1 {
+					uColor = 0
+				}
+				vColor := vRole
+				if vColor == -1 {
+					vColor = 0
+				}
+
+				// Truth: 0 if same color, 1 if different
+				truth := 0
+				if uColor != vColor {
+					truth = 1
+				}
+
+				response := truth
+				if uRole == -1 {
+					// Impostor lies
+					response = 1 - truth
+				}
+
+				fmt.Fprintf(stdinPipe, "%d\n", response)
+			} else {
+				stdinPipe.Close()
+				cmd.Wait()
+				return nil, fmt.Errorf("test %d: unexpected output: %s", ti+1, line)
+			}
 		}
-		ans[i] = val
 	}
-	return ans, nil
+
+	stdinPipe.Close()
+	cmd.Wait()
+	return answers, nil
+}
+
+type lineScanner struct {
+	buf  []byte
+	pos  int
+	r    interface{ Read([]byte) (int, error) }
+	data []byte
+}
+
+func newLineScanner(r interface{ Read([]byte) (int, error) }) *lineScanner {
+	return &lineScanner{r: r, buf: make([]byte, 4096)}
+}
+
+func (s *lineScanner) ReadLine() (string, error) {
+	for {
+		for i := s.pos; i < len(s.data); i++ {
+			if s.data[i] == '\n' {
+				line := string(s.data[s.pos:i])
+				s.pos = i + 1
+				return line, nil
+			}
+		}
+		if s.pos > 0 {
+			s.data = append(s.data[:0], s.data[s.pos:]...)
+			s.pos = 0
+		}
+		n, err := s.r.Read(s.buf)
+		if n > 0 {
+			s.data = append(s.data, s.buf[:n]...)
+		}
+		if err != nil {
+			if len(s.data) > s.pos {
+				line := string(s.data[s.pos:])
+				s.pos = len(s.data)
+				return line, nil
+			}
+			return "", err
+		}
+	}
 }
 
 func generateTests() []testCase {
@@ -188,22 +252,6 @@ func makeCase(roles []int) testCase {
 	cp := make([]int, len(roles))
 	copy(cp, roles)
 	return testCase{n: len(cp), roles: cp}
-}
-
-func buildInput(tests []testCase) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "%d\n", len(tests))
-	for _, tc := range tests {
-		fmt.Fprintf(&b, "%d manual\n", tc.n)
-		for i, v := range tc.roles {
-			if i > 0 {
-				b.WriteByte(' ')
-			}
-			fmt.Fprintf(&b, "%d", v)
-		}
-		b.WriteByte('\n')
-	}
-	return b.String()
 }
 
 func impostorIndex(arr []int) int {

@@ -10,11 +10,6 @@ import (
 	"time"
 )
 
-type pair struct {
-	g int
-	l int
-}
-
 func gcd(a, b int) int {
 	for b != 0 {
 		a, b = b, a%b
@@ -25,38 +20,57 @@ func gcd(a, b int) int {
 	return a
 }
 
+type pair struct {
+	g int
+	l int
+}
+
+// solveD uses the correct greedy approach:
+// We maintain segments of distinct gcd values with their leftmost starting index.
+// A "bad" subarray [l..r] has gcd(a[l..r]) == r-l+1.
+// We greedily remove (increment answer) whenever a bad subarray is found
+// that starts after the last cleared position.
 func solveD(arr []int) []int {
-	const BIG = 1000000007
-	segs := []pair{}
+	n := len(arr)
 	ans := 0
-	res := make([]int, len(arr))
-	for i, x := range arr {
-		newSegs := []pair{{x, i}}
-		for _, p := range segs {
-			g := gcd(p.g, x)
-			last := &newSegs[len(newSegs)-1]
-			if last.g == g {
-				if p.l < last.l {
-					last.l = p.l
-				}
-			} else {
-				newSegs = append(newSegs, pair{g, p.l})
+	lastClear := 0
+	var merged []pair
+	res := make([]int, n)
+
+	for r := 1; r <= n; r++ {
+		val := arr[r-1]
+		var nextMerged []pair
+		nextMerged = append(nextMerged, pair{val, r})
+
+		for _, p := range merged {
+			ng := gcd(p.g, val)
+			if nextMerged[len(nextMerged)-1].g != ng {
+				nextMerged = append(nextMerged, pair{ng, p.l})
 			}
 		}
-		bad := false
-		for _, p := range newSegs {
-			if p.g == i-p.l+1 {
-				bad = true
+		merged = nextMerged
+
+		matched := false
+		for k, p := range merged {
+			lMax := p.l
+			lMin := lastClear + 1
+			if k+1 < len(merged) {
+				lMin = merged[k+1].l + 1
+			}
+
+			if p.g >= r-lMax+1 && p.g <= r-lMin+1 {
+				matched = true
 				break
 			}
 		}
-		if bad {
+
+		if matched {
 			ans++
-			segs = []pair{{BIG, i}}
-		} else {
-			segs = newSegs
+			merged = merged[:0]
+			lastClear = r
 		}
-		res[i] = ans
+
+		res[r-1] = ans
 	}
 	return res
 }

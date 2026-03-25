@@ -7,30 +7,12 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 )
 
-const referenceSolutionRel = "2000-2999/2000-2099/2020-2029/2025/2025F.go"
-
-var referenceSolutionPath string
-
-func init() {
-	referenceSolutionPath = referenceSolutionRel
-	if _, file, _, ok := runtime.Caller(0); ok {
-		dir := filepath.Dir(file)
-		candidate := filepath.Join(dir, "2025F.go")
-		if _, err := os.Stat(candidate); err == nil {
-			referenceSolutionPath = candidate
-			return
-		}
-	}
-	if abs, err := filepath.Abs(referenceSolutionRel); err == nil {
-		if _, err := os.Stat(abs); err == nil {
-			referenceSolutionPath = abs
-		}
-	}
+type Edge struct {
+	to int
+	id int
 }
 
 type query struct{ x, y int }
@@ -127,32 +109,6 @@ func runProgram(path, input string) (string, error) {
 	return out.String(), err
 }
 
-func buildReferenceBinary() (string, func(), error) {
-	if referenceSolutionPath == "" {
-		return "", nil, fmt.Errorf("reference solution path not set")
-	}
-	if _, err := os.Stat(referenceSolutionPath); err != nil {
-		return "", nil, fmt.Errorf("reference solution not found: %v", err)
-	}
-	tmpDir, err := os.MkdirTemp("", "2025F-ref")
-	if err != nil {
-		return "", nil, err
-	}
-	binPath := filepath.Join(tmpDir, "ref_2025F")
-	cmd := exec.Command("go", "build", "-o", binPath, referenceSolutionPath)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		os.RemoveAll(tmpDir)
-		return "", nil, fmt.Errorf("failed to build reference: %v\n%s", err, out.String())
-	}
-	cleanup := func() {
-		os.RemoveAll(tmpDir)
-	}
-	return binPath, cleanup, nil
-}
-
 func parseOperations(output string, total int) ([]string, error) {
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	scanner.Split(bufio.ScanWords)
@@ -209,6 +165,126 @@ func simulate(n int, queries []query, ops []string) (int64, error) {
 	return sum, nil
 }
 
+// solveAllRef is the embedded correct reference solver for 2025F.
+// It reads multi-test-case input (1-indexed vertices) and produces
+// one "x+"/"x-"/"y+"/"y-" per query line.
+func solveAllRef(input string) string {
+	reader := bufio.NewReaderSize(strings.NewReader(input), 64*1024)
+	var outBuf bytes.Buffer
+	writer := bufio.NewWriterSize(&outBuf, 64*1024)
+
+	readInt := func() int {
+		var n int
+		var c byte
+		for {
+			c, _ = reader.ReadByte()
+			if c >= '0' && c <= '9' {
+				break
+			}
+		}
+		for {
+			n = n*10 + int(c-'0')
+			c, _ = reader.ReadByte()
+			if c < '0' || c > '9' {
+				break
+			}
+		}
+		return n
+	}
+
+	T := readInt()
+	for ; T > 0; T-- {
+		n := readInt()
+		q := readInt()
+
+		x := make([]int, q+1)
+		y := make([]int, q+1)
+		adj := make([][]Edge, n+1)
+
+		for i := 1; i <= q; i++ {
+			x[i] = readInt()
+			y[i] = readInt()
+			adj[x[i]] = append(adj[x[i]], Edge{y[i], i})
+			adj[y[i]] = append(adj[y[i]], Edge{x[i], i})
+		}
+
+		visNode := make([]bool, n+1)
+		visEdge := make([]bool, q+1)
+		indeg := make([]int, n+1)
+		assign := make([]int, q+1)
+
+		var dfs func(u, p, edgeFromParent int)
+		dfs = func(u, p, edgeFromParent int) {
+			visNode[u] = true
+			for _, edge := range adj[u] {
+				if edge.id == edgeFromParent {
+					continue
+				}
+				if visEdge[edge.id] {
+					continue
+				}
+				visEdge[edge.id] = true
+				v := edge.to
+				if visNode[v] {
+					assign[edge.id] = v
+					indeg[v]++
+				} else {
+					dfs(v, u, edge.id)
+				}
+			}
+			if p != 0 {
+				if indeg[u]%2 != 0 {
+					assign[edgeFromParent] = u
+					indeg[u]++
+				} else {
+					assign[edgeFromParent] = p
+					indeg[p]++
+				}
+			}
+		}
+
+		for i := 1; i <= n; i++ {
+			if !visNode[i] {
+				dfs(i, 0, 0)
+			}
+		}
+
+		ansChar1 := make([]byte, q+1)
+		ansChar2 := make([]byte, q+1)
+		assignedEdges := make([][]int, n+1)
+
+		for i := 1; i <= q; i++ {
+			v := assign[i]
+			assignedEdges[v] = append(assignedEdges[v], i)
+		}
+
+		for v := 1; v <= n; v++ {
+			for i, edgeIdx := range assignedEdges[v] {
+				if i%2 == 0 {
+					ansChar2[edgeIdx] = '+'
+				} else {
+					ansChar2[edgeIdx] = '-'
+				}
+
+				if x[edgeIdx] == v {
+					ansChar1[edgeIdx] = 'x'
+				} else {
+					ansChar1[edgeIdx] = 'y'
+				}
+			}
+		}
+
+		for i := 1; i <= q; i++ {
+			writer.WriteByte(ansChar1[i])
+			writer.WriteByte(ansChar2[i])
+			writer.WriteByte('\n')
+		}
+	}
+
+	writer.Flush()
+	return outBuf.String()
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierF.go /path/to/binary")
@@ -224,18 +300,7 @@ func main() {
 		totalOps += tc.q
 	}
 
-	refBin, cleanup, err := buildReferenceBinary()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
-	refOut, err := runProgram(refBin, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference runtime error: %v\noutput:\n%s\n", err, refOut)
-		os.Exit(1)
-	}
+	refOut := solveAllRef(input)
 	refOps, err := parseOperations(refOut, totalOps)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to parse reference output: %v\noutput:\n%s\n", err, refOut)

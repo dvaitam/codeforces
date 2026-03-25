@@ -29,74 +29,145 @@ func genTestsC() []testCaseC {
 	return tests
 }
 
-// solver copied from 671C.go
+// ---------- embedded correct solver (from cf_t25_671_C.go) ----------
+
+type stNode struct {
+	sum  int64
+	max  int
+	min  int
+	lazy int
+}
+
+var stTree []stNode
+
+func stMax(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func stMin(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func stApplySet(node, l, r, X int) {
+	stTree[node].sum = int64(X) * int64(r-l+1)
+	stTree[node].max = X
+	stTree[node].min = X
+	stTree[node].lazy = X
+}
+
+func stPushDown(node, l, r int) {
+	if stTree[node].lazy != -1 {
+		mid := (l + r) / 2
+		stApplySet(node*2, l, mid, stTree[node].lazy)
+		stApplySet(node*2+1, mid+1, r, stTree[node].lazy)
+		stTree[node].lazy = -1
+	}
+}
+
+func stPullUp(node int) {
+	stTree[node].sum = stTree[node*2].sum + stTree[node*2+1].sum
+	stTree[node].max = stMax(stTree[node*2].max, stTree[node*2+1].max)
+	stTree[node].min = stMin(stTree[node*2].min, stTree[node*2+1].min)
+}
+
+func stUpdateMin(node, l, r, ql, qr, X int) {
+	if ql > qr {
+		return
+	}
+	if l > qr || r < ql || stTree[node].max <= X {
+		return
+	}
+	if ql <= l && r <= qr && stTree[node].min >= X {
+		stApplySet(node, l, r, X)
+		return
+	}
+	stPushDown(node, l, r)
+	mid := (l + r) / 2
+	stUpdateMin(node*2, l, mid, ql, qr, X)
+	stUpdateMin(node*2+1, mid+1, r, ql, qr, X)
+	stPullUp(node)
+}
+
+func stBuild(node, l, r int) {
+	stTree[node].lazy = -1
+	if l == r {
+		stTree[node].sum = int64(l)
+		stTree[node].max = l
+		stTree[node].min = l
+		return
+	}
+	mid := (l + r) / 2
+	stBuild(node*2, l, mid)
+	stBuild(node*2+1, mid+1, r)
+	stPullUp(node)
+}
+
 func solveC(tc testCaseC) int64 {
 	n := tc.n
 	arr := tc.arr
-	maxV := 0
+	maxA := 0
 	for _, v := range arr {
-		if v > maxV {
-			maxV = v
+		if v > maxA {
+			maxA = v
 		}
 	}
-	first1 := make([]int, maxV+1)
-	first2 := make([]int, maxV+1)
-	last1 := make([]int, maxV+1)
-	last2 := make([]int, maxV+1)
-	cnt := make([]int, maxV+1)
-	for i := 0; i <= maxV; i++ {
-		first1[i] = n + 1
-		first2[i] = n + 1
+
+	pos := make([]int, maxA+1)
+	for i := 0; i < n; i++ {
+		pos[arr[i]] = i + 1
 	}
-	for idx, v := range arr {
-		pos := idx + 1
-		for d := 1; d*d <= v; d++ {
-			if v%d == 0 {
-				update := func(div int) {
-					cnt[div]++
-					if pos < first1[div] {
-						first2[div] = first1[div]
-						first1[div] = pos
-					} else if pos < first2[div] {
-						first2[div] = pos
-					}
-					if pos > last1[div] {
-						last2[div] = last1[div]
-						last1[div] = pos
-					} else if pos > last2[div] {
-						last2[div] = pos
-					}
+
+	stTree = make([]stNode, 4*n+1)
+	if n > 0 {
+		stBuild(1, 1, n)
+	}
+
+	var totalAns int64
+
+	for g := maxA; g >= 1; g-- {
+		p1, p2 := n+1, n+1
+		pk_1, pk := 0, 0
+
+		for m := 1; m*g <= maxA; m++ {
+			p := pos[m*g]
+			if p != 0 {
+				if p < p1 {
+					p2 = p1
+					p1 = p
+				} else if p < p2 {
+					p2 = p
 				}
-				update(d)
-				if d*d != v {
-					update(v / d)
+				if p > pk {
+					pk_1 = pk
+					pk = p
+				} else if p > pk_1 {
+					pk_1 = p
 				}
 			}
 		}
-	}
-	total := int64(n) * int64(n+1) / 2
-	S := make([]int64, maxV+1)
-	for g := 1; g <= maxV; g++ {
-		if cnt[g] >= 2 {
-			c := int64(first2[g])*(int64(n)-int64(last1[g])+1) + int64(first1[g])*(int64(last1[g])-int64(last2[g]))
-			S[g] = total - c
+
+		if pk_1 != 0 {
+			stUpdateMin(1, 1, n, 1, pk_1-1, 0)
+			stUpdateMin(1, 1, n, pk_1, pk-1, p1)
+			stUpdateMin(1, 1, n, pk, n, p2)
+		}
+
+		if n > 0 {
+			U := stTree[1].sum
+			totalAns += int64(n)*int64(n+1)/2 - U
 		}
 	}
-	F := make([]int64, maxV+1)
-	var ans int64
-	for g := maxV; g >= 1; g-- {
-		val := S[g]
-		for m := g * 2; m <= maxV; m += g {
-			val -= F[m]
-		}
-		if val < 0 {
-			val = 0
-		}
-		F[g] = val
-		ans += val * int64(g)
-	}
-	return ans
+
+	return totalAns
 }
+
+// ---------- end embedded solver ----------
 
 func run(bin, input string) (string, error) {
 	var cmd *exec.Cmd

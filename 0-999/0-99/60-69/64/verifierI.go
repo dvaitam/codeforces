@@ -104,7 +104,6 @@ func generateCase(rng *rand.Rand) (string, []string) {
 	}
 	sorted := sortTable(headers, rules, append([]row(nil), rows...))
 	var expected []string
-	expected = append(expected, strings.Join(headers, " "))
 	for _, r := range sorted {
 		expected = append(expected, strings.Join(r.cells, " "))
 	}
@@ -127,7 +126,7 @@ func main() {
 		}
 		outLines := strings.Split(strings.TrimSpace(out), "\n")
 		if len(outLines) != len(expectedLines) {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %d lines got %d\ninput:\n%s", i+1, len(expectedLines), len(outLines), input)
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %d lines got %d\ninput:\n%sexpected:\n%s\ngot:\n%s\n", i+1, len(expectedLines), len(outLines), input, strings.Join(expectedLines, "\n"), strings.Join(outLines, "\n"))
 			os.Exit(1)
 		}
 		for j := range expectedLines {

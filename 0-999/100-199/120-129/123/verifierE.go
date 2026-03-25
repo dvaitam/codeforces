@@ -3,14 +3,16 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func solveE(n int, edges [][2]int, stVals, enVals []int64) string {
+func solveE(n int, edges [][2]int, stVals, enVals []int64) float64 {
 	adj := make([][]int, n+1)
 	for _, e := range edges {
 		u, v := e[0], e[1]
@@ -58,8 +60,7 @@ func solveE(n int, edges [][2]int, stVals, enVals []int64) string {
 		}
 		ans += float64(sst-stSum[x]) * float64(int64(n)-size[x]) * float64(en[x])
 	}
-	res := ans / float64(sst) / float64(sen)
-	return fmt.Sprintf("%.11f", res)
+	return ans / float64(sst) / float64(sen)
 }
 
 func run(bin, input string) (string, error) {
@@ -117,8 +118,14 @@ func main() {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if got != expect {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, expect, got, input)
+		gotVal, perr := strconv.ParseFloat(got, 64)
+		if perr != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: could not parse output %q\ninput:\n%s", i+1, got, input)
+			os.Exit(1)
+		}
+		diff := math.Abs(gotVal - expect)
+		if diff > 1e-6 && diff > 1e-6*math.Abs(expect) {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %.15f got %.15f\ninput:\n%s", i+1, expect, gotVal, input)
 			os.Exit(1)
 		}
 	}

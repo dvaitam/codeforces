@@ -1,12 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -29,118 +29,195 @@ func runCandidate(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func readInt(reader *bufio.Reader) (int, error) {
-	x := 0
-	sign := 1
-	b, err := reader.ReadByte()
-	for err == nil && (b == ' ' || b == '\n' || b == '\r' || b == '\t') {
-		b, err = reader.ReadByte()
+// applyOp applies the pivot operation: given permutation p of length n,
+// pivot at 1-indexed position i: result is p[i+1..n], p[i], p[1..i-1]
+func applyOp(p []int, i int) []int {
+	n := len(p)
+	result := make([]int, n)
+	idx := 0
+	for j := i; j < n; j++ {
+		result[idx] = p[j]
+		idx++
 	}
-	if err != nil {
-		return 0, err
+	result[idx] = p[i-1]
+	idx++
+	for j := 0; j < i-1; j++ {
+		result[idx] = p[j]
+		idx++
 	}
-	if b == '-' {
-		sign = -1
-		b, err = reader.ReadByte()
-		if err != nil {
-			return 0, err
-		}
-	}
-	for b >= '0' && b <= '9' {
-		x = x*10 + int(b-'0')
-		b, err = reader.ReadByte()
-		if err != nil {
-			break
-		}
-	}
-	return x * sign, nil
+	return result
 }
 
-func solvePerm(n int, a []int) []int {
-	var ops []int
-	for i := 1; i <= n; i++ {
-		for j := i; j <= n; j++ {
-			if a[j] == i {
-				if j != i {
-					ops = append(ops, i, j-i, n-j+1)
+func isIdentity(p []int) bool {
+	for i, v := range p {
+		if v != i+1 {
+			return false
+		}
+	}
+	return true
+}
+
+func validateOutput(n, m int, a, b []int, output string) error {
+	output = strings.TrimSpace(output)
+	if output == "-1" {
+		// Check if -1 is actually valid by trying the reference solver
+		// For the easy version, we trust that if candidate says -1, we verify
+		// by checking our own solver too
+		// Actually, let's just try all (s,r) combos to see if solution exists
+		canSolve := false
+		for s := 0; s <= 1; s++ {
+			for r := 0; r <= 1; r++ {
+				ansP := solveSingle(a, n, s)
+				ansQ := solveSingle(b, m, r)
+				if len(ansP)%2 == len(ansQ)%2 {
+					canSolve = true
 				}
-				a[i], a[j] = a[j], a[i]
+			}
+		}
+		if canSolve {
+			return fmt.Errorf("candidate said -1 but solution exists")
+		}
+		return nil
+	}
+
+	lines := strings.Split(output, "\n")
+	if len(lines) == 0 {
+		return fmt.Errorf("empty output")
+	}
+
+	k, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+	if err != nil {
+		return fmt.Errorf("bad k: %v", err)
+	}
+	if k < 0 || k > 10000 {
+		return fmt.Errorf("k=%d out of range [0,10000]", k)
+	}
+	if len(lines) != k+1 {
+		return fmt.Errorf("expected %d operation lines, got %d", k, len(lines)-1)
+	}
+
+	p := make([]int, n)
+	copy(p, a)
+	q := make([]int, m)
+	copy(q, b)
+
+	for op := 0; op < k; op++ {
+		fields := strings.Fields(lines[op+1])
+		if len(fields) != 2 {
+			return fmt.Errorf("op %d: expected 2 fields, got %d", op+1, len(fields))
+		}
+		pi, err1 := strconv.Atoi(fields[0])
+		qj, err2 := strconv.Atoi(fields[1])
+		if err1 != nil || err2 != nil {
+			return fmt.Errorf("op %d: bad numbers", op+1)
+		}
+		if pi < 1 || pi > n {
+			return fmt.Errorf("op %d: i=%d out of range [1,%d]", op+1, pi, n)
+		}
+		if qj < 1 || qj > m {
+			return fmt.Errorf("op %d: j=%d out of range [1,%d]", op+1, qj, m)
+		}
+		p = applyOp(p, pi)
+		q = applyOp(q, qj)
+	}
+
+	if !isIdentity(p) {
+		return fmt.Errorf("p is not identity after operations")
+	}
+	if !isIdentity(q) {
+		return fmt.Errorf("q is not identity after operations")
+	}
+	return nil
+}
+
+func solveSingle(p []int, n int, s int) []int {
+	A := make([]int, n+1)
+	A[0] = 0
+	for i := 1; i <= n; i++ {
+		A[i] = p[i-1]
+	}
+	T := make([]int, n+1)
+	for i := 0; i <= n; i++ {
+		T[i] = (i + s) % (n + 1)
+	}
+
+	ans := make([]int, 0)
+	for {
+		match := true
+		for i := 0; i <= n; i++ {
+			if A[i] != T[i] {
+				match = false
 				break
 			}
 		}
-	}
-	return ops
-}
+		if match {
+			break
+		}
 
-func expectedOutput(n, m int, a, b []int) string {
-	opa := solvePerm(n, append([]int(nil), a...))
-	opb := solvePerm(m, append([]int(nil), b...))
-	la, lb := len(opa), len(opb)
-	if (la+lb)%2 == 1 {
-		if n%2 == 1 {
-			for i := 0; i < n; i++ {
-				opa = append(opa, n)
+		z := -1
+		for i := 0; i <= n; i++ {
+			if A[i] == 0 {
+				z = i
+				break
 			}
-		} else if m%2 == 1 {
-			for i := 0; i < m; i++ {
-				opb = append(opb, m)
+		}
+
+		var x int
+		if T[z] == 0 {
+			for i := 0; i <= n; i++ {
+				if A[i] != T[i] {
+					x = A[i]
+					break
+				}
 			}
 		} else {
-			return "-1"
+			x = T[z]
 		}
-		la, lb = len(opa), len(opb)
+
+		y := -1
+		for i := 0; i <= n; i++ {
+			if A[i] == x {
+				y = i
+				break
+			}
+		}
+
+		dist := (y - z) % (n + 1)
+		if dist < 0 {
+			dist += n + 1
+		}
+		ans = append(ans, dist)
+		A[z], A[y] = A[y], A[z]
 	}
-	for la < lb {
-		opa = append(opa, 1, n)
-		la += 2
-	}
-	for lb < la {
-		opb = append(opb, 1, m)
-		lb += 2
-	}
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d\n", la))
-	for i := 0; i < la; i++ {
-		sb.WriteString(fmt.Sprintf("%d %d\n", opa[i], opb[i]))
-	}
-	return strings.TrimSpace(sb.String())
+	return ans
 }
 
-func genCase(rng *rand.Rand) (string, string) {
+func genCase(rng *rand.Rand) (string, int, int, []int, []int) {
 	n := rng.Intn(5) + 1
 	m := rng.Intn(5) + 1
-	p := rng.Perm(n)
-	q := rng.Perm(m)
-	a := make([]int, n+1)
-	b := make([]int, m+1)
+	pp := rng.Perm(n)
+	qq := rng.Perm(m)
+	a := make([]int, n)
+	b := make([]int, m)
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
-	for i, v := range p {
-		a[i+1] = v + 1
+	for i, v := range pp {
+		a[i] = v + 1
 		if i > 0 {
 			sb.WriteByte(' ')
 		}
 		sb.WriteString(fmt.Sprintf("%d", v+1))
 	}
 	sb.WriteByte('\n')
-	for i, v := range q {
-		b[i+1] = v + 1
+	for i, v := range qq {
+		b[i] = v + 1
 		if i > 0 {
 			sb.WriteByte(' ')
 		}
 		sb.WriteString(fmt.Sprintf("%d", v+1))
 	}
 	sb.WriteByte('\n')
-	expect := expectedOutput(n, m, a, b)
-	input := sb.String()
-	input = fmt.Sprintf("%s", input)
-	return input, expect
-}
-
-func fixedCases() [][2]string {
-	return [][2]string{
-		{"1 1\n1\n1\n", "0"},
-	}
+	return sb.String(), n, m, a, b
 }
 
 func main() {
@@ -149,27 +226,31 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	for idx, tc := range fixedCases() {
-		out, err := runCandidate(bin, tc[0])
+
+	// Fixed case
+	{
+		input := "1 1\n1\n1\n"
+		out, err := runCandidate(bin, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "fixed case %d failed: %v\ninput:\n%s", idx+1, err, tc[0])
+			fmt.Fprintf(os.Stderr, "fixed case 1 failed: %v\ninput:\n%s", err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != tc[1] {
-			fmt.Fprintf(os.Stderr, "fixed case %d failed: expected %s got %s\ninput:\n%s", idx+1, tc[1], out, tc[0])
+		if err := validateOutput(1, 1, []int{1}, []int{1}, out); err != nil {
+			fmt.Fprintf(os.Stderr, "fixed case 1 failed: %v\ninput:\n%s\noutput:\n%s\n", err, input, out)
 			os.Exit(1)
 		}
 	}
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		in, exp := genCase(rng)
-		out, err := runCandidate(bin, in)
+		input, n, m, a, b := genCase(rng)
+		out, err := runCandidate(bin, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		if strings.TrimSpace(out) != exp {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %s got %s\ninput:\n%s", i+1, exp, out, in)
+		if err := validateOutput(n, m, a, b, out); err != nil {
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s\noutput:\n%s\n", i+1, err, input, out)
 			os.Exit(1)
 		}
 	}
