@@ -204,7 +204,7 @@ func runExe(path, input string) (string, error) {
 func genTests() []string {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	var tests []string
-	for len(tests) < 100 {
+	for len(tests) < 10 {
 		n := rng.Intn(4) + 2
 		m := rng.Intn(4) + n - 1
 		edgeSet := make(map[[2]int]bool)

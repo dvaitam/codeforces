@@ -71,6 +71,7 @@ type sSector struct {
 
 func solve(input string) float64 {
 	reader := bufio.NewReader(strings.NewReader(input))
+
 	var n int
 	var L float64
 	fmt.Fscan(reader, &n, &L)
@@ -124,11 +125,12 @@ func solve(input string) float64 {
 		return rays[i].angle < rays[j].angle
 	})
 
-	sectors := make([]sSector, 2*n)
-	for k := 0; k < 2*n; k++ {
+	numRays := len(rays)
+	sectors := make([]sSector, numRays)
+	for k := 0; k < numRays; k++ {
 		ang1 := rays[k].angle
-		ang2 := rays[(k+1)%(2*n)].angle
-		if k == 2*n-1 {
+		ang2 := rays[(k+1)%numRays].angle
+		if k == numRays-1 {
 			ang2 += 2 * math.Pi
 		}
 		mid := (ang1 + ang2) / 2.0
@@ -137,8 +139,8 @@ func solve(input string) float64 {
 
 		maxVal := -1e18
 		minVal := 1e18
-		idxLeft := -1
-		idxRight := -1
+		idxLeft := 0
+		idxRight := 0
 		for i, p := range V {
 			val := -uy*p.x + ux*p.y
 			if val > maxVal {
@@ -157,8 +159,8 @@ func solve(input string) float64 {
 		}
 	}
 
-	Pk := make([]sPoint, 2*n)
-	for k := 0; k < 2*n; k++ {
+	Pk := make([]sPoint, numRays)
+	for k := 0; k < numRays; k++ {
 		sec := sectors[k]
 		F1 := sec.F1
 		F2 := sec.F2
@@ -187,7 +189,7 @@ func solve(input string) float64 {
 	}
 
 	totalArea := 0.0
-	for k := 0; k < 2*n; k++ {
+	for k := 0; k < numRays; k++ {
 		sec := sectors[k]
 		F1 := sec.F1
 		F2 := sec.F2
@@ -211,7 +213,7 @@ func solve(input string) float64 {
 		Vel = sPoint{-Uel.y, Uel.x}
 
 		pStart := Pk[k]
-		pEnd := Pk[(k+1)%(2*n)]
+		pEnd := Pk[(k+1)%numRays]
 
 		dx0 := pStart.x - C.x
 		dy0 := pStart.y - C.y
@@ -288,7 +290,7 @@ func generateTests() []testCase {
 	var tests []testCase
 	tests = append(tests, manualTests()...)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	tests = append(tests, randomTests(rng, 80)...)
+	tests = append(tests, randomPolygonTests(rng, 80)...)
 	tests = append(tests, stressTests(rng)...)
 	return tests
 }
@@ -323,7 +325,7 @@ func manualTests() []testCase {
 	return tests
 }
 
-func randomTests(rng *rand.Rand, batches int) []testCase {
+func randomPolygonTests(rng *rand.Rand, batches int) []testCase {
 	var tests []testCase
 	for i := 0; i < batches; i++ {
 		n := rng.Intn(50) + 3

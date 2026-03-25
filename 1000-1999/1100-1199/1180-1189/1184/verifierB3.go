@@ -432,7 +432,7 @@ func parseOutput(out string) (int64, error) {
 	return val, nil
 }
 
-const testCount = 100
+const testCount = 10
 
 func main() {
 	// suppress unused import

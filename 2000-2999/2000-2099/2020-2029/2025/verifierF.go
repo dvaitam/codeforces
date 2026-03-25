@@ -165,120 +165,120 @@ func simulate(n int, queries []query, ops []string) (int64, error) {
 	return sum, nil
 }
 
+// solveOneCase solves a single test case and writes output to writer.
+func solveOneCase(n, q int, xs, ys []int, writer *bufio.Writer) {
+	adj := make([][]Edge, n+1)
+	for i := 1; i <= q; i++ {
+		adj[xs[i]] = append(adj[xs[i]], Edge{ys[i], i})
+		adj[ys[i]] = append(adj[ys[i]], Edge{xs[i], i})
+	}
+
+	visNode := make([]bool, n+1)
+	visEdge := make([]bool, q+1)
+	indeg := make([]int, n+1)
+	assign := make([]int, q+1)
+
+	var dfs func(u, p, edgeFromParent int)
+	dfs = func(u, p, edgeFromParent int) {
+		visNode[u] = true
+		for _, edge := range adj[u] {
+			if edge.id == edgeFromParent {
+				continue
+			}
+			if visEdge[edge.id] {
+				continue
+			}
+			visEdge[edge.id] = true
+			v := edge.to
+			if visNode[v] {
+				assign[edge.id] = v
+				indeg[v]++
+			} else {
+				dfs(v, u, edge.id)
+			}
+		}
+		if p != 0 {
+			if indeg[u]%2 != 0 {
+				assign[edgeFromParent] = u
+				indeg[u]++
+			} else {
+				assign[edgeFromParent] = p
+				indeg[p]++
+			}
+		}
+	}
+
+	for i := 1; i <= n; i++ {
+		if !visNode[i] {
+			dfs(i, 0, 0)
+		}
+	}
+
+	ansChar1 := make([]byte, q+1)
+	ansChar2 := make([]byte, q+1)
+	assignedEdges := make([][]int, n+1)
+
+	for i := 1; i <= q; i++ {
+		v := assign[i]
+		assignedEdges[v] = append(assignedEdges[v], i)
+	}
+
+	for v := 1; v <= n; v++ {
+		for i, edgeIdx := range assignedEdges[v] {
+			if i%2 == 0 {
+				ansChar2[edgeIdx] = '+'
+			} else {
+				ansChar2[edgeIdx] = '-'
+			}
+			if xs[edgeIdx] == v {
+				ansChar1[edgeIdx] = 'x'
+			} else {
+				ansChar1[edgeIdx] = 'y'
+			}
+		}
+	}
+
+	for i := 1; i <= q; i++ {
+		writer.WriteByte(ansChar1[i])
+		writer.WriteByte(ansChar2[i])
+		writer.WriteByte('\n')
+	}
+}
+
 // solveAllRef is the embedded correct reference solver for 2025F.
-// It reads multi-test-case input (1-indexed vertices) and produces
-// one "x+"/"x-"/"y+"/"y-" per query line.
+// It reads multi-test-case input and produces one "x+"/"x-"/"y+"/"y-" per query line.
 func solveAllRef(input string) string {
-	reader := bufio.NewReaderSize(strings.NewReader(input), 64*1024)
-	var outBuf bytes.Buffer
-	writer := bufio.NewWriterSize(&outBuf, 64*1024)
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	scanner.Split(bufio.ScanWords)
+	buf := make([]byte, 0, 1<<20)
+	scanner.Buffer(buf, 1<<20)
 
 	readInt := func() int {
-		var n int
-		var c byte
-		for {
-			c, _ = reader.ReadByte()
-			if c >= '0' && c <= '9' {
-				break
-			}
+		scanner.Scan()
+		v := 0
+		text := scanner.Text()
+		for _, c := range text {
+			v = v*10 + int(c-'0')
 		}
-		for {
-			n = n*10 + int(c-'0')
-			c, _ = reader.ReadByte()
-			if c < '0' || c > '9' {
-				break
-			}
-		}
-		return n
+		return v
 	}
+
+	var outBuf bytes.Buffer
+	writer := bufio.NewWriterSize(&outBuf, 64*1024)
 
 	T := readInt()
 	for ; T > 0; T-- {
 		n := readInt()
 		q := readInt()
 
-		x := make([]int, q+1)
-		y := make([]int, q+1)
-		adj := make([][]Edge, n+1)
-
+		xs := make([]int, q+1)
+		ys := make([]int, q+1)
 		for i := 1; i <= q; i++ {
-			x[i] = readInt()
-			y[i] = readInt()
-			adj[x[i]] = append(adj[x[i]], Edge{y[i], i})
-			adj[y[i]] = append(adj[y[i]], Edge{x[i], i})
+			xs[i] = readInt()
+			ys[i] = readInt()
 		}
 
-		visNode := make([]bool, n+1)
-		visEdge := make([]bool, q+1)
-		indeg := make([]int, n+1)
-		assign := make([]int, q+1)
-
-		var dfs func(u, p, edgeFromParent int)
-		dfs = func(u, p, edgeFromParent int) {
-			visNode[u] = true
-			for _, edge := range adj[u] {
-				if edge.id == edgeFromParent {
-					continue
-				}
-				if visEdge[edge.id] {
-					continue
-				}
-				visEdge[edge.id] = true
-				v := edge.to
-				if visNode[v] {
-					assign[edge.id] = v
-					indeg[v]++
-				} else {
-					dfs(v, u, edge.id)
-				}
-			}
-			if p != 0 {
-				if indeg[u]%2 != 0 {
-					assign[edgeFromParent] = u
-					indeg[u]++
-				} else {
-					assign[edgeFromParent] = p
-					indeg[p]++
-				}
-			}
-		}
-
-		for i := 1; i <= n; i++ {
-			if !visNode[i] {
-				dfs(i, 0, 0)
-			}
-		}
-
-		ansChar1 := make([]byte, q+1)
-		ansChar2 := make([]byte, q+1)
-		assignedEdges := make([][]int, n+1)
-
-		for i := 1; i <= q; i++ {
-			v := assign[i]
-			assignedEdges[v] = append(assignedEdges[v], i)
-		}
-
-		for v := 1; v <= n; v++ {
-			for i, edgeIdx := range assignedEdges[v] {
-				if i%2 == 0 {
-					ansChar2[edgeIdx] = '+'
-				} else {
-					ansChar2[edgeIdx] = '-'
-				}
-
-				if x[edgeIdx] == v {
-					ansChar1[edgeIdx] = 'x'
-				} else {
-					ansChar1[edgeIdx] = 'y'
-				}
-			}
-		}
-
-		for i := 1; i <= q; i++ {
-			writer.WriteByte(ansChar1[i])
-			writer.WriteByte(ansChar2[i])
-			writer.WriteByte('\n')
-		}
+		solveOneCase(n, q, xs, ys, writer)
 	}
 
 	writer.Flush()

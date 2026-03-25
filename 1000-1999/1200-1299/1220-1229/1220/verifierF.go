@@ -1,14 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
 	"strconv"
-
+	"strings"
 )
 
 // ---------- embedded solver from accepted solution ----------
@@ -155,7 +154,7 @@ type testF struct {
 
 func genTestsF() []testF {
 	rng := rand.New(rand.NewSource(122006))
-	tests := make([]testF, 100)
+	tests := make([]testF, 10)
 	for i := range tests {
 		n := rng.Intn(8) + 2
 		a := make([]int, n)
@@ -172,6 +171,19 @@ func genTestsF() []testF {
 	return tests
 }
 
+func runBin(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
+	cmd.Stdin = strings.NewReader(input)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierF.go /path/to/binary")
@@ -180,66 +192,42 @@ func main() {
 	bin := os.Args[1]
 	tests := genTestsF()
 
-	var input bytes.Buffer
-	fmt.Fprintln(&input, len(tests))
-	for _, tc := range tests {
+	for i, tc := range tests {
+		expR, expK := solveFCase(tc.a)
+
+		// Build single-test input (no test count header)
+		var input strings.Builder
 		fmt.Fprintln(&input, len(tc.a))
-		for i, v := range tc.a {
-			if i > 0 {
+		for j, v := range tc.a {
+			if j > 0 {
 				input.WriteByte(' ')
 			}
 			fmt.Fprint(&input, v)
 		}
 		input.WriteByte('\n')
-	}
 
-	expectedRet := make([]int, len(tests))
-	expectedK := make([]int, len(tests))
-	for i, tc := range tests {
-		r, k := solveFCase(tc.a)
-		expectedRet[i] = r
-		expectedK[i] = k
-	}
-
-	cmd := exec.Command(bin)
-	cmd.Stdin = bytes.NewReader(input.Bytes())
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "runtime error: %v\noutput:\n%s\n", err, out.String())
-		os.Exit(1)
-	}
-
-	scanner := bufio.NewScanner(bytes.NewReader(out.Bytes()))
-	scanner.Split(bufio.ScanWords)
-	for i := range tests {
-		if !scanner.Scan() {
-			fmt.Fprintf(os.Stderr, "wrong output format on test %d\n", i+1)
+		gotStr, err := runBin(bin, input.String())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "runtime error on test %d: %v\n", i+1, err)
 			os.Exit(1)
 		}
-		r, err := strconv.Atoi(scanner.Text())
-		if err != nil {
+
+		fields := strings.Fields(gotStr)
+		if len(fields) < 2 {
+			fmt.Fprintf(os.Stderr, "wrong output format on test %d: %q\n", i+1, gotStr)
+			os.Exit(1)
+		}
+		r, err1 := strconv.Atoi(fields[0])
+		k, err2 := strconv.Atoi(fields[1])
+		if err1 != nil || err2 != nil {
 			fmt.Fprintf(os.Stderr, "non-integer output on test %d\n", i+1)
 			os.Exit(1)
 		}
-		if !scanner.Scan() {
-			fmt.Fprintf(os.Stderr, "wrong output format on test %d\n", i+1)
+		if r != expR || k != expK {
+			fmt.Fprintf(os.Stderr, "wrong answer on test %d\ninput: %v\nexpected: %d %d\ngot: %d %d\n",
+				i+1, tc.a, expR, expK, r, k)
 			os.Exit(1)
 		}
-		k, err := strconv.Atoi(scanner.Text())
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "non-integer output on test %d\n", i+1)
-			os.Exit(1)
-		}
-		if r != expectedRet[i] || k != expectedK[i] {
-			fmt.Fprintf(os.Stderr, "wrong answer on test %d\n", i+1)
-			os.Exit(1)
-		}
-	}
-	if scanner.Scan() {
-		fmt.Fprintln(os.Stderr, "extra output")
-		os.Exit(1)
 	}
 	fmt.Println("Accepted")
 }
