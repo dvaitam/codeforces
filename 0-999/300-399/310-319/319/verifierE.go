@@ -110,7 +110,7 @@ func generateCase(rng *rand.Rand) Test {
 	cnt := 0
 	maxLen := 0
 	for i := 0; i < m; i++ {
-		if cnt == 0 || rng.Intn(2) == 0 {
+		if cnt <= 1 || rng.Intn(2) == 0 {
 			length := maxLen + rng.Intn(5) + 1
 			x := rng.Intn(50)
 			y := x + length

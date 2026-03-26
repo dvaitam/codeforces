@@ -190,6 +190,8 @@ func main() {
 				fmt.Fprintln(writer, "YES")
 			} else if spanL[rootB] <= spanL[rootA] && spanR[rootA] <= spanR[rootB] {
 				fmt.Fprintln(writer, "YES")
+			} else if spanL[rootA] <= spanL[rootB] && spanR[rootB] <= spanR[rootA] {
+				fmt.Fprintln(writer, "YES")
 			} else {
 				fmt.Fprintln(writer, "NO")
 			}
