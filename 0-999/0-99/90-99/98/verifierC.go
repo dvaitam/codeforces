@@ -12,15 +12,11 @@ import (
 )
 
 func solve(A, B, L float64) string {
-	if L <= B {
-		return fmt.Sprintf("%.9f", math.Min(A, L))
-	}
-	if L <= A {
-		return fmt.Sprintf("%.9f", math.Min(B, L))
-	}
-
+	// Always do ternary search to find minimum of f(x) = (A*x + B*y - x*y)/L
+	// where y = sqrt(L^2 - x^2), over x in [0, L].
+	// This gives the maximum width W of a coffin that can pass the L-shaped turn.
 	f := func(x float64) float64 {
-		y := math.Sqrt(L*L - x*x)
+		y := math.Sqrt(math.Max(0, L*L-x*x))
 		return (A*x + B*y - x*y) / L
 	}
 
@@ -35,8 +31,10 @@ func solve(A, B, L float64) string {
 		}
 	}
 	ff := f((left + right) / 2.0)
+	// Cap at corridor widths and stick length (width <= length)
 	ff = math.Min(ff, L)
 	ff = math.Min(ff, A)
+	ff = math.Min(ff, B)
 	if ff < 1e-8 {
 		return "My poor head =("
 	}

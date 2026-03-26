@@ -62,6 +62,19 @@ func solveBrute(n int, k int64, a []int64) int64 {
 	return count % MOD
 }
 
+// Embedded solver: same brute-force approach, used to solve from string input.
+func embeddedSolve(input string) string {
+	r := strings.NewReader(input)
+	var n int
+	var k int64
+	fmt.Fscan(r, &n, &k)
+	a := make([]int64, n)
+	for i := 0; i < n; i++ {
+		fmt.Fscan(r, &a[i])
+	}
+	return fmt.Sprintf("%d", solveBrute(n, k, a))
+}
+
 type testCaseG struct {
 	n int
 	k int64
@@ -90,12 +103,7 @@ func generateCaseG(rng *rand.Rand) (string, testCaseG) {
 }
 
 func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errBuf bytes.Buffer

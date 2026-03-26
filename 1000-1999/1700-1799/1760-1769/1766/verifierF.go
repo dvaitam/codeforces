@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"container/heap"
 	"fmt"
 	"math/rand"
 	"os"
@@ -10,123 +11,38 @@ import (
 	"strings"
 )
 
-const (
-	maxV = 105
-	maxE = 10000
-	inf  = 0x3f3f3f3f
-)
+const solveINF = 1000000000
 
-var (
-	S, T, e int
-	fir     [maxV]int
-	to, nxt [maxE]int
-	w       [maxE]int
-	cost    [maxE]int
-	dis     [maxV]int64
-	q       [maxE]int
-	vis     [maxV]bool
-	cur     [maxV]int
-	fdem    [maxV]int
-	odd     []bool
-	ansEdge []int
-	sumNode []int
-	anss    int64
-)
-
-func adde(x, y, z, cst int) {
-	e++
-	to[e] = y
-	nxt[e] = fir[x]
-	fir[x] = e
-	w[e] = z
-	cost[e] = cst
-	e++
-	to[e] = x
-	nxt[e] = fir[y]
-	fir[y] = e
-	w[e] = 0
-	cost[e] = -cst
+type sEdge struct {
+	to     int
+	rev    int
+	cap    int
+	flow   int
+	cost   int
+	origID int
 }
 
-func spfa() bool {
-	for i := 1; i <= T; i++ {
-		dis[i] = 1 << 60
-		vis[i] = false
-	}
-	head, tail := 0, 0
-	q[tail] = T
-	dis[T] = 0
-	vis[T] = true
-	tail++
-	for head < tail {
-		u := q[head]
-		head++
-		vis[u] = false
-		for i := fir[u]; i > 0; i = nxt[i] {
-			rev := i ^ 1
-			v := to[i]
-			if w[rev] == 0 {
-				continue
-			}
-			nd := dis[u] + int64(cost[rev])
-			if dis[v] > nd {
-				dis[v] = nd
-				if !vis[v] {
-					vis[v] = true
-					q[tail] = v
-					tail++
-				}
-			}
-		}
-	}
-	return dis[S] < 0
+type sOrigEdge struct {
+	u, v, c, w int
 }
 
-func dfs(u, flow int) int {
-	if u == T || flow == 0 {
-		return flow
-	}
-	vis[u] = true
-	used := flow
-	for i := cur[u]; i > 0; i = nxt[i] {
-		cur[u] = i
-		v := to[i]
-		if vis[v] || dis[v]+int64(cost[i]) != dis[u] || w[i] == 0 {
-			continue
-		}
-		can := flow
-		if w[i] < can {
-			can = w[i]
-		}
-		if can > used {
-			can = used
-		}
-		f := dfs(v, can)
-		if f > 0 {
-			w[i] -= f
-			w[i^1] += f
-			used -= f
-			if used == 0 {
-				break
-			}
-		}
-	}
-	return flow - used
+type sItem struct {
+	vertex   int
+	priority int
 }
 
-func MCMF() int64 {
-	var flow int
-	var res int64
-	for spfa() {
-		for i := 1; i <= T; i++ {
-			cur[i] = fir[i]
-			vis[i] = false
-		}
-		f := dfs(S, inf)
-		flow += f
-		res += dis[S] * int64(f)
-	}
-	return res
+type sPQ []*sItem
+
+func (pq sPQ) Len() int            { return len(pq) }
+func (pq sPQ) Less(i, j int) bool  { return pq[i].priority < pq[j].priority }
+func (pq sPQ) Swap(i, j int)       { pq[i], pq[j] = pq[j], pq[i] }
+func (pq *sPQ) Push(x interface{}) { *pq = append(*pq, x.(*sItem)) }
+func (pq *sPQ) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	*pq = old[:n-1]
+	return item
 }
 
 func solveF(input string) string {
@@ -135,56 +51,164 @@ func solveF(input string) string {
 	if _, err := fmt.Fscan(in, &n, &m); err != nil {
 		return ""
 	}
-	S, T = 1, n
-	e = 1
-	odd = make([]bool, m+1)
-	ansEdge = make([]int, m+1)
-	sumNode = make([]int, n+2)
-	for i := 1; i <= m; i++ {
-		var x, y, z, t int
-		fmt.Fscan(in, &x, &y, &z, &t)
-		adde(x, y, z>>1, t<<1)
-		if z&1 == 1 {
-			fdem[x]--
-			fdem[y]++
-			odd[i] = true
-			anss += int64(t)
+
+	edges := make([]sOrigEdge, m)
+	for i := 0; i < m; i++ {
+		fmt.Fscan(in, &edges[i].u, &edges[i].v, &edges[i].c, &edges[i].w)
+	}
+
+	nNodes := n + 2
+	S := 0
+	T := n + 1
+	graph := make([][]sEdge, nNodes)
+	bal := make([]int, nNodes)
+
+	addEdge := func(u, v, cap, cost, origID int) {
+		graph[u] = append(graph[u], sEdge{v, len(graph[v]), cap, 0, cost, origID})
+		graph[v] = append(graph[v], sEdge{u, len(graph[u]) - 1, 0, 0, -cost, -1})
+	}
+
+	for i := 0; i < m; i++ {
+		u, v, c, w := edges[i].u, edges[i].v, edges[i].c, edges[i].w
+		r := c % 2
+		bal[u] -= r
+		bal[v] += r
+		C := c / 2
+		W := 2 * w
+		if W < 0 {
+			bal[u] -= 2 * C
+			bal[v] += 2 * C
+			addEdge(v, u, C, -W, i)
+		} else {
+			addEdge(u, v, C, W, i)
 		}
 	}
-	for i := 2; i < n; i++ {
-		if fdem[i]&1 != 0 {
+
+	if bal[1]%2 != 0 {
+		bal[1] += 1
+		bal[n] -= 1
+	}
+	addEdge(n, 1, solveINF, 0, -1)
+
+	sumReq := 0
+	for i := 1; i <= n; i++ {
+		if bal[i]%2 != 0 {
 			return "Impossible"
 		}
-		if fdem[i] > 0 {
-			adde(S, i, fdem[i]>>1, -inf)
-		} else if fdem[i] < 0 {
-			adde(i, T, (-fdem[i])>>1, -inf)
+		req := bal[i] / 2
+		if req > 0 {
+			addEdge(S, i, req, 0, -1)
+			sumReq += req
+		} else if req < 0 {
+			addEdge(i, T, -req, 0, -1)
 		}
 	}
-	anss += MCMF()
-	for i := 1; i <= m; i++ {
-		flowUsed := w[2*i+1]
-		ans := flowUsed << 1
-		if odd[i] {
-			ans |= 1
+
+	flowTotal := 0
+	pot := make([]int, nNodes)
+
+	for {
+		dist := make([]int, nNodes)
+		for i := range dist {
+			dist[i] = solveINF
 		}
-		ansEdge[i] = ans
-		u := to[2*i]
-		v := to[2*i+1]
-		sumNode[u] += ans
-		sumNode[v] -= ans
-	}
-	for i := 2; i < n; i++ {
-		if sumNode[i] != 0 {
-			return "Impossible"
+		parentEdge := make([]int, nNodes)
+		parentVertex := make([]int, nNodes)
+		for i := range parentEdge {
+			parentEdge[i] = -1
+			parentVertex[i] = -1
+		}
+
+		dist[S] = 0
+		pq := sPQ{}
+		heap.Push(&pq, &sItem{vertex: S, priority: 0})
+
+		for pq.Len() > 0 {
+			curr := heap.Pop(&pq).(*sItem)
+			u := curr.vertex
+			if curr.priority > dist[u] {
+				continue
+			}
+
+			for i, e := range graph[u] {
+				if e.cap > e.flow {
+					newDist := dist[u] + e.cost + pot[u] - pot[e.to]
+					if newDist < dist[e.to] {
+						dist[e.to] = newDist
+						parentVertex[e.to] = u
+						parentEdge[e.to] = i
+						heap.Push(&pq, &sItem{vertex: e.to, priority: newDist})
+					}
+				}
+			}
+		}
+
+		if dist[T] == solveINF {
+			break
+		}
+
+		for i := 0; i < nNodes; i++ {
+			if dist[i] != solveINF {
+				pot[i] += dist[i]
+			}
+		}
+
+		push := solveINF
+		curr := T
+		for curr != S {
+			p := parentVertex[curr]
+			idx := parentEdge[curr]
+			rem := graph[p][idx].cap - graph[p][idx].flow
+			if rem < push {
+				push = rem
+			}
+			curr = p
+		}
+
+		flowTotal += push
+		curr = T
+		for curr != S {
+			p := parentVertex[curr]
+			idx := parentEdge[curr]
+			rev := graph[p][idx].rev
+			graph[p][idx].flow += push
+			graph[curr][rev].flow -= push
+			curr = p
 		}
 	}
+
+	if flowTotal < sumReq {
+		return "Impossible"
+	}
+
+	ans := make([]int, m)
+	for u := 0; u < nNodes; u++ {
+		for _, e := range graph[u] {
+			if e.origID != -1 {
+				id := e.origID
+				origC := edges[id].c
+				origW := edges[id].w
+				r := origC % 2
+				C := origC / 2
+
+				if origW < 0 {
+					ans[id] = r + 2*(C-e.flow)
+				} else {
+					ans[id] = r + 2*e.flow
+				}
+			}
+		}
+	}
+
 	var buf strings.Builder
 	buf.WriteString("Possible\n")
-	for i := 1; i <= m; i++ {
-		fmt.Fprintf(&buf, "%d ", ansEdge[i])
+	for i := 0; i < m; i++ {
+		if i > 0 {
+			buf.WriteByte(' ')
+		}
+		fmt.Fprintf(&buf, "%d", ans[i])
 	}
-	return strings.TrimSpace(buf.String())
+	return buf.String()
 }
 
 func genTestF(rng *rand.Rand) string {

@@ -14,60 +14,106 @@ import (
 
 type point struct{ x, y int }
 
-func generatePoints(r int) []point {
-	var v []point
-	for i := -r; i <= r; i++ {
-		for j := -r; j <= r; j++ {
-			d2 := i*i + j*j
-			if d2 <= r*r && d2 >= (r-1)*(r-1) {
-				v = append(v, point{i, j})
-			}
+func crossProduct(o, a, b point) int {
+	return (a.x-o.x)*(b.y-o.y) - (a.y-o.y)*(b.x-o.x)
+}
+
+func convexHull(points []point) []point {
+	sort.Slice(points, func(i, j int) bool {
+		if points[i].x == points[j].x {
+			return points[i].y < points[j].y
 		}
-	}
-	sort.Slice(v, func(i, j int) bool {
-		di := v[i].x*v[i].x + v[i].y*v[i].y
-		dj := v[j].x*v[j].x + v[j].y*v[j].y
-		return di > dj
+		return points[i].x < points[j].x
 	})
-	return v
+	var hull []point
+	for _, p := range points {
+		for len(hull) >= 2 && crossProduct(hull[len(hull)-2], hull[len(hull)-1], p) <= 0 {
+			hull = hull[:len(hull)-1]
+		}
+		hull = append(hull, p)
+	}
+	t := len(hull)
+	for i := len(points) - 2; i >= 0; i-- {
+		p := points[i]
+		for len(hull) > t && crossProduct(hull[len(hull)-2], hull[len(hull)-1], p) <= 0 {
+			hull = hull[:len(hull)-1]
+		}
+		hull = append(hull, p)
+	}
+	if len(hull) > 1 {
+		hull = hull[:len(hull)-1]
+	}
+	return hull
 }
 
-func dfs(v []point, n int, k int, cur []point, best *[]point, maxSum *int64) {
-	if k == n {
-		var sum int64
-		for i := 0; i < len(cur); i++ {
-			for j := i + 1; j < len(cur); j++ {
-				dx := int64(cur[i].x - cur[j].x)
-				dy := int64(cur[i].y - cur[j].y)
-				sum += dx*dx + dy*dy
+func expectedE(n, r int) int64 {
+	var points []point
+	for x := -r; x <= r; x++ {
+		for y := -r; y <= r; y++ {
+			if x*x+y*y <= r*r {
+				points = append(points, point{x, y})
 			}
 		}
-		if sum > *maxSum {
-			*maxSum = sum
-			tmp := make([]point, len(cur))
-			copy(tmp, cur)
-			*best = tmp
-		}
-		return
 	}
-	limit := len(v)
-	cut := 30 - 2*n
-	if cut < limit {
-		limit = cut
-	}
-	for i := k; i < limit; i++ {
-		cur = append(cur, v[i])
-		dfs(v, n, i, cur, best, maxSum)
-		cur = cur[:len(cur)-1]
-	}
-}
+	hull := convexHull(points)
 
-func expectedE(n, r int) (int64, []point) {
-	v := generatePoints(r)
-	var best []point
-	var maxSum int64 = -1 << 60
-	dfs(v, n, 0, nil, &best, &maxSum)
-	return maxSum, best
+	const off = 240
+	const dim = 481
+	// dp[sx][sy] for current layer; -1 means unreachable
+	cur := make([][]int, dim)
+	nxt := make([][]int, dim)
+	for i := range cur {
+		cur[i] = make([]int, dim)
+		nxt[i] = make([]int, dim)
+		for j := range cur[i] {
+			cur[i][j] = -1
+			nxt[i][j] = -1
+		}
+	}
+	cur[off][off] = 0
+
+	for step := 0; step < n; step++ {
+		for j := range nxt {
+			for k := range nxt[j] {
+				nxt[j][k] = -1
+			}
+		}
+		for sx := 0; sx < dim; sx++ {
+			for sy := 0; sy < dim; sy++ {
+				if cur[sx][sy] == -1 {
+					continue
+				}
+				for _, p := range hull {
+					nsx := sx + p.x
+					nsy := sy + p.y
+					if nsx < 0 || nsx >= dim || nsy < 0 || nsy >= dim {
+						continue
+					}
+					nval := cur[sx][sy] + p.x*p.x + p.y*p.y
+					if nval > nxt[nsx][nsy] {
+						nxt[nsx][nsy] = nval
+					}
+				}
+			}
+		}
+		cur, nxt = nxt, cur
+	}
+
+	var maxSum int64 = -1
+	for sx := 0; sx < dim; sx++ {
+		for sy := 0; sy < dim; sy++ {
+			if cur[sx][sy] == -1 {
+				continue
+			}
+			realSx := sx - off
+			realSy := sy - off
+			val := int64(n)*int64(cur[sx][sy]) - int64(realSx*realSx) - int64(realSy*realSy)
+			if val > maxSum {
+				maxSum = val
+			}
+		}
+	}
+	return maxSum
 }
 
 func runCase(bin string, n, r int) error {
@@ -92,7 +138,7 @@ func runCase(bin string, n, r int) error {
 	if len(nums) < 1+2*n {
 		return fmt.Errorf("bad output")
 	}
-	expectSum, expectPts := expectedE(n, r)
+	expectSum := expectedE(n, r)
 	if int64(nums[0]) != expectSum {
 		return fmt.Errorf("expected sum %d got %d", expectSum, nums[0])
 	}
@@ -100,10 +146,26 @@ func runCase(bin string, n, r int) error {
 	for i := 0; i < n; i++ {
 		x := nums[idx]
 		y := nums[idx+1]
-		if x != expectPts[i].x || y != expectPts[i].y {
-			return fmt.Errorf("expected points %v got %v", expectPts, nums[1:])
+		if x*x+y*y > r*r {
+			return fmt.Errorf("point (%d,%d) outside circle of radius %d", x, y, r)
 		}
 		idx += 2
+	}
+	// verify claimed sum matches actual pairwise distances
+	var actualSum int64
+	pts := make([]point, n)
+	for i := 0; i < n; i++ {
+		pts[i] = point{nums[1+2*i], nums[2+2*i]}
+	}
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			dx := int64(pts[i].x - pts[j].x)
+			dy := int64(pts[i].y - pts[j].y)
+			actualSum += dx*dx + dy*dy
+		}
+	}
+	if actualSum != int64(nums[0]) {
+		return fmt.Errorf("claimed sum %d but actual pairwise sum is %d", nums[0], actualSum)
 	}
 	return nil
 }

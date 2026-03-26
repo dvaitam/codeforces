@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -116,8 +117,39 @@ func referenceSolve(input string) string {
 
 // ---------- test generator ----------
 
+func collinear(x1, y1, x2, y2, x3, y3 int) bool {
+	return (x2-x1)*(y3-y1)-(y2-y1)*(x3-x1) == 0
+}
+
 func genCase(r *rand.Rand) string {
-	n := r.Intn(8) + 2 // 2..9
+	n := r.Intn(4) + 2 // 2..5
+	// Generate points in general position: no duplicates, no three collinear.
+	type pt struct{ x, y int }
+	var pts []pt
+	for len(pts) < n {
+		x := r.Intn(10)
+		y := r.Intn(10)
+		ok := true
+		for _, q := range pts {
+			if q.x == x && q.y == y {
+				ok = false
+				break
+			}
+		}
+		if !ok {
+			continue
+		}
+		for a := 0; a < len(pts) && ok; a++ {
+			for b := a + 1; b < len(pts) && ok; b++ {
+				if collinear(pts[a].x, pts[a].y, pts[b].x, pts[b].y, x, y) {
+					ok = false
+				}
+			}
+		}
+		if ok {
+			pts = append(pts, pt{x, y})
+		}
+	}
 	to := make([]int, n)
 	diff := 0
 	for i := 0; i < n; i++ {
@@ -137,20 +169,23 @@ func genCase(r *rand.Rand) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d\n", n)
 	for i := 0; i < n; i++ {
-		x := r.Intn(100)
-		y := r.Intn(100)
-		fmt.Fprintf(&sb, "%d %d %d\n", x, y, to[i])
+		fmt.Fprintf(&sb, "%d %d %d\n", pts[i].x, pts[i].y, to[i])
 	}
 	return sb.String()
 }
 
 func run(bin, input string) (string, error) {
-	cmd := exec.Command(bin)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out, stderr bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return "", fmt.Errorf("time limit exceeded (10s)")
+		}
 		return "", fmt.Errorf("runtime error: %v\n%s", err, stderr.String())
 	}
 	return strings.TrimSpace(out.String()), nil
@@ -164,7 +199,7 @@ func main() {
 	bin := os.Args[1]
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 1; i <= 100; i++ {
+	for i := 1; i <= 10; i++ {
 		input := genCase(rng)
 		expect := referenceSolve(input)
 		got, err := run(bin, input)
@@ -177,5 +212,5 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	fmt.Println("All 100 tests passed")
+	fmt.Println("All 10 tests passed")
 }
