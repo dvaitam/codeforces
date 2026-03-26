@@ -33,80 +33,89 @@ func solveCase(n int, edges [][2]int) string {
 			stk = append(stk, u)
 		}
 	}
+
+	limit := n / 2
 	sz := make([]int, n+1)
-	childMax1 := make([]int, n+1)
-	childMax2 := make([]int, n+1)
-	childMaxNode := make([]int, n+1)
-	for i := n - 1; i >= 0; i-- {
-		v := order[i]
-		sz[v] = 1
-		m1, m2, mn := 0, 0, 0
-		for _, u := range adj[v] {
-			if u == parent[v] {
+	sub := make([]int, n+1)
+
+	for i := len(order) - 1; i >= 0; i-- {
+		u := order[i]
+		s := 1
+		best := 0
+		for _, v := range adj[u] {
+			if v == parent[u] {
 				continue
 			}
-			sz[v] += sz[u]
-			if sz[u] > m1 {
-				m2 = m1
-				m1 = sz[u]
-				mn = u
-			} else if sz[u] > m2 {
-				m2 = sz[u]
+			s += sz[v]
+			if sub[v] > best {
+				best = sub[v]
 			}
 		}
-		childMax1[v] = m1
-		childMax2[v] = m2
-		childMaxNode[v] = mn
+		sz[u] = s
+		if s <= limit && s > best {
+			best = s
+		}
+		sub[u] = best
 	}
-	upSz := make([]int, n+1)
-	compMax1 := make([]int, n+1)
-	compMax2 := make([]int, n+1)
-	compMaxNode := make([]int, n+1)
-	half := n / 2
-	for _, v := range order {
-		if v == 1 {
-			upSz[v] = 0
-		} else {
-			upSz[v] = n - sz[v]
+
+	up := make([]int, n+1)
+	for _, u := range order {
+		top1, top2 := 0, 0
+		for _, v := range adj[u] {
+			if v == parent[u] {
+				continue
+			}
+			val := sub[v]
+			if val >= top1 {
+				top2 = top1
+				top1 = val
+			} else if val > top2 {
+				top2 = val
+			}
 		}
-		m1, m2, mn := childMax1[v], childMax2[v], childMaxNode[v]
-		if upSz[v] > m1 {
-			m2 = m1
-			m1 = upSz[v]
-			mn = parent[v]
-		} else if upSz[v] > m2 {
-			m2 = upSz[v]
-		}
-		compMax1[v] = m1
-		compMax2[v] = m2
-		compMaxNode[v] = mn
-	}
-	out := make([]byte, n)
-	for v := 1; v <= n; v++ {
-		m := compMax1[v]
-		if m <= half {
-			out[v-1] = '1'
-			continue
-		}
-		w := compMaxNode[v]
-		var local int
-		if compMaxNode[w] != v {
-			local = compMax1[w]
-		} else {
-			local = compMax2[w]
-		}
-		if 2*local >= m {
-			out[v-1] = '1'
-		} else {
-			out[v-1] = '0'
+		for _, v := range adj[u] {
+			if v == parent[u] {
+				continue
+			}
+			best := up[u]
+			if sub[v] == top1 {
+				if top2 > best {
+					best = top2
+				}
+			} else {
+				if top1 > best {
+					best = top1
+				}
+			}
+			comp := n - sz[v]
+			if comp <= limit && comp > best {
+				best = comp
+			}
+			up[v] = best
 		}
 	}
+
 	var sb strings.Builder
-	for i := 0; i < n; i++ {
-		if i > 0 {
+	for u := 1; u <= n; u++ {
+		mx := n - sz[u]
+		best := up[u]
+		for _, v := range adj[u] {
+			if v == parent[u] {
+				continue
+			}
+			if sz[v] > mx {
+				mx = sz[v]
+				best = sub[v]
+			}
+		}
+		if u > 1 {
 			sb.WriteByte(' ')
 		}
-		sb.WriteByte(out[i])
+		if mx <= limit || mx-best <= limit {
+			sb.WriteByte('1')
+		} else {
+			sb.WriteByte('0')
+		}
 	}
 	return sb.String()
 }

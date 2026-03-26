@@ -1,193 +1,198 @@
 package main
 
 import (
-   "bufio"
-   "fmt"
-   "math/rand"
-   "os"
-   "time"
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
 )
 
-// DSU
-var parent []int
-
-func find(x int) int {
-   if parent[x] < 0 {
-       return x
-   }
-   parent[x] = find(parent[x])
-   return parent[x]
-}
-
-func unite(a, b int) {
-   a = find(a)
-   b = find(b)
-   if a == b {
-       return
-   }
-   // union by size
-   if parent[a] > parent[b] {
-       a, b = b, a
-   }
-   parent[a] += parent[b]
-   parent[b] = a
-}
-
-// Treap for keys (x,id)
-type Key struct{ x, id int }
-type Node struct {
-   key      Key
-   pri      int
-   left, right *Node
-}
-
-func split(root *Node, key Key) (l, r *Node) {
-   if root == nil {
-       return nil, nil
-   }
-   if less(root.key, key) {
-       // root.key < key => keep root in l
-       ll, rr := split(root.right, key)
-       root.right = ll
-       return root, rr
-   } else {
-       ll, rr := split(root.left, key)
-       root.left = rr
-       return ll, root
-   }
-}
-
-func merge(a, b *Node) *Node {
-   if a == nil {
-       return b
-   }
-   if b == nil {
-       return a
-   }
-   if a.pri < b.pri {
-       a.right = merge(a.right, b)
-       return a
-   }
-   b.left = merge(a, b.left)
-   return b
-}
-
-func less(a, b Key) bool {
-   if a.x != b.x {
-       return a.x < b.x
-   }
-   return a.id < b.id
-}
-
-func insert(root *Node, node *Node) *Node {
-   if root == nil {
-       return node
-   }
-   if node.pri < root.pri {
-       l, r := split(root, node.key)
-       node.left, node.right = l, r
-       return node
-   }
-   if less(node.key, root.key) {
-       root.left = insert(root.left, node)
-   } else {
-       root.right = insert(root.right, node)
-   }
-   return root
-}
-
-func erase(root *Node, key Key) *Node {
-   if root == nil {
-       return nil
-   }
-   if root.key == key {
-       return merge(root.left, root.right)
-   }
-   if less(key, root.key) {
-       root.left = erase(root.left, key)
-   } else {
-       root.right = erase(root.right, key)
-   }
-   return root
-}
-
-// traverse and collect ids
-func collect(root *Node, ids *[]int) {
-   if root == nil {
-       return
-   }
-   collect(root.left, ids)
-   *ids = append(*ids, root.key.id)
-   collect(root.right, ids)
-}
-
 func main() {
-   rand.Seed(time.Now().UnixNano())
-   in := bufio.NewReader(os.Stdin)
-   out := bufio.NewWriter(os.Stdout)
-   defer out.Flush()
+	reader := bufio.NewReader(os.Stdin)
+	writer := bufio.NewWriter(os.Stdout)
+	defer writer.Flush()
 
-   var n int
-   fmt.Fscan(in, &n)
-   parent = make([]int, n+5)
-   for i := range parent {
-       parent[i] = -1
-   }
-   // treaps
-   var rootL, rootR *Node
-   // store intervals
-   lval := make([]int, n+5)
-   rval := make([]int, n+5)
-   cur := 0
-   for i := 0; i < n; i++ {
-       var t int
-       fmt.Fscan(in, &t)
-       if t == 1 {
-           cur++
-           x, y := 0, 0
-           fmt.Fscan(in, &x, &y)
-           lval[cur] = x
-           rval[cur] = y
-           // Step1: find in rootL keys in [x,y)
-           // split <(x,0) and >=
-           a, b := split(rootL, Key{x, 0})
-           // split b into c <(y,0) and d
-           c, d := split(b, Key{y, 0})
-           // c are nodes with l in [x,y)
-           ids := []int{}
-           collect(c, &ids)
-           // remove those from rootR and union
-           for _, id := range ids {
-               unite(cur, id)
-               rootR = erase(rootR, Key{rval[id], id})
-           }
-           // merge back rootL = merge(a,d)
-           rootL = merge(a, d)
-           // Step2: in rootR keys with r in (x,y)
-           // split <=(x,inf) and >
-           a2, b2 := split(rootR, Key{x+1, 0})
-           // split b2 into c2 <(y,0) and d2
-           c2, d2 := split(b2, Key{y, 0})
-           ids = ids[:0]
-           collect(c2, &ids)
-           for _, id := range ids {
-               unite(cur, id)
-               rootL = erase(rootL, Key{lval[id], id})
-           }
-           rootR = merge(a2, d2)
-           // finally insert new into both
-           nodeL := &Node{key: Key{x, cur}, pri: rand.Int()}
-           rootL = insert(rootL, nodeL)
-           nodeR := &Node{key: Key{y, cur}, pri: rand.Int()}
-           rootR = insert(rootR, nodeR)
-       } else {
-           a, b := 0, 0
-           fmt.Fscan(in, &a, &b)
-           if find(a) == find(b) {
-               fmt.Fprintln(out, "YES")
-           } else {
-               fmt.Fprintln(out, "NO")
-           }
-       }
-   }
+	var n int
+	if _, err := fmt.Fscan(reader, &n); err != nil {
+		return
+	}
+
+	type Query struct {
+		t, x, y int
+	}
+	queries := make([]Query, n)
+	var coords []int
+
+	for i := 0; i < n; i++ {
+		fmt.Fscan(reader, &queries[i].t, &queries[i].x, &queries[i].y)
+		if queries[i].t == 1 {
+			coords = append(coords, queries[i].x, queries[i].y)
+		}
+	}
+
+	sort.Ints(coords)
+	var uniqueCoords []int
+	if len(coords) > 0 {
+		uniqueCoords = append(uniqueCoords, coords[0])
+		for i := 1; i < len(coords); i++ {
+			if coords[i] != coords[i-1] {
+				uniqueCoords = append(uniqueCoords, coords[i])
+			}
+		}
+	}
+
+	M := len(uniqueCoords)
+
+	getIdx := func(val int) int {
+		l, r := 0, M-1
+		for l <= r {
+			mid := (l + r) / 2
+			if uniqueCoords[mid] == val {
+				return mid
+			}
+			if uniqueCoords[mid] < val {
+				l = mid + 1
+			} else {
+				r = mid - 1
+			}
+		}
+		return -1
+	}
+
+	tree := make([][]int, 4*M)
+	deleted := make([]bool, n+1)
+	parent := make([]int, n+1)
+	spanL := make([]int, n+1)
+	spanR := make([]int, n+1)
+
+	var find func(int) int
+	find = func(i int) int {
+		if parent[i] == i {
+			return i
+		}
+		parent[i] = find(parent[i])
+		return parent[i]
+	}
+
+	union := func(a, b int) {
+		rootA := find(a)
+		rootB := find(b)
+		if rootA != rootB {
+			parent[rootB] = rootA
+		}
+	}
+
+	var insertRange func(node, l, r, ql, qr, id int)
+	insertRange = func(node, l, r, ql, qr, id int) {
+		if ql <= l && r <= qr {
+			tree[node] = append(tree[node], id)
+			return
+		}
+		mid := (l + r) / 2
+		if ql <= mid {
+			insertRange(node*2, l, mid, ql, qr, id)
+		}
+		if qr > mid {
+			insertRange(node*2+1, mid+1, r, ql, qr, id)
+		}
+	}
+
+	getAll := func(pos int) []int {
+		var res []int
+		curr := 1
+		l, r := 0, M-1
+		for {
+			if len(tree[curr]) > 0 {
+				for _, id := range tree[curr] {
+					if !deleted[id] {
+						deleted[id] = true
+						res = append(res, id)
+					}
+				}
+				tree[curr] = tree[curr][:0]
+			}
+			if l == r {
+				break
+			}
+			mid := (l + r) / 2
+			if pos <= mid {
+				curr = curr * 2
+				r = mid
+			} else {
+				curr = curr * 2 + 1
+				l = mid + 1
+			}
+		}
+		return res
+	}
+
+	intervalCount := 0
+
+	for i := 0; i < n; i++ {
+		q := queries[i]
+		if q.t == 1 {
+			intervalCount++
+			id := intervalCount
+			parent[id] = id
+			L, R := q.x, q.y
+			spanL[id] = L
+			spanR[id] = R
+
+			idxX := getIdx(q.x)
+			idxY := getIdx(q.y)
+
+			compsX := getAll(idxX)
+			compsY := getAll(idxY)
+
+			for _, comp := range compsX {
+				root := find(comp)
+				if root == id {
+					continue
+				}
+				if spanL[root] < L {
+					L = spanL[root]
+				}
+				if spanR[root] > R {
+					R = spanR[root]
+				}
+				union(id, root)
+			}
+			for _, comp := range compsY {
+				root := find(comp)
+				if root == id {
+					continue
+				}
+				if spanL[root] < L {
+					L = spanL[root]
+				}
+				if spanR[root] > R {
+					R = spanR[root]
+				}
+				union(id, root)
+			}
+
+			root := find(id)
+			spanL[root] = L
+			spanR[root] = R
+
+			idxL := getIdx(L)
+			idxR := getIdx(R)
+
+			if idxL+1 <= idxR-1 {
+				insertRange(1, 0, M-1, idxL+1, idxR-1, id)
+			}
+
+		} else {
+			a, b := q.x, q.y
+			rootA := find(a)
+			rootB := find(b)
+			if rootA == rootB {
+				fmt.Fprintln(writer, "YES")
+			} else if spanL[rootB] <= spanL[rootA] && spanR[rootA] <= spanR[rootB] {
+				fmt.Fprintln(writer, "YES")
+			} else {
+				fmt.Fprintln(writer, "NO")
+			}
+		}
+	}
 }

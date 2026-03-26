@@ -7,60 +7,83 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func mulDiv(a, b, div uint64) uint64 {
-	hi, lo := bits.Mul64(a, b)
-	q, _ := bits.Div64(hi, lo, div)
-	return q
+func reaches(i uint64, rev []uint64, k uint64) bool {
+	var sum uint64
+	t := uint64(1)
+	m := len(rev)
+
+	for d, a := range rev {
+		if a != 0 {
+			rem := k - sum
+			hi, lo := bits.Mul64(t, a)
+			if hi != 0 || lo >= rem {
+				return true
+			}
+			sum += lo
+		}
+
+		if t == k && d+1 < m {
+			return true
+		}
+
+		if d+1 < m && t < k {
+			num := i + uint64(d)
+			den := uint64(d + 1)
+			hi, lo := bits.Mul64(t, num)
+			if hi >= den {
+				t = k
+			} else {
+				q, _ := bits.Div64(hi, lo, den)
+				if q >= k {
+					t = k
+				} else {
+					t = q
+				}
+			}
+		}
+	}
+
+	return false
 }
 
 func expected(n int, k uint64, arr []uint64) string {
-	rev := make([]uint64, n)
+	var maxv uint64
+	left := n
 	for i := 0; i < n; i++ {
-		rev[n-1-i] = arr[i]
-	}
-	limit := k
-	has := func(t uint64) bool {
-		var sum uint64
-		comb := uint64(1)
-		for j := 0; j < n; j++ {
-			if j > 0 {
-				if t == 0 {
-					break
-				}
-				comb = mulDiv(comb, t+uint64(j-1), uint64(j))
-				if comb > limit {
-					comb = limit + 1
-				}
-			}
-			if rev[j] != 0 {
-				if comb > limit/rev[j] {
-					return true
-				}
-				sum += comb * rev[j]
-				if sum >= limit {
-					return true
-				}
-			}
-			if comb == 0 {
-				break
-			}
+		if arr[i] > maxv {
+			maxv = arr[i]
 		}
-		return sum >= limit
+		if arr[i] > 0 && left == n {
+			left = i
+		}
 	}
-	lo, hi := uint64(0), k
-	for lo < hi {
-		mid := (lo + hi) / 2
-		if has(mid) {
-			hi = mid
+
+	if maxv >= k {
+		return "0"
+	}
+
+	m := n - left
+	rev := make([]uint64, m)
+	for i := 0; i < m; i++ {
+		rev[i] = arr[n-1-i]
+	}
+
+	l, r := uint64(1), k
+	for l < r {
+		mid := l + (r-l)/2
+		if reaches(mid, rev, k) {
+			r = mid
 		} else {
-			lo = mid + 1
+			l = mid + 1
 		}
 	}
-	return fmt.Sprintf("%d", lo)
+
+	return strconv.FormatUint(l, 10)
 }
 
 func genCase(rng *rand.Rand) (string, string) {

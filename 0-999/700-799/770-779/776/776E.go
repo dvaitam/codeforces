@@ -1,36 +1,30 @@
 package main
 
-import (
-	"bufio"
-	"fmt"
-	"os"
-)
-
-const mod = 1000000007
-
-// phi computes Euler's totient of n.
-func phi(n int64) int64 {
-	result := n
-	m := n
-	for i := int64(2); i*i <= m; i++ {
-		if m%i == 0 {
-			for m%i == 0 {
-				m /= i
-			}
-			result = result / i * (i - 1)
-		}
-	}
-	if m > 1 {
-		result = result / m * (m - 1)
-	}
-	return result
-}
+import "fmt"
 
 func main() {
-	in := bufio.NewReader(os.Stdin)
 	var n, k int64
-	fmt.Fscan(in, &n, &k)
-	// For any k >= 1, Fk(n) equals phi(n)
-	ans := phi(n) % mod
-	fmt.Println(ans)
+	if _, err := fmt.Scan(&n, &k); err != nil {
+		return
+	}
+	for i := int64(0); i < k; i++ {
+		if n == 1 {
+			break
+		}
+		res := n
+		temp := n
+		for j := int64(2); j*j <= temp; j++ {
+			if temp%j == 0 {
+				for temp%j == 0 {
+					temp /= j
+				}
+				res -= res / j
+			}
+		}
+		if temp > 1 {
+			res -= res / temp
+		}
+		n = res
+	}
+	fmt.Println(n % 1000000007)
 }

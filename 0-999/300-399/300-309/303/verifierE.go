@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"sort"
@@ -617,11 +618,35 @@ func main() {
 		}
 
 		got := strings.TrimSpace(string(out))
-		if got != expected {
-			fmt.Fprintf(os.Stderr, "test %d failed\nexpected: %s\n got: %s\n", idx+1, expected, got)
+		if err := compareFloatOutputs(expected, got); err != nil {
+			fmt.Fprintf(os.Stderr, "test %d failed: %v\nexpected: %s\n got: %s\n", idx+1, err, expected, got)
 			os.Exit(1)
 		}
 	}
 
 	fmt.Printf("All %d tests passed\n", len(cases))
+}
+
+func compareFloatOutputs(expected, got string) error {
+	expTokens := strings.Fields(expected)
+	gotTokens := strings.Fields(got)
+	if len(expTokens) != len(gotTokens) {
+		return fmt.Errorf("token count mismatch: expected %d, got %d", len(expTokens), len(gotTokens))
+	}
+	const eps = 1e-7
+	for i := range expTokens {
+		ev, err1 := strconv.ParseFloat(expTokens[i], 64)
+		gv, err2 := strconv.ParseFloat(gotTokens[i], 64)
+		if err1 != nil || err2 != nil {
+			if expTokens[i] != gotTokens[i] {
+				return fmt.Errorf("token %d: expected %s got %s", i, expTokens[i], gotTokens[i])
+			}
+			continue
+		}
+		diff := math.Abs(ev - gv)
+		if diff > eps && diff > eps*math.Max(math.Abs(ev), math.Abs(gv)) {
+			return fmt.Errorf("token %d: expected %s got %s (diff=%e)", i, expTokens[i], gotTokens[i], diff)
+		}
+	}
+	return nil
 }

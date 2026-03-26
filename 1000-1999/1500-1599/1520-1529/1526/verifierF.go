@@ -1,169 +1,145 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
+	"io"
+	"math/rand"
 	"os"
 	"os/exec"
-	"strconv"
+	"sort"
 	"strings"
+	"time"
 )
 
-type testCase struct {
-	n int
-}
-
-// Embedded testcases from testcasesF.txt.
-const testcaseData = `
-100
-2
-10
-6
-1
-10
-3
-5
-3
-6
-8
-4
-7
-6
-9
-1
-6
-6
-10
-8
-4
-8
-7
-10
-10
-6
-7
-7
-8
-4
-3
-8
-1
-4
-1
-8
-1
-3
-2
-3
-9
-4
-2
-2
-7
-4
-9
-1
-3
-7
-3
-2
-7
-6
-9
-4
-8
-1
-2
-2
-4
-9
-2
-2
-9
-2
-10
-2
-1
-3
-5
-8
-10
-9
-3
-5
-5
-10
-10
-10
-4
-6
-5
-3
-8
-3
-6
-4
-4
-3
-10
-7
-8
-7
-1
-10
-3
-10
-1
-5
-2
-`
-
-func parseTestcases() ([]testCase, error) {
-	lines := strings.Split(strings.TrimSpace(testcaseData), "\n")
-	if len(lines) == 0 || (len(lines) == 1 && strings.TrimSpace(lines[0]) == "") {
-		return nil, fmt.Errorf("no test data")
-	}
-	t, err := strconv.Atoi(strings.TrimSpace(lines[0]))
-	if err != nil {
-		return nil, fmt.Errorf("bad t: %v", err)
-	}
-	if len(lines)-1 != t {
-		return nil, fmt.Errorf("expected %d test cases, got %d", t, len(lines)-1)
-	}
-	cases := make([]testCase, 0, t)
-	for i := 1; i < len(lines); i++ {
-		n, err := strconv.Atoi(strings.TrimSpace(lines[i]))
-		if err != nil {
-			return nil, fmt.Errorf("case %d bad n: %v", i, err)
-		}
-		cases = append(cases, testCase{n: n})
-	}
-	return cases, nil
-}
-
-// solve mirrors 1526F.go (placeholder interactive solver).
-func solve(tc testCase) string {
-	var sb strings.Builder
-	sb.WriteString("!")
-	for i := 1; i <= tc.n; i++ {
-		sb.WriteByte(' ')
-		sb.WriteString(strconv.Itoa(i))
-	}
-	return sb.String()
-}
-
-func runCandidate(bin string, tc testCase) (string, error) {
-	inp := fmt.Sprintf("1\n%d\n", tc.n)
+// interactor acts as the CF judge for problem 1526F.
+// It generates a hidden permutation p[1..n] with p[1]<p[2],
+// feeds it to the candidate binary via interactive queries,
+// and checks the final answer.
+func interactor(bin string, n int, perm []int) error {
 	cmd := exec.Command(bin)
-	cmd.Stdin = strings.NewReader(inp)
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("runtime error: %v\n%s", err, errBuf.String())
+	candIn, err := cmd.StdinPipe()
+	if err != nil {
+		return err
 	}
-	return strings.TrimSpace(out.String()), nil
+	candOut, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start candidate: %v", err)
+	}
+
+	wr := bufio.NewWriter(candIn)
+	rd := bufio.NewReader(candOut)
+
+	abs := func(x int) int {
+		if x < 0 {
+			return -x
+		}
+		return x
+	}
+	median := func(a, b, c int) int {
+		s := []int{a, b, c}
+		sort.Ints(s)
+		return s[1]
+	}
+
+	// Send: t=1, then n
+	fmt.Fprintf(wr, "1\n%d\n", n)
+	wr.Flush()
+
+	queries := 0
+	maxQ := 2*n + 420
+
+	for {
+		line, err := rd.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			cmd.Process.Kill()
+			return fmt.Errorf("read error: %v", err)
+		}
+		line = strings.TrimSpace(line)
+		if len(line) == 0 {
+			continue
+		}
+
+		if line[0] == '?' {
+			queries++
+			if queries > maxQ {
+				fmt.Fprintf(wr, "-1\n")
+				wr.Flush()
+				cmd.Process.Kill()
+				return fmt.Errorf("too many queries: %d > %d", queries, maxQ)
+			}
+			var a, b, c int
+			fmt.Sscanf(line, "? %d %d %d", &a, &b, &c)
+			if a < 1 || a > n || b < 1 || b > n || c < 1 || c > n || a == b || b == c || a == c {
+				fmt.Fprintf(wr, "-1\n")
+				wr.Flush()
+				cmd.Process.Kill()
+				return fmt.Errorf("invalid query: %s", line)
+			}
+			res := median(abs(perm[a]-perm[b]), abs(perm[b]-perm[c]), abs(perm[a]-perm[c]))
+			fmt.Fprintf(wr, "%d\n", res)
+			wr.Flush()
+		} else if line[0] == '!' {
+			// parse answer
+			parts := strings.Fields(line)
+			if len(parts) != n+1 {
+				fmt.Fprintf(wr, "-1\n")
+				wr.Flush()
+				cmd.Process.Kill()
+				return fmt.Errorf("wrong answer length: got %d tokens, want %d", len(parts)-1, n)
+			}
+			correct := true
+			for i := 1; i <= n; i++ {
+				var v int
+				fmt.Sscanf(parts[i], "%d", &v)
+				if v != perm[i] {
+					correct = false
+					break
+				}
+			}
+			if correct {
+				fmt.Fprintf(wr, "1\n")
+				wr.Flush()
+			} else {
+				fmt.Fprintf(wr, "-1\n")
+				wr.Flush()
+				candIn.Close()
+				cmd.Wait()
+				return fmt.Errorf("wrong answer")
+			}
+			candIn.Close()
+			cmd.Wait()
+			return nil
+		} else {
+			// ignore unknown lines
+			continue
+		}
+	}
+
+	candIn.Close()
+	cmd.Wait()
+	return fmt.Errorf("candidate exited without answering")
+}
+
+func genPerm(rng *rand.Rand, n int) []int {
+	// 1-indexed permutation with p[1] < p[2]
+	a := rng.Perm(n)
+	// a is 0-based values 0..n-1, shift to 1..n
+	perm := make([]int, n+1)
+	for i := 0; i < n; i++ {
+		perm[i+1] = a[i] + 1
+	}
+	if perm[1] > perm[2] {
+		perm[1], perm[2] = perm[2], perm[1]
+	}
+	return perm
 }
 
 func main() {
@@ -173,23 +149,18 @@ func main() {
 	}
 	bin := os.Args[1]
 
-	tests, err := parseTestcases()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	for idx, tc := range tests {
-		expect := solve(tc)
-		got, err := runCandidate(bin, tc)
+	// Test with small n values (20 is the minimum per problem constraints)
+	sizes := []int{20, 20, 20, 25, 30, 20, 20, 20, 25, 30}
+
+	for i, n := range sizes {
+		perm := genPerm(rng, n)
+		err := interactor(bin, n, perm)
 		if err != nil {
-			fmt.Printf("case %d failed: %v\n", idx+1, err)
-			os.Exit(1)
-		}
-		if got != expect {
-			fmt.Printf("case %d failed: expected %s got %s\n", idx+1, expect, got)
+			fmt.Fprintf(os.Stderr, "case %d (n=%d) failed: %v\n", i+1, n, err)
 			os.Exit(1)
 		}
 	}
-	fmt.Printf("All %d tests passed\n", len(tests))
+	fmt.Printf("All %d tests passed\n", len(sizes))
 }

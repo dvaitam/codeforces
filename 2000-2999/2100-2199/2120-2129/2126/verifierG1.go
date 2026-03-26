@@ -7,13 +7,136 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const refSource = "2126G1.go"
+// Embedded correct solver for 2126G1.
+const embeddedSolver = `package main
+
+import (
+	"io"
+	"os"
+	"strconv"
+)
+
+const INF = int(1e9)
+
+func check(a, pref []int, n, x, y int) bool {
+	cur := 0
+	pref[0] = 0
+	min0, min1 := INF, INF
+	nextAdd := 0
+	for i := 1; i <= n; i++ {
+		ai := a[i]
+		if ai < x {
+			pref[i] = cur
+			min0, min1 = INF, INF
+			nextAdd = i
+			continue
+		}
+		if ai >= y {
+			cur++
+		} else {
+			cur--
+		}
+		pref[i] = cur
+		if ai == x {
+			for j := nextAdd; j < i; j++ {
+				pj := pref[j]
+				if j&1 == 0 {
+					if pj < min0 {
+						min0 = pj
+					}
+				} else {
+					if pj < min1 {
+						min1 = pj
+					}
+				}
+			}
+			nextAdd = i
+		}
+		if i&1 == 0 {
+			if min0 <= cur || min1 <= cur-1 {
+				return true
+			}
+		} else {
+			if min1 <= cur || min0 <= cur-1 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func main() {
+	data, _ := io.ReadAll(os.Stdin)
+	idx := 0
+	nextInt := func() int {
+		for idx < len(data) && (data[idx] < '0' || data[idx] > '9') {
+			idx++
+		}
+		val := 0
+		for idx < len(data) && data[idx] >= '0' && data[idx] <= '9' {
+			val = val*10 + int(data[idx]-'0')
+			idx++
+		}
+		return val
+	}
+
+	t := nextInt()
+	out := make([]byte, 0, t*4)
+
+	var a, pref []int
+
+	for ; t > 0; t-- {
+		n := nextInt()
+		if cap(a) < n+1 {
+			a = make([]int, n+1)
+			pref = make([]int, n+1)
+		} else {
+			a = a[:n+1]
+			pref = pref[:n+1]
+		}
+
+		var cnt [101]int
+		maxVal := 0
+		for i := 1; i <= n; i++ {
+			v := nextInt()
+			a[i] = v
+			cnt[v]++
+			if v > maxVal {
+				maxVal = v
+			}
+		}
+
+		ans := 0
+		for x := 1; x < maxVal; x++ {
+			if cnt[x] == 0 {
+				continue
+			}
+			lo, hi := x, maxVal+1
+			for lo+1 < hi {
+				mid := (lo + hi) >> 1
+				if check(a, pref, n, x, mid) {
+					lo = mid
+				} else {
+					hi = mid
+				}
+			}
+			if lo-x > ans {
+				ans = lo - x
+			}
+		}
+
+		out = strconv.AppendInt(out, int64(ans), 10)
+		out = append(out, '\n')
+	}
+
+	os.Stdout.Write(out)
+}
+`
 
 type testCase struct {
 	name    string
@@ -72,29 +195,25 @@ func main() {
 }
 
 func buildReference() (string, func(), error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", nil, fmt.Errorf("cannot determine verifier directory")
-	}
-	dir := filepath.Dir(file)
-
-	tmpDir, err := os.MkdirTemp("", "oracle-2126G1-")
+	dir, err := os.MkdirTemp("", "oracle-2126G1-")
 	if err != nil {
 		return "", nil, err
 	}
-	binPath := filepath.Join(tmpDir, "oracleG1")
-
-	cmd := exec.Command("go", "build", "-o", binPath, refSource)
-	cmd.Dir = dir
+	srcPath := filepath.Join(dir, "refG1.go")
+	if err := os.WriteFile(srcPath, []byte(embeddedSolver), 0644); err != nil {
+		_ = os.RemoveAll(dir)
+		return "", nil, fmt.Errorf("failed to write embedded solver: %v", err)
+	}
+	binPath := filepath.Join(dir, "oracleG1")
+	cmd := exec.Command("go", "build", "-o", binPath, srcPath)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		os.RemoveAll(tmpDir)
+		os.RemoveAll(dir)
 		return "", nil, fmt.Errorf("reference build failed: %v\n%s", err, stderr.String())
 	}
-
 	cleanup := func() {
-		_ = os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(dir)
 	}
 	return binPath, cleanup, nil
 }

@@ -6,12 +6,13 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
+
+const MOD = 998244353
 
 type pair struct {
 	l, r int
@@ -22,6 +23,189 @@ type testCase struct {
 	pairs []pair
 }
 
+var fact []int64
+var inv_fact []int64
+
+func power(base, exp int64) int64 {
+	res := int64(1)
+	base %= MOD
+	for exp > 0 {
+		if exp%2 == 1 {
+			res = (res * base) % MOD
+		}
+		base = (base * base) % MOD
+		exp /= 2
+	}
+	return res
+}
+
+func modInverse(n int64) int64 {
+	return power(n, MOD-2)
+}
+
+func precompute(maxN int) {
+	sz := 2*maxN + 10
+	if sz < 10 {
+		sz = 10
+	}
+	fact = make([]int64, sz)
+	inv_fact = make([]int64, sz)
+	fact[0] = 1
+	inv_fact[0] = 1
+	for i := 1; i < sz; i++ {
+		fact[i] = (fact[i-1] * int64(i)) % MOD
+	}
+	inv_fact[sz-1] = modInverse(fact[sz-1])
+	for i := sz - 2; i >= 1; i-- {
+		inv_fact[i] = (inv_fact[i+1] * int64(i+1)) % MOD
+	}
+}
+
+func catalan(k int) int64 {
+	if k < 0 {
+		return 0
+	}
+	res := fact[2*k]
+	res = (res * inv_fact[k]) % MOD
+	res = (res * inv_fact[k+1]) % MOD
+	return res
+}
+
+func invCatalan(k int) int64 {
+	if k < 0 {
+		return 0
+	}
+	res := fact[k]
+	res = (res * fact[k+1]) % MOD
+	res = (res * inv_fact[2*k]) % MOD
+	return res
+}
+
+type interval struct {
+	id int
+	l  int
+	r  int
+}
+
+// Embedded correct solver for 2063F2
+func solveReference(tests []testCase) string {
+	// Determine max n for precompute
+	maxN := 0
+	for _, tc := range tests {
+		if tc.n > maxN {
+			maxN = tc.n
+		}
+	}
+	precompute(maxN + 5)
+
+	var out bytes.Buffer
+
+	for ti, tc := range tests {
+		n := tc.n
+
+		arr := make([]interval, n+1)
+		arr[0] = interval{0, 0, 2*n + 1}
+		for i := 1; i <= n; i++ {
+			arr[i] = interval{i, tc.pairs[i-1].l, tc.pairs[i-1].r}
+		}
+
+		sort.Slice(arr, func(i, j int) bool {
+			if arr[i].l != arr[j].l {
+				return arr[i].l < arr[j].l
+			}
+			return arr[i].r > arr[j].r
+		})
+
+		rVal := make([]int, n+1)
+		for i := 0; i <= n; i++ {
+			rVal[arr[i].id] = arr[i].r
+		}
+
+		parent := make([]int, n+1)
+		st := make([]int, 0, n+1)
+		st = append(st, arr[0].id)
+
+		for i := 1; i <= n; i++ {
+			for len(st) > 0 && rVal[st[len(st)-1]] < arr[i].r {
+				st = st[:len(st)-1]
+			}
+			parent[arr[i].id] = st[len(st)-1]
+			st = append(st, arr[i].id)
+		}
+
+		m := make([]int, n+1)
+		for i := 0; i <= n; i++ {
+			length := arr[i].r - arr[i].l + 1
+			m[arr[i].id] = (length - 2) / 2
+		}
+
+		for i := 1; i <= n; i++ {
+			u := arr[i].id
+			p := parent[u]
+			length := arr[i].r - arr[i].l + 1
+			m[p] -= length / 2
+		}
+
+		ways := int64(1)
+		for i := 0; i <= n; i++ {
+			ways = (ways * catalan(m[i])) % MOD
+		}
+
+		ans := make([]int64, n+1)
+		ans[n] = ways
+
+		dsuParent := make([]int, n+1)
+		for i := 0; i <= n; i++ {
+			dsuParent[i] = i
+		}
+
+		var findSet func(int) int
+		findSet = func(v int) int {
+			root := v
+			for root != dsuParent[root] {
+				root = dsuParent[root]
+			}
+			curr := v
+			for curr != root {
+				nxt := dsuParent[curr]
+				dsuParent[curr] = root
+				curr = nxt
+			}
+			return root
+		}
+
+		for i := n; i >= 1; i-- {
+			u := i
+			p := findSet(parent[u])
+
+			ways = (ways * invCatalan(m[p])) % MOD
+			ways = (ways * invCatalan(m[u])) % MOD
+
+			m[p] += m[u] + 1
+
+			ways = (ways * catalan(m[p])) % MOD
+
+			dsuParent[u] = p
+
+			ans[i-1] = ways
+		}
+
+		for i := 0; i <= n; i++ {
+			if i > 0 {
+				out.WriteByte(' ')
+			}
+			out.WriteString(strconv.FormatInt(ans[i], 10))
+		}
+		out.WriteByte('\n')
+
+		if ti+1 < len(tests) {
+			// continue
+		}
+	}
+
+	return strings.TrimSpace(out.String())
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierF2.go /path/to/candidate")
@@ -29,21 +213,10 @@ func main() {
 	}
 	candidate := os.Args[len(os.Args)-1]
 
-	refBin, cleanup, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer cleanup()
-
 	tests := generateTests()
 	input := buildInput(tests)
 
-	refOut, err := runProgram(refBin, input)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "reference failed: %v\n%s", err, refOut)
-		os.Exit(1)
-	}
+	refOut := solveReference(tests)
 	refVals, err := parseOutputs(refOut, tests)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not parse reference output: %v\n", err)
@@ -71,45 +244,16 @@ func main() {
 	fmt.Printf("All %d tests passed.\n", len(tests))
 }
 
-func buildReference() (string, func(), error) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", nil, fmt.Errorf("cannot determine verifier location")
-	}
-	dir := filepath.Dir(file)
-	tmpDir, err := os.MkdirTemp("", "ref-2063F2-")
-	if err != nil {
-		return "", nil, err
-	}
-	outPath := filepath.Join(tmpDir, "oracle2063F2")
-	cmd := exec.Command("go", "build", "-o", outPath, "2063F2.go")
-	cmd.Dir = dir
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
-	if err := cmd.Run(); err != nil {
-		os.RemoveAll(tmpDir)
-		return "", nil, fmt.Errorf("%v\n%s", err, buf.String())
-	}
-	cleanup := func() { os.RemoveAll(tmpDir) }
-	return outPath, cleanup, nil
-}
-
-func runProgram(path, input string) (string, error) {
-	cmd := exec.Command(path)
-	return runWithInput(cmd, input)
-}
-
 func runCandidate(path, input string) (string, error) {
 	cmd := commandFor(path)
 	return runWithInput(cmd, input)
 }
 
 func commandFor(path string) *exec.Cmd {
-	switch filepath.Ext(path) {
-	case ".go":
+	switch {
+	case strings.HasSuffix(path, ".go"):
 		return exec.Command("go", "run", path)
-	case ".py":
+	case strings.HasSuffix(path, ".py"):
 		return exec.Command("python3", path)
 	default:
 		return exec.Command(path)
@@ -166,7 +310,6 @@ func generateTests() []testCase {
 		totalN += tc.n
 	}
 
-	// Small deterministic sequences (n >= 2)
 	add(makeFromSequence("(())"))
 	add(makeFromSequence("()()"))
 	add(makeFromSequence("(()())"))

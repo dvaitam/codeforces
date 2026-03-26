@@ -12,6 +12,56 @@ import (
 
 const MOD int64 = 998244353
 
+// Brute-force solver: enumerate all permutations, simulate the tournament,
+// check if all results are predictable.
+// Key insight: when |x-y| > k, the higher-rated player always wins.
+// So the current champion is always the max-rated player among those seen so far.
+// For game i (i=1..n-1): champion = max of first i players, challenger = (i+1)-th.
+// The game is predictable iff |champion_rating - challenger_rating| > k.
+func solveBrute(n int, k int64, a []int64) int64 {
+	if n == 1 {
+		return 1
+	}
+	perm := make([]int, n)
+	for i := 0; i < n; i++ {
+		perm[i] = i
+	}
+	count := int64(0)
+	var generate func(int)
+	generate = func(start int) {
+		if start == n {
+			// Simulate tournament: champion is max of first i, challenger is perm[i]
+			predictable := true
+			curMax := a[perm[0]]
+			for i := 1; i < n; i++ {
+				challenger := a[perm[i]]
+				diff := curMax - challenger
+				if diff < 0 {
+					diff = -diff
+				}
+				if diff <= k {
+					predictable = false
+					break
+				}
+				if challenger > curMax {
+					curMax = challenger
+				}
+			}
+			if predictable {
+				count++
+			}
+			return
+		}
+		for i := start; i < n; i++ {
+			perm[start], perm[i] = perm[i], perm[start]
+			generate(start + 1)
+			perm[start], perm[i] = perm[i], perm[start]
+		}
+	}
+	generate(0)
+	return count % MOD
+}
+
 type testCaseG struct {
 	n int
 	k int64
@@ -19,7 +69,7 @@ type testCaseG struct {
 }
 
 func generateCaseG(rng *rand.Rand) (string, testCaseG) {
-	n := rng.Intn(5) + 2
+	n := rng.Intn(5) + 2 // 2..6
 	k := int64(rng.Intn(10))
 	a := make([]int64, n)
 	cur := int64(0)
@@ -37,43 +87,6 @@ func generateCaseG(rng *rand.Rand) (string, testCaseG) {
 	}
 	sb.WriteByte('\n')
 	return sb.String(), testCaseG{n, k, a}
-}
-
-func solveCaseG(n int, k int64, a []int64) int64 {
-	if n == 1 {
-		return 1
-	}
-	groups := []int{}
-	start := 0
-	for i := 1; i < n; i++ {
-		if a[i]-a[i-1] > k {
-			groups = append(groups, i-start)
-			start = i
-		}
-	}
-	groups = append(groups, n-start)
-	if len(groups) == 1 {
-		return 0
-	}
-	fact := make([]int64, n+1)
-	fact[0] = 1
-	for i := 1; i <= n; i++ {
-		fact[i] = fact[i-1] * int64(i) % MOD
-	}
-	sumBad := int64(0)
-	for _, s := range groups {
-		sumBad = (sumBad + int64(s)*(int64(s)-1)) % MOD
-	}
-	ans := (fact[n] - fact[n-2]*sumBad) % MOD
-	if ans < 0 {
-		ans += MOD
-	}
-	return ans
-}
-
-func expectedG(tc testCaseG) string {
-	ans := solveCaseG(tc.n, tc.k, tc.a)
-	return fmt.Sprintf("%d", ans)
 }
 
 func run(bin, input string) (string, error) {
@@ -103,7 +116,7 @@ func main() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 1; i <= 100; i++ {
 		input, tc := generateCaseG(rng)
-		expect := expectedG(tc)
+		expect := fmt.Sprintf("%d", solveBrute(tc.n, tc.k, tc.a))
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i, err, input)

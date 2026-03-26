@@ -18,6 +18,21 @@ type Query struct {
 
 type Test struct{ queries []Query }
 
+// Two open intervals (l1, r1) and (l2, r2) are connected if we can move
+// from one to the other. Move from (a,b) to (c,d) iff c < a < d or c < b < d.
+// This is symmetric if we also check the reverse direction.
+func connected(l1, r1, l2, r2 int) bool {
+	// Can move from interval 1 to interval 2: l2 < l1 < r2 or l2 < r1 < r2
+	if (l2 < l1 && l1 < r2) || (l2 < r1 && r1 < r2) {
+		return true
+	}
+	// Can move from interval 2 to interval 1: l1 < l2 < r1 or l1 < r2 < r1
+	if (l1 < l2 && l2 < r1) || (l1 < r2 && r2 < r1) {
+		return true
+	}
+	return false
+}
+
 func hasPath(l, r []int, a, b int) bool {
 	n := len(l) - 1
 	vis := make([]bool, n+1)
@@ -30,7 +45,7 @@ func hasPath(l, r []int, a, b int) bool {
 			return true
 		}
 		for i := 1; i <= n; i++ {
-			if !vis[i] && ((l[i] < l[v] && l[v] < r[i]) || (l[i] < r[v] && r[v] < r[i])) {
+			if !vis[i] && connected(l[v], r[v], l[i], r[i]) {
 				vis[i] = true
 				q = append(q, i)
 			}

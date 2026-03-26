@@ -11,70 +11,25 @@ import (
 	"time"
 )
 
-type Edge struct{ to, w int }
+// ---------- brute-force oracle for small trees ----------
 
-func bestMedian(n, llim, rlim int, edges [][3]int) (int, [][2]int) {
-	adj := make([][]Edge, n+1)
-	for _, e := range edges {
-		a, b, c := e[0], e[1], e[2]
-		adj[a] = append(adj[a], Edge{b, c})
-		adj[b] = append(adj[b], Edge{a, c})
-	}
-	best := -1
-	pairs := [][2]int{}
-	var dfs func(int, int, []int, []int)
-	dfs = func(u, parent int, path []int, nodes []int) {
-		nodes = append(nodes, u)
-		if len(nodes) >= 2 {
-			if len(nodes)-1 >= llim && len(nodes)-1 <= rlim {
-				vals := append([]int(nil), path...)
-				sort.Ints(vals)
-				med := vals[len(vals)/2]
-				if med > best {
-					best = med
-					pairs = pairs[:0]
-					pairs = append(pairs, [2]int{nodes[0], u})
-				} else if med == best {
-					pairs = append(pairs, [2]int{nodes[0], u})
-				}
-			}
-			if len(nodes)-1 == rlim {
-				nodes = nodes[:len(nodes)-1]
-				return
-			}
-		}
-		for _, e := range adj[u] {
-			if e.to == parent {
-				continue
-			}
-			dfs(e.to, u, append(path, e.w), nodes)
-		}
-		nodes = nodes[:len(nodes)-1]
-	}
-	for i := 1; i <= n; i++ {
-		dfs(i, -1, nil, nil)
-	}
-	if len(pairs) == 0 {
-		pairs = append(pairs, [2]int{1, 1})
-	}
-	return best, pairs
-}
+type bfEdge struct{ to, w int }
 
-func pairMedian(n int, edges [][3]int, x, y int) (int, int) {
+func bfPairMedian(n int, edges [][3]int, x, y int) (int, int) {
 	if x == y {
 		return 0, 0
 	}
-	adj := make([][]Edge, n+1)
+	adj := make([][]bfEdge, n+1)
 	for _, e := range edges {
 		a, b, c := e[0], e[1], e[2]
-		adj[a] = append(adj[a], Edge{b, c})
-		adj[b] = append(adj[b], Edge{a, c})
+		adj[a] = append(adj[a], bfEdge{b, c})
+		adj[b] = append(adj[b], bfEdge{a, c})
 	}
 	var path []int
 	visited := make([]bool, n+1)
 	var found bool
-	var dfs func(int, int)
-	dfs = func(u, parent int) {
+	var dfs func(int)
+	dfs = func(u int) {
 		if found {
 			return
 		}
@@ -84,24 +39,77 @@ func pairMedian(n int, edges [][3]int, x, y int) (int, int) {
 		}
 		visited[u] = true
 		for _, e := range adj[u] {
-			if e.to == parent || visited[e.to] {
+			if visited[e.to] {
 				continue
 			}
 			path = append(path, e.w)
-			dfs(e.to, u)
+			dfs(e.to)
 			if found {
 				return
 			}
 			path = path[:len(path)-1]
 		}
 	}
-	dfs(x, -1)
+	dfs(x)
 	if !found {
 		return -1, 0
 	}
 	vals := append([]int(nil), path...)
 	sort.Ints(vals)
 	return vals[len(vals)/2], len(path)
+}
+
+// Brute-force: enumerate ALL pairs of nodes, compute path median, find optimal.
+func bfBestMedian(n, llim, rlim int, edges [][3]int) int {
+	best := -1
+	for i := 1; i <= n; i++ {
+		for j := i + 1; j <= n; j++ {
+			med, length := bfPairMedian(n, edges, i, j)
+			if length >= llim && length <= rlim {
+				if med > best {
+					best = med
+				}
+			}
+		}
+	}
+	return best
+}
+
+// Compute the diameter (longest path in edges) of the tree using two BFS.
+func treeDiameter(n int, edges [][3]int) int {
+	adj := make([][]int, n+1)
+	for _, e := range edges {
+		adj[e[0]] = append(adj[e[0]], e[1])
+		adj[e[1]] = append(adj[e[1]], e[0])
+	}
+	bfs := func(start int) (int, int) {
+		dist := make([]int, n+1)
+		for i := range dist {
+			dist[i] = -1
+		}
+		dist[start] = 0
+		q := []int{start}
+		farthest := start
+		maxDist := 0
+		for len(q) > 0 {
+			u := q[0]
+			q = q[1:]
+			for _, v := range adj[u] {
+				if dist[v] == -1 {
+					dist[v] = dist[u] + 1
+					q = append(q, v)
+					if dist[v] > maxDist {
+						maxDist = dist[v]
+						farthest = v
+					}
+				}
+			}
+		}
+		return farthest, maxDist
+	}
+	far1, _ := bfs(1)
+	_, diam := bfs(far1)
+	return diam
 }
 
 func run(bin, input string) (string, error) {
@@ -129,38 +137,59 @@ func main() {
 	}
 	bin := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 100; i++ {
+	tested := 0
+	for i := 0; tested < 100 && i < 10000; i++ {
 		n := rng.Intn(6) + 2
-		llim := rng.Intn(n-1) + 1
-		rlim := rng.Intn(n-llim) + llim
 		edges := make([][3]int, n-1)
 		for j := 2; j <= n; j++ {
 			p := rng.Intn(j-1) + 1
 			w := rng.Intn(20)
 			edges[j-2] = [3]int{p, j, w}
 		}
+
+		diam := treeDiameter(n, edges)
+		if diam < 1 {
+			continue
+		}
+
+		llim := rng.Intn(diam) + 1
+		rlim := llim + rng.Intn(diam-llim+1)
+		if rlim > n-1 {
+			rlim = n - 1
+		}
+		if llim > rlim {
+			continue
+		}
+
+		// Verify that a valid path actually exists
+		bestMed := bfBestMedian(n, llim, rlim, edges)
+		if bestMed < 0 {
+			continue
+		}
+
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d %d %d\n", n, llim, rlim))
 		for _, e := range edges {
 			sb.WriteString(fmt.Sprintf("%d %d %d\n", e[0], e[1], e[2]))
 		}
 		input := sb.String()
-		bestMed, _ := bestMedian(n, llim, rlim, edges)
+
 		got, err := run(bin, input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, input)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", tested+1, err, input)
 			os.Exit(1)
 		}
 		var x, y int
 		if _, err := fmt.Sscanf(got, "%d %d", &x, &y); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: bad output %q\ninput:\n%s", i+1, got, input)
+			fmt.Fprintf(os.Stderr, "case %d failed: bad output %q\ninput:\n%s", tested+1, got, input)
 			os.Exit(1)
 		}
-		med, length := pairMedian(n, edges, x, y)
+		med, length := bfPairMedian(n, edges, x, y)
 		if length < llim || length > rlim || med != bestMed {
-			fmt.Fprintf(os.Stderr, "case %d failed: incorrect pair %d %d\ninput:\n%s", i+1, x, y, input)
+			fmt.Fprintf(os.Stderr, "case %d: incorrect pair %d %d (med=%d len=%d, bestMed=%d)\ninput:\n%s", tested+1, x, y, med, length, bestMed, input)
 			os.Exit(1)
 		}
+		tested++
 	}
-	fmt.Println("All tests passed")
+	fmt.Printf("All %d tests passed\n", tested)
 }

@@ -13,12 +13,147 @@ import (
 )
 
 const (
-	// refSource points to the local reference solution to avoid GOPATH resolution.
-	refSource     = "2097D.go"
 	randomTests   = 120
-	totalLenLimit = 200000 // keep well below 1e6 for speed
+	totalLenLimit = 200000
 	maxNPerCase   = 50000
 )
+
+// Embedded correct solver for 2097D.
+const embeddedSolver = `package main
+
+import (
+	"bufio"
+	"fmt"
+	"math/bits"
+	"os"
+	"strconv"
+)
+
+type Bitset []uint64
+
+func getRREF(str string, d, q int) []Bitset {
+	wordLen := (q + 63) >> 6
+	pool := make([]uint64, d*wordLen)
+	basis := make([]Bitset, q)
+
+	for i := 0; i < d; i++ {
+		vc := Bitset(pool[i*wordLen : (i+1)*wordLen])
+		for j := 0; j < q; j++ {
+			if str[i*q+j] == '1' {
+				vc[j>>6] |= 1 << (j & 63)
+			}
+		}
+
+		c := 0
+		for c < q {
+			wordIdx := c >> 6
+			bitIdx := c & 63
+			word := vc[wordIdx] >> bitIdx
+			if word == 0 {
+				c = (wordIdx + 1) << 6
+				continue
+			}
+			tz := bits.TrailingZeros64(word)
+			c += tz
+			if c >= q {
+				break
+			}
+			if basis[c] != nil {
+				for k := 0; k < wordLen; k++ {
+					vc[k] ^= basis[c][k]
+				}
+				c++
+			} else {
+				basis[c] = vc
+				break
+			}
+		}
+	}
+
+	pivots := make([]int, 0, d)
+	for c := 0; c < q; c++ {
+		if basis[c] != nil {
+			pivots = append(pivots, c)
+		}
+	}
+
+	for i := len(pivots) - 1; i >= 0; i-- {
+		c := pivots[i]
+		for j := 0; j < i; j++ {
+			r_c := pivots[j]
+			if (basis[r_c][c>>6] & (1 << (c & 63))) != 0 {
+				for k := 0; k < wordLen; k++ {
+					basis[r_c][k] ^= basis[c][k]
+				}
+			}
+		}
+	}
+
+	return basis
+}
+
+func compareBases(b1, b2 []Bitset) bool {
+	for i := 0; i < len(b1); i++ {
+		if b1[i] == nil && b2[i] == nil {
+			continue
+		}
+		if b1[i] == nil || b2[i] == nil {
+			return false
+		}
+		for j := 0; j < len(b1[i]); j++ {
+			if b1[i][j] != b2[i][j] {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func solve() {
+	scanner := bufio.NewScanner(os.Stdin)
+	buf := make([]byte, 1024*1024*10)
+	scanner.Buffer(buf, 1024*1024*10)
+	scanner.Split(bufio.ScanWords)
+
+	if !scanner.Scan() {
+		return
+	}
+	tStr := scanner.Text()
+	t, _ := strconv.Atoi(tStr)
+
+	for tc := 0; tc < t; tc++ {
+		scanner.Scan()
+		nStr := scanner.Text()
+		n, _ := strconv.Atoi(nStr)
+
+		scanner.Scan()
+		s := scanner.Text()
+
+		scanner.Scan()
+		tgt := scanner.Text()
+
+		q := n
+		d := 1
+		for q%2 == 0 {
+			q /= 2
+			d *= 2
+		}
+
+		b1 := getRREF(s, d, q)
+		b2 := getRREF(tgt, d, q)
+
+		if compareBases(b1, b2) {
+			fmt.Println("Yes")
+		} else {
+			fmt.Println("No")
+		}
+	}
+}
+
+func main() {
+	solve()
+}
+`
 
 type testCase struct {
 	n int
@@ -33,11 +168,11 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, err := buildReference()
+	refBin, cleanup, err := buildReference()
 	if err != nil {
 		fail("failed to build reference: %v", err)
 	}
-	defer os.Remove(refBin)
+	defer cleanup()
 
 	tests := generateTests()
 	input := buildInput(tests)
@@ -66,22 +201,27 @@ func main() {
 	fmt.Printf("All %d test cases passed.\n", len(tests))
 }
 
-func buildReference() (string, error) {
-	tmp, err := os.CreateTemp("", "2097D-ref-*")
+func buildReference() (string, func(), error) {
+	dir, err := os.MkdirTemp("", "2097D-ref-")
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	tmp.Close()
-
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
+	srcPath := filepath.Join(dir, "ref2097D.go")
+	if err := os.WriteFile(srcPath, []byte(embeddedSolver), 0644); err != nil {
+		_ = os.RemoveAll(dir)
+		return "", nil, fmt.Errorf("failed to write embedded solver: %v", err)
+	}
+	binPath := filepath.Join(dir, "ref2097D.bin")
+	cmd := exec.Command("go", "build", "-o", binPath, srcPath)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, out.String())
+		os.RemoveAll(dir)
+		return "", nil, fmt.Errorf("%v\n%s", err, out.String())
 	}
-	return tmp.Name(), nil
+	cleanup := func() { _ = os.RemoveAll(dir) }
+	return binPath, cleanup, nil
 }
 
 func generateTests() []testCase {

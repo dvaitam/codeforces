@@ -12,13 +12,100 @@ import (
 	"time"
 )
 
-const refSource = "./2092E.go"
-
 type testCase struct {
 	name    string
 	input   string
 	answers int
 }
+
+// Embedded correct solver for 2092E.
+const embeddedSolver = `package main
+
+import (
+	"bufio"
+	"bytes"
+	"io"
+	"os"
+	"strconv"
+)
+
+const MOD int64 = 1000000007
+
+func pow2(e int64) int64 {
+	res, base := int64(1), int64(2)
+	for e > 0 {
+		if e&1 == 1 {
+			res = res * base % MOD
+		}
+		base = base * base % MOD
+		e >>= 1
+	}
+	return res
+}
+
+func main() {
+	data, _ := io.ReadAll(bufio.NewReaderSize(os.Stdin, 1<<20))
+	idx := 0
+	nextInt := func() int64 {
+		for idx < len(data) && (data[idx] < '0' || data[idx] > '9') {
+			idx++
+		}
+		var v int64
+		for idx < len(data) && data[idx] >= '0' && data[idx] <= '9' {
+			v = v*10 + int64(data[idx]-'0')
+			idx++
+		}
+		return v
+	}
+
+	t := int(nextInt())
+	var out bytes.Buffer
+
+	for ; t > 0; t-- {
+		n := nextInt()
+		m := nextInt()
+		k := nextInt()
+
+		totalOdd := int64(2) * (n + m - 4)
+		cntOddSpecified := int64(0)
+		parity := int64(0)
+
+		for i := int64(0); i < k; i++ {
+			x := nextInt()
+			y := nextInt()
+			c := nextInt()
+
+			boundary := x == 1 || x == n || y == 1 || y == m
+			corner := (x == 1 || x == n) && (y == 1 || y == m)
+			if boundary && !corner {
+				cntOddSpecified++
+				parity ^= c
+			}
+		}
+
+		totalCells := n * m
+		free := totalCells - k
+
+		var ans int64
+		if cntOddSpecified < totalOdd {
+			ans = pow2(free - 1)
+		} else {
+			if parity == 0 {
+				ans = pow2(free)
+			} else {
+				ans = 0
+			}
+		}
+
+		out.WriteString(strconv.FormatInt(ans, 10))
+		out.WriteByte('\n')
+	}
+
+	w := bufio.NewWriterSize(os.Stdout, 1<<20)
+	w.Write(out.Bytes())
+	w.Flush()
+}
+`
 
 func main() {
 	if len(os.Args) != 2 {
@@ -73,8 +160,13 @@ func buildReference() (string, func(), error) {
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to create temp dir: %v", err)
 	}
+	srcPath := filepath.Join(dir, "ref2092E.go")
+	if err := os.WriteFile(srcPath, []byte(embeddedSolver), 0644); err != nil {
+		_ = os.RemoveAll(dir)
+		return "", nil, fmt.Errorf("failed to write embedded solver: %v", err)
+	}
 	binPath := filepath.Join(dir, "ref2092E.bin")
-	cmd := exec.Command("go", "build", "-o", binPath, refSource)
+	cmd := exec.Command("go", "build", "-o", binPath, srcPath)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {

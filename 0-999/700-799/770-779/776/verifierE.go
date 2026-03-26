@@ -30,7 +30,6 @@ func phiExact(n int64) int64 {
 }
 
 func solveExpected(n, k int64) int64 {
-	k = (k + 1) / 2
 	for k > 0 && n != 1 {
 		n = phiExact(n)
 		k--

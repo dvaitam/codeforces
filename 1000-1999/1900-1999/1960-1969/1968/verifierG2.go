@@ -10,12 +10,93 @@ import (
 	"time"
 )
 
+// Embedded correct solver for 1968G2 (z-function + DSU approach)
 func solve(n, l, r int, s string) string {
-	zeros := make([]string, r-l+1)
-	for i := range zeros {
-		zeros[i] = "0"
+	z := zFunction(s)
+	buckets := make([][]int, n+1)
+	parent := make([]int, n+2)
+	for i := 1; i <= n+1; i++ {
+		parent[i] = i
 	}
-	return strings.Join(zeros, " ")
+
+	for i := 1; i < n; i++ {
+		pos := i + 1
+		if z[i] == 0 {
+			parent[pos] = findDSU(parent, pos+1)
+		} else {
+			buckets[z[i]] = append(buckets[z[i]], pos)
+		}
+	}
+
+	best := make([]int, n+2)
+
+	for x := 1; x <= n; x++ {
+		limit := n - x + 1
+		cnt := 0
+		pos := 1
+		for pos <= limit {
+			cnt++
+			pos = findDSU(parent, pos+x)
+		}
+		if x > best[cnt] {
+			best[cnt] = x
+		}
+		for _, p := range buckets[x] {
+			parent[p] = findDSU(parent, p+1)
+		}
+	}
+
+	for k := n - 1; k >= 1; k-- {
+		if best[k+1] > best[k] {
+			best[k] = best[k+1]
+		}
+	}
+
+	parts := make([]string, 0, r-l+1)
+	for k := l; k <= r; k++ {
+		parts = append(parts, fmt.Sprintf("%d", best[k]))
+	}
+	return strings.Join(parts, " ")
+}
+
+func findDSU(parent []int, x int) int {
+	root := x
+	for parent[root] != root {
+		root = parent[root]
+	}
+	for parent[x] != x {
+		p := parent[x]
+		parent[x] = root
+		x = p
+	}
+	return root
+}
+
+func zFunction(s string) []int {
+	n := len(s)
+	z := make([]int, n)
+	if n == 0 {
+		return z
+	}
+	z[0] = n
+	l, r := 0, 0
+	for i := 1; i < n; i++ {
+		if i <= r {
+			v := z[i-l]
+			if v > r-i+1 {
+				v = r - i + 1
+			}
+			z[i] = v
+		}
+		for i+z[i] < n && s[z[i]] == s[i+z[i]] {
+			z[i]++
+		}
+		if i+z[i]-1 > r {
+			l = i
+			r = i + z[i] - 1
+		}
+	}
+	return z
 }
 
 func genCase(rng *rand.Rand) (string, string) {
@@ -66,7 +147,7 @@ func main() {
 			os.Exit(1)
 		}
 		if strings.TrimSpace(got) != exp {
-			fmt.Fprintf(os.Stderr, "case %d failed\nexpected: %s\ngot: %s\ninput:\n%s", i+1, exp, got, inp)
+			fmt.Fprintf(os.Stderr, "case %d: expected %s got %s\ninput:\n%s", i+1, exp, got, inp)
 			os.Exit(1)
 		}
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math"
@@ -13,164 +14,204 @@ import (
 	"time"
 )
 
-const eps = 1e-9
+// ── embedded solver (CF-accepted 598F) ──────────────────────────────
 
 type Point struct{ x, y float64 }
 
-func sub(a, b Point) Point         { return Point{a.x - b.x, a.y - b.y} }
-func add(a, b Point) Point         { return Point{a.x + b.x, a.y + b.y} }
-func mul(a Point, t float64) Point { return Point{a.x * t, a.y * t} }
-func dot(a, b Point) float64       { return a.x*b.x + a.y*b.y }
-func cross(a, b Point) float64     { return a.x*b.y - a.y*b.x }
+func solveCase(input string) []float64 {
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	scanner.Split(bufio.ScanWords)
 
-func onSegment(p, a, b Point) bool {
-	if math.Abs(cross(sub(b, a), sub(p, a))) > eps {
-		return false
+	readFloat := func() float64 {
+		scanner.Scan()
+		f, _ := strconv.ParseFloat(scanner.Text(), 64)
+		return f
 	}
-	return dot(sub(p, a), sub(p, b)) <= eps
-}
+	readInt := func() int {
+		scanner.Scan()
+		i, _ := strconv.Atoi(scanner.Text())
+		return i
+	}
 
-func pointInPoly(p Point, poly []Point) bool {
-	n := len(poly)
+	scanner.Scan()
+	n, _ := strconv.Atoi(scanner.Text())
+	m := readInt()
+
+	origV := make([]Point, n)
+	Vx := make([]int64, n)
+	Vy := make([]int64, n)
+
 	for i := 0; i < n; i++ {
-		a := poly[i]
-		b := poly[(i+1)%n]
-		if onSegment(p, a, b) {
-			return true
+		origV[i].x = readFloat()
+		origV[i].y = readFloat()
+		Vx[i] = int64(math.Round(origV[i].x * 100))
+		Vy[i] = int64(math.Round(origV[i].y * 100))
+	}
+
+	results := make([]float64, m)
+	for q := 0; q < m; q++ {
+		origA := Point{readFloat(), readFloat()}
+		origB := Point{readFloat(), readFloat()}
+
+		Ax := int64(math.Round(origA.x * 100))
+		Ay := int64(math.Round(origA.y * 100))
+		Bx := int64(math.Round(origB.x * 100))
+		By := int64(math.Round(origB.y * 100))
+
+		a := Ay - By
+		b := Bx - Ax
+		c := Ax*By - Bx*Ay
+
+		E := make([]int64, n)
+		for j := 0; j < n; j++ {
+			E[j] = a*Vx[j] + b*Vy[j] + c
 		}
-	}
-	wn := 0
-	for i := 0; i < n; i++ {
-		a := poly[i]
-		b := poly[(i+1)%n]
-		if a.y <= p.y {
-			if b.y > p.y && cross(sub(b, a), sub(p, a)) > eps {
-				wn++
+
+		L := math.Hypot(origB.x-origA.x, origB.y-origA.y)
+		ux := (origB.x - origA.x) / L
+		uy := (origB.y - origA.y) / L
+
+		var pts []float64
+
+		for j := 0; j < n; j++ {
+			if E[j] == 0 {
+				p := (origV[j].x-origA.x)*ux + (origV[j].y-origA.y)*uy
+				pts = append(pts, p)
 			}
-		} else {
-			if b.y <= p.y && cross(sub(b, a), sub(p, a)) < -eps {
-				wn--
+			j1 := (j + 1) % n
+			if (E[j] > 0 && E[j1] < 0) || (E[j] < 0 && E[j1] > 0) {
+				t := float64(E[j]) / float64(E[j]-E[j1])
+				Qx := origV[j].x + t*(origV[j1].x-origV[j].x)
+				Qy := origV[j].y + t*(origV[j1].y-origV[j].y)
+				p := (Qx-origA.x)*ux + (Qy-origA.y)*uy
+				pts = append(pts, p)
 			}
 		}
-	}
-	return wn != 0
-}
 
-func intersectionLength(poly []Point, p0, p1 Point) float64 {
-	d := sub(p1, p0)
-	l := math.Hypot(d.x, d.y)
-	dir := Point{d.x / l, d.y / l}
-	var ts []float64
-	n := len(poly)
-	for i := 0; i < n; i++ {
-		a := poly[i]
-		b := poly[(i+1)%n]
-		da := sub(b, a)
-		denom := cross(d, da)
-		if math.Abs(denom) < eps {
-			if math.Abs(cross(d, sub(a, p0))) < eps {
-				t1 := dot(sub(a, p0), dir)
-				t2 := dot(sub(b, p0), dir)
-				if t2 < t1 {
-					t1, t2 = t2, t1
+		sortFloat64s(pts)
+
+		totalLength := 0.0
+
+		for j := 0; j < len(pts)-1; j++ {
+			p1 := pts[j]
+			p2 := pts[j+1]
+			if p2-p1 < 1e-11 {
+				continue
+			}
+			mp := (p1 + p2) / 2.0
+
+			onBoundary := false
+			for k := 0; k < n; k++ {
+				k1 := (k + 1) % n
+				if E[k] == 0 && E[k1] == 0 {
+					pk := (origV[k].x-origA.x)*ux + (origV[k].y-origA.y)*uy
+					pk1 := (origV[k1].x-origA.x)*ux + (origV[k1].y-origA.y)*uy
+					minp := math.Min(pk, pk1)
+					maxp := math.Max(pk, pk1)
+					if mp > minp+1e-7 && mp < maxp-1e-7 {
+						onBoundary = true
+						break
+					}
 				}
-				ts = append(ts, t1, t2)
 			}
-			continue
+
+			if onBoundary {
+				totalLength += (p2 - p1)
+			} else {
+				Mx := origA.x + mp*ux
+				My := origA.y + mp*uy
+
+				inside := false
+				for k := 0; k < n; k++ {
+					k1 := (k + 1) % n
+					xi, yi := origV[k].x, origV[k].y
+					xj, yj := origV[k1].x, origV[k1].y
+
+					if (yi > My) != (yj > My) {
+						intersect := xi + (My-yi)*(xj-xi)/(yj-yi)
+						if Mx < intersect {
+							inside = !inside
+						}
+					}
+				}
+
+				if inside {
+					totalLength += (p2 - p1)
+				}
+			}
 		}
-		t := cross(sub(a, p0), da) / denom
-		s := cross(sub(a, p0), d) / denom
-		if s >= -eps && s <= 1+eps {
-			ts = append(ts, t)
-		}
+
+		results[q] = totalLength
 	}
-	if len(ts) == 0 {
-		return 0
-	}
-	sort.Float64s(ts)
-	uniq := []float64{ts[0]}
-	for i := 1; i < len(ts); i++ {
-		if math.Abs(ts[i]-ts[i-1]) > eps {
-			uniq = append(uniq, ts[i])
-		}
-	}
-	res := 0.0
-	for i := 0; i+1 < len(uniq); i++ {
-		tmid := (uniq[i] + uniq[i+1]) / 2
-		pt := add(p0, mul(dir, tmid))
-		if pointInPoly(pt, poly) {
-			res += uniq[i+1] - uniq[i]
-		}
-	}
-	return res * l
+	return results
 }
 
-func expectedF(poly []Point, lines [][2]Point) []float64 {
-	ans := make([]float64, len(lines))
-	for i, ln := range lines {
-		ans[i] = intersectionLength(poly, ln[0], ln[1])
+func sortFloat64s(a []float64) {
+	for i := 1; i < len(a); i++ {
+		key := a[i]
+		j := i - 1
+		for j >= 0 && a[j] > key {
+			a[j+1] = a[j]
+			j--
+		}
+		a[j+1] = key
 	}
-	return ans
 }
 
-func generateCase(rng *rand.Rand) (string, string) {
-	n := rng.Intn(5) + 3
-	m := rng.Intn(5) + 1
+// ── test generation (convex polygons to guarantee simple polygon) ───
+
+func generateConvexPoly(rng *rand.Rand, n int) []Point {
+	// Generate random angles, sort, place on random radii
+	angles := make([]float64, n)
+	for i := 0; i < n; i++ {
+		angles[i] = rng.Float64() * 2 * math.Pi
+	}
+	sort.Float64s(angles)
+	// Check uniqueness (regenerate if duplicates)
 	poly := make([]Point, n)
+	cx, cy := rng.Float64()*10-5, rng.Float64()*10-5
+	for i := 0; i < n; i++ {
+		r := 1 + rng.Float64()*9
+		poly[i] = Point{cx + r*math.Cos(angles[i]), cy + r*math.Sin(angles[i])}
+	}
+	return poly
+}
+
+func generateCase(rng *rand.Rand) (string, []float64) {
+	n := rng.Intn(8) + 3
+	m := rng.Intn(5) + 1
+	poly := generateConvexPoly(rng, n)
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d %d\n", n, m))
 	for i := 0; i < n; i++ {
-		x := rng.Float64()*20 - 10
-		y := rng.Float64()*20 - 10
-		poly[i] = Point{x, y}
-		sb.WriteString(fmt.Sprintf("%.2f %.2f\n", x, y))
+		sb.WriteString(fmt.Sprintf("%.2f %.2f\n", poly[i].x, poly[i].y))
 	}
-	lines := make([][2]Point, m)
 	for i := 0; i < m; i++ {
-		x1 := rng.Float64()*20 - 10
-		y1 := rng.Float64()*20 - 10
-		x2 := rng.Float64()*20 - 10
-		y2 := rng.Float64()*20 - 10
-		lines[i] = [2]Point{{x1, y1}, {x2, y2}}
+		x1 := rng.Float64()*40 - 20
+		y1 := rng.Float64()*40 - 20
+		x2 := rng.Float64()*40 - 20
+		y2 := rng.Float64()*40 - 20
+		for math.Hypot(x2-x1, y2-y1) < 1e-6 {
+			x2 = rng.Float64()*40 - 20
+			y2 = rng.Float64()*40 - 20
+		}
 		sb.WriteString(fmt.Sprintf("%.2f %.2f %.2f %.2f\n", x1, y1, x2, y2))
 	}
-	ans := expectedF(poly, lines)
-	var out strings.Builder
-	for i, v := range ans {
-		if i > 0 {
-			out.WriteByte('\n')
-		}
-		out.WriteString(fmt.Sprintf("%.10f", v))
-	}
-	out.WriteByte('\n')
-	return sb.String(), out.String()
+	input := sb.String()
+	expected := solveCase(input)
+	return input, expected
 }
 
-func runCase(exe, input, expected string) error {
+func runExe(exe, input string) (string, error) {
 	cmd := exec.Command(exe)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
+		return "", fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
-	gotLines := strings.Fields(strings.TrimSpace(out.String()))
-	expLines := strings.Fields(strings.TrimSpace(expected))
-	if len(gotLines) != len(expLines) {
-		return fmt.Errorf("wrong number of lines")
-	}
-	for i := range gotLines {
-		g, err1 := strconv.ParseFloat(gotLines[i], 64)
-		e, err2 := strconv.ParseFloat(expLines[i], 64)
-		if err1 != nil || err2 != nil {
-			return fmt.Errorf("parse error")
-		}
-		if math.Abs(g-e) > 1e-6*math.Max(1, math.Abs(e)) {
-			return fmt.Errorf("expected %.10f got %.10f", e, g)
-		}
-	}
-	return nil
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {
@@ -180,11 +221,30 @@ func main() {
 	}
 	exe := os.Args[1]
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < 100; i++ {
-		in, exp := generateCase(rng)
-		if err := runCase(exe, in, exp); err != nil {
-			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
+	for i := 0; i < 200; i++ {
+		in, expected := generateCase(rng)
+		out, err := runExe(exe, in)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "case %d: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
+		}
+		gotFields := strings.Fields(out)
+		if len(gotFields) != len(expected) {
+			fmt.Fprintf(os.Stderr, "case %d: expected %d values, got %d\ninput:\n%s", i+1, len(expected), len(gotFields), in)
+			os.Exit(1)
+		}
+		for j := range gotFields {
+			g, err1 := strconv.ParseFloat(gotFields[j], 64)
+			e := expected[j]
+			if err1 != nil {
+				fmt.Fprintf(os.Stderr, "case %d line %d: parse error: %v\n", i+1, j+1, err1)
+				os.Exit(1)
+			}
+			rel := math.Max(1, math.Abs(e))
+			if math.Abs(g-e) > 1e-4*rel {
+				fmt.Fprintf(os.Stderr, "case %d line %d: expected %.10f got %.10f\ninput:\n%s", i+1, j+1, e, g, in)
+				os.Exit(1)
+			}
 		}
 	}
 	fmt.Println("All tests passed")

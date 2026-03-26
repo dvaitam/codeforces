@@ -1,28 +1,120 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	oracle := filepath.Join(dir, "oracleD")
-	cmd := exec.Command("go", "build", "-o", oracle, "1508D.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
-	}
-	return oracle, nil
+// ---------- embedded reference solver (from CF-accepted solution) ----------
+
+type Point struct {
+	x, y int
 }
+
+func referenceSolve(input string) string {
+	in := bufio.NewReader(strings.NewReader(input))
+	var buf bytes.Buffer
+	out := bufio.NewWriter(&buf)
+
+	var n int
+	fmt.Fscan(in, &n)
+	p := make([]Point, n)
+	to := make([]int, n)
+	ord := make([]int, 0, n)
+	for i := 0; i < n; i++ {
+		fmt.Fscan(in, &p[i].x, &p[i].y, &to[i])
+		to[i]--
+		if to[i] != i {
+			ord = append(ord, i)
+		}
+	}
+	if len(ord) == 0 {
+		return "0"
+	}
+	mn := ord[0]
+	for _, v := range ord[1:] {
+		if p[v].x < p[mn].x || (p[v].x == p[mn].x && p[v].y < p[mn].y) {
+			mn = v
+		}
+	}
+	idx := 0
+	for i, v := range ord {
+		if v == mn {
+			idx = i
+			break
+		}
+	}
+	ord = append(ord[idx:], ord[:idx]...)
+	sort.Slice(ord[1:], func(i, j int) bool {
+		a := ord[1+i]
+		b := ord[1+j]
+		dx1, dy1 := p[a].x-p[mn].x, p[a].y-p[mn].y
+		dx2, dy2 := p[b].x-p[mn].x, p[b].y-p[mn].y
+		return int64(dx1)*int64(dy2)-int64(dy1)*int64(dx2) > 0
+	})
+	ops := make([][2]int, 0, n)
+	makeOp := func(i, j int) {
+		to[i], to[j] = to[j], to[i]
+		ops = append(ops, [2]int{i, j})
+	}
+	par := make([]int, n)
+	for i := range par {
+		par[i] = i
+	}
+	var find func(int) int
+	find = func(v int) int {
+		if par[v] != v {
+			par[v] = find(par[v])
+		}
+		return par[v]
+	}
+	used := make([]bool, n)
+	for i := 0; i < n; i++ {
+		if used[i] {
+			continue
+		}
+		for j := i; !used[j]; j = to[j] {
+			par[find(j)] = find(i)
+			used[j] = true
+		}
+	}
+	for i := 1; i < len(ord)-1; i++ {
+		u := ord[i]
+		v := ord[i+1]
+		r1, r2 := find(u), find(v)
+		if r1 == r2 {
+			continue
+		}
+		makeOp(u, v)
+		par[r1] = r2
+	}
+	for i := range used {
+		used[i] = false
+	}
+	path := make([]int, 0, n)
+	for i := mn; !used[i]; i = to[i] {
+		path = append(path, i)
+		used[i] = true
+	}
+	for j := 1; j < len(path); j++ {
+		makeOp(mn, path[j])
+	}
+	fmt.Fprintln(out, len(ops))
+	for _, pr := range ops {
+		fmt.Fprintln(out, pr[0]+1, pr[1]+1)
+	}
+	out.Flush()
+	return strings.TrimSpace(buf.String())
+}
+
+// ---------- test generator ----------
 
 func genCase(r *rand.Rand) string {
 	n := r.Intn(8) + 2 // 2..9
@@ -70,21 +162,11 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 1; i <= 100; i++ {
 		input := genCase(rng)
-		expect, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", i, err)
-			os.Exit(1)
-		}
+		expect := referenceSolve(input)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i, err, input)

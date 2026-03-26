@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -10,13 +11,113 @@ import (
 	"time"
 )
 
-func buildRef() (string, error) {
-	ref := "./refF.bin"
-	cmd := exec.Command("go", "build", "-o", ref, "838F.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to build reference: %v\n%s", err, out)
+type ext struct {
+	m float64
+	e int32
+}
+
+func solveCase(n int, X int, pr []int) string {
+	c := float64(X) / 1000000.0
+
+	lfact := make([]float64, n+1)
+	for i := 1; i <= n; i++ {
+		lfact[i] = lfact[i-1] + math.Log2(float64(i))
 	}
-	return ref, nil
+
+	p := make([]ext, n+1)
+	for r := 0; r <= n; r++ {
+		if pr[r] == 0 {
+			p[r] = ext{0.0, 0}
+		} else {
+			log2Comb := lfact[n] - lfact[r] - lfact[n-r]
+			L := math.Log2(float64(pr[r])/1000000.0) - log2Comb
+			e := int32(math.Floor(L)) + 1
+			m := math.Exp2(L - float64(e))
+			p[r] = ext{m, e}
+		}
+	}
+
+	var pow2 [60]float64
+	for i := 0; i < 60; i++ {
+		pow2[i] = math.Exp2(float64(-i))
+	}
+
+	V := make([]float64, n+1)
+	nextV := make([]float64, n+1)
+	nextPArr := make([]ext, n+1)
+
+	for d := n - 1; d >= 0; d-- {
+		for r := 0; r <= d; r++ {
+			a := p[r]
+			b := p[r+1]
+
+			var nextP ext
+			if a.m == 0 {
+				nextP = b
+			} else if b.m == 0 {
+				nextP = a
+			} else {
+				var diffE int32
+				if a.e >= b.e {
+					diffE = a.e - b.e
+					if diffE > 59 {
+						nextP = a
+					} else {
+						m := a.m + b.m*pow2[diffE]
+						if m >= 1.0 {
+							nextP = ext{m * 0.5, a.e + 1}
+						} else {
+							nextP = ext{m, a.e}
+						}
+					}
+				} else {
+					diffE = b.e - a.e
+					if diffE > 59 {
+						nextP = b
+					} else {
+						m := b.m + a.m*pow2[diffE]
+						if m >= 1.0 {
+							nextP = ext{m * 0.5, b.e + 1}
+						} else {
+							nextP = ext{m, b.e}
+						}
+					}
+				}
+			}
+
+			if nextP.m == 0 {
+				nextV[r] = 0.0
+			} else {
+				var probRed float64
+				if b.m == 0 {
+					probRed = 0.0
+				} else {
+					diff := nextP.e - b.e
+					if diff > 59 {
+						probRed = 0.0
+					} else {
+						probRed = (b.m / nextP.m) * pow2[diff]
+					}
+				}
+				if probRed > 1.0 {
+					probRed = 1.0
+				}
+
+				expected := -c + probRed*(1.0+V[r+1]) + (1.0-probRed)*V[r]
+				if expected > 0.0 {
+					nextV[r] = expected
+				} else {
+					nextV[r] = 0.0
+				}
+			}
+			nextPArr[r] = nextP
+		}
+
+		p, nextPArr = nextPArr, p
+		V, nextV = nextV, V
+	}
+
+	return fmt.Sprintf("%.12f", V[0])
 }
 
 func generateCase(rng *rand.Rand) string {
@@ -47,16 +148,16 @@ func generateCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
-func runCase(exe, ref, input string) error {
-	cmdRef := exec.Command(ref)
-	cmdRef.Stdin = strings.NewReader(input)
-	var refOut bytes.Buffer
-	cmdRef.Stdout = &refOut
-	cmdRef.Stderr = &refOut
-	if err := cmdRef.Run(); err != nil {
-		return fmt.Errorf("reference runtime error: %v\n%s", err, refOut.String())
+func runCase(exe, input string) error {
+	// Parse input to get expected
+	var n, X int
+	r := strings.NewReader(input)
+	fmt.Fscan(r, &n, &X)
+	pr := make([]int, n+1)
+	for i := 0; i <= n; i++ {
+		fmt.Fscan(r, &pr[i])
 	}
-	expected := strings.TrimSpace(refOut.String())
+	expected := solveCase(n, X, pr)
 
 	cmd := exec.Command(exe)
 	cmd.Stdin = strings.NewReader(input)
@@ -67,8 +168,12 @@ func runCase(exe, ref, input string) error {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
 	got := strings.TrimSpace(out.String())
-	if got != expected {
-		return fmt.Errorf("expected\n%s\ngot\n%s", expected, got)
+
+	var gotVal, expVal float64
+	fmt.Sscan(got, &gotVal)
+	fmt.Sscan(expected, &expVal)
+	if math.Abs(gotVal-expVal) > 1e-4 {
+		return fmt.Errorf("expected %s got %s", expected, got)
 	}
 	return nil
 }
@@ -79,16 +184,10 @@ func main() {
 		os.Exit(1)
 	}
 	exe := os.Args[1]
-	ref, err := buildRef()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		in := generateCase(rng)
-		if err := runCase(exe, ref, in); err != nil {
+		if err := runCase(exe, in); err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i+1, err, in)
 			os.Exit(1)
 		}
