@@ -3,25 +3,114 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+// Embedded correct solver for 1578L
+type solverEdge struct {
+	u, v int
+	w    int64
+}
+
+func solveCase(input string) string {
+	r := strings.NewReader(strings.TrimSpace(input))
+	var n, m int
+	fmt.Fscan(r, &n, &m)
+
+	if n == 0 {
+		return ""
 	}
-	oracle := filepath.Join(dir, "oracleL")
-	cmd := exec.Command("go", "build", "-o", oracle, "1578L.go")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+
+	c := make([]int64, n+1)
+	for i := 1; i <= n; i++ {
+		fmt.Fscan(r, &c[i])
 	}
-	return oracle, nil
+
+	edges := make([]solverEdge, m)
+	for i := 0; i < m; i++ {
+		fmt.Fscan(r, &edges[i].u, &edges[i].v, &edges[i].w)
+	}
+
+	sort.Slice(edges, func(i, j int) bool {
+		return edges[i].w > edges[j].w
+	})
+
+	dsu := make([]int, 2*n)
+	for i := 1; i < 2*n; i++ {
+		dsu[i] = i
+	}
+	var find func(i int) int
+	find = func(i int) int {
+		if dsu[i] == i {
+			return i
+		}
+		dsu[i] = find(dsu[i])
+		return dsu[i]
+	}
+
+	minI64 := func(a, b int64) int64 {
+		if a < b {
+			return a
+		}
+		return b
+	}
+
+	val := make([]int64, 2*n)
+	sum_c := make([]int64, 2*n)
+	for i := 1; i <= n; i++ {
+		sum_c[i] = c[i]
+	}
+
+	children := make([][2]int, 2*n)
+
+	idx := n
+	for _, e := range edges {
+		ru := find(e.u)
+		rv := find(e.v)
+		if ru != rv {
+			idx++
+			dsu[ru] = idx
+			dsu[rv] = idx
+			val[idx] = e.w
+			sum_c[idx] = sum_c[ru] + sum_c[rv]
+			children[idx] = [2]int{ru, rv}
+		}
+	}
+
+	// If graph is not connected
+	if idx < 2*n-1 {
+		return "-1"
+	}
+
+	max_W := make([]int64, 2*n)
+	max_W[idx] = math.MaxInt64
+
+	for i := idx; i > n; i-- {
+		u := children[i][0]
+		v := children[i][1]
+		max_W[u] = minI64(max_W[i], val[i]+sum_c[u])
+		max_W[v] = minI64(max_W[i], val[i]+sum_c[v])
+	}
+
+	ans := int64(-1)
+	total_c := sum_c[idx]
+	for i := 1; i <= n; i++ {
+		w_start := max_W[i] - total_c
+		if w_start > ans {
+			ans = w_start
+		}
+	}
+
+	if ans <= 0 {
+		return "-1"
+	}
+	return fmt.Sprintf("%d", ans)
 }
 
 func genCase(r *rand.Rand) string {
@@ -63,21 +152,11 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 1; i <= 100; i++ {
 		input := genCase(rng)
-		expect, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", i, err)
-			os.Exit(1)
-		}
+		expect := solveCase(input)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i, err, input)

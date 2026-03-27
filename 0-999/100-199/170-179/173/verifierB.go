@@ -9,106 +9,57 @@ import (
 	"time"
 )
 
-const INF = int(1e9)
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func solveB(n, m int, grid [][]byte) int {
-	dp1H := make([][]int, n)
-	dp1V := make([][]int, n)
-	for i := 0; i < n; i++ {
-		dp1H[i] = make([]int, m)
-		dp1V[i] = make([]int, m)
-		for j := 0; j < m; j++ {
-			dp1H[i][j] = INF
-			dp1V[i][j] = INF
-		}
-	}
-	dp1H[0][0] = 0
+	// BFS on bipartite graph of rows and columns connected by '#' cells.
+	// Answer is the BFS distance from row 0 to row n-1 in this bipartite graph.
+	rowHasCol := make([][]int, n)
+	colHasRow := make([][]int, m)
 	for i := 0; i < n; i++ {
 		for j := 0; j < m; j++ {
-			if i == 0 && j == 0 {
-				continue
+			if grid[i][j] == '#' {
+				rowHasCol[i] = append(rowHasCol[i], j)
+				colHasRow[j] = append(colHasRow[j], i)
 			}
-			if j > 0 {
-				dp1H[i][j] = min(dp1H[i][j], dp1H[i][j-1])
-				if grid[i][j-1] == '#' && dp1V[i][j-1] < INF {
-					dp1H[i][j] = min(dp1H[i][j], dp1V[i][j-1]+1)
-				}
-			}
-			if i > 0 {
-				dp1V[i][j] = min(dp1V[i][j], dp1V[i-1][j])
-				if grid[i-1][j] == '#' && dp1H[i-1][j] < INF {
-					dp1V[i][j] = min(dp1V[i][j], dp1H[i-1][j]+1)
-				}
-			}
-		}
-	}
-	ds := make([][]int, n)
-	for i := 0; i < n; i++ {
-		ds[i] = make([]int, m)
-		for j := 0; j < m; j++ {
-			ds[i][j] = min(dp1H[i][j], dp1V[i][j])
 		}
 	}
 
-	dp2H := make([][]int, n)
-	dp2V := make([][]int, n)
-	for i := 0; i < n; i++ {
-		dp2H[i] = make([]int, m)
-		dp2V[i] = make([]int, m)
-		for j := 0; j < m; j++ {
-			dp2H[i][j] = INF
-			dp2V[i][j] = INF
-		}
+	type State struct {
+		isRow bool
+		idx   int
 	}
-	dp2H[n-1][m-1] = 0
-	for i := n - 1; i >= 0; i-- {
-		for j := m - 1; j >= 0; j-- {
-			if i == n-1 && j == m-1 {
-				continue
+	visRow := make([]bool, n)
+	visCol := make([]bool, m)
+	distRow := make([]int, n)
+	distCol := make([]int, m)
+
+	queue := []State{{isRow: true, idx: 0}}
+	visRow[0] = true
+
+	for len(queue) > 0 {
+		curr := queue[0]
+		queue = queue[1:]
+		if curr.isRow {
+			if curr.idx == n-1 {
+				return distRow[n-1]
 			}
-			if j < m-1 {
-				dp2H[i][j] = min(dp2H[i][j], dp2H[i][j+1])
-				if grid[i][j+1] == '#' && dp2V[i][j+1] < INF {
-					dp2H[i][j] = min(dp2H[i][j], dp2V[i][j+1]+1)
+			for _, c := range rowHasCol[curr.idx] {
+				if !visCol[c] {
+					visCol[c] = true
+					distCol[c] = distRow[curr.idx] + 1
+					queue = append(queue, State{isRow: false, idx: c})
 				}
 			}
-			if i < n-1 {
-				dp2V[i][j] = min(dp2V[i][j], dp2V[i+1][j])
-				if grid[i+1][j] == '#' && dp2H[i+1][j] < INF {
-					dp2V[i][j] = min(dp2V[i][j], dp2H[i+1][j]+1)
-				}
-			}
-		}
-	}
-	db := make([][]int, n)
-	for i := 0; i < n; i++ {
-		db[i] = make([]int, m)
-		for j := 0; j < m; j++ {
-			db[i][j] = min(dp2H[i][j], dp2V[i][j])
-		}
-	}
-	ans := INF
-	for i := 0; i < n; i++ {
-		for j := 0; j < m; j++ {
-			if grid[i][j] == '#' && ds[i][j] < INF && db[i][j] < INF {
-				cost := ds[i][j] + db[i][j]
-				if cost < ans {
-					ans = cost
+		} else {
+			for _, r := range colHasRow[curr.idx] {
+				if !visRow[r] {
+					visRow[r] = true
+					distRow[r] = distCol[curr.idx] + 1
+					queue = append(queue, State{isRow: true, idx: r})
 				}
 			}
 		}
 	}
-	if ans >= INF {
-		return -1
-	}
-	return ans
+	return -1
 }
 
 func runCase(bin string, n, m int, grid [][]byte) error {

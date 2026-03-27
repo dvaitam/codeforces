@@ -15,33 +15,47 @@ type testCase struct {
 	expected string
 }
 
+// Embedded correct solver for 1450F
 func solve(a []int) int {
 	n := len(a)
-	breakCnt := 0
-	for i := 0; i+1 < n; i++ {
-		if a[i] == a[i+1] {
-			breakCnt++
-		}
+	if n == 1 {
+		return 0
 	}
-	k := breakCnt + 1
-	palCount := make(map[int]int)
-	l := 0
+
+	cnt := make([]int, n+1)
+	maxCnt := 0
 	for i := 0; i < n; i++ {
-		if i+1 < n && a[i] != a[i+1] {
-			continue
-		}
-		if a[l] == a[i] {
-			palCount[a[l]]++
-		}
-		l = i + 1
-	}
-	maxPal := (k + 1) / 2
-	for _, c := range palCount {
-		if c > maxPal {
-			return -1
+		cnt[a[i]]++
+		if cnt[a[i]] > maxCnt {
+			maxCnt = cnt[a[i]]
 		}
 	}
-	return k - 1
+
+	if 2*maxCnt > n+1 {
+		return -1
+	}
+
+	S := 0
+	M := make([]int, n+1)
+	for i := 0; i < n-1; i++ {
+		if a[i] != a[i+1] {
+			S++
+			M[a[i]]++
+			M[a[i+1]]++
+		}
+	}
+
+	D := 0
+	for c := 1; c <= n; c++ {
+		if cnt[c] > 0 {
+			val := S - M[c] - (n + 1 - 2*cnt[c])
+			if val > D {
+				D = val
+			}
+		}
+	}
+
+	return n - 1 - S + D
 }
 
 func buildCase(a []int) testCase {
@@ -64,7 +78,7 @@ func randomCase(rng *rand.Rand) testCase {
 	n := rng.Intn(10) + 1
 	a := make([]int, n)
 	for i := 0; i < n; i++ {
-		a[i] = rng.Intn(5)
+		a[i] = rng.Intn(n) + 1
 	}
 	return buildCase(a)
 }

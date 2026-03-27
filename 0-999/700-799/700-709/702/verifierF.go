@@ -12,9 +12,141 @@ import (
 	"time"
 )
 
-type Shirt struct {
-	c, q int64
+// --- embedded correct solver (treap-based, matches CF-accepted solution) ---
+
+type sItem struct {
+	c int64
+	q int64
 }
+
+type sNode struct {
+	val int64
+	sum int64
+	pr  uint64
+	l   *sNode
+	r   *sNode
+}
+
+func sSum(t *sNode) int64 {
+	if t == nil {
+		return 0
+	}
+	return t.sum
+}
+
+func sPull(t *sNode) {
+	if t != nil {
+		t.sum = t.val + sSum(t.l) + sSum(t.r)
+	}
+}
+
+var sSeed uint64
+
+func sRnd() uint64 {
+	sSeed ^= sSeed << 7
+	sSeed ^= sSeed >> 9
+	return sSeed
+}
+
+func sMerge(a, b *sNode) *sNode {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	if a.pr > b.pr {
+		a.r = sMerge(a.r, b)
+		sPull(a)
+		return a
+	}
+	b.l = sMerge(a, b.l)
+	sPull(b)
+	return b
+}
+
+func sSplitBySum(t *sNode, x int64) (*sNode, *sNode) {
+	if t == nil {
+		return nil, nil
+	}
+	ls := sSum(t.l)
+	if x <= ls {
+		a, b := sSplitBySum(t.l, x)
+		t.l = b
+		sPull(t)
+		return a, t
+	}
+	if x <= ls+t.val {
+		left := t.l
+		t.l = nil
+		sPull(t)
+		return left, t
+	}
+	a, b := sSplitBySum(t.r, x-ls-t.val)
+	t.r = a
+	sPull(t)
+	return t, b
+}
+
+func sCollect(t *sNode, res *[]int64) {
+	if t == nil {
+		return
+	}
+	sCollect(t.l, res)
+	*res = append(*res, t.val)
+	sCollect(t.r, res)
+}
+
+func sUpperBound(a []int64, x int64) int {
+	l, r := 0, len(a)
+	for l < r {
+		m := (l + r) >> 1
+		if a[m] <= x {
+			l = m + 1
+		} else {
+			r = m
+		}
+	}
+	return l
+}
+
+func solve(shirts []sItem, budgets []int64) []int {
+	sSeed = 88172645463393265
+
+	sorted := make([]sItem, len(shirts))
+	copy(sorted, shirts)
+	sort.Slice(sorted, func(i, j int) bool {
+		if sorted[i].q != sorted[j].q {
+			return sorted[i].q < sorted[j].q
+		}
+		return sorted[i].c > sorted[j].c
+	})
+
+	var root *sNode
+	for i := 0; i < len(sorted); i++ {
+		left, right := sSplitBySum(root, sorted[i].c)
+		node := &sNode{val: sorted[i].c, sum: sorted[i].c, pr: sRnd()}
+		root = sMerge(sMerge(left, node), right)
+	}
+
+	seq := make([]int64, 0, len(sorted))
+	sCollect(root, &seq)
+
+	pref := make([]int64, len(sorted))
+	var s int64
+	for i := 0; i < len(sorted); i++ {
+		s += seq[i]
+		pref[i] = s
+	}
+
+	res := make([]int, len(budgets))
+	for i, b := range budgets {
+		res[i] = sUpperBound(pref, b)
+	}
+	return res
+}
+
+// --- verifier infrastructure ---
 
 type testCase struct {
 	input    string
@@ -34,38 +166,11 @@ func run(bin, input string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func solve(shirts []Shirt, budgets []int64) []int {
-	sort.Slice(shirts, func(i, j int) bool {
-		if shirts[i].q != shirts[j].q {
-			return shirts[i].q > shirts[j].q
-		}
-		return shirts[i].c < shirts[j].c
-	})
-	prefix := make([]int64, len(shirts)+1)
-	for i := 0; i < len(shirts); i++ {
-		prefix[i+1] = prefix[i] + shirts[i].c
-	}
-	res := make([]int, len(budgets))
-	for i, b := range budgets {
-		lo, hi := 0, len(shirts)
-		for lo < hi {
-			mid := (lo + hi + 1) >> 1
-			if prefix[mid] <= b {
-				lo = mid
-			} else {
-				hi = mid - 1
-			}
-		}
-		res[i] = lo
-	}
-	return res
-}
-
 func genRandomCase(rng *rand.Rand) testCase {
 	n := rng.Intn(6) + 1
-	shirts := make([]Shirt, n)
+	shirts := make([]sItem, n)
 	for i := range shirts {
-		shirts[i] = Shirt{c: int64(rng.Intn(10) + 1), q: int64(rng.Intn(10) + 1)}
+		shirts[i] = sItem{c: int64(rng.Intn(10) + 1), q: int64(rng.Intn(10) + 1)}
 	}
 	k := rng.Intn(6) + 1
 	budgets := make([]int64, k)

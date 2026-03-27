@@ -6,31 +6,185 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
 
-func buildOracle() (string, error) {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	src := filepath.Join(dir, "1580C.go")
-	bin := filepath.Join(os.TempDir(), "oracle1580C.bin")
-	cmd := exec.Command("go", "build", "-o", bin, src)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("build oracle failed: %v\n%s", err, out)
+const solverB = 450
+
+func solverNextInt(data []byte, idx *int) int {
+	n := len(data)
+	for *idx < n {
+		c := data[*idx]
+		if c >= '0' && c <= '9' {
+			break
+		}
+		*idx++
 	}
-	return bin, nil
+	v := 0
+	for *idx < n {
+		c := data[*idx]
+		if c < '0' || c > '9' {
+			break
+		}
+		v = v*10 + int(c-'0')
+		*idx++
+	}
+	return v
+}
+
+func solve1580C(input string) string {
+	data := []byte(input)
+	idx := 0
+
+	n := solverNextInt(data, &idx)
+	m := solverNextInt(data, &idx)
+
+	x := make([]int, n+1)
+	y := make([]int, n+1)
+	per := make([]int, n+1)
+
+	hasSmall := make([]bool, solverB+1)
+	smallPeriods := make([]int, 0, solverB)
+
+	for i := 1; i <= n; i++ {
+		xi := solverNextInt(data, &idx)
+		yi := solverNextInt(data, &idx)
+		p := xi + yi
+		x[i] = xi
+		y[i] = yi
+		per[i] = p
+		if p <= solverB && !hasSmall[p] {
+			hasSmall[p] = true
+			smallPeriods = append(smallPeriods, p)
+		}
+	}
+
+	sdiff := make([][]int, solverB+1)
+	for _, p := range smallPeriods {
+		sdiff[p] = make([]int, p)
+	}
+
+	rem := make([]int, solverB+1)
+	curr := make([]int, solverB+1)
+	smallTotal := 0
+
+	start := make([]int, n+1)
+	diff := make([]int, m+3)
+	curLarge := 0
+
+	out := make([]byte, 0, m*8)
+
+	for day := 1; day <= m; day++ {
+		op := solverNextInt(data, &idx)
+		k := solverNextInt(data, &idx)
+
+		for i := 0; i < len(smallPeriods); i++ {
+			p := smallPeriods[i]
+			nr := rem[p] + 1
+			if nr == p {
+				rem[p] = 0
+				old := curr[p]
+				nv := sdiff[p][0]
+				curr[p] = nv
+				smallTotal += nv - old
+			} else {
+				rem[p] = nr
+				d := sdiff[p][nr]
+				curr[p] += d
+				smallTotal += d
+			}
+		}
+
+		pk := per[k]
+		if op == 1 {
+			start[k] = day
+			if pk <= solverB {
+				d := sdiff[pk]
+				l := (day + x[k]) % pk
+				length := y[k]
+				end := l + length
+				if end <= pk {
+					d[l]++
+					if end < pk {
+						d[end]--
+					}
+				} else {
+					d[l]++
+					d[0]++
+					d[end-pk]--
+				}
+				r := rem[pk]
+				if (end <= pk && r >= l && r < end) || (end > pk && (r >= l || r < end-pk)) {
+					curr[pk]++
+					smallTotal++
+				}
+			} else {
+				step := pk
+				yy := y[k]
+				for l := day + x[k]; l <= m; l += step {
+					r := l + yy
+					if r > m+1 {
+						r = m + 1
+					}
+					diff[l]++
+					diff[r]--
+				}
+			}
+		} else {
+			s := start[k]
+			start[k] = 0
+			if pk <= solverB {
+				d := sdiff[pk]
+				l := (s + x[k]) % pk
+				length := y[k]
+				end := l + length
+				if end <= pk {
+					d[l]--
+					if end < pk {
+						d[end]++
+					}
+				} else {
+					d[l]--
+					d[0]--
+					d[end-pk]++
+				}
+				r := rem[pk]
+				if (end <= pk && r >= l && r < end) || (end > pk && (r >= l || r < end-pk)) {
+					curr[pk]--
+					smallTotal--
+				}
+			} else {
+				step := pk
+				yy := y[k]
+				for l := s + x[k]; l <= m; l += step {
+					r := l + yy
+					if r > m+1 {
+						r = m + 1
+					}
+					L := l
+					if L < day {
+						L = day
+					}
+					if L < r {
+						diff[L]--
+						diff[r]++
+					}
+				}
+			}
+		}
+
+		curLarge += diff[day]
+		out = strconv.AppendInt(out, int64(curLarge+smallTotal), 10)
+		out = append(out, '\n')
+	}
+
+	return strings.TrimSpace(string(out))
 }
 
 func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
-	}
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var errb bytes.Buffer
@@ -71,7 +225,6 @@ func genCase(r *rand.Rand) string {
 		}
 		var k int
 		if op == 1 {
-			// choose inactive
 			for {
 				k = r.Intn(n) + 1
 				if !active[k] {
@@ -80,7 +233,6 @@ func genCase(r *rand.Rand) string {
 			}
 			active[k] = true
 		} else {
-			// choose active
 			for {
 				k = r.Intn(n) + 1
 				if active[k] {
@@ -100,21 +252,11 @@ func main() {
 		os.Exit(1)
 	}
 	bin := os.Args[1]
-	oracle, err := buildOracle()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	defer os.Remove(oracle)
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 1; i <= 100; i++ {
 		input := genCase(r)
-		want, err := run(oracle, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "oracle error on case %d: %v\n", i, err)
-			os.Exit(1)
-		}
+		want := solve1580C(input)
 		got, err := run(bin, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%s", i, err, input)

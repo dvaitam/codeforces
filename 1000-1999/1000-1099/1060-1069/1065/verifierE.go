@@ -9,13 +9,56 @@ import (
 	"strings"
 )
 
-func run(bin, input string) (string, error) {
-	var cmd *exec.Cmd
-	if strings.HasSuffix(bin, ".go") {
-		cmd = exec.Command("go", "run", bin)
-	} else {
-		cmd = exec.Command(bin)
+const MOD = int64(998244353)
+
+func power(base, exp int64) int64 {
+	res := int64(1)
+	base %= MOD
+	for exp > 0 {
+		if exp%2 == 1 {
+			res = (res * base) % MOD
+		}
+		base = (base * base) % MOD
+		exp /= 2
 	}
+	return res
+}
+
+func oracleSolve(input string) string {
+	words := strings.Fields(input)
+	idx := 0
+	nextInt := func() int64 {
+		v := int64(0)
+		for _, ch := range words[idx] {
+			v = v*10 + int64(ch-'0')
+		}
+		idx++
+		return v
+	}
+	n := nextInt()
+	m := nextInt()
+	c := nextInt()
+
+	ans := int64(1)
+	prev := int64(0)
+	var b int64
+	for i := int64(0); i < m; i++ {
+		b = nextInt()
+		l := b - prev
+		term := (power(c, l) + power(c, 2*l)) % MOD
+		ans = (ans * term) % MOD
+		prev = b
+	}
+
+	rem := n - 2*b
+	ans = (ans * power(c, rem)) % MOD
+	ans = (ans * power(power(2, m), MOD-2)) % MOD
+
+	return fmt.Sprint(ans)
+}
+
+func run(bin, input string) (string, error) {
+	cmd := exec.Command(bin)
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -34,16 +77,25 @@ func generateTests() []string {
 		n := rng.Intn(20) + 2
 		m := rng.Intn(n/2) + 1
 		A := rng.Intn(10) + 1
-		vals := make([]int, m)
 		maxVal := n / 2
+		if maxVal < 1 {
+			maxVal = 1
+		}
+		vals := make([]int, 0, m)
 		last := 0
+		ok := true
 		for i := 0; i < m; i++ {
-			if last >= maxVal {
-				last = maxVal
+			gap := maxVal - last
+			if gap <= 0 {
+				ok = false
+				break
 			}
-			step := rng.Intn(maxVal-last) + 1
+			step := rng.Intn(gap) + 1
 			last += step
-			vals[i] = last
+			vals = append(vals, last)
+		}
+		if !ok || len(vals) != m {
+			continue
 		}
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d %d %d\n", n, m, A))
@@ -68,20 +120,10 @@ func main() {
 	if cand == "--" && len(os.Args) >= 3 {
 		cand = os.Args[2]
 	}
-	official := "./officialE"
-	if err := exec.Command("go", "build", "-o", official, "1065E.go").Run(); err != nil {
-		fmt.Println("failed to build official solution:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(official)
 	tests := generateTests()
 	for i, tc := range tests {
-		exp, eerr := run(official, tc)
+		exp := oracleSolve(tc)
 		got, gerr := run(cand, tc)
-		if eerr != nil {
-			fmt.Fprintf(os.Stderr, "official failed on test %d: %v\n", i+1, eerr)
-			os.Exit(1)
-		}
 		if gerr != nil {
 			fmt.Fprintf(os.Stderr, "candidate failed on test %d: %v\ninput:\n%s", i+1, gerr, tc)
 			os.Exit(1)

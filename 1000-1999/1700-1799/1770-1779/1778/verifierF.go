@@ -116,17 +116,134 @@ func gcd(a, b int) int {
     return a
 }
 
-// Embedded solver logic from 1778F.go (current implementation): uses gcd of values and optionally multiplies.
+// Embedded correct solver logic from the ACCEPTED CF solution.
 func solve(tc testCase) int {
-    g := tc.a[0]
-    for i := 1; i < tc.n; i++ {
-        g = gcd(g, tc.a[i])
+    n := tc.n
+    k := tc.k
+    a := make([]int, n+1)
+    for i := 0; i < n; i++ {
+        a[i+1] = tc.a[i]
     }
-    ans := tc.a[0]
-    if tc.k > 0 {
-        ans *= g
+
+    adj := make([][]int, n+1)
+    for _, e := range tc.edges {
+        adj[e[0]] = append(adj[e[0]], e[1])
+        adj[e[1]] = append(adj[e[1]], e[0])
     }
-    return ans
+
+    a1 := a[1]
+    D := []int{}
+    for i := 1; i <= a1; i++ {
+        if a1%i == 0 {
+            D = append(D, i)
+        }
+    }
+    numDivs := len(D)
+    idx := make([]int, a1+1)
+    for i, d := range D {
+        idx[d] = i
+    }
+
+    gcdMemo := make([][]int, numDivs)
+    for i := 0; i < numDivs; i++ {
+        gcdMemo[i] = make([]int, numDivs)
+        for j := 0; j < numDivs; j++ {
+            gcdMemo[i][j] = idx[gcd(D[i], D[j])]
+        }
+    }
+
+    opMemo := make([]int, numDivs)
+    for i := 0; i < numDivs; i++ {
+        opMemo[i] = idx[gcd(D[i]*D[i], a1)]
+    }
+
+    order := make([]int, 0, n)
+    parent := make([]int, n+1)
+    queue := []int{1}
+    for len(queue) > 0 {
+        u := queue[0]
+        queue = queue[1:]
+        order = append(order, u)
+        for _, v := range adj[u] {
+            if v != parent[u] {
+                parent[v] = u
+                queue = append(queue, v)
+            }
+        }
+    }
+
+    const INF = 1000000000
+    dp := make([][]int, n+1)
+
+    for i := n - 1; i >= 0; i-- {
+        u := order[i]
+        curr := make([]int, numDivs)
+        for j := 0; j < numDivs; j++ {
+            curr[j] = INF
+        }
+        g0 := gcd(a[u], a1)
+        curr[idx[g0]] = 0
+
+        for _, v := range adj[u] {
+            if v == parent[u] {
+                continue
+            }
+            nextCurr := make([]int, numDivs)
+            for j := 0; j < numDivs; j++ {
+                nextCurr[j] = INF
+            }
+            for j := 0; j < numDivs; j++ {
+                cj := curr[j]
+                if cj == INF {
+                    continue
+                }
+                for l := 0; l < numDivs; l++ {
+                    dv := dp[v][l]
+                    if dv == INF {
+                        continue
+                    }
+                    cost := cj + dv
+                    gNew := gcdMemo[j][l]
+                    if cost < nextCurr[gNew] {
+                        nextCurr[gNew] = cost
+                    }
+                }
+            }
+            curr = nextCurr
+        }
+
+        if u == 1 {
+            dp[1] = curr
+        } else {
+            dpu := make([]int, numDivs)
+            for j := 0; j < numDivs; j++ {
+                dpu[j] = curr[j]
+            }
+            for j := 0; j < numDivs; j++ {
+                if curr[j] == INF {
+                    continue
+                }
+                idxOp := opMemo[j]
+                cost := curr[j] + 1
+                if cost < dpu[idxOp] {
+                    dpu[idxOp] = cost
+                }
+            }
+            dp[u] = dpu
+        }
+    }
+
+    maxVal := a1
+    for i := 0; i < numDivs; i++ {
+        if dp[1][i] <= k-1 {
+            val := a1 * D[i]
+            if val > maxVal {
+                maxVal = val
+            }
+        }
+    }
+
+    return maxVal
 }
 
 func main() {

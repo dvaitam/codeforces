@@ -11,9 +11,7 @@ import (
 	"time"
 )
 
-// Embedded oracle solver from the correct CF-accepted solution.
 func oracleSolve(input string) string {
-	// Parse input
 	words := strings.Fields(input)
 	idx := 0
 	nextInt := func() int {
@@ -33,59 +31,62 @@ func oracleSolve(input string) string {
 	}
 	sort.Ints(a)
 
-	MOD := 998244353
-	if k == 1 {
-		// beauty is undefined for k=1 (n>1 required for beauty)
-		// but problem says k >= 2, so this shouldn't happen
+	mod := 998244353
+	ans := 0
+
+	prevDp := make([]int, n)
+	currDp := make([]int, n)
+
+	if k < 2 || n < k {
 		return "0"
 	}
-	MaxV := (a[n-1] - a[0]) / (k - 1)
 
-	ans := 0
-	dp := make([]int, n)
-	new_dp := make([]int, n)
+	maxX := (a[n-1] - a[0]) / (k - 1)
 
-	for v := 1; v <= MaxV; v++ {
+	for x := 1; x <= maxX; x++ {
 		for i := 0; i < n; i++ {
-			dp[i] = 1
+			prevDp[i] = 1
 		}
+
 		for j := 2; j <= k; j++ {
 			sum := 0
 			p := 0
-			allZero := true
 			for i := 0; i < n; i++ {
-				for p < i && a[i]-a[p] >= v {
-					sum += dp[p]
-					if sum >= MOD {
-						sum -= MOD
+				for p < i && a[i]-a[p] >= x {
+					sum += prevDp[p]
+					if sum >= mod {
+						sum -= mod
 					}
 					p++
 				}
-				new_dp[i] = sum
-				if sum > 0 {
-					allZero = false
-				}
+				currDp[i] = sum
 			}
-			for i := 0; i < n; i++ {
-				dp[i] = new_dp[i]
-			}
-			if allZero {
-				break
+			prevDp, currDp = currDp, prevDp
+		}
+
+		sumK := 0
+		for i := 0; i < n; i++ {
+			sumK += prevDp[i]
+			if sumK >= mod {
+				sumK -= mod
 			}
 		}
-		for i := 0; i < n; i++ {
-			ans += dp[i]
-			if ans >= MOD {
-				ans -= MOD
-			}
+
+		if sumK == 0 {
+			break
+		}
+		ans += sumK
+		if ans >= mod {
+			ans -= mod
 		}
 	}
+
 	return fmt.Sprint(ans)
 }
 
 func generateCase(rng *rand.Rand) string {
-	n := rng.Intn(8) + 2 // at least 2
-	k := rng.Intn(n-1) + 2 // k in [2, n], matching problem constraint k >= 2
+	n := rng.Intn(8) + 2
+	k := rng.Intn(n-1) + 2
 	if k > n {
 		k = n
 	}

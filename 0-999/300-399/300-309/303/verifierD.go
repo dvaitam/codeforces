@@ -165,80 +165,56 @@ func isPrime(n int) bool {
 	return true
 }
 
-func powMod(a, e, mod int) int {
-	res := 1
+func powMod(a, e, mod int64) int64 {
+	var res int64 = 1
 	a %= mod
 	for e > 0 {
 		if e&1 != 0 {
-			res = int((int64(res) * int64(a)) % int64(mod))
+			res = (res * a) % mod
 		}
-		a = int((int64(a) * int64(a)) % int64(mod))
+		a = (a * a) % mod
 		e >>= 1
 	}
 	return res
 }
 
-// solve mirrors 303D.go for a single test case.
+// solve mirrors the correct CF-accepted solution for 303D.
 func solve(tc testCase) int {
 	n, x := tc.n, tc.x
-	if n == 1 {
-		if x > 2 {
-			return x - 1
-		}
+	p := int64(n + 1)
+	if !isPrime(n + 1) {
 		return -1
 	}
-	p := n + 1
-	if !isPrime(p) {
-		return -1
-	}
-	m := n
-	var primes []int
-	for i := 2; i*i <= m; i++ {
-		if m%i == 0 {
-			primes = append(primes, i)
-			for m%i == 0 {
-				m /= i
+
+	// Find prime factors of n (= p-1) for primitive root test.
+	var factors []int
+	temp := n
+	for i := 2; i*i <= temp; i++ {
+		if temp%i == 0 {
+			factors = append(factors, i)
+			for temp%i == 0 {
+				temp /= i
 			}
 		}
 	}
-	if m > 1 {
-		primes = append(primes, m)
+	if temp > 1 {
+		factors = append(factors, temp)
 	}
 
-	M := x - 1
-	kMax := M / p
-	rem := M - kMax*p
-
-	isRoot := func(r int) bool {
-		if r%p == 0 {
-			return false
+	// Search from x-1 down to 2 for the largest primitive root.
+	for b := int64(x - 1); b >= 2; b-- {
+		if b%p == 0 {
+			continue
 		}
-		for _, q := range primes {
-			if powMod(r, n/q, p) == 1 {
-				return false
-			}
-		}
-		return true
-	}
-
-	// search in kMax block
-	if rem > 0 {
-		for r := rem; r >= 1; r-- {
-			if isRoot(r) {
-				return r + kMax*p
-			}
-		}
-	}
-	k := kMax - 1
-	if k >= 0 {
-		for r := p - 1; r >= 1; r-- {
-			if isRoot(r) {
-				ans := r + k*p
-				if ans >= 2 && ans < x {
-					return ans
-				}
+		isPrimitive := true
+		for _, q := range factors {
+			if powMod(b, int64(n/q), p) == 1 {
+				isPrimitive = false
 				break
 			}
+		}
+		if isPrimitive {
+			return int(b)
 		}
 	}
 	return -1

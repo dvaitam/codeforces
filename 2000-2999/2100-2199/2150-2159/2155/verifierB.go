@@ -11,7 +11,82 @@ import (
 	"strings"
 )
 
-const refSource = "./2155B.go"
+// solveReference is the correct solver for 2155B, embedded directly.
+func solveReference(input string) string {
+	reader := bufio.NewReader(strings.NewReader(input))
+	var out bytes.Buffer
+	writer := bufio.NewWriter(&out)
+
+	getCell := func(m, n int) (int, int) {
+		r := m / n
+		c := m % n
+		if r%2 == 1 {
+			c = n - 1 - c
+		}
+		return r, c
+	}
+
+	var t int
+	if _, err := fmt.Fscan(reader, &t); err != nil {
+		return ""
+	}
+
+	for tc := 0; tc < t; tc++ {
+		var n, k int
+		fmt.Fscan(reader, &n, &k)
+
+		C := n*n - k
+		if C == 1 {
+			fmt.Fprintln(writer, "NO")
+			continue
+		}
+
+		fmt.Fprintln(writer, "YES")
+		grid := make([][]byte, n)
+		for i := 0; i < n; i++ {
+			grid[i] = make([]byte, n)
+			for j := 0; j < n; j++ {
+				if i%2 == 0 {
+					if j == n-1 {
+						grid[i][j] = 'D'
+					} else {
+						grid[i][j] = 'R'
+					}
+				} else {
+					if j == 0 {
+						grid[i][j] = 'D'
+					} else {
+						grid[i][j] = 'L'
+					}
+				}
+			}
+		}
+
+		if C >= 2 {
+			r1, c1 := getCell(C-2, n)
+			r2, c2 := getCell(C-1, n)
+			if r1 == r2 {
+				if c1 < c2 {
+					grid[r2][c2] = 'L'
+				} else {
+					grid[r2][c2] = 'R'
+				}
+			} else {
+				if r1 < r2 {
+					grid[r2][c2] = 'U'
+				} else {
+					grid[r2][c2] = 'D'
+				}
+			}
+		}
+
+		for i := 0; i < n; i++ {
+			fmt.Fprintln(writer, string(grid[i]))
+		}
+	}
+	writer.Flush()
+	return out.String()
+}
 
 func main() {
 	if len(os.Args) != 2 {
@@ -20,20 +95,9 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	refBin, err := buildReference()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build reference: %v\n", err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
 	tests := generateTests()
 	for i, input := range tests {
-		wantOut, err := runProgram(refBin, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference runtime error on test %d: %v\ninput:\n%s", i+1, err, input)
-			os.Exit(1)
-		}
+		wantOut := solveReference(input)
 		want, err := parseOutput(input, wantOut)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to parse reference output on test %d: %v\ninput:\n%soutput:\n%s", i+1, err, input, wantOut)
@@ -60,22 +124,6 @@ func main() {
 	fmt.Printf("All %d tests passed.\n", len(tests))
 }
 
-func buildReference() (string, error) {
-	tmp, err := os.CreateTemp("", "2155B-ref-*")
-	if err != nil {
-		return "", err
-	}
-	tmp.Close()
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), refSource)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("go build failed: %v\n%s", err, stderr.String())
-	}
-	return tmp.Name(), nil
-}
-
 func runProgram(bin, input string) (string, error) {
 	var cmd *exec.Cmd
 	if strings.HasSuffix(bin, ".go") {
@@ -98,7 +146,7 @@ func runProgram(bin, input string) (string, error) {
 	return stdout.String(), nil
 }
 
-type testCase struct {
+type testCaseInput struct {
 	n, k int
 }
 
@@ -111,7 +159,7 @@ type outputData struct {
 	cases []outputCase
 }
 
-func parseInput(input string) ([]testCase, error) {
+func parseInput(input string) ([]testCaseInput, error) {
 	sc := bufio.NewScanner(strings.NewReader(input))
 	sc.Split(bufio.ScanWords)
 	nextInt := func() (int, error) {
@@ -124,7 +172,7 @@ func parseInput(input string) ([]testCase, error) {
 	if err != nil {
 		return nil, err
 	}
-	cases := make([]testCase, t)
+	cases := make([]testCaseInput, t)
 	for i := 0; i < t; i++ {
 		n, err := nextInt()
 		if err != nil {
@@ -134,7 +182,7 @@ func parseInput(input string) ([]testCase, error) {
 		if err != nil {
 			return nil, err
 		}
-		cases[i] = testCase{n: n, k: k}
+		cases[i] = testCaseInput{n: n, k: k}
 	}
 	return cases, nil
 }
@@ -219,54 +267,54 @@ func compareGrid(ref [][]byte, cand [][]byte) error {
 
 func generateTests() []string {
 	var tests []string
-	tests = append(tests, buildTest([]testCase{
+	tests = append(tests, buildTest([]testCaseInput{
 		{n: 2, k: 0},
 		{n: 2, k: 3},
 	}))
 
-	tests = append(tests, buildTest([]testCase{
+	tests = append(tests, buildTest([]testCaseInput{
 		{n: 3, k: 5},
 		{n: 3, k: 9},
 	}))
 
-	tests = append(tests, buildTest([]testCase{
+	tests = append(tests, buildTest([]testCaseInput{
 		{n: 4, k: 7},
 		{n: 4, k: 13},
 	}))
 
-	tests = append(tests, buildTest([]testCase{
+	tests = append(tests, buildTest([]testCaseInput{
 		{n: 5, k: 18},
 	}))
 
-	tests = append(tests, buildTest([]testCase{
+	tests = append(tests, buildTest([]testCaseInput{
 		{n: 7, k: 20},
 		{n: 7, k: 40},
 		{n: 7, k: 48},
 	}))
 
-	tests = append(tests, buildTest([]testCase{
+	tests = append(tests, buildTest([]testCaseInput{
 		{n: 10, k: 50},
 	}))
 
-	tests = append(tests, buildTest([]testCase{
+	tests = append(tests, buildTest([]testCaseInput{
 		{n: 15, k: 120},
 		{n: 15, k: 200},
 	}))
 
-	tests = append(tests, buildTest([]testCase{
+	tests = append(tests, buildTest([]testCaseInput{
 		{n: 20, k: 250},
 	}))
 
-	tests = append(tests, buildTest([]testCase{
+	tests = append(tests, buildTest([]testCaseInput{
 		{n: 25, k: 300},
 		{n: 25, k: 500},
 	}))
 
-	tests = append(tests, buildTest([]testCase{
+	tests = append(tests, buildTest([]testCaseInput{
 		{n: 30, k: 450},
 	}))
 
-	tests = append(tests, buildTest([]testCase{
+	tests = append(tests, buildTest([]testCaseInput{
 		randomCase(50, 600),
 		randomCase(80, 2000),
 		randomCase(100, 9999),
@@ -275,7 +323,7 @@ func generateTests() []string {
 	return tests
 }
 
-func buildTest(cases []testCase) string {
+func buildTest(cases []testCaseInput) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%d\n", len(cases)))
 	for _, cs := range cases {
@@ -284,7 +332,7 @@ func buildTest(cases []testCase) string {
 	return sb.String()
 }
 
-func randomCase(n, k int) testCase {
+func randomCase(n, k int) testCaseInput {
 	if n < 2 {
 		n = 2
 	}
@@ -294,5 +342,5 @@ func randomCase(n, k int) testCase {
 	if k > n*n {
 		k = n * n
 	}
-	return testCase{n: n, k: k}
+	return testCaseInput{n: n, k: k}
 }

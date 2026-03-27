@@ -197,6 +197,7 @@ func verifyOutput(cc chatCase, outLines []string) error {
 
 func runCase(bin string, cc chatCase) error {
 	var sb strings.Builder
+	fmt.Fprintf(&sb, "1\n")
 	fmt.Fprintf(&sb, "%d\n", len(cc.names))
 	for i, nm := range cc.names {
 		if i > 0 {

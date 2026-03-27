@@ -48,15 +48,27 @@ func solve(input string) string {
 			l--
 			r--
 			ans := solveOne(a, l, r)
-			out.WriteString(fmt.Sprintf("%d\n", ans))
+			out.WriteString(fmt.Sprintf("%d ", ans))
 		}
+		out.WriteByte('\n')
 	}
 	return strings.TrimSpace(out.String())
+}
+
+// randPerm returns a random permutation of 1..n
+func randPerm(rng *rand.Rand, n int) []int {
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		a[i] = i + 1
+	}
+	rng.Shuffle(n, func(i, j int) { a[i], a[j] = a[j], a[i] })
+	return a
 }
 
 func generateTests() []test {
 	rng := rand.New(rand.NewSource(51))
 	var tests []test
+	// Fixed test: permutation of length 1
 	fixed := []string{
 		"1\n1 1\n1\n1 1\n",
 	}
@@ -64,12 +76,9 @@ func generateTests() []test {
 		tests = append(tests, test{f, solve(f)})
 	}
 	for len(tests) < 100 {
-		n := rng.Intn(5) + 1
+		n := rng.Intn(8) + 1
 		q := rng.Intn(3) + 1
-		a := make([]int, n)
-		for i := 0; i < n; i++ {
-			a[i] = rng.Intn(6) + 1
-		}
+		a := randPerm(rng, n)
 		var sb strings.Builder
 		sb.WriteString("1\n")
 		sb.WriteString(fmt.Sprintf("%d %d\n", n, q))
@@ -100,10 +109,14 @@ func runBinary(bin, input string) (string, error) {
 	}
 	cmd.Stdin = strings.NewReader(input)
 	var out bytes.Buffer
+	var errb bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &errb
 	err := cmd.Run()
-	return strings.TrimSpace(out.String()), err
+	if err != nil {
+		return strings.TrimSpace(out.String()), fmt.Errorf("%v: %s", err, errb.String())
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 func main() {

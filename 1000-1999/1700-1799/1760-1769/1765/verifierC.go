@@ -6,12 +6,11 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-const refSource = "./1765C.go"
+const MOD_REF int64 = 998244353
 
 type testCase struct {
 	name  string
@@ -24,27 +23,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	refBin, err := buildReference()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to build reference:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(refBin)
-
 	tests := generateTests()
 	candidate := os.Args[1]
 
 	for idx, tc := range tests {
-		refOut, err := runBinary(refBin, tc.input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference runtime error on test %d (%s): %v\ninput:\n%s", idx+1, tc.name, err, tc.input)
-			os.Exit(1)
-		}
-		refVal, err := parseInt(refOut)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to parse reference output on test %d (%s): %v\noutput:\n%s\n", idx+1, tc.name, err, refOut)
-			os.Exit(1)
-		}
+		refVal := solveReference(tc.input)
 
 		candOut, err := runCandidate(candidate, tc.input)
 		if err != nil {
@@ -66,23 +49,149 @@ func main() {
 	fmt.Printf("All %d tests passed.\n", len(tests))
 }
 
-func buildReference() (string, error) {
-	tmp, err := os.CreateTemp("", "1765C-ref-*")
-	if err != nil {
-		return "", err
+// Embedded solver from the ACCEPTED solution.
+func solveReference(input string) int64 {
+	var n, k int
+	fmt.Sscanf(input, "%d %d", &n, &k)
+
+	fact := make([]int64, 4*n+1)
+	invFact := make([]int64, 4*n+1)
+	fact[0] = 1
+	invFact[0] = 1
+	for i := 1; i <= 4*n; i++ {
+		fact[i] = (fact[i-1] * int64(i)) % MOD_REF
 	}
-	tmp.Close()
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, string(out))
+	invFact[4*n] = power(fact[4*n], MOD_REF-2)
+	for i := 4*n - 1; i >= 1; i-- {
+		invFact[i] = (invFact[i+1] * int64(i+1)) % MOD_REF
 	}
-	return tmp.Name(), nil
+
+	nCr := func(n, r int) int64 {
+		if r < 0 || r > n {
+			return 0
+		}
+		num := fact[n]
+		den := (invFact[r] * invFact[n-r]) % MOD_REF
+		return (num * den) % MOD_REF
+	}
+
+	F := make([]int64, 4*n+1)
+	F2 := make([]int64, 4*n+1)
+	F3 := make([]int64, 4*n+1)
+	F4 := make([]int64, 4*n+1)
+	S := make([]int64, 4*n+1)
+
+	F[n] = 1
+	F2[2*n] = 1
+	F3[3*n] = 1
+	F4[4*n] = 1
+	S[4*n] = 1
+
+	for x := n - 1; x >= 1; x-- {
+		c := nCr(n, x)
+		c2 := (c * c) % MOD_REF
+		c3 := (c2 * c) % MOD_REF
+		c4 := (c3 * c) % MOD_REF
+
+		c4_3 := (4 * c) % MOD_REF
+		c6_2 := (6 * c2) % MOD_REF
+		c4_1 := (4 * c3) % MOD_REF
+
+		c3_2 := (3 * c) % MOD_REF
+		c3_1 := (3 * c2) % MOD_REF
+
+		c2_1 := (2 * c) % MOD_REF
+
+		for i := 4 * n; i >= 0; i-- {
+			new_F4 := F4[i]
+			if i-x >= 0 {
+				new_F4 = (new_F4 + F3[i-x]*c4_3) % MOD_REF
+			}
+			if i-2*x >= 0 {
+				new_F4 = (new_F4 + F2[i-2*x]*c6_2) % MOD_REF
+			}
+			if i-3*x >= 0 {
+				new_F4 = (new_F4 + F[i-3*x]*c4_1) % MOD_REF
+			}
+			if i == 4*x {
+				new_F4 = (new_F4 + c4) % MOD_REF
+			}
+			F4[i] = new_F4
+		}
+
+		for i := 3 * n; i >= 0; i-- {
+			new_F3 := F3[i]
+			if i-x >= 0 {
+				new_F3 = (new_F3 + F2[i-x]*c3_2) % MOD_REF
+			}
+			if i-2*x >= 0 {
+				new_F3 = (new_F3 + F[i-2*x]*c3_1) % MOD_REF
+			}
+			if i == 3*x {
+				new_F3 = (new_F3 + c3) % MOD_REF
+			}
+			F3[i] = new_F3
+		}
+
+		for i := 2 * n; i >= 0; i-- {
+			new_F2 := F2[i]
+			if i-x >= 0 {
+				new_F2 = (new_F2 + F[i-x]*c2_1) % MOD_REF
+			}
+			if i == 2*x {
+				new_F2 = (new_F2 + c2) % MOD_REF
+			}
+			F2[i] = new_F2
+		}
+
+		for i := n; i >= 0; i-- {
+			new_F := F[i]
+			if i == x {
+				new_F = (new_F + c) % MOD_REF
+			}
+			F[i] = new_F
+		}
+
+		for i := 0; i <= 4*n; i++ {
+			S[i] = (S[i] + F4[i]) % MOD_REF
+		}
+	}
+
+	ans := int64(0)
+	for w := 0; w <= 4*n-1; w++ {
+		term1 := (S[w] * modInverse(nCr(4*n, w))) % MOD_REF
+		num := (int64(n) - term1 + MOD_REF) % MOD_REF
+		den := int64(4*n - w)
+		E_w := (num * modInverse(den)) % MOD_REF
+
+		count := int64(0)
+		if w < k {
+			count = 1
+		} else if w == k {
+			count = int64(4*n - k)
+		}
+
+		ans = (ans + count*E_w) % MOD_REF
+	}
+
+	return ans
 }
 
-func runBinary(path, input string) (string, error) {
-	cmd := exec.Command(path)
-	return runWithInput(cmd, input)
+func power(base, exp int64) int64 {
+	res := int64(1)
+	base %= MOD_REF
+	for exp > 0 {
+		if exp%2 == 1 {
+			res = (res * base) % MOD_REF
+		}
+		base = (base * base) % MOD_REF
+		exp /= 2
+	}
+	return res
+}
+
+func modInverse(n int64) int64 {
+	return power(n, MOD_REF-2)
 }
 
 func runCandidate(path, input string) (string, error) {

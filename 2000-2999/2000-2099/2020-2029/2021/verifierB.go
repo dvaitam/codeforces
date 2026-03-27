@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,7 +14,60 @@ import (
 	"strings"
 )
 
-const refSource = "2000-2999/2000-2099/2020-2029/2021/2021B.go"
+// solveReference is the correct solver for 2021B, embedded directly.
+func solveReference(input []byte) string {
+	reader := bufio.NewReader(bytes.NewReader(input))
+	var out bytes.Buffer
+	writer := bufio.NewWriter(&out)
+
+	var t int
+	fmt.Fscan(reader, &t)
+
+	for i := 0; i < t; i++ {
+		var n, x int
+		fmt.Fscan(reader, &n, &x)
+
+		M := x
+		if n+1 < M {
+			M = n + 1
+		}
+
+		lists := make([][]int, M)
+
+		for j := 0; j < n; j++ {
+			var a int
+			fmt.Fscan(reader, &a)
+			r := a % x
+			if r < M {
+				lists[r] = append(lists[r], a)
+			}
+		}
+
+		for j := 0; j < M; j++ {
+			sort.Slice(lists[j], func(p, q int) bool {
+				return lists[j][p] > lists[j][q]
+			})
+		}
+
+		ans := 0
+		for v := 0; v <= n; v++ {
+			r := v % x
+			if len(lists[r]) == 0 {
+				ans = v
+				break
+			}
+			last := lists[r][len(lists[r])-1]
+			lists[r] = lists[r][:len(lists[r])-1]
+			if last > v {
+				ans = v
+				break
+			}
+		}
+		fmt.Fprintln(writer, ans)
+	}
+	writer.Flush()
+	return out.String()
+}
 
 func main() {
 	if len(os.Args) != 2 {
@@ -21,37 +75,27 @@ func main() {
 	}
 	candidate := os.Args[1]
 
-	input, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		fail("failed to read input: %v", err)
-	}
+	tests := generateTests()
 
-	testCases, err := parseInput(input)
-	if err != nil {
-		fail("failed to parse input: %v", err)
-	}
+	for i, input := range tests {
+		refOut := solveReference(input)
+		refAnswers, err := parseReference(refOut)
+		if err != nil {
+			fail("failed to parse reference output on test %d: %v", i+1, err)
+		}
 
-	refBin, err := buildReference()
-	if err != nil {
-		fail("failed to build reference: %v", err)
-	}
-	defer os.Remove(refBin)
+		testCases, err := parseInput(input)
+		if err != nil {
+			fail("failed to parse input on test %d: %v", i+1, err)
+		}
 
-	refOut, err := runProgram(exec.Command(refBin), input)
-	if err != nil {
-		fail("reference execution failed: %v", err)
-	}
-	refAnswers, err := parseReference(refOut, len(testCases))
-	if err != nil {
-		fail("failed to parse reference output: %v", err)
-	}
-
-	candOut, err := runProgram(commandFor(candidate), input)
-	if err != nil {
-		fail("candidate execution failed: %v", err)
-	}
-	if err := checkCandidate(candOut, testCases, refAnswers); err != nil {
-		fail("%v", err)
+		candOut, err := runProgram(commandFor(candidate), input)
+		if err != nil {
+			fail("candidate execution failed on test %d: %v", i+1, err)
+		}
+		if err := checkCandidate(candOut, testCases, refAnswers); err != nil {
+			fail("test %d: %v", i+1, err)
+		}
 	}
 
 	fmt.Println("OK")
@@ -88,25 +132,22 @@ func parseInput(data []byte) ([]testCase, error) {
 	return tc, nil
 }
 
-func parseReference(out string, t int) ([]int64, error) {
+func parseReference(out string) ([]int64, error) {
 	reader := bufio.NewReader(strings.NewReader(out))
-	ans := make([]int64, t)
-	for i := 0; i < t; i++ {
+	var ans []int64
+	for {
 		token, err := readToken(reader)
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
-			return nil, fmt.Errorf("reference output ended early at test %d: %v", i+1, err)
+			return nil, err
 		}
 		val, err := strconv.ParseInt(token, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("reference output invalid integer %q", token)
 		}
-		ans[i] = val
-	}
-	if extra, err := readToken(reader); err != io.EOF {
-		if err == nil {
-			return nil, fmt.Errorf("reference output has extra token %q", extra)
-		}
-		return nil, err
+		ans = append(ans, val)
 	}
 	return ans, nil
 }
@@ -170,21 +211,59 @@ func validateMex(tc testCase, mex int64) error {
 	return nil
 }
 
-func buildReference() (string, error) {
-	tmp, err := os.CreateTemp("", "2021B-ref-*")
-	if err != nil {
-		return "", err
+func generateTests() [][]byte {
+	rng := rand.New(rand.NewSource(2021))
+	var tests [][]byte
+
+	// Sample test
+	tests = append(tests, []byte("4\n5 3\n0 1 2 3 4\n5 3\n0 1 1 1 1\n5 3\n4 3 0 1 2\n5 3\n3 0 1 2 5\n"))
+
+	// Small edge cases
+	tests = append(tests, []byte("1\n1 1\n0\n"))
+	tests = append(tests, []byte("1\n1 2\n1\n"))
+	tests = append(tests, []byte("1\n3 2\n0 1 2\n"))
+
+	// Random tests
+	for iter := 0; iter < 30; iter++ {
+		t := rng.Intn(5) + 1
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "%d\n", t)
+		for c := 0; c < t; c++ {
+			n := rng.Intn(50) + 1
+			x := rng.Intn(50) + 1
+			fmt.Fprintf(&sb, "%d %d\n", n, x)
+			for j := 0; j < n; j++ {
+				if j > 0 {
+					sb.WriteByte(' ')
+				}
+				fmt.Fprintf(&sb, "%d", rng.Intn(n+1))
+			}
+			sb.WriteByte('\n')
+		}
+		tests = append(tests, []byte(sb.String()))
 	}
-	tmp.Close()
-	cmd := exec.Command("go", "build", "-o", tmp.Name(), filepath.Clean(refSource))
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
-	if err := cmd.Run(); err != nil {
-		os.Remove(tmp.Name())
-		return "", fmt.Errorf("%v\n%s", err, buf.String())
+
+	// Larger random test
+	{
+		var sb strings.Builder
+		t := 3
+		fmt.Fprintf(&sb, "%d\n", t)
+		for c := 0; c < t; c++ {
+			n := 500 + rng.Intn(500)
+			x := rng.Intn(500) + 1
+			fmt.Fprintf(&sb, "%d %d\n", n, x)
+			for j := 0; j < n; j++ {
+				if j > 0 {
+					sb.WriteByte(' ')
+				}
+				fmt.Fprintf(&sb, "%d", rng.Intn(n+1))
+			}
+			sb.WriteByte('\n')
+		}
+		tests = append(tests, []byte(sb.String()))
 	}
-	return tmp.Name(), nil
+
+	return tests
 }
 
 func commandFor(path string) *exec.Cmd {

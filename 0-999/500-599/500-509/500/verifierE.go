@@ -880,74 +880,208 @@ const embeddedTestcasesE = `100
 2 5
 2 4`
 
-type block struct {
-	start int
-	reach int64
+// ---------- correct reference solver ----------
+
+func nextIntBuf(data []byte, idx *int) int64 {
+	n := len(data)
+	for *idx < n {
+		c := data[*idx]
+		if c > ' ' {
+			break
+		}
+		*idx++
+	}
+	var v int64
+	for *idx < n {
+		c := data[*idx]
+		if c < '0' || c > '9' {
+			break
+		}
+		v = v*10 + int64(c-'0')
+		*idx++
+	}
+	return v
 }
 
-func solve500E(n int, coords [][2]int64, queries [][2]int) []int64 {
-	p := make([]int64, n)
-	r := make([]int64, n)
-	for i := 0; i < n; i++ {
-		p[i] = coords[i][0]
-		r[i] = coords[i][0] + coords[i][1]
-	}
-
-	blocks := make([]block, 0, n)
-	for i := 0; i < n; i++ {
-		start := i
-		reach := r[i]
-		for len(blocks) > 0 && blocks[len(blocks)-1].reach >= p[i] {
-			prev := blocks[len(blocks)-1]
-			blocks = blocks[:len(blocks)-1]
-			if prev.start < start {
-				start = prev.start
-			}
-			if prev.reach > reach {
-				reach = prev.reach
-			}
-		}
-		blocks = append(blocks, block{start: start, reach: reach})
-	}
-
-	bcnt := len(blocks)
-	blk := make([]int, n)
-	for bi := 0; bi < bcnt; bi++ {
-		s := blocks[bi].start
-		var e int
-		if bi+1 < bcnt {
-			e = blocks[bi+1].start - 1
+func upperBound(p []int64, n int, x int64) int {
+	l, r := 1, n+1
+	for l < r {
+		m := (l + r) >> 1
+		if p[m] > x {
+			r = m
 		} else {
-			e = n - 1
-		}
-		for i := s; i <= e; i++ {
-			blk[i] = bi
+			l = m + 1
 		}
 	}
+	return l - 1
+}
 
-	gaps := make([]int64, bcnt-1)
-	for bi := 0; bi+1 < bcnt; bi++ {
-		nextStart := blocks[bi+1].start
-		gaps[bi] = p[nextStart] - blocks[bi].reach
-	}
-	prefix := make([]int64, bcnt)
-	for i := 1; i < bcnt; i++ {
-		prefix[i] = prefix[i-1] + gaps[i-1]
-	}
-
-	ans := make([]int64, len(queries))
-	for i, q := range queries {
-		x := q[0] - 1
-		y := q[1] - 1
-		bx := blk[x]
-		by := blk[y]
-		if bx >= by {
-			ans[i] = 0
+func updateI32(seg []int32, size, pos int, val int32) {
+	i := size + pos - 1
+	seg[i] = val
+	for i >>= 1; i > 0; i >>= 1 {
+		if seg[i<<1] > seg[i<<1|1] {
+			seg[i] = seg[i<<1]
 		} else {
-			ans[i] = prefix[by] - prefix[bx]
+			seg[i] = seg[i<<1|1]
 		}
 	}
-	return ans
+}
+
+func queryMaxI32(seg []int32, size, l, r int) int32 {
+	var res int32
+	l += size - 1
+	r += size - 1
+	for l <= r {
+		if l&1 == 1 {
+			if seg[l] > res {
+				res = seg[l]
+			}
+			l++
+		}
+		if r&1 == 0 {
+			if seg[r] > res {
+				res = seg[r]
+			}
+			r--
+		}
+		l >>= 1
+		r >>= 1
+	}
+	return res
+}
+
+func queryMaxI64(seg []int64, size, l, r int) int64 {
+	var res int64
+	l += size - 1
+	r += size - 1
+	for l <= r {
+		if l&1 == 1 {
+			if seg[l] > res {
+				res = seg[l]
+			}
+			l++
+		}
+		if r&1 == 0 {
+			if seg[r] > res {
+				res = seg[r]
+			}
+			r--
+		}
+		l >>= 1
+		r >>= 1
+	}
+	return res
+}
+
+func solve500E(input string) string {
+	data := []byte(input)
+	idx := 0
+
+	n := int(nextIntBuf(data, &idx))
+	p := make([]int64, n+1)
+	a := make([]int64, n+1)
+	for i := 1; i <= n; i++ {
+		pi := nextIntBuf(data, &idx)
+		li := nextIntBuf(data, &idx)
+		p[i] = pi
+		a[i] = pi + li
+	}
+
+	size := 1
+	for size < n {
+		size <<= 1
+	}
+
+	segR := make([]int32, size<<1)
+	R := make([]int32, n+2)
+
+	for i := n; i >= 1; i-- {
+		ri := upperBound(p, n, a[i])
+		val := int32(ri)
+		if i+1 <= ri {
+			mx := queryMaxI32(segR, size, i+1, ri)
+			if mx > val {
+				val = mx
+			}
+		}
+		R[i] = val
+		updateI32(segR, size, i, val)
+	}
+
+	segA := make([]int64, size<<1)
+	for i := 1; i <= n; i++ {
+		segA[size+i-1] = a[i]
+	}
+	for i := size - 1; i >= 1; i-- {
+		if segA[i<<1] > segA[i<<1|1] {
+			segA[i] = segA[i<<1]
+		} else {
+			segA[i] = segA[i<<1|1]
+		}
+	}
+
+	K := 1
+	for (1 << K) <= n+1 {
+		K++
+	}
+
+	up := make([][]int32, K)
+	mx := make([][]int32, K)
+	sum := make([][]int64, K)
+	for k := 0; k < K; k++ {
+		up[k] = make([]int32, n+2)
+		mx[k] = make([]int32, n+2)
+		sum[k] = make([]int64, n+2)
+	}
+
+	sentinel := n + 1
+	up[0][sentinel] = int32(sentinel)
+	mx[0][sentinel] = int32(sentinel)
+
+	for i := 1; i <= n; i++ {
+		up[0][i] = R[i] + 1
+		mx[0][i] = R[i]
+		if R[i] < int32(n) {
+			best := queryMaxI64(segA, size, i, int(R[i]))
+			sum[0][i] = p[int(R[i])+1] - best
+		}
+	}
+
+	for k := 1; k < K; k++ {
+		upPrev := up[k-1]
+		mxPrev := mx[k-1]
+		sumPrev := sum[k-1]
+		upCur := up[k]
+		mxCur := mx[k]
+		sumCur := sum[k]
+		for i := 1; i <= n+1; i++ {
+			mid := int(upPrev[i])
+			upCur[i] = upPrev[mid]
+			mxCur[i] = mxPrev[mid]
+			sumCur[i] = sumPrev[i] + sumPrev[mid]
+		}
+	}
+
+	q := int(nextIntBuf(data, &idx))
+	out := make([]byte, 0, q*16)
+
+	for ; q > 0; q-- {
+		x := int(nextIntBuf(data, &idx))
+		y := int32(nextIntBuf(data, &idx))
+		cur := x
+		var ans int64
+		for k := K - 1; k >= 0; k-- {
+			if mx[k][cur] < y {
+				ans += sum[k][cur]
+				cur = int(up[k][cur])
+			}
+		}
+		out = strconv.AppendInt(out, ans, 10)
+		out = append(out, '\n')
+	}
+
+	return strings.TrimSpace(string(out))
 }
 
 func runCandidate(bin, input string) (string, error) {
@@ -1001,7 +1135,6 @@ func main() {
 			queries[i] = [2]int{x, y}
 		}
 
-		wantVals := solve500E(n, coords, queries)
 		var input strings.Builder
 		fmt.Fprintf(&input, "%d\n", n)
 		for _, c := range coords {
@@ -1012,20 +1145,22 @@ func main() {
 			fmt.Fprintf(&input, "%d %d\n", qu[0], qu[1])
 		}
 
+		wantRaw := solve500E(input.String())
+		wantFields := strings.Fields(wantRaw)
+
 		gotRaw, err := runCandidate(bin, input.String())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "case %d failed: %v\n", caseIdx, err)
 			os.Exit(1)
 		}
 		gotFields := strings.Fields(gotRaw)
-		if len(gotFields) != len(wantVals) {
-			fmt.Fprintf(os.Stderr, "case %d failed: expected %d outputs, got %d\n", caseIdx, len(wantVals), len(gotFields))
+		if len(gotFields) != len(wantFields) {
+			fmt.Fprintf(os.Stderr, "case %d failed: expected %d outputs, got %d\n", caseIdx, len(wantFields), len(gotFields))
 			os.Exit(1)
 		}
-		for i, g := range gotFields {
-			val, err := strconv.ParseInt(g, 10, 64)
-			if err != nil || val != wantVals[i] {
-				fmt.Fprintf(os.Stderr, "case %d failed at query %d: expected %d got %s\n", caseIdx, i+1, wantVals[i], g)
+		for i := range gotFields {
+			if gotFields[i] != wantFields[i] {
+				fmt.Fprintf(os.Stderr, "case %d failed at query %d: expected %s got %s\n", caseIdx, i+1, wantFields[i], gotFields[i])
 				os.Exit(1)
 			}
 		}

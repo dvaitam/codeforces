@@ -15,11 +15,149 @@ type testCase struct {
 	s string
 }
 
+// solveReference is the correct solver for 2092F, embedded directly.
+func solveReference(input []byte) string {
+	data := input
+	idx := 0
+
+	nextInt := func() int {
+		n := len(data)
+		for idx < n && data[idx] <= ' ' {
+			idx++
+		}
+		val := 0
+		for idx < n && data[idx] > ' ' {
+			val = val*10 + int(data[idx]-'0')
+			idx++
+		}
+		return val
+	}
+
+	nextBytes := func() []byte {
+		n := len(data)
+		for idx < n && data[idx] <= ' ' {
+			idx++
+		}
+		start := idx
+		for idx < n && data[idx] > ' ' {
+			idx++
+		}
+		return data[start:idx]
+	}
+
+	appendInt := func(dst []byte, x int) []byte {
+		if x == 0 {
+			return append(dst, '0')
+		}
+		var buf [20]byte
+		i := len(buf)
+		for x > 0 {
+			i--
+			buf[i] = byte('0' + x%10)
+			x /= 10
+		}
+		return append(dst, buf[i:]...)
+	}
+
+	t := nextInt()
+	out := make([]byte, 0, len(data)*4)
+
+	for ; t > 0; t-- {
+		n := nextInt()
+		s := nextBytes()
+
+		runs := make([]int, 1, n+1)
+		cnt := 1
+		for i := 1; i < n; i++ {
+			if s[i] == s[i-1] {
+				cnt++
+			} else {
+				runs = append(runs, cnt)
+				cnt = 1
+			}
+		}
+		runs = append(runs, cnt)
+
+		R := len(runs) - 1
+		diff := make([]int, R+3)
+
+		for b := 1; b < R; b++ {
+			low := b + 1
+			diff[low]++
+			diff[low+1]--
+
+			L := 1
+			high := b + 1
+			for {
+				nxt := L + b
+				if nxt <= R && runs[nxt] >= 2 {
+					L = nxt
+				} else {
+					L = nxt + 1
+				}
+				low = L + b
+				if low > R {
+					break
+				}
+				high += b + 1
+				if high > R {
+					high = R
+				}
+				diff[low]++
+				diff[high+1]--
+			}
+		}
+
+		curPos := 0
+		pref := 0
+		first := true
+		for r := 1; r <= R; r++ {
+			curPos += diff[r]
+			base := pref - r + 1 + curPos
+			for j := 1; j <= runs[r]; j++ {
+				if !first {
+					out = append(out, ' ')
+				} else {
+					first = false
+				}
+				out = appendInt(out, base+j)
+			}
+			pref += runs[r]
+		}
+		out = append(out, '\n')
+	}
+
+	return string(out)
+}
+
 func run(bin string, input []byte) (string, error) {
 	cmd := exec.Command(bin)
 	cmd.Stdin = bytes.NewReader(input)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
+}
+
+func runCandidate(path string, input []byte) (string, error) {
+	var cmd *exec.Cmd
+	if strings.HasSuffix(path, ".go") {
+		cmd = exec.Command("go", "run", path)
+	} else {
+		cmd = exec.Command(path)
+	}
+	cmd.Stdin = bytes.NewReader(input)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		msg := stderr.String()
+		if msg == "" {
+			msg = stdout.String()
+		}
+		return "", fmt.Errorf("%v\n%s", err, msg)
+	}
+	return stdout.String(), nil
 }
 
 func parseOutput(out string, cases []testCase) ([][]int, error) {
@@ -34,7 +172,6 @@ func parseOutput(out string, cases []testCase) ([][]int, error) {
 		}
 		results = append(results, ans)
 	}
-	// ensure no extra tokens (ignore trailing whitespace)
 	var extra string
 	if _, err := fmt.Fscan(reader, &extra); err == nil {
 		return nil, fmt.Errorf("extra output detected after all answers")
@@ -57,7 +194,6 @@ func genRandomString(n int) string {
 
 func genTestCases() []testCase {
 	t := rand.Intn(5) + 1
-	// Occasionally stress with one huge case near limit.
 	if rand.Intn(6) == 0 {
 		t = 1
 	}
@@ -96,11 +232,9 @@ func genTestCases() []testCase {
 			n = rand.Intn(1000) + 1
 			s = genRandomString(n)
 		case 5:
-			// Large random
 			n = rand.Intn(50000) + 50000
 			s = genRandomString(n)
 		default:
-			// Near maximum
 			n = rand.Intn(200000) + 200000
 			if rand.Intn(20) == 0 {
 				n = 1_000_000
@@ -137,12 +271,6 @@ func main() {
 		os.Exit(1)
 	}
 	cand := os.Args[1]
-	ref := "./refF.bin"
-	if err := exec.Command("go", "build", "-o", ref, "2092F.go").Run(); err != nil {
-		fmt.Println("failed to build reference solution:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(ref)
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -150,13 +278,9 @@ func main() {
 		cases := genTestCases()
 		input := buildInput(cases)
 
-		refOut, err := run(ref, input)
-		if err != nil {
-			fmt.Println("reference failed on iteration", iter+1, ":", err)
-			fmt.Println("input:\n", string(input))
-			os.Exit(1)
-		}
-		candOut, err := run(cand, input)
+		refOut := solveReference(input)
+
+		candOut, err := runCandidate(cand, input)
 		if err != nil {
 			fmt.Printf("candidate runtime error on iteration %d: %v\n", iter+1, err)
 			fmt.Println("input:\n", string(input))

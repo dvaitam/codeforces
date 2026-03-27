@@ -14,107 +14,80 @@ import (
 // Base64-encoded contents of testcasesE.txt.
 const testcasesE = "MTAwCjIgMyAyIDIgMgoyIDEgMiAxIDIKMyAxIDMgMyAzIDIKMyAyIDIgMiAxIDEKMyAzIDMgMSAyIDIKMyAxIDYgMyA2IDQKMiAyIDMgMiAyCjEgMyAyIDIKMyAyIDUgNCA1IDMKNCA0IDMgMSAyIDIgMQoxIDEgNSAzCjQgMyAzIDMgMSAxIDIKMiA0IDQgMiAzCjQgMyA2IDIgMyAxIDEKMiAzIDYgNSAyCjEgMyAzIDIKNCAxIDIgMiAxIDIgMgoxIDMgNCAzCjIgNCA2IDYgMQozIDIgNSAzIDIgMwo0IDIgNCAxIDMgMSA0CjIgMyA0IDMgMQo0IDIgNSAyIDEgMSAxCjEgMiA2IDYKMiAxIDYgNCA1CjIgMyAyIDEgMgo0IDIgNSAyIDIgNCA0CjQgMSAzIDIgMiAxIDMKNCAyIDUgMiAxIDEgMwozIDIgNiAyIDIgNAozIDIgNCAxIDMgMQo0IDEgNSA0IDEgNCAyCjIgMyA0IDQgMwo0IDIgNCAzIDQgNCAxCjMgMiAyIDIgMSAyCjEgMiA1IDUKNCA0IDUgMiAxIDIgMgoxIDMgMiAyCjQgMiA2IDEgMiAyIDYKMyA0IDYgNCAxIDEKMSAxIDUgNQozIDIgMiAyIDEgMQozIDMgMiAxIDIgMgoyIDMgNSAyIDQKNCAxIDIgMSAyIDIgMgo0IDEgMyAzIDIgMiAyCjEgMiA0IDIKMiAyIDQgNCAzCjMgMSAzIDEgMyAyCjEgMSA1IDUKNCAxIDYgMiA0IDMgMwoyIDIgMiAxIDIKNCAzIDYgNCA1IDUgNAo0IDIgNCAzIDMgMiA0CjEgMiA2IDIKMyAzIDMgMyAyIDMKMSAxIDUgMgozIDMgNCAyIDMgMQoxIDEgNCAxCjIgMiA2IDQgNgoxIDEgMyAzCjQgMiA2IDYgMyA2IDQKMiA0IDMgMiAyCjIgMyA2IDYgNQo0IDQgNiA0IDMgMyA0CjQgMSA0IDIgNCAzIDQKNCAxIDMgMyAxIDIgMwozIDMgMiAyIDIgMQo0IDEgMyAxIDEgMiAxCjEgMiA1IDUKMyAxIDYgMiAyIDEKMiAxIDQgMSAxCjMgMSA0IDIgMiA0CjIgMSA2IDMgNgoxIDIgNiA0CjIgMiA0IDQgMQo0IDIgMyAyIDMgMiAzCjMgNCA0IDIgNCAxCjQgMSA0IDEgMyAyIDEKMiAxIDYgMSAyCjIgMSA1IDUgMgo0IDQgNCAyIDIgMSA0CjMgMyA1IDUgMSAyCjMgMyA1IDMgMSAyCjMgMSAyIDIgMiAyCjEgMiAyIDIKMiAxIDMgMyAxCjMgMiA0IDEgMSAxCjIgMyA2IDEgNgoxIDEgNSAyCjIgMyAzIDMgMwozIDMgNSA1IDQgMQoyIDQgNSAxIDUKMyAzIDMgMyAzIDIKMyAyIDMgMSAyIDIKMyAzIDUgNCAzIDUKMiAzIDQgMSAxCjQgMyA2IDMgNiA2IDIKMyAxIDMgMyAxIDMKMiAzIDMgMyAyCg=="
 
-const mod int64 = 1_000_000_007
-const maxN = 200000
-
-var inv [maxN + 2]int64
-
-func init() {
-	inv[1] = 1
-	for i := 2; i <= maxN+1; i++ {
-		inv[i] = mod - (mod/int64(i))*inv[mod%int64(i)]%mod
-	}
-}
-
 type testCase struct {
 	n, k int
 	arr  []int
 }
 
-func modPow(a, e int64) int64 {
-	res := int64(1)
-	a %= mod
-	for e > 0 {
-		if e&1 == 1 {
-			res = res * a % mod
-		}
-		a = a * a % mod
-		e >>= 1
-	}
-	return res
-}
-
-// Embedded solver logic from 1845E.go.
+// Embedded correct solver logic from the ACCEPTED CF solution.
 func solve(tc testCase) string {
 	n := tc.n
 	k := tc.k
 	a := tc.arr
 
-	pos := make([]int, 0, n)
-	for i, v := range a {
-		if v == 1 {
-			pos = append(pos, i+1)
-		}
-	}
-	m := len(pos)
-	zero := n - m
+	const maxDiff = 45
+	const offset = maxDiff
+	const numDiffs = maxDiff*2 + 1
 
-	size := (zero + 1) * (k + 1)
-	dp := make([]int, size)
-	ndp := make([]int, size)
-	dp[0] = 1
+	dp := make([]int, numDiffs*(k+1))
+	nextDp := make([]int, numDiffs*(k+1))
 
-	prefix := make([]int, k+1)
-	idx := func(g, c int) int { return g*(k+1) + c }
+	dp[offset*(k+1)+0] = 1
 
-	for i, p := range pos {
-		for j := 0; j < size; j++ {
-			ndp[j] = 0
+	for j := 0; j < n; j++ {
+		x := a[j]
+
+		for i := 0; i < len(nextDp); i++ {
+			nextDp[i] = 0
 		}
-		for j := 0; j <= k; j++ {
-			prefix[j] = 0
-		}
-		base := i + 1
-		for g := 0; g <= zero; g++ {
-			off := idx(g, 0)
-			for c := 0; c <= k; c++ {
-				val := prefix[c] + dp[off+c]
-				if val >= int(mod) {
-					val -= int(mod)
+
+		for diff := -maxDiff; diff <= maxDiff; diff++ {
+			diffOffset := diff + offset
+			baseIdx := diffOffset * (k + 1)
+
+			for dist := 0; dist <= k; dist++ {
+				val := dp[baseIdx+dist]
+				if val == 0 {
+					continue
 				}
-				prefix[c] = val
-			}
-			cost := p - (base + g)
-			if cost < 0 {
-				cost = -cost
-			}
-			if cost > k {
-				continue
-			}
-			offNew := idx(g, cost)
-			for c := 0; c <= k-cost; c++ {
-				val := ndp[offNew+c] + prefix[c]
-				if val >= int(mod) {
-					val -= int(mod)
+
+				for y := 0; y <= 1; y++ {
+					newDiff := diff + y - x
+					if newDiff < -maxDiff || newDiff > maxDiff {
+						continue
+					}
+
+					absDiff := newDiff
+					if absDiff < 0 {
+						absDiff = -absDiff
+					}
+
+					newDist := dist + absDiff
+					if newDist <= k {
+						nIdx := (newDiff+offset)*(k+1) + newDist
+						nextDp[nIdx] += val
+						if nextDp[nIdx] >= 1000000007 {
+							nextDp[nIdx] -= 1000000007
+						}
+					}
 				}
-				ndp[offNew+c] = val
 			}
 		}
-		dp, ndp = ndp, dp
+
+		dp, nextDp = nextDp, dp
 	}
 
 	ans := 0
-	for g := 0; g <= zero; g++ {
-		off := idx(g, 0)
-		for c := 0; c <= k; c++ {
-			if (k-c)%2 == 0 {
-				ans += dp[off+c]
-				if ans >= int(mod) {
-					ans -= int(mod)
-				}
+	baseIdx := offset * (k + 1)
+	for d := 0; d <= k; d++ {
+		if (k-d)%2 == 0 {
+			ans += dp[baseIdx+d]
+			if ans >= 1000000007 {
+				ans -= 1000000007
 			}
 		}
 	}
+
 	return strconv.Itoa(ans)
 }
 

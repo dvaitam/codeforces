@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
-	"io"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -48,7 +46,7 @@ func main() {
 		}
 		sb.WriteByte('\n')
 		input := sb.String()
-		expect := solveC(strings.NewReader(input))
+		expect := solveC(t.n, t.k, t.arr)
 		out, err := runBinary(bin, input)
 		if err != nil {
 			fmt.Printf("test %d: execution failed: %v\n", i+1, err)
@@ -72,17 +70,24 @@ func runBinary(path, input string) (string, error) {
 	return out.String(), err
 }
 
-func solveC(r io.Reader) string {
-	in := bufio.NewReader(r)
-	var n int
-	var k int64
-	fmt.Fscan(in, &n, &k)
-	a := make([]int, n)
+func solveC(n int, k int64, arr []int) string {
+	a := make([]int64, n)
 	for i := 0; i < n; i++ {
-		fmt.Fscan(in, &a[i])
+		a[i] = int64(arr[i])
 	}
-	sort.Ints(a)
-	idx1 := int((k - 1) / int64(n))
-	idx2 := int((k - 1) % int64(n))
-	return fmt.Sprintf("%d %d\n", a[idx1], a[idx2])
+	sort.Slice(a, func(i, j int) bool { return a[i] < a[j] })
+
+	nn := int64(n)
+	firstIdx := int((k - 1) / nn)
+	firstVal := a[firstIdx]
+
+	l := sort.Search(n, func(i int) bool { return a[i] >= firstVal })
+	r := sort.Search(n, func(i int) bool { return a[i] > firstVal })
+	cnt := int64(r - l)
+
+	k -= int64(l) * nn
+	secondIdx := int((k - 1) / cnt)
+	secondVal := a[secondIdx]
+
+	return fmt.Sprintf("%d %d", firstVal, secondVal)
 }

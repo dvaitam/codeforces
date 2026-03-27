@@ -5,25 +5,140 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"log"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func prepareBinary(path, tag string) (string, error) {
-	if strings.HasSuffix(path, ".go") {
-		bin := filepath.Join(os.TempDir(), tag+"_"+fmt.Sprint(time.Now().UnixNano()))
-		cmd := exec.Command("go", "build", "-o", bin, path)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("build %s: %v\n%s", path, err, out)
-		}
-		return bin, nil
-	}
-	return path, nil
+// ── embedded reference solver (determines YES/NO only) ──────────────────────
+
+type fEdge struct {
+	to, rev int
+	cap     int64
 }
+
+type fGraph struct {
+	g     [][]fEdge
+	level []int
+	iter  []int
+}
+
+func newFGraph(n int) *fGraph {
+	return &fGraph{g: make([][]fEdge, n), level: make([]int, n), iter: make([]int, n)}
+}
+
+func (gr *fGraph) addEdge(from, to int, cap int64) {
+	gr.g[from] = append(gr.g[from], fEdge{to: to, rev: len(gr.g[to]), cap: cap})
+	gr.g[to] = append(gr.g[to], fEdge{to: from, rev: len(gr.g[from]) - 1, cap: 0})
+}
+
+func (gr *fGraph) bfs(s int) {
+	for i := range gr.level {
+		gr.level[i] = -1
+	}
+	gr.level[s] = 0
+	queue := []int{s}
+	for qi := 0; qi < len(queue); qi++ {
+		v := queue[qi]
+		for _, e := range gr.g[v] {
+			if e.cap > 0 && gr.level[e.to] < 0 {
+				gr.level[e.to] = gr.level[v] + 1
+				queue = append(queue, e.to)
+			}
+		}
+	}
+}
+
+func (gr *fGraph) dfs(v, t int, f int64) int64 {
+	if v == t {
+		return f
+	}
+	for i := gr.iter[v]; i < len(gr.g[v]); i++ {
+		gr.iter[v] = i
+		e := &gr.g[v][i]
+		if e.cap > 0 && gr.level[v] < gr.level[e.to] {
+			mn := f
+			if e.cap < mn {
+				mn = e.cap
+			}
+			d := gr.dfs(e.to, t, mn)
+			if d > 0 {
+				e.cap -= d
+				gr.g[e.to][e.rev].cap += d
+				return d
+			}
+		}
+	}
+	return 0
+}
+
+func (gr *fGraph) maxFlow(s, t int) int64 {
+	flow := int64(0)
+	const inf = int64(1e18)
+	for {
+		gr.bfs(s)
+		if gr.level[t] < 0 {
+			break
+		}
+		for i := range gr.iter {
+			gr.iter[i] = 0
+		}
+		for {
+			f := gr.dfs(s, t, inf)
+			if f == 0 {
+				break
+			}
+			flow += f
+		}
+	}
+	return flow
+}
+
+// refSolveYesNo returns true if the answer is YES for the given input.
+func refSolveYesNo(n, m int, s, a []int, edges [][2]int) bool {
+	totalNodes := n + m + 3
+	S := n + m
+	T := n + m + 1
+	T2 := n + m + 2
+	gr := newFGraph(totalNodes)
+
+	cur := make([]int64, n)
+	for i := 0; i < m; i++ {
+		u := edges[i][0]
+		v := edges[i][1]
+		gr.addEdge(S, i, 1)
+		gr.addEdge(i, m+u, 1)
+		gr.addEdge(i, m+v, 1)
+		cur[u]--
+		cur[v]--
+	}
+
+	tmp := int64(m)
+	for i := 0; i < n; i++ {
+		if s[i] == 0 {
+			gr.addEdge(m+i, T2, int64(1e18))
+		} else if int64(a[i]) >= cur[i] {
+			diff := int64(a[i]) - cur[i]
+			if diff%2 != 0 {
+				return false
+			}
+			cap := diff / 2
+			gr.addEdge(m+i, T, cap)
+			tmp -= cap
+		} else {
+			return false
+		}
+	}
+	if tmp < 0 {
+		return false
+	}
+	gr.addEdge(T2, T, tmp)
+	res := gr.maxFlow(S, T)
+	return res == int64(m)
+}
+
+// ── verifier harness ───────────────────────────────────────────────────────
 
 func runBinary(path, input string) (string, error) {
 	cmd := exec.Command(path)
@@ -90,8 +205,30 @@ func genCase(rng *rand.Rand) string {
 	return sb.String()
 }
 
+func parseInput(input string) (int, int, []int, []int, [][2]int) {
+	inLines := strings.Split(strings.TrimSpace(input), "\n")
+	header := strings.Fields(inLines[0])
+	n, _ := strconv.Atoi(header[0])
+	m, _ := strconv.Atoi(header[1])
+	sFields := strings.Fields(inLines[1])
+	aFields := strings.Fields(inLines[2])
+	s := make([]int, n)
+	a := make([]int, n)
+	for i := 0; i < n; i++ {
+		s[i], _ = strconv.Atoi(sFields[i])
+		a[i], _ = strconv.Atoi(aFields[i])
+	}
+	edges := make([][2]int, m)
+	for i := 0; i < m; i++ {
+		fields := strings.Fields(inLines[3+i])
+		u, _ := strconv.Atoi(fields[0])
+		v, _ := strconv.Atoi(fields[1])
+		edges[i] = [2]int{u - 1, v - 1} // 0-indexed for the solver
+	}
+	return n, m, s, a, edges
+}
+
 func validateOutput(input, output string) error {
-	// Parse input
 	inLines := strings.Split(strings.TrimSpace(input), "\n")
 	header := strings.Fields(inLines[0])
 	n, _ := strconv.Atoi(header[0])
@@ -105,19 +242,17 @@ func validateOutput(input, output string) error {
 		a[i], _ = strconv.Atoi(aFields[i])
 	}
 	type edge struct{ u, v int }
-	edges := make([]edge, m)
+	inEdges := make([]edge, m)
 	for i := 0; i < m; i++ {
 		fields := strings.Fields(inLines[3+i])
 		u, _ := strconv.Atoi(fields[0])
 		v, _ := strconv.Atoi(fields[1])
-		edges[i] = edge{u, v}
+		inEdges[i] = edge{u, v}
 	}
-	// Parse output
 	outLines := strings.Split(output, "\n")
 	if len(outLines) < 1+m {
 		return fmt.Errorf("expected %d lines of output after YES, got %d", m, len(outLines)-1)
 	}
-	// Build b array from candidate's edge orientations
 	b := make([]int, n+1)
 	usedEdges := make(map[[2]int]bool)
 	for i := 0; i < m; i++ {
@@ -130,11 +265,8 @@ func validateOutput(input, output string) error {
 		if err1 != nil || err2 != nil {
 			return fmt.Errorf("line %d: parse error", i+1)
 		}
-		// Check this is a valid orientation of some input edge
-		e1 := [2]int{u, v}
-		e2 := [2]int{v, u}
 		foundIdx := -1
-		for j, e := range edges {
+		for j, e := range inEdges {
 			if (e.u == u && e.v == v) || (e.u == v && e.v == u) {
 				foundIdx = j
 				break
@@ -143,18 +275,18 @@ func validateOutput(input, output string) error {
 		if foundIdx == -1 {
 			return fmt.Errorf("line %d: edge (%d,%d) not in input", i+1, u, v)
 		}
+		e1 := [2]int{u, v}
+		e2 := [2]int{v, u}
 		if usedEdges[e1] || usedEdges[e2] {
 			return fmt.Errorf("line %d: duplicate edge (%d,%d)", i+1, u, v)
 		}
 		usedEdges[e1] = true
-		// b[u] -= 1, b[v] += 1
 		b[u]--
 		b[v]++
 	}
 	if len(usedEdges) != m {
 		return fmt.Errorf("expected %d edges, got %d", m, len(usedEdges))
 	}
-	// Check b[i] == a[i] for all i where s[i] == 1
 	for i := 0; i < n; i++ {
 		if s[i] == 1 && b[i+1] != a[i] {
 			return fmt.Errorf("b[%d]=%d but a[%d]=%d (s[%d]=1)", i+1, b[i+1], i+1, a[i], i+1)
@@ -168,52 +300,36 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: go run verifierF.go /path/to/binary")
 		os.Exit(1)
 	}
-	candPath, err := prepareBinary(os.Args[1], "candF")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	refSrc := os.Getenv("REFERENCE_SOURCE_PATH")
-	if refSrc == "" {
-		log.Fatal("REFERENCE_SOURCE_PATH environment variable is not set")
-	}
-	refPath, err := prepareBinary(refSrc, "refF")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	candPath := os.Args[1]
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
 		input := genCase(rng)
-		exp, err := runBinary(refPath, input)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "reference error on case %d: %v\n", i+1, err)
-			os.Exit(1)
-		}
+		n, m, s, a, edges := parseInput(input)
+		expectYes := refSolveYesNo(n, m, s, a, edges)
+
 		got, err := runBinary(candPath, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "candidate runtime error on case %d: %v\ninput:\n%s", i+1, err, input)
 			os.Exit(1)
 		}
-		expTrim := strings.TrimSpace(exp)
 		gotTrim := strings.TrimSpace(got)
-		expUpper := strings.ToUpper(strings.Split(expTrim, "\n")[0])
 		gotUpper := strings.ToUpper(strings.Split(gotTrim, "\n")[0])
-		if expUpper == "NO" {
+
+		if !expectYes {
 			if gotUpper != "NO" {
-				fmt.Printf("case %d failed: expected NO, got:\n%s\ninput:\n%s", i+1, got, input)
+				fmt.Fprintf(os.Stderr, "case %d failed: expected NO, got:\n%s\ninput:\n%s", i+1, got, input)
 				os.Exit(1)
 			}
 			continue
 		}
-		// Reference says YES, validate candidate output
+		// Reference says YES
 		if gotUpper != "YES" {
-			fmt.Printf("case %d failed: expected YES, got:\n%s\ninput:\n%s", i+1, got, input)
+			fmt.Fprintf(os.Stderr, "case %d failed: expected YES, got:\n%s\ninput:\n%s", i+1, got, input)
 			os.Exit(1)
 		}
-		// Parse input to get n, m, s, a, edges
 		if err := validateOutput(input, gotTrim); err != nil {
-			fmt.Printf("case %d failed: %v\ninput:\n%sgot:\n%s\n", i+1, err, input, got)
+			fmt.Fprintf(os.Stderr, "case %d failed: %v\ninput:\n%sgot:\n%s\n", i+1, err, input, got)
 			os.Exit(1)
 		}
 	}

@@ -519,89 +519,69 @@ func solveCase(tc testCase) int64 {
 		adj[u] = append(adj[u], v)
 		adj[v] = append(adj[v], u)
 	}
-	if n == 1 {
-		return int64(h[1])
-	}
-	if n == 2 {
-		res := int64(h[1] + h[2])
-		if h[1] > h[2] {
-			res = int64(2 * h[1])
-		} else if h[2] > h[1] {
-			res = int64(2 * h[2])
+
+	// Root at node with maximum height (matches accepted solution)
+	maxH := -1
+	root := -1
+	for i := 1; i <= n; i++ {
+		if h[i] > maxH {
+			maxH = h[i]
+			root = i
 		}
-		return res
 	}
 
-	var ans int64
-	var dfs func(int, int) int
-	dfs = func(v, p int) int {
-		childs := make([]int, 0)
-		for _, to := range adj[v] {
-			if to == p {
-				continue
+	var totalSum int64
+
+	var dfs func(u, p int) int
+	dfs = func(u, p int) int {
+		var childVals []int
+		for _, v := range adj[u] {
+			if v != p {
+				childVals = append(childVals, dfs(v, u))
 			}
-			childs = append(childs, dfs(to, v))
 		}
-		if len(childs) == 0 {
-			ans += int64(h[v])
-			return h[v]
+		if len(childVals) == 0 {
+			return h[u]
 		}
-		sort.Slice(childs, func(i, j int) bool { return childs[i] > childs[j] })
-		if len(childs) == 1 {
-			if childs[0] < h[v] {
-				ans += int64(h[v] - childs[0])
-				childs[0] = h[v]
+		maxVal := childVals[0]
+		maxIdx := 0
+		for i := 1; i < len(childVals); i++ {
+			if childVals[i] > maxVal {
+				maxVal = childVals[i]
+				maxIdx = i
 			}
-			return childs[0]
 		}
-		if childs[1] < h[v] {
-			ans += int64(h[v] - childs[1])
-			childs[1] = h[v]
+		for i, val := range childVals {
+			if i != maxIdx {
+				totalSum += int64(val)
+			}
 		}
-		if childs[0] < h[v] {
-			childs[0] = h[v]
+		if maxVal < h[u] {
+			maxVal = h[u]
 		}
-		return childs[0]
+		return maxVal
 	}
 
-	root := 1
-	topVals := make([]int, 0)
-	for _, to := range adj[root] {
-		topVals = append(topVals, dfs(to, root))
+	var childVals []int
+	for _, v := range adj[root] {
+		childVals = append(childVals, dfs(v, root))
 	}
-	sort.Slice(topVals, func(i, j int) bool { return topVals[i] > topVals[j] })
 
-	if len(topVals) == 0 {
-		return int64(h[root])
-	}
-	if len(topVals) == 1 {
-		if topVals[0] < h[root] {
-			ans += int64(h[root] - topVals[0])
-			topVals[0] = h[root]
+	if len(childVals) == 0 {
+		totalSum += int64(h[root]) * 2
+	} else if len(childVals) == 1 {
+		totalSum += int64(h[root]) * 2
+	} else {
+		sort.Slice(childVals, func(i, j int) bool {
+			return childVals[i] > childVals[j]
+		})
+		totalSum += int64(h[root]) * 2
+		for i := 2; i < len(childVals); i++ {
+			totalSum += int64(childVals[i])
 		}
-		ans += int64(h[root])
-		return ans
 	}
 
-	cost1 := ans
-	if topVals[0] < h[root] {
-		cost1 += int64(h[root] - topVals[0])
-	}
-	if topVals[1] < h[root] {
-		cost1 += int64(h[root] - topVals[1])
-	}
-
-	cost2 := ans
-	if topVals[0] < h[root] {
-		cost2 += int64(h[root] - topVals[0])
-		topVals[0] = h[root]
-	}
-	cost2 += int64(h[root])
-
-	if cost1 < cost2 {
-		return cost1
-	}
-	return cost2
+	return totalSum
 }
 
 func parseTestcases() ([]testCase, error) {

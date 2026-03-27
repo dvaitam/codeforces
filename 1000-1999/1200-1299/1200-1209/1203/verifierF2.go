@@ -27,55 +27,49 @@ func solve(n, r int, pr []project) string {
 		}
 	}
 	sort.Slice(pos, func(i, j int) bool {
-		if pos[i].a == pos[j].a {
-			return pos[i].b > pos[j].b
-		}
 		return pos[i].a < pos[j].a
 	})
-	count := 0
-	curr := r
-	for _, p := range pos {
-		if curr >= p.a {
-			curr += p.b
-			count++
-		}
-	}
+
 	sort.Slice(neg, func(i, j int) bool {
-		left := neg[i].a + neg[i].b
-		right := neg[j].a + neg[j].b
-		if left == right {
-			return neg[i].a > neg[j].a
-		}
-		return left > right
+		return neg[i].a+neg[i].b > neg[j].a+neg[j].b
 	})
-	maxR := curr
-	const negInf = -1000000000
-	dp := make([]int, maxR+1)
+
+	ans := 0
+	for _, p := range pos {
+		if r >= p.a {
+			r += p.b
+			ans++
+		}
+	}
+
+	const MAXR = 60000
+	dp := make([]int, MAXR+5)
 	for i := range dp {
-		dp[i] = negInf
+		dp[i] = -1
 	}
-	dp[curr] = 0
+	if r > MAXR {
+		r = MAXR
+	}
+	dp[r] = ans
+
 	for _, p := range neg {
-		for rating := maxR; rating >= p.a; rating-- {
-			if dp[rating] == negInf {
-				continue
-			}
-			newR := rating + p.b
-			if newR < 0 {
-				continue
-			}
-			if dp[rating]+1 > dp[newR] {
-				dp[newR] = dp[rating] + 1
+		for j := p.a; j <= MAXR; j++ {
+			if dp[j] != -1 && j+p.b >= 0 {
+				if dp[j]+1 > dp[j+p.b] {
+					dp[j+p.b] = dp[j] + 1
+				}
 			}
 		}
 	}
-	best := 0
+
+	maxAns := 0
 	for _, v := range dp {
-		if v > best {
-			best = v
+		if v > maxAns {
+			maxAns = v
 		}
 	}
-	return fmt.Sprintf("%d", best+count)
+
+	return fmt.Sprintf("%d", maxAns)
 }
 
 func generateCase(rng *rand.Rand) (string, string) {

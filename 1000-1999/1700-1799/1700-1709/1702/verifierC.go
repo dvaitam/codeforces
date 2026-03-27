@@ -24,7 +24,7 @@ func solveC(n, k int, arr []int, queries [][2]int) []string {
 		a, b := q[0], q[1]
 		fa, okA := first[a]
 		lb, okB := last[b]
-		if okA && okB && fa <= lb {
+		if okA && okB && fa < lb {
 			res[i] = "YES"
 		} else {
 			res[i] = "NO"

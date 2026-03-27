@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -18,44 +19,35 @@ func genCase(rng *rand.Rand) caseF {
 	return caseF{n, k}
 }
 
-func expected(tc caseF) []string {
+func solve1583F(tc caseF) []string {
 	n, k := tc.n, tc.k
+
 	c := 0
-	power := 1
-	for power < n {
-		power *= k
+	temp := n - 1
+	for temp > 0 {
+		temp /= k
 		c++
 	}
-	labels := make([][]int, n)
-	for i := 0; i < n; i++ {
-		labels[i] = make([]int, c)
-		x := i
-		for j := c - 1; j >= 0; j-- {
-			labels[i][j] = x % k
-			x /= k
-		}
-	}
-	res := []string{fmt.Sprintf("%d", c)}
-	m := n * (n - 1) / 2
-	colors := make([]int, 0, m)
-	for i := 0; i < n; i++ {
-		for j := i + 1; j < n; j++ {
-			color := 1
-			for d := 0; d < c; d++ {
-				if labels[i][d] != labels[j][d] {
-					color = d + 1
-					break
-				}
-			}
-			colors = append(colors, color)
-		}
-	}
+
+	res := []string{strconv.Itoa(c)}
+
 	var sb strings.Builder
-	for i, v := range colors {
-		if i > 0 {
-			sb.WriteByte(' ')
+	first := true
+	for i := 0; i < n-1; i++ {
+		for j := i + 1; j < n; j++ {
+			d := 1
+			u, v := i, j
+			for u/k != v/k {
+				u /= k
+				v /= k
+				d++
+			}
+			if !first {
+				sb.WriteByte(' ')
+			}
+			first = false
+			sb.WriteString(strconv.Itoa(d))
 		}
-		sb.WriteString(fmt.Sprintf("%d", v))
 	}
 	res = append(res, sb.String())
 	return res
@@ -72,7 +64,7 @@ func runCase(bin string, tc caseF) error {
 		return fmt.Errorf("runtime error: %v\n%s", err, out.String())
 	}
 	fields := strings.Fields(strings.TrimSpace(out.String()))
-	exp := expected(tc)
+	exp := solve1583F(tc)
 	need := 1 + tc.n*(tc.n-1)/2
 	if len(fields) != need {
 		return fmt.Errorf("expected %d numbers got %d", need, len(fields))
